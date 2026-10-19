@@ -1006,7 +1006,7 @@
     B.EXT.git.gitsim = true;
     var USO = "usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]\n           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]\n           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--no-lazy-fetch]\n           [--no-optional-locks] [--no-advice] [--bare] [--git-dir=<path>]\n           [--work-tree=<path>] [--namespace=<name>] [--config-env=<name>=<envvar>]\n           <command> [<args>]\n";
     var AJUDA = "These are common Git commands used in various situations:\n\nstart a working area (see also: git help tutorial)\n   clone      Clone a repository into a new directory\n   init       Create an empty Git repository or reinitialize an existing one\n\nwork on the current change (see also: git help everyday)\n   add        Add file contents to the index\n   mv         Move or rename a file, a directory, or a symlink\n   restore    Restore working tree files\n   rm         Remove files from the working tree and from the index\n\nexamine the history and state (see also: git help revisions)\n   bisect     Use binary search to find the commit that introduced a bug\n   diff       Show changes between commits, commit and working tree, etc\n   grep       Print lines matching a pattern\n   log        Show commit logs\n   show       Show various types of objects\n   status     Show the working tree status\n\ngrow, mark and tweak your common history\n   backfill   Download missing objects in a partial clone\n   branch     List, create, or delete branches\n   commit     Record changes to the repository\n   merge      Join two or more development histories together\n   rebase     Reapply commits on top of another base tip\n   reset      Set `HEAD` or the index to a known state\n   switch     Switch branches\n   tag        Create, list, delete or verify tags\n\ncollaborate (see also: git help workflows)\n   fetch      Download objects and refs from another repository\n   pull       Fetch from and integrate with another repository or a local branch\n   push       Update remote refs along with associated objects\n\n'git help -a' and 'git help -g' list available subcommands and some\nconcept guides. See 'git help <command>' or 'git help <concept>'\nto read about a specific subcommand or concept.\nSee 'git help git' for an overview of the system.\n";
-    var NAO_FEITOS = { "filter-branch": 1, "gc": 1, "fsck": 1, "worktree": 1, "submodule": 1, "send-email": 1, "svn": 1, "p4": 1, "gui": 1, "gitk": 1, "instaweb": 1, "daemon": 1, "bundle": 1, "archive": 1, "notes": 1, "replace": 1, "sparse-checkout": 1, "maintenance": 1, "range-diff": 1, "format-patch": 1, "am": 1, "apply": 1, "request-pull": 1, "difftool": 1, "mergetool": 1, "citool": 1, "prune": 1, "repack": 1, "pack-objects": 1, "count-objects": 1, "describe": 1, "shortlog": 1, "whatchanged": 1, "rerere": 1, "lfs": 1, "credential": 1, "for-each-ref": 1, "update-ref": 1, "symbolic-ref": 1, "ls-remote": 1, "show-ref": 1, "verify-commit": 1, "verify-tag": 1, "backfill": 1, "hook": 1, "range": 1, "scalar": 1, "maint": 1 };
+    var NAO_FEITOS = { "filter-branch": 1, "gc": 1, "fsck": 1, "worktree": 1, "submodule": 1, "send-email": 1, "svn": 1, "p4": 1, "gui": 1, "gitk": 1, "instaweb": 1, "daemon": 1, "bundle": 1, "archive": 1, "notes": 1, "replace": 1, "sparse-checkout": 1, "maintenance": 1, "range-diff": 1, "format-patch": 1, "am": 1, "apply": 1, "request-pull": 1, "difftool": 1, "mergetool": 1, "citool": 1, "prune": 1, "repack": 1, "pack-objects": 1, "count-objects": 1, "whatchanged": 1, "rerere": 1, "lfs": 1, "credential": 1, "for-each-ref": 1, "update-ref": 1, "symbolic-ref": 1, "ls-remote": 1, "show-ref": 1, "verify-commit": 1, "verify-tag": 1, "backfill": 1, "hook": 1, "range": 1, "scalar": 1, "maint": 1 };
     var TODOS_NOMES = "add am annotate apply archive backfill bisect blame branch bugreport bundle cat-file check-attr check-ignore check-mailmap check-ref-format checkout checkout-index cherry cherry-pick clean clone column commit commit-graph commit-tree config count-objects credential credential-cache credential-store daemon describe diagnose diff diff-files diff-index diff-pairs diff-tree difftool fast-export fast-import fetch fetch-pack filter-branch fmt-merge-msg for-each-ref for-each-repo format-patch fsck fsck-objects gc get-tar-commit-id grep hash-object help hook http-backend http-fetch http-push imap-send index-pack init init-db instaweb interpret-trailers last-modified log ls-files ls-remote ls-tree mailinfo mailsplit maintenance merge merge-base merge-file merge-index merge-octopus merge-one-file merge-ours merge-recursive merge-resolve merge-subtree merge-tree mergetool mktag mktree multi-pack-index mv name-rev notes pack-objects pack-redundant pack-refs patch-id prune prune-packed pull push quiltimport range-diff read-tree rebase receive-pack reflog refs remote remote-ext remote-fd remote-ftp remote-ftps remote-http remote-https repack replace replay repo request-pull rerere reset restore rev-list rev-parse revert rm send-pack sh-i18n sh-prompt sh-setup shell shortlog show show-branch show-index show-ref sparse-checkout stage stash status stripspace submodule subtree switch symbolic-ref tag unpack-file unpack-objects update-index update-ref update-server-info upload-archive upload-pack var verify-commit verify-pack verify-tag version whatchanged worktree write-tree".split(" ");
     var COMUNS = "add backfill bisect branch clone commit diff fetch grep init log merge mv pull push rebase reset restore rm status switch tag".split(" "); // "show" fica de fora: assim sai igual ao lab (git sw → switch, show)
     function levenshtein(s1, s2, w, s, a, d) { // a mesma conta do git (levenshtein.c)
@@ -3848,6 +3848,43 @@
       });
       if (!o["-q"]) io.out(out);
       return achou ? 0 : 1;
+    };
+
+    /* ---------- describe / shortlog ---------- */
+    CMDS.describe = function (args, io, sh) {
+      var repo = precisaRepo(io), tags = false, always = false, abbrev = 7, rev = "HEAD";
+      args.forEach(function (a) { var m; if (a === "--tags") tags = true; else if (a === "--always") always = true; else if ((m = /^--abbrev=(\d+)$/.exec(a))) abbrev = +m[1]; else if (a[0] !== "-") rev = a; });
+      var h = repo.commitDe(rev); if (!h) { if (rev === "HEAD" && !repo.head()) fatal("No names found, cannot describe anything."); fatal("Not a valid object name " + rev); }
+      var todas = repo.listarRefs("refs/tags/").map(function (t) { var o = repo.ler(t.hash); return { nome: t.nome.slice(10), alvo: repo.descascar(t.hash), anotada: o && o.type === "tag", ts: o && o.type === "tag" ? parseIdent(o.tagger).ts : 0 }; });
+      var usar = todas.filter(function (t) { return tags || t.anotada; }), anc = repo.ancestrais([h]);
+      var melhor = null;
+      usar.forEach(function (t) {
+        if (!anc[t.alvo]) return;
+        var dist = repo.revList([h], [t.alvo], {}).length;
+        if (!melhor || dist < melhor.dist || (dist === melhor.dist && t.ts > melhor.t.ts)) melhor = { t: t, dist: dist };
+      });
+      if (!melhor) {
+        if (always) { io.out(repo.abrev(h) + "\n"); return 0; }
+        if (!todas.length) fatal("No names found, cannot describe anything.");
+        if (!tags && todas.some(function (t) { return anc[t.alvo]; })) fatal("No annotated tags can describe '" + h + "'.\nHowever, there were unannotated tags: try --tags.");
+        fatal("No tags can describe '" + h + "'.\nTry --always, or create some tags.");
+      }
+      io.out(melhor.t.nome + (melhor.dist && abbrev ? "-" + melhor.dist + "-g" + repo.abrev(h, abbrev) : "") + "\n");
+      return 0;
+    };
+    CMDS.shortlog = function (args, io, sh) {
+      var repo = precisaRepo(io), so = false, num = false, email = false, revs = [];
+      args.forEach(function (a) { if (/^-[sne]+$/.test(a)) { if (a.indexOf("s") >= 0) so = true; if (a.indexOf("n") >= 0) num = true; if (a.indexOf("e") >= 0) email = true; } else if (a === "--summary") so = true; else if (a === "--numbered") num = true; else if (a === "--email") email = true; else revs.push(a); });
+      var h = repo.commitDe(revs[0] || "HEAD"); if (!h) { if (!revs.length) return 0; fatal("ambiguous argument '" + revs[0] + "': unknown revision or path not in the working tree.\nUse '--' to separate paths from revisions, like this:\n'git <command> [<revision>...] -- [<file>...]'"); }
+      var grupos = {}, ordem = [];
+      repo.revList([h], [], {}).forEach(function (c) { var a = parseIdent(repo.ler(c).author), k = a.nome + (email ? " <" + a.email + ">" : ""); if (!grupos[k]) { grupos[k] = []; ordem.push(k); } grupos[k].push(assunto(repo.ler(c).msg)); });
+      ordem.sort(function (x, y) { return num ? grupos[y].length - grupos[x].length || (x < y ? -1 : 1) : (x < y ? -1 : 1); });
+      var out = "";
+      ordem.forEach(function (k) {
+        if (so) { var n = String(grupos[k].length); out += rep(" ", 6 - n.length) + n + "\t" + k + "\n"; }
+        else { out += k + " (" + grupos[k].length + "):\n" + grupos[k].slice().reverse().map(function (m) { return "      " + m + "\n"; }).join("") + "\n"; }
+      });
+      io.out(out); return 0;
     };
 
     /* ---------- help ---------- */
