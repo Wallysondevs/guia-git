@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Regra de Ouro — não reescreva o histórico que é público | Guia Git</title>
+<meta name="description" content="A regra de ouro do Git: não reescreva commits que outras pessoas já baixaram. O que conta como reescrever (amend, rebase, reset, squash), o que acontece de verdade com o colega quando você faz push --force (push recusado, branches divergentes, conflito num arquivo que ele nem tocou), como ele sai da situação com pull --rebase e o que fazer no lugar: um commit novo ou git revert.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">A Regra de Ouro</span></h1>
+
+<p class="intro">Nas últimas aulas você aprendeu a <strong>reescrever</strong> o histórico: corrigir o último commit com <a href="commit-amend.html">--amend</a>, refazer commits com <a href="git-rebase.html">rebase</a>, juntar vários com <a href="squash.html">squash</a>, voltar no tempo com <a href="git-reset.html">reset</a>. São ferramentas ótimas, com uma condição que todo mundo que usa Git aprende (às vezes do jeito difícil): <strong>não reescreva commits que outras pessoas já baixaram</strong>. Esta aula mostra, com o Git real, o que acontece com o colega quando essa regra é quebrada, e o que fazer no lugar.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A regra de ouro e quais comandos "reescrevem" o histórico.</li>
+  <li>Por que o <code>git push</code> recusa um histórico reescrito, e o que o <code>--force</code> faz.</li>
+  <li>O que o colega vê depois: push recusado, branches divergentes e um conflito num arquivo que ele nem tocou.</li>
+  <li>Como o colega sai dessa com <code>git pull --rebase</code>.</li>
+  <li>O que fazer no lugar: um commit novo de correção, ou <code>git revert</code>.</li>
+</ul>
+</div>
+
+<p>Todas as sessões desta aula rodaram no Git real do Ubuntu, com o "GitHub de mentira" do laboratório do guia: a Ana (<code>ana@notebook</code>) e o Bruno (<code>bruno@notebook</code>, o computador dele) trabalham no mesmo repositório <code>ana-souza/receitas</code>. As mensagens saem em português, mas a tradução do Git não cobre todas as frases: as que aparecem em inglês saíram assim mesmo.</p>
+
+<hr>
+
+<h2>A ideia: o caderno da turma</h2>
+<p>A turma da Ana tem um caderno de receitas que passa de mão em mão. Cada um copia o caderno inteiro para casa e continua escrevendo na sua cópia. Um dia, a Ana percebe um erro na página 3, que ela mesma escreveu. Ela tem duas opções:</p>
+<ul>
+  <li><strong>Arrancar a página 3 e colar uma nova no lugar.</strong> No caderno dela fica bonito. Mas o Bruno já tinha copiado a página 3 antiga e escrito a página 4 logo depois. Agora o caderno do Bruno e o da Ana <strong>não batem mais</strong>: a página 3 dele é diferente da dela, e ninguém sabe qual é "a certa" sem comparar linha por linha.</li>
+  <li><strong>Escrever uma página nova</strong>: "Correção da página 3: onde se lê <em>leiet</em>, leia <em>leite</em>". Nada do que os outros copiaram muda. Quem atualizar a cópia só ganha uma página a mais.</li>
+</ul>
+<p>Arrancar a página é <strong>reescrever o histórico</strong>. Enquanto o caderno é só seu, você arranca o que quiser. Depois que outras pessoas copiaram, escreva páginas novas.</p>
+
+<div class="warning">
+<strong>A regra de ouro</strong>
+<p><strong>Não reescreva commits que já foram enviados para um repositório compartilhado e que outras pessoas podem ter baixado.</strong> Para corrigir o que já é público, faça um commit <strong>novo</strong>.</p>
+</div>
+
+<h3>O que conta como "reescrever"</h3>
+<p>Reescrever é qualquer coisa que <strong>troca</strong> commits existentes por outros (com hashes novos) ou <strong>tira</strong> commits do branch. Lembre de <a href="hash.html">O Hash do Commit</a>: mudar qualquer coisa num commit (a mensagem, um arquivo, o pai) cria outro commit, com outro hash.</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Reescreve o histórico</th><th>Não reescreve (só acrescenta)</th></tr>
+<tr><td><code>git commit --amend</code> (troca o último commit)</td><td><code>git commit</code></td></tr>
+<tr><td><code>git rebase</code> e <code>git rebase -i</code> (refaz commits; squash, reword, drop…)</td><td><code>git merge</code></td></tr>
+<tr><td><code>git reset</code> para um commit anterior (tira commits do branch)</td><td><code>git revert</code> (desfaz com um commit novo)</td></tr>
+<tr><td><code>git push --force</code> depois de qualquer um desses</td><td><code>git cherry-pick</code> (cria cópias novas, não troca as antigas)</td></tr>
+</table>
+</div>
+<p>Os comandos da esquerda são <strong>seguros</strong> enquanto os commits só existem no seu computador. O problema começa quando o commit reescrito <strong>já estava no GitHub</strong>.</p>
+
+<hr>
+
+<h2>1. A situação</h2>
+<p>A Ana enviou a receita de pudim para o GitHub, com um erro de digitação ("leiet"). O Bruno clonou o repositório e começou a trabalhar em cima: commitou a receita de brigadeiro no computador dele, mas ainda não enviou.</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+14fffbd Adiciona a receita de pudim
+c34349b Adiciona a receita de bolo
+700bbd5 Cria o README
+</pre>
+
+<pre class="term" data-user="bruno" data-cwd="~/receitas">$ git log --oneline
+52e2dc5 Adiciona a receita de brigadeiro
+14fffbd Adiciona a receita de pudim
+c34349b Adiciona a receita de bolo
+700bbd5 Cria o README
+</pre>
+
+<p>O primeiro terminal é o da Ana; o segundo, o do Bruno. Os três commits de baixo são <strong>os mesmos</strong> nos dois computadores (mesmos hashes), e o <code>52e2dc5</code> do Bruno foi feito em cima do <code>14fffbd</code> da Ana:</p>
+<pre>
+GitHub e Ana:   A---B---P
+Bruno:          A---B---P---G
+</pre>
+<p>(<code>P</code> = pudim, <code>G</code> = brigadeiro.)</p>
+
+<hr>
+
+<h2>2. A Ana reescreve um commit que já era público</h2>
+<p>A Ana viu o "leiet" e, em vez de fazer um commit de correção, preferiu deixar o histórico "limpo": corrigiu o arquivo e <strong>trocou</strong> o último commit com <code>--amend</code> (o <code>-a</code> prepara o arquivo mudado; o <code>--no-edit</code> mantém a mesma mensagem):</p>
+
+<pre class="term" data-cwd="~/receitas">$ sed -i 's/leiet/leite/' pudim.txt
+$ git commit -q -a --amend --no-edit
+$ git log --oneline
+fa7fe1f Adiciona a receita de pudim             « hash novo: o 14fffbd sumiu do branch
+c34349b Adiciona a receita de bolo
+700bbd5 Cria o README
+$ git status
+No ramo main
+O seu branch e 'origin/main' divergiram-se,
+e cada um tem 1 e 1 submissões, respectivamente.
+  (use "git pull" if you want to integrate the remote branch with yours)
+
+nothing to commit, working tree clean
+</pre>
+
+<p>O <code>status</code> já avisa: o branch da Ana e o <code>origin/main</code> (o que o GitHub tem) <strong>divergiram</strong>: cada um tem 1 commit que o outro não tem. Do ponto de vista do Git, o <code>fa7fe1f</code> não é "o mesmo commit corrigido"; é <strong>outro</strong> commit, e o <code>14fffbd</code> que está no GitHub ficou sem par.</p>
+<pre>
+GitHub:   A---B---P       (P = 14fffbd, com "leiet")
+Ana:      A---B---P'      (P' = fa7fe1f, com "leite")
+</pre>
+
+<h3>O push recusa</h3>
+<pre class="term" data-cwd="~/receitas">$ git push
+To https://github.com/ana-souza/receitas.git
+ ! [rejected]        main -&gt; main (non-fast-forward)
+error: failed to push some refs to 'https://github.com/ana-souza/receitas.git'
+hint: Updates were rejected because the tip of your current branch is behind
+hint: its remote counterpart. If you want to integrate the remote changes,
+hint: use 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+</pre>
+<dl class="anatomy">
+  <dt>! [rejected] main -&gt; main (non-fast-forward)</dt><dd>"Recusado: não é avanço rápido". O GitHub só aceita um push que <strong>acrescenta</strong> commits depois do que ele já tem. O branch da Ana não tem o <code>14fffbd</code>, então aceitar o push faria esse commit sumir do GitHub.</dd>
+  <dt>error: failed to push some refs…</dt><dd>"Falhou ao enviar algumas referências" (aqui, o branch <code>main</code>). Nada foi enviado.</dd>
+  <dt>hint: Updates were rejected…</dt><dd>"As atualizações foram recusadas porque a ponta do seu branch está atrás da do remoto. Se quiser integrar as mudanças de lá, use <code>git pull</code> antes de enviar de novo." O Git não sabe que foi um <code>--amend</code>; ele só vê que falta um commit.</dd>
+</dl>
+<p>Essa recusa é o Git <strong>protegendo</strong> o histórico compartilhado. É aqui que a tentação aparece: "e se eu forçar?".</p>
+
+<h3>O <code>--force</code> passa por cima</h3>
+<pre class="term" data-cwd="~/receitas">$ git push --force
+To https://github.com/ana-souza/receitas.git
+ + 14fffbd...fa7fe1f main -&gt; main (forced update)
+</pre>
+<p>O <code>+</code> no começo e o <code>(forced update)</code> ("atualização forçada") dizem que o <code>main</code> do GitHub foi <strong>trocado</strong>: antes apontava para o <code>14fffbd</code>, agora aponta para o <code>fa7fe1f</code>. Repare nos <strong>três pontos</strong> (<code>...</code>) entre os hashes: num push normal são dois (<code>..</code>, "de … até …"); três pontos indicam que um não é continuação do outro. No computador da Ana, tudo parece resolvido. O problema agora é do Bruno.</p>
+
+<hr>
+
+<h2>3. O que acontece com o Bruno</h2>
+<p>O Bruno terminou o brigadeiro e foi enviar:</p>
+
+<pre class="term" data-user="bruno" data-cwd="~/receitas">$ git push
+To https://github.com/ana-souza/receitas.git
+ ! [rejected]        main -&gt; main (fetch first)
+error: failed to push some refs to 'https://github.com/ana-souza/receitas.git'
+hint: Updates were rejected because the remote contains work that you do not
+hint: have locally. This is usually caused by another repository pushing to
+hint: the same ref. If you want to integrate the remote changes, use
+hint: 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+</pre>
+<p>Recusado com <code>(fetch first)</code>, "busque primeiro": "o remoto tem trabalho que você não tem; normalmente é outra pessoa que enviou para o mesmo branch". Até aqui, parece um push rejeitado comum (veja <a href="push-rejeitado.html">Push Rejeitado</a>). O Bruno faz o que a dica manda:</p>
+
+<pre class="term" data-user="bruno" data-cwd="~/receitas">$ git pull
+From https://github.com/ana-souza/receitas
+ + 14fffbd...fa7fe1f main       -&gt; origin/main  (forced update)
+hint: You have divergent branches and need to specify how to reconcile them.
+hint: You can do so by running one of the following commands sometime before
+hint: your next pull:
+hint:
+hint:   git config pull.rebase false  # merge
+hint:   git config pull.rebase true   # rebase
+hint:   git config pull.ff only       # fast-forward only
+hint:
+hint: You can replace "git config" with "git config --global" to set a default
+hint: preference for all repositories. You can also pass --rebase, --no-rebase,
+hint: or --ff-only on the command line to override the configured default per
+hint: invocation.
+fatal: Need to specify how to reconcile divergent branches.
+</pre>
+<p>A primeira linha entrega o que aconteceu: <code>+ 14fffbd...fa7fe1f … (forced update)</code>, o <code>main</code> do GitHub foi <strong>forçado</strong>. O resto é o aviso de branches divergentes (explicado em <a href="rebase-ou-merge.html">Rebase ou Merge?</a>). O Bruno escolhe o merge, o padrão de muita gente:</p>
+
+<pre class="term" data-user="bruno" data-cwd="~/receitas">$ git pull --no-rebase
+Mesclagem automática de pudim.txt
+CONFLITO (adicionar/adicionar): conflito de mesclagem em pudim.txt
+Automatic merge failed; fix conflicts and then commit the result.
+$ git status
+No ramo main
+O seu branch e 'origin/main' divergiram-se,
+e cada um tem 2 e 1 submissões, respectivamente.
+  (use "git pull" if you want to integrate the remote branch with yours)
+
+Você tem caminhos não mesclados.
+  (fixar conflitos e executar "git commit")
+  (use "git merge --abort" to abort the merge)
+
+Caminhos não mesclados:
+  (usar "git add &lt;arquivo&gt;..." para marcar resolução)
+	ambos adicionaram:   pudim.txt
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+$ cat pudim.txt
+&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+Pudim de leiet condensado
+=======
+Pudim de leite condensado
+&gt;&gt;&gt;&gt;&gt;&gt;&gt; fa7fe1f1b47a6eb6e5715d4470c2e7013d4e1d1d
+</pre>
+
+<p>Um <strong>conflito</strong> no <code>pudim.txt</code>, um arquivo que o Bruno <strong>nunca tocou</strong>. Linha por linha:</p>
+<dl class="anatomy">
+  <dt>CONFLITO (adicionar/adicionar)</dt><dd>"Os dois lados <strong>criaram</strong> o arquivo." Para o Git, o <code>pudim.txt</code> nasceu duas vezes: uma no <code>14fffbd</code> (que o Bruno tem) e outra no <code>fa7fe1f</code> (que o GitHub tem agora), cada uma com um conteúdo. O ponto em comum dos dois lados é o commit do bolo, quando o pudim ainda nem existia.</dd>
+  <dt>cada um tem 2 e 1 submissões</dt><dd>O Bruno tem 2 commits que o GitHub não tem (o <code>14fffbd</code> antigo da Ana e o brigadeiro dele); o GitHub tem 1 que o Bruno não tem (o <code>fa7fe1f</code>).</dd>
+  <dt>ambos adicionaram: pudim.txt</dt><dd>O mesmo "adicionar/adicionar", no <code>status</code>.</dd>
+</dl>
+<p>Se o Bruno resolvesse esse conflito e enviasse, o <code>main</code> do GitHub passaria a ter <strong>os dois</strong> commits "Adiciona a receita de pudim" (o antigo, com "leiet", e o novo) mais um commit de merge. O <code>14fffbd</code> que a Ana quis apagar <strong>voltaria</strong> para o GitHub. Numa equipe de cinco pessoas, cada uma passaria por isso.</p>
+
+<p>O Bruno desistiu do merge (veja <a href="abortar-merge.html">Desistindo de um Merge</a>) e olhou o desenho:</p>
+<pre class="term" data-user="bruno" data-cwd="~/receitas">$ git merge --abort
+$ git log --oneline --graph --all
+* 52e2dc5 Adiciona a receita de brigadeiro
+* 14fffbd Adiciona a receita de pudim             « o pudim antigo, que só o Bruno ainda tem
+| * fa7fe1f Adiciona a receita de pudim           « o pudim reescrito (origin/main)
+|/
+* c34349b Adiciona a receita de bolo
+* 700bbd5 Cria o README
+</pre>
+<p>Duas versões do mesmo commit, em dois galhos. É o "caderno que não bate mais" da comparação lá de cima.</p>
+
+<hr>
+
+<h2>4. Como o Bruno sai dessa</h2>
+<p>O que o Bruno quer é: "pegue o <code>main</code> do GitHub como está agora e ponha <strong>só o meu</strong> brigadeiro em cima". É exatamente o que o <code>git pull --rebase</code> faz:</p>
+
+<pre class="term" data-user="bruno" data-cwd="~/receitas">$ git pull --rebase
+Successfully rebased and updated refs/heads/main.
+$ git log --oneline --graph --all
+* c9c0c26 Adiciona a receita de brigadeiro
+* fa7fe1f Adiciona a receita de pudim
+* c34349b Adiciona a receita de bolo
+* 700bbd5 Cria o README
+$ git push
+To https://github.com/ana-souza/receitas.git
+   fa7fe1f..c9c0c26  main -&gt; main
+</pre>
+
+<p>O rebase refez só o brigadeiro (agora <code>c9c0c26</code>) em cima do <code>fa7fe1f</code> e <strong>deixou o <code>14fffbd</code> antigo de fora</strong>, sem conflito. Como o Git soube? O Bruno tinha baixado o <code>14fffbd</code> pelo <code>origin/main</code>, e o Git guarda um diário de por onde o <code>origin/main</code> passou (o mesmo tipo de diário do <a href="git-reflog.html">git reflog</a>). Com ele, o <code>pull --rebase</code> percebe que o <code>14fffbd</code> veio do GitHub e não é trabalho do Bruno. O push final é um push normal, com dois pontos.</p>
+
+<div class="note">
+<strong>Nem sempre é tão limpo</strong>
+<p>Aqui deu certo porque o Bruno não tinha mexido no <code>pudim.txt</code> e baixou o commit antigo pelo próprio <code>origin/main</code>. Se ele tivesse editado o pudim, ou se tivesse feito o merge e enviado antes de perceber, o conserto seria bem mais trabalhoso. E <strong>cada pessoa da equipe</strong> que tinha o commit antigo precisa fazer esse conserto. Por isso a regra é não reescrever, e não "reescrever e explicar para todo mundo como consertar".</p>
+</div>
+
+<hr>
+
+<h2>5. O que a Ana deveria ter feito</h2>
+<p>Voltando ao começo (pudim com "leiet" já no GitHub, brigadeiro do Bruno ainda não enviado). Em vez do <code>--amend</code>, a Ana faz um <strong>commit novo</strong> de correção, a "página nova" do caderno:</p>
+
+<pre class="term" data-cwd="~/receitas">$ sed -i 's/leiet/leite/' pudim.txt
+$ git commit -q -am 'Corrige erro de digitação no pudim'
+$ git push
+To https://github.com/ana-souza/receitas.git
+   14fffbd..dc121d5  main -&gt; main
+$ git log --oneline
+dc121d5 Corrige erro de digitação no pudim
+14fffbd Adiciona a receita de pudim
+c34349b Adiciona a receita de bolo
+700bbd5 Cria o README
+</pre>
+<p>Push normal, sem força: <code>14fffbd..dc121d5</code>, dois pontos, "do <code>14fffbd</code> até o <code>dc121d5</code>". E do lado do Bruno, que tem o brigadeiro ainda não enviado:</p>
+
+<pre class="term" data-user="bruno" data-cwd="~/receitas">$ git pull --rebase
+From https://github.com/ana-souza/receitas
+   14fffbd..dc121d5  main       -&gt; origin/main
+Successfully rebased and updated refs/heads/main.
+$ git log --oneline --graph --all
+* ab8f560 Adiciona a receita de brigadeiro
+* dc121d5 Corrige erro de digitação no pudim
+* 14fffbd Adiciona a receita de pudim
+* c34349b Adiciona a receita de bolo
+* 700bbd5 Cria o README
+</pre>
+<p>Sem <code>forced update</code>, sem conflito, sem commit duplicado. O histórico ganhou um commit a mais ("Corrige erro de digitação"), e tudo bem: é a história verdadeira.</p>
+
+<p>Para <strong>desfazer</strong> um commit público inteiro (e não só corrigir um detalhe), a ferramenta é o <a href="git-revert.html">git revert</a>: ele cria um commit novo que faz o contrário do commit escolhido, sem tirar nada do histórico.</p>
+
+<div class="try" data-setup="git init -q --bare servidor.git;;git clone -q servidor.git receitas;;cd receitas;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;echo 'Pudim de leiet condensado' &gt; pudim.txt;;git add pudim.txt;;git commit -q -m 'Adiciona a receita de pudim';;git push -q -u origin main" data-goal="commits:3,logre:Adiciona a receita de pudim,contem:HEAD:pudim.txt=leite condensado,contem:origin/main:pudim.txt=leite condensado,limpo" data-solucao="sed -i 's/leiet/leite/' pudim.txt;;git commit -am 'Corrige erro de digitação no pudim';;git push">
+<p class="try-task"><strong>Missão:</strong> o commit "Adiciona a receita de pudim" já foi enviado (o "servidor" aqui é a pasta <code>~/servidor.git</code>, que faz o papel do GitHub), e o <code>pudim.txt</code> tem "leiet". Corrija para "leite" <strong>sem reescrever</strong> o histórico: um commit novo e um <code>git push</code> normal. (Dica: <code>sed -i 's/leiet/leite/' pudim.txt</code> troca o texto.) Se você usar <code>--amend</code>, o push vai ser recusado; e a missão confere que o commit original continua lá.</p>
+</div>
+
+<hr>
+
+<h2>6. Quando reescrever é tranquilo</h2>
+<p>A regra é sobre commits <strong>que outras pessoas podem ter baixado</strong>. Nos outros casos, reescrever é normal e até recomendado:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Pode reescrever?</th></tr>
+<tr><td>Commits que ainda não saíram do seu computador (antes do <code>push</code>)</td><td><strong>Sim</strong>, à vontade: amend, rebase -i, squash</td></tr>
+<tr><td>Um branch só seu, que você enviou só como cópia de segurança (ou para um pull request) e que ninguém mais usa</td><td><strong>Sim</strong>, com cuidado: depois, envie com <a href="push-force.html">push --force-with-lease</a></td></tr>
+<tr><td>Um branch de pull request em que a equipe combinou "faça rebase antes do merge"</td><td>Sim, é o combinado; avise se mais alguém commitou no branch</td></tr>
+<tr><td>O <code>main</code> (ou qualquer branch) que a equipe inteira usa</td><td><strong>Não.</strong> Commit novo ou <code>git revert</code></td></tr>
+<tr><td>Uma senha commitada e enviada</td><td>Caso especial: troque a senha primeiro; veja <a href="senha-commitada.html">Commitei uma Senha!</a></td></tr>
+</table>
+</div>
+
+<div class="tip">
+<strong>Na dúvida, pergunte ao <code>status</code></strong>
+<p>Antes de um amend ou rebase, rode <code>git status</code>. Se ele disser <code>Your branch is up to date with 'origin/main'</code>, o último commit <strong>já está no GitHub</strong>: pense duas vezes. Se disser "à frente de 'origin/main' por N submissões", esses N commits mais recentes ainda são só seus.</p>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer a mesma coisa</h2>
+<p>Para cada vontade de "arrumar o histórico", a versão que respeita a regra de ouro:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Você quer…</th><th>Se o commit ainda é só seu</th><th>Se o commit já é público</th></tr>
+<tr><td>Corrigir um erro do último commit</td><td><code>git commit --amend</code></td><td>Commit novo de correção</td></tr>
+<tr><td>Desfazer um commit</td><td><code>git reset</code></td><td><code>git revert</code></td></tr>
+<tr><td>Juntar vários commits pequenos</td><td><code>git rebase -i</code> (squash)</td><td>Deixe como está (ou <strong>Squash and merge</strong> no pull request, que cria um commit novo no branch de destino)</td></tr>
+<tr><td>Atualizar seu branch com o <code>main</code></td><td><code>git rebase main</code></td><td><code>git merge main</code></td></tr>
+<tr><td>Mudar a mensagem de um commit</td><td><code>git commit --amend</code> ou <code>rebase -i</code> (reword)</td><td>Deixe como está</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>"Fiz amend (ou rebase) e o push foi recusado"</strong>
+<pre class="term" data-cwd="~/receitas">$ git push
+To https://github.com/ana-souza/receitas.git
+ ! [rejected]        main -&gt; main (non-fast-forward)
+error: failed to push some refs to 'https://github.com/ana-souza/receitas.git'
+hint: Updates were rejected because the tip of your current branch is behind
+hint: its remote counterpart. If you want to integrate the remote changes,
+hint: use 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+</pre>
+<p><strong>O que aconteceu:</strong> você reescreveu um commit que já estava no GitHub. <strong>Como confirmar:</strong> o <code>git status</code> diz que o branch e o <code>origin/main</code> "divergiram-se". <strong>Como resolver:</strong> pare e pergunte "alguém mais usa este branch?". Se for o <code>main</code> compartilhado: <strong>não force</strong>. Desfaça a reescrita (o commit antigo continua acessível pelo <code>origin/main</code> e pelo <a href="git-reflog.html">reflog</a>; por exemplo, <code>git reset --hard origin/main</code> volta o seu branch para o que está no GitHub, perdendo a correção, que você refaz como commit novo). Se o branch é só seu: <code>git push --force-with-lease</code> (próxima aula).</p>
+</div>
+
+<div class="cenario">
+<strong>"Conflito num arquivo que eu nem mexi" depois de um pull</strong>
+<pre class="term" data-user="bruno" data-cwd="~/receitas">$ git pull --no-rebase
+Mesclagem automática de pudim.txt
+CONFLITO (adicionar/adicionar): conflito de mesclagem em pudim.txt
+Automatic merge failed; fix conflicts and then commit the result.
+</pre>
+<p><strong>O que aconteceu:</strong> alguém reescreveu e forçou um branch que você já tinha baixado. <strong>Como confirmar:</strong> procure <code>(forced update)</code> na saída do <code>pull</code>/<code>fetch</code>, e o <code>git log --oneline --graph --all</code> mostra dois commits com a mesma mensagem em galhos diferentes. <strong>Como resolver:</strong> <code>git merge --abort</code> e depois <code>git pull --rebase</code>, como o Bruno na seção 4. E converse com quem forçou.</p>
+</div>
+
+<div class="cenario">
+<strong>"Forcei e o commit do colega sumiu do GitHub"</strong>
+<p>Se o Bruno <strong>já tivesse enviado</strong> o brigadeiro antes do <code>git push --force</code> da Ana, o force teria trocado o <code>main</code> do GitHub pelo da Ana, que não tem o brigadeiro: o commit do Bruno sumiria de lá, sem aviso nenhum para a Ana. <strong>Como resolver:</strong> o commit ainda existe no computador do Bruno; ele roda <code>git pull --rebase</code> e <code>git push</code> de novo. <strong>Como evitar:</strong> nunca <code>--force</code> puro; o <code>--force-with-lease</code> recusa exatamente esse caso. A aula <a href="push-force.html">push --force-with-lease</a> mostra a recusa de verdade.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Sinal</th><th>Quer dizer</th></tr>
+<tr><td><code>! [rejected] … (non-fast-forward)</code> no seu push</td><td>O seu branch não tem commits que o remoto tem (talvez você tenha reescrito algo)</td></tr>
+<tr><td><code>! [rejected] … (fetch first)</code></td><td>Alguém enviou antes; faça <code>pull</code></td></tr>
+<tr><td><code>+ abc1234...def5678 … (forced update)</code></td><td>O branch foi forçado (no seu push, ou no remoto, quando aparece no <code>pull</code>/<code>fetch</code>)</td></tr>
+<tr><td><code>O seu branch e 'origin/main' divergiram-se</code></td><td>Cada lado tem commits que o outro não tem</td></tr>
+<tr><td><code>CONFLITO (adicionar/adicionar)</code> num arquivo que você não criou</td><td>Sintoma clássico de histórico reescrito por outra pessoa</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. A correção certa</h3>
+<p>O commit com o erro já está no GitHub e o Bruno já baixou. Complete para corrigir sem reescrever:</p>
+<div class="ex-code">git <input data-answer="commit" aria-label="subcomando"> -am 'Corrige erro de digitação no pudim'<br>git <input data-answer="push" aria-label="subcomando"></div>
+</div>
+
+<div class="exercise">
+<h3>2. Desfazer o que é público</h3>
+<p>Qual comando desfaz um commit que já foi enviado, criando um commit novo que faz o contrário?</p>
+<div class="ex-code">git <input data-answer="revert" aria-label="subcomando"> 14fffbd</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. Qual destes comandos <strong>não</strong> reescreve o histórico?</p>
+<label><input type="radio" name="q3"> <code>git commit --amend</code></label>
+<label><input type="radio" name="q3"> <code>git revert</code></label>
+<label><input type="radio" name="q3"> <code>git rebase -i</code></label>
+<label><input type="radio" name="q3"> <code>git reset --hard HEAD~1</code></label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. Por que o push da Ana foi recusado depois do <code>--amend</code>?</p>
+<label><input type="radio" name="q4"> Porque o <code>--amend</code> apaga o repositório remoto</label>
+<label><input type="radio" name="q4"> Porque ela não tinha permissão no GitHub</label>
+<label><input type="radio" name="q4"> Porque o commit antigo, que está no GitHub, não existe mais no branch dela, e o push o faria sumir</label>
+<label><input type="radio" name="q4"> Porque a mensagem do commit era a mesma</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. Você fez 3 commits e ainda <strong>não</strong> deu push. Pode juntá-los com <code>rebase -i</code>?</p>
+<label><input type="radio" name="q5"> Sim: ninguém mais tem esses commits</label>
+<label><input type="radio" name="q5"> Não: a regra de ouro proíbe qualquer rebase</label>
+<label><input type="radio" name="q5"> Só com <code>--force</code></label>
+<label><input type="radio" name="q5"> Só se o Bruno deixar</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">6. Num <code>git pull</code>, aparece <code>(forced update)</code> e depois um conflito num arquivo que você nunca editou. O melhor caminho é:</p>
+<label><input type="radio" name="q6"> Resolver o conflito e enviar com <code>--force</code></label>
+<label><input type="radio" name="q6"> Apagar a pasta e clonar de novo, perdendo seus commits</label>
+<label><input type="radio" name="q6"> Ignorar e continuar trabalhando</label>
+<label><input type="radio" name="q6"> <code>git merge --abort</code> e depois <code>git pull --rebase</code></label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><strong>Regra de ouro:</strong> não reescreva commits que outras pessoas podem ter baixado.</li>
+  <li>Reescrevem: <code>--amend</code>, <code>rebase</code> (e <code>rebase -i</code>/squash), <code>reset</code> para trás. Só acrescentam: <code>commit</code>, <code>merge</code>, <code>revert</code>.</li>
+  <li>O <code>push</code> recusa um histórico reescrito (<code>non-fast-forward</code>). O <code>--force</code> passa por cima, e quem já tinha os commits antigos fica com branches divergentes e conflitos estranhos (<code>adicionar/adicionar</code>).</li>
+  <li>Quem foi atingido sai com <code>git merge --abort</code> + <code>git pull --rebase</code>.</li>
+  <li>Para corrigir o que é público: commit novo; para desfazer: <code>git revert</code>. Reescrever fica para o que ainda é só seu (e, num branch só seu já enviado, <code>push --force-with-lease</code>).</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
