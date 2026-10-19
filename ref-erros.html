@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Mensagens de Erro Comuns — o que cada uma significa e como resolver | Guia Git</title>
+<meta name="description" content="As mensagens de erro mais comuns do Git, como saem no Git do Ubuntu 26.04 em português: not a git repository, Please tell me who you are, nada a submeter, pathspec, conflito, push rejeitado, no upstream branch, divergent branches, unrelated histories, detached HEAD e outras, com o significado e a solução.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Mensagens de Erro Comuns</span></h1>
+
+<p class="intro">Toda pessoa que usa Git vê as mesmas mensagens de erro, e quase todas trazem a solução escrita logo abaixo, nas linhas <code>hint:</code> ou <code>(use "git …")</code>. Esta página reúne as mais comuns, exatamente como saíram no Git 2.53 do Ubuntu 26.04 da Ana, com a tradução, o que aconteceu e o comando que resolve.</p>
+
+<div class="note">
+<strong>Como ler uma mensagem do Git</strong>
+<ul>
+  <li><code>fatal:</code> o comando parou e <strong>não fez nada</strong>. Seu repositório está como antes.</li>
+  <li><code>error:</code> algo deu errado; em geral o comando também desistiu (às vezes vem um <code>fatal:</code> logo depois).</li>
+  <li><code>hint:</code> uma dica ("sugestão") de como sair da situação. Leia sempre.</li>
+  <li><code>warning:</code> um aviso: o comando funcionou, mas o Git quer que você saiba de algo.</li>
+  <li>Nesta versão do Git, parte das mensagens em português ainda sai em inglês, mesmo com o sistema em português (é a tradução que vem no Ubuntu). Com o sistema em inglês, todas saem em inglês: o começo da mensagem (<code>fatal: not a git repository</code>) é o melhor texto para procurar na internet.</li>
+</ul>
+</div>
+
+<p class="indice-letras"><a href="#tabela">Tabela rápida</a> · <a href="#comecando">Começando</a> · <a href="#commit">Commit</a> · <a href="#arquivos">Arquivos</a> · <a href="#branches">Branches</a> · <a href="#merge">Merge e conflito</a> · <a href="#remotos">Remotos e GitHub</a></p>
+
+<hr>
+
+<h2 id="tabela">Tabela rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Mensagem (começo)</th><th>Quer dizer</th><th>Resolva com</th></tr>
+<tr><td><code>fatal: not a git repository</code></td><td>Você não está dentro de um repositório.</td><td><code>cd</code> para a pasta do projeto, ou <code>git init</code> — <a href="#nao-repo">detalhes</a></td></tr>
+<tr><td><code>Please tell me who you are</code></td><td>Falta configurar nome e e-mail.</td><td><code>git config --global user.name "…"</code> e <code>user.email</code> — <a href="#identidade">detalhes</a></td></tr>
+<tr><td><code>nada para enviar (crie/copie arquivos…)</code></td><td>Não há nada para commitar: a pasta está vazia.</td><td>Crie um arquivo e <code>git add</code> — <a href="#nada">detalhes</a></td></tr>
+<tr><td><code>nada adicionado ao envio mas arquivos não registrados estão presentes</code></td><td>Há arquivos novos, mas você não deu <code>git add</code>.</td><td><code>git add arquivo</code> — <a href="#nada">detalhes</a></td></tr>
+<tr><td><code>nothing to commit, working tree clean</code></td><td>Tudo já está commitado.</td><td>Nada a fazer — <a href="#nada">detalhes</a></td></tr>
+<tr><td><code>Aborting commit due to empty commit message.</code></td><td>A mensagem do commit ficou vazia.</td><td><code>git commit -m "mensagem"</code> — <a href="#vazia">detalhes</a></td></tr>
+<tr><td><code>fatal: pathspec '…' não encontrou nenhum arquivo</code></td><td>O arquivo do <code>git add</code>/<code>git rm</code> não existe (nome errado?).</td><td><code>ls</code> e <code>git status</code> — <a href="#pathspec">detalhes</a></td></tr>
+<tr><td><code>error: pathspec '…' did not match any file(s) known to git</code></td><td>O Git não conhece esse arquivo (ou branch).</td><td>Confira o nome — <a href="#pathspec">detalhes</a></td></tr>
+<tr><td><code>git: '…' não é um comando git</code></td><td>Comando digitado errado.</td><td>Use o que ele sugere — <a href="#comando">detalhes</a></td></tr>
+<tr><td><code>fatal: ambiguous argument '…': unknown revision or path</code></td><td>Não existe commit, branch nem arquivo com esse nome.</td><td>Confira o nome; use <code>--</code> antes de arquivos — <a href="#ambiguous">detalhes</a></td></tr>
+<tr><td><code>fatal: your current branch '…' does not have any commits yet</code></td><td>O branch ainda não tem commits.</td><td>Faça o primeiro commit — <a href="#semcommits">detalhes</a></td></tr>
+<tr><td><code>fatal: invalid reference: …</code></td><td>O branch para onde você quer ir não existe.</td><td><code>git branch</code>; para criar: <code>git switch -c</code> — <a href="#invalid">detalhes</a></td></tr>
+<tr><td><code>fatal: a branch named '…' already exists</code></td><td>Já existe um branch com esse nome.</td><td><code>git switch nome</code> (sem <code>-c</code>) — <a href="#invalid">detalhes</a></td></tr>
+<tr><td><code>error: Your local changes … would be overwritten by checkout</code></td><td>Trocar de branch apagaria mudanças não commitadas.</td><td><code>git commit</code> ou <code>git stash</code> antes — <a href="#overwritten">detalhes</a></td></tr>
+<tr><td><code>You are in 'detached HEAD' state</code></td><td>Você está visitando um commit, fora de qualquer branch.</td><td><code>git switch -</code> ou <code>git switch -c novo</code> — <a href="#detached">detalhes</a></td></tr>
+<tr><td><code>error: the branch '…' is not fully merged</code></td><td>Apagar o branch perderia commits.</td><td>Junte antes ou use <code>-D</code> — <a href="#notmerged">detalhes</a></td></tr>
+<tr><td><code>CONFLITO (conteúdo): conflito de mesclagem em …</code></td><td>Os dois lados mudaram as mesmas linhas.</td><td>Edite, <code>git add</code>, <code>git commit</code> — <a href="#conflito">detalhes</a></td></tr>
+<tr><td><code>error: Committing is not possible because you have unmerged files.</code></td><td>Ainda há conflito sem resolver.</td><td>Resolva e <code>git add</code> — <a href="#conflito">detalhes</a></td></tr>
+<tr><td><code>fatal: cannot switch branch while merging</code></td><td>Há um merge pela metade.</td><td>Termine ou <code>git merge --abort</code> — <a href="#conflito">detalhes</a></td></tr>
+<tr><td><code>fatal: No configured push destination.</code></td><td>O repositório não tem remoto.</td><td><code>git remote add origin URL</code> — <a href="#semremoto">detalhes</a></td></tr>
+<tr><td><code>error: remote origin already exists.</code></td><td>Já existe um remoto <code>origin</code>.</td><td><code>git remote set-url origin URL</code> — <a href="#semremoto">detalhes</a></td></tr>
+<tr><td><code>fatal: The current branch … has no upstream branch.</code></td><td>O branch ainda não foi ligado a um branch do servidor.</td><td><code>git push -u origin main</code> — <a href="#upstream">detalhes</a></td></tr>
+<tr><td><code>error: src refspec main does not match any</code></td><td>Não existe branch <code>main</code> local (nenhum commit ainda, ou o branch tem outro nome).</td><td>Faça um commit; confira com <code>git branch</code> — <a href="#refspec">detalhes</a></td></tr>
+<tr><td><code>! [rejected] main -&gt; main (fetch first)</code></td><td>O servidor tem commits que você não tem.</td><td><code>git pull</code> e depois <code>git push</code> — <a href="#rejected">detalhes</a></td></tr>
+<tr><td><code>fatal: Need to specify how to reconcile divergent branches.</code></td><td>O <code>pull</code> não sabe se faz merge ou rebase.</td><td><code>git pull --no-rebase</code> (ou <code>--rebase</code>) — <a href="#divergent">detalhes</a></td></tr>
+<tr><td><code>fatal: refusing to merge unrelated histories</code></td><td>Os dois repositórios não têm nenhum commit em comum.</td><td><code>--allow-unrelated-histories</code> — <a href="#unrelated">detalhes</a></td></tr>
+<tr><td><code>remote: Repository not found.</code></td><td>O endereço está errado ou você não tem acesso.</td><td>Confira a URL e o login — <a href="#notfound">detalhes</a></td></tr>
+<tr><td><code>fatal: destination path '…' already exists</code></td><td>Já existe uma pasta com o nome do clone.</td><td>Outro nome: <code>git clone URL outra-pasta</code> — <a href="#notfound">detalhes</a></td></tr>
+</table>
+</div>
+
+<h2 id="comecando">Começando</h2>
+
+<div class="cenario" id="nao-repo">
+<h3>fatal: not a git repository</h3>
+<pre class="term">$ git status
+fatal: not a git repository (or any of the parent directories): .git
+</pre>
+<p><strong>Tradução:</strong> "não é um repositório git (nem nenhuma das pastas acima): .git".</p>
+<p><strong>O que aconteceu:</strong> o Git procurou a pasta <code>.git</code> na pasta atual e em todas as de cima, e não achou. Ou você está na pasta errada (o mais comum: esqueceu o <code>cd</code>), ou o projeto ainda não é um repositório.</p>
+<p><strong>Como resolver:</strong> <code>pwd</code> para ver onde está; <code>cd ~/receitas</code> para ir ao projeto. Se o projeto nunca foi versionado, <code>git init</code> dentro dele. Veja <a href="git-init.html">git init</a> e <a href="terminal-basico.html">O Mínimo de Terminal</a>.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;echo 'Bolo de cenoura' &gt; receitas/bolo.txt" data-goal="repo,ran:git status" data-solucao="cd receitas;;git init;;git status">
+<p class="try-task"><strong>Missão:</strong> a Ana está na pasta pessoal e o <code>git status</code> dá <code>fatal: not a git repository</code>. Entre na pasta <code>receitas</code>, transforme-a num repositório e rode <code>git status</code> de novo.</p>
+</div>
+
+<div class="cenario" id="identidade">
+<h3>Please tell me who you are</h3>
+<pre class="term" data-cwd="~/receitas">$ git commit -m 'Adiciona bolo'
+Author identity unknown
+
+*** Please tell me who you are.
+
+Run
+
+  git config --global user.email "you@example.com"
+  git config --global user.name "Your Name"
+
+to set your account's default identity.
+Omit --global to set the identity only in this repository.
+
+fatal: unable to auto-detect email address (got 'ana@notebook.(none)')
+</pre>
+<p><strong>Tradução:</strong> "Identidade do autor desconhecida. Por favor, me diga quem você é. Rode [os dois comandos] para definir a identidade padrão da sua conta. Omita <code>--global</code> para definir só neste repositório. Fatal: não consegui descobrir o e-mail sozinho."</p>
+<p><strong>O que aconteceu:</strong> todo commit leva nome e e-mail do autor, e o Git deste computador ainda não sabe os seus. O commit <strong>não</strong> foi feito.</p>
+<p><strong>Como resolver:</strong> rode os dois comandos com os <strong>seus</strong> dados (e as aspas) e repita o commit:</p>
+<pre class="term" data-cwd="~/receitas">$ git config --global user.name "Ana Souza"
+$ git config --global user.email "ana@exemplo.com"
+</pre>
+<p>Veja <a href="git-config.html">Configurando Nome e E-mail</a>.</p>
+</div>
+
+<h2 id="commit">Commit</h2>
+
+<div class="cenario" id="nada">
+<h3>Nada para commitar (três versões)</h3>
+<pre class="term" data-cwd="~/receitas">$ git commit -m 'Teste'
+No ramo main
+
+Submissão inicial.
+
+nada para enviar (crie/copie arquivos e use "git add" para registrar)
+</pre>
+<p><strong>1. Pasta vazia</strong> ("Submissão inicial" = este seria o primeiro commit): não há arquivo nenhum. Crie os arquivos do projeto e dê <code>git add</code>.</p>
+<pre class="term" data-cwd="~/receitas">$ git commit -m 'Adiciona bolo'
+No ramo main
+
+Submissão inicial.
+
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	bolo.txt
+
+nada adicionado ao envio mas arquivos não registrados estão presentes (use "git add" to registrar)
+</pre>
+<p><strong>2. Esqueceu o <code>git add</code></strong>: o arquivo existe, mas não está na área de preparo. O Git só commita o que foi preparado. Resolva com <code>git add bolo.txt</code> e repita o commit. Veja <a href="git-add.html">git add</a>.</p>
+<pre class="term" data-cwd="~/receitas">$ git commit -m 'De novo'
+No ramo main
+nothing to commit, working tree clean
+</pre>
+<p><strong>3. Já está tudo commitado</strong> ("nada a commitar, pasta de trabalho limpa"). Não é erro: mude algum arquivo antes do próximo commit. Se o que você queria era corrigir o último commit, veja <a href="commit-amend.html">--amend</a>.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo 'Bolo de cenoura' &gt; bolo.txt" data-goal="commits:1,limpo" data-solucao="git add bolo.txt;;git commit -m 'Adiciona bolo'">
+<p class="try-task"><strong>Missão:</strong> o <code>git commit -m 'Adiciona bolo'</code> da Ana respondeu "nada adicionado ao envio mas arquivos não registrados estão presentes". Faça o commit do <code>bolo.txt</code> dar certo.</p>
+</div>
+
+<div class="cenario" id="vazia">
+<h3>Aborting commit due to empty commit message.</h3>
+<pre class="term" data-cwd="~/receitas">$ git commit -m ''
+Aborting commit due to empty commit message.
+</pre>
+<p><strong>O que aconteceu:</strong> "abortando o commit por causa da mensagem vazia". Acontece com <code>-m ''</code> ou quando o editor abre e você fecha sem escrever nada (ou só com linhas começando por <code>#</code>, que são ignoradas). <strong>Como resolver:</strong> repita com uma mensagem. Veja <a href="mensagens-commit.html">Boas Mensagens</a>.</p>
+</div>
+
+<h2 id="arquivos">Arquivos e nomes</h2>
+
+<div class="cenario" id="pathspec">
+<h3>pathspec … não encontrou / did not match</h3>
+<pre class="term" data-cwd="~/receitas">$ git add boloo.txt
+fatal: pathspec 'boloo.txt' não encontrou nenhum arquivo
+$ git restore boloo.txt
+error: pathspec 'boloo.txt' did not match any file(s) known to git
+$ git rm nada.txt
+fatal: pathspec 'nada.txt' não encontrou nenhum arquivo
+$ git mv nada.txt x.txt
+fatal: bad source, source=nada.txt, destination=x.txt
+</pre>
+<p><strong>O que aconteceu:</strong> <em>pathspec</em> é "o caminho que você digitou". Nenhum arquivo casou com ele: erro de digitação (<code>boloo</code>), pasta errada, ou um arquivo novo que o Git ainda não conhece (o <code>restore</code> e o <code>rm</code> só mexem em arquivos rastreados). No <code>git mv</code>, "bad source" = "origem inválida".</p>
+<p><strong>Como resolver:</strong> confira com <code>ls</code> e <code>git status</code>; use <kbd>Tab</kbd> para completar nomes. Lembre que o Linux diferencia <code>Bolo.txt</code> de <code>bolo.txt</code>.</p>
+</div>
+
+<div class="cenario" id="comando">
+<h3>git: '…' não é um comando git</h3>
+<pre class="term" data-cwd="~/receitas">$ git stauts
+git: 'stauts' não é um comando git. Veja 'git --help'.
+
+The most similar command is
+	status
+</pre>
+<p><strong>O que aconteceu:</strong> erro de digitação. "O comando mais parecido é <code>status</code>". <strong>Como resolver:</strong> digite de novo. Para o Git perguntar se pode rodar o comando certo, veja <code>help.autocorrect</code> em <a href="ref-config.html">Configurações</a>.</p>
+</div>
+
+<div class="cenario" id="ambiguous">
+<h3>fatal: ambiguous argument … unknown revision or path</h3>
+<pre class="term" data-cwd="~/receitas">$ git diff HEAD
+fatal: ambiguous argument 'HEAD': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git &lt;command&gt; [&lt;revision&gt;...] -- [&lt;file&gt;...]'
+</pre>
+<p><strong>Tradução:</strong> "argumento ambíguo: revisão desconhecida ou caminho fora da pasta de trabalho. Use <code>--</code> para separar caminhos de revisões".</p>
+<p><strong>O que aconteceu:</strong> o Git não achou um commit/branch com esse nome nem um arquivo. Aqui, <code>HEAD</code> ainda não existe porque o repositório não tem commits. Também aparece com <code>HEAD~1</code> quando só há um commit, ou com um branch digitado errado.</p>
+<p><strong>Como resolver:</strong> confira os nomes com <code>git log --oneline</code> e <code>git branch</code>. Se for um arquivo que não existe mais, ponha <code>--</code> antes dele: <code>git log -- receita-antiga.txt</code>.</p>
+</div>
+
+<div class="cenario" id="semcommits">
+<h3>fatal: your current branch … does not have any commits yet</h3>
+<pre class="term" data-cwd="~/receitas">$ git log
+fatal: your current branch 'bolo' does not have any commits yet
+</pre>
+<p><strong>O que aconteceu:</strong> "o seu branch atual ainda não tem nenhum commit": não há o que mostrar. Parecidos: <code>git tag v1.0</code> num repositório sem commits dá <code>fatal: Failed to resolve 'HEAD' as a valid ref.</code> <strong>Como resolver:</strong> faça o primeiro commit (<a href="primeiro-commit.html">Seu Primeiro Commit</a>).</p>
+</div>
+
+<h2 id="branches">Branches</h2>
+
+<div class="cenario" id="invalid">
+<h3>fatal: invalid reference / a branch named … already exists</h3>
+<pre class="term" data-cwd="~/receitas">$ git switch receitas
+fatal: invalid reference: receitas
+$ git switch -c bolo
+Switched to a new branch 'bolo'
+$ git switch -c bolo
+fatal: a branch named 'bolo' already exists
+</pre>
+<p><strong>O que aconteceu:</strong> "referência inválida": não existe branch <code>receitas</code> (é o nome da pasta, não de um branch). E "já existe um branch chamado bolo": o <code>-c</code> é para <strong>criar</strong>.</p>
+<p><strong>Como resolver:</strong> veja os branches com <code>git branch</code>; para ir a um que já existe, <code>git switch bolo</code> (sem <code>-c</code>). Veja <a href="git-switch.html">git switch</a>.</p>
+</div>
+
+<div class="cenario" id="overwritten">
+<h3>error: Your local changes … would be overwritten</h3>
+<pre class="term" data-cwd="~/receitas">$ git switch bolo
+error: Your local changes to the following files would be overwritten by checkout:
+	bolo.txt
+Please commit your changes or stash them before you switch branches.
+Aborting
+</pre>
+<p><strong>Tradução:</strong> "As suas mudanças locais nestes arquivos seriam sobrescritas. Faça commit delas ou guarde-as (stash) antes de trocar de branch. Abortando."</p>
+<p><strong>O que aconteceu:</strong> o <code>bolo.txt</code> tem mudanças não commitadas, e o branch <code>bolo</code> tem outra versão dele. Trocar apagaria o seu trabalho, então o Git não troca. A mesma mensagem aparece no <code>git merge</code> e no <code>git pull</code> ("by merge").</p>
+<p><strong>Como resolver:</strong> escolha um: <code>git commit</code> (guarda no branch atual), <code>git stash</code> (guarda na gaveta, para trazer depois com <code>git stash pop</code>) ou <code>git restore bolo.txt</code> (joga a mudança fora). Veja <a href="git-stash.html">git stash</a>.</p>
+</div>
+
+<div class="cenario" id="detached">
+<h3>You are in 'detached HEAD' state</h3>
+<pre class="term" data-cwd="~/receitas">$ git checkout HEAD~1
+Note: switching to 'HEAD~1'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c &lt;new-branch-name&gt;
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at 6ad047c Adiciona bolo
+</pre>
+<p><strong>Não é erro, é um aviso.</strong> "Você está com o HEAD destacado: pode olhar, fazer mudanças experimentais e commitá-las, e descartar esses commits voltando a um branch. Se quiser guardar os commits, crie um branch com <code>git switch -c nome</code>. Ou desfaça com <code>git switch -</code>."</p>
+<p><strong>Como resolver:</strong> só olhando? <code>git switch -</code> (ou <code>git switch main</code>). Fez commits que quer guardar? <code>git switch -c novo-branch</code> <strong>antes</strong> de sair. Veja <a href="head-destacado.html">HEAD Destacado</a>.</p>
+</div>
+
+<div class="cenario" id="notmerged">
+<h3>error: the branch … is not fully merged</h3>
+<pre class="term" data-cwd="~/receitas">$ git branch -d teste
+error: the branch 'teste' is not fully merged
+hint: If you are sure you want to delete it, run 'git branch -D teste'
+hint: Disable this message with "git config set advice.forceDeleteBranch false"
+</pre>
+<p><strong>O que aconteceu:</strong> "o branch não foi totalmente juntado": ele tem commits que não estão no branch atual. Apagar com <code>-d</code> é recusado para você não perder trabalho. <strong>Como resolver:</strong> junte antes (<code>git merge teste</code>) ou, se tem certeza, <code>git branch -D teste</code>. Veja <a href="apagar-branch.html">Renomeando e Apagando Branches</a>.</p>
+</div>
+
+<h2 id="merge">Merge e conflito</h2>
+
+<div class="cenario" id="conflito">
+<h3>CONFLITO e o que vem depois</h3>
+<pre class="term" data-cwd="~/receitas">$ git merge bolo
+Mesclagem automática de bolo.txt
+CONFLITO (conteúdo): conflito de mesclagem em bolo.txt
+Automatic merge failed; fix conflicts and then commit the result.
+$ git status
+No ramo main
+Você tem caminhos não mesclados.
+  (fixar conflitos e executar "git commit")
+  (use "git merge --abort" to abort the merge)
+
+Caminhos não mesclados:
+  (usar "git add &lt;arquivo&gt;..." para marcar resolução)
+	ambos modificados:   bolo.txt
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+</pre>
+<p><strong>O que aconteceu:</strong> o <code>main</code> e o <code>bolo</code> mudaram as mesmas linhas do <code>bolo.txt</code>. "O merge automático falhou; corrija os conflitos e depois faça commit do resultado." O Git deixou o merge pela metade e marcou o trecho no arquivo.</p>
+<p><strong>Como resolver:</strong> abra o arquivo, escolha o texto final entre <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code> e <code>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code>, apague as marcas, depois <code>git add bolo.txt</code> e <code>git commit</code>. Para desistir: <code>git merge --abort</code>. Veja <a href="resolver-conflitos.html">Resolvendo Conflitos</a>.</p>
+<p>Enquanto o conflito não é resolvido, outros comandos recusam:</p>
+<pre class="term" data-cwd="~/receitas">$ git commit -m 'Junta'
+error: Committing is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm &lt;file&gt;'
+hint: as appropriate to mark resolution and make a commit.
+fatal: Exiting because of an unresolved conflict.
+U	bolo.txt
+$ git switch bolo
+fatal: cannot switch branch while merging
+Consider "git merge --quit" or "git worktree add".
+</pre>
+<p>"Não é possível commitar porque há arquivos não mesclados (<code>U</code>): corrija-os e marque a resolução com <code>git add</code>." / "Não dá para trocar de branch durante um merge."</p>
+</div>
+
+<h2 id="remotos">Remotos e GitHub</h2>
+
+<div class="cenario" id="semremoto">
+<h3>No configured push destination / remote origin already exists</h3>
+<pre class="term" data-cwd="~/receitas">$ git push
+fatal: No configured push destination.
+Either specify the URL from the command-line or configure a remote repository using
+
+    git remote add &lt;name&gt; &lt;url&gt;
+
+and then push using the remote name
+
+    git push &lt;name&gt;
+
+$ git remote add origin https://github.com/ana-souza/receitas.git
+$ git remote add origin https://github.com/ana-souza/receitas.git
+error: remote origin already exists.
+</pre>
+<p><strong>O que aconteceu:</strong> no primeiro, "nenhum destino de push configurado": o repositório nasceu com <code>git init</code> e ninguém disse para onde enviar. No segundo, o <code>origin</code> já existe.</p>
+<p><strong>Como resolver:</strong> <code>git remote add origin URL</code> uma vez só. Para trocar o endereço: <code>git remote set-url origin URL-NOVA</code>; para conferir: <code>git remote -v</code>. Veja <a href="git-remote.html">git remote</a>.</p>
+</div>
+
+<div class="cenario" id="upstream">
+<h3>fatal: The current branch … has no upstream branch</h3>
+<pre class="term" data-cwd="~/receitas">$ git push
+fatal: The current branch main has no upstream branch.
+To push the current branch and set the remote as upstream, use
+
+    git push --set-upstream origin main
+
+To have this happen automatically for branches without a tracking
+upstream, see 'push.autoSetupRemote' in 'git help config'.
+
+</pre>
+<p><strong>O que aconteceu:</strong> "o branch atual não tem branch de rastreamento (upstream)": o Git não sabe para qual branch do servidor mandar. <strong>Como resolver:</strong> rode o comando sugerido (a forma curta é <code>git push -u origin main</code>); dali em diante, <code>git push</code> sozinho funciona. Para nunca mais ver: <code>git config --global push.autoSetupRemote true</code>. Veja <a href="upstream.html">upstream</a>.</p>
+</div>
+
+<div class="cenario" id="refspec">
+<h3>error: src refspec main does not match any</h3>
+<pre class="term" data-cwd="~/receitas">$ git push -u origin main
+error: src refspec main does not match any
+error: failed to push some refs to 'https://github.com/ana-souza/receitas.git'
+</pre>
+<p><strong>O que aconteceu:</strong> "a origem <code>main</code> não casa com nada": não existe branch <code>main</code> no seu repositório. Ou você ainda não fez nenhum commit (o branch só passa a existir no primeiro commit), ou o seu branch se chama <code>master</code>.</p>
+<p><strong>Como resolver:</strong> <code>git log</code> (há commits?) e <code>git branch</code> (qual o nome?). Faça o primeiro commit, ou envie o nome certo (<code>git push -u origin master</code>), ou renomeie: <code>git branch -m master main</code>.</p>
+</div>
+
+<div class="cenario" id="rejected">
+<h3>! [rejected] … (fetch first)</h3>
+<pre class="term" data-cwd="~/receitas">$ git push
+To https://github.com/ana-souza/receitas.git
+ ! [rejected]        main -&gt; main (fetch first)
+error: failed to push some refs to 'https://github.com/ana-souza/receitas.git'
+hint: Updates were rejected because the remote contains work that you do not
+hint: have locally. This is usually caused by another repository pushing to
+hint: the same ref. If you want to integrate the remote changes, use
+hint: 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+</pre>
+<p><strong>Tradução:</strong> "rejeitado (busque primeiro). O servidor tem trabalho que você não tem localmente; em geral, outra pessoa enviou para o mesmo branch. Para integrar as mudanças de lá, use <code>git pull</code> antes de enviar de novo."</p>
+<p><strong>O que aconteceu:</strong> o Bruno enviou um commit depois do seu último <code>pull</code>. O Git nunca apaga o trabalho dele para pôr o seu.</p>
+<p><strong>Como resolver:</strong> <code>git pull</code> (veja o próximo erro), resolva conflitos se houver, e <code>git push</code>. <strong>Não</strong> use <code>--force</code> para "resolver": ele apagaria o commit do Bruno. Veja <a href="push-rejeitado.html">Push Rejeitado</a>.</p>
+</div>
+
+<div class="cenario" id="divergent">
+<h3>fatal: Need to specify how to reconcile divergent branches</h3>
+<pre class="term" data-cwd="~/receitas">$ git pull
+From https://github.com/ana-souza/receitas
+   6ad047c..4cf694c  main       -&gt; origin/main
+hint: You have divergent branches and need to specify how to reconcile them.
+hint: You can do so by running one of the following commands sometime before
+hint: your next pull:
+hint:
+hint:   git config pull.rebase false  # merge
+hint:   git config pull.rebase true   # rebase
+hint:   git config pull.ff only       # fast-forward only
+hint:
+hint: You can replace "git config" with "git config --global" to set a default
+hint: preference for all repositories. You can also pass --rebase, --no-rebase,
+hint: or --ff-only on the command line to override the configured default per
+hint: invocation.
+fatal: Need to specify how to reconcile divergent branches.
+</pre>
+<p><strong>O que aconteceu:</strong> o <code>pull</code> baixou o commit do Bruno (a linha <code>6ad047c..4cf694c</code>), mas você também tem um commit novo: os branches "divergiram". O Git quer que você escolha como juntar: com merge, com rebase, ou só se der fast-forward. Nada foi juntado ainda.</p>
+<p><strong>Como resolver:</strong> para esta vez, <code>git pull --no-rebase</code> (merge) ou <code>git pull --rebase</code>. Para não perguntar mais, grave a preferência: <code>git config --global pull.rebase false</code>. Veja <a href="git-pull.html">git pull</a> e <a href="rebase-ou-merge.html">Rebase ou Merge?</a>.</p>
+</div>
+
+<div class="cenario" id="unrelated">
+<h3>fatal: refusing to merge unrelated histories</h3>
+<pre class="term" data-cwd="~/site">$ git pull --no-rebase origin main
+From https://github.com/ana-souza/site
+ * branch            main       -&gt; FETCH_HEAD
+fatal: refusing to merge unrelated histories
+</pre>
+<p><strong>O que aconteceu:</strong> "recusando juntar históricos sem relação". A Ana criou o repositório no computador (com um commit) <strong>e</strong> o repositório no GitHub já tinha outro primeiro commit (um README criado pelo site, por exemplo). São duas histórias que não têm nenhum commit em comum.</p>
+<p><strong>Como resolver:</strong> se é isso mesmo que você quer (juntar as duas), <code>git pull --no-rebase --allow-unrelated-histories origin main</code>, resolva conflitos (o README costuma conflitar) e envie. Para evitar: crie o repositório no GitHub <strong>vazio</strong> quando o projeto já existe no computador. Veja <a href="github-repositorio.html">Criando um Repositório no GitHub</a>.</p>
+</div>
+
+<div class="cenario" id="notfound">
+<h3>Repository not found / destination path already exists</h3>
+<pre class="term">$ git clone https://github.com/ana-souza/receita.git
+Cloning into 'receita'...
+remote: Repository not found.
+fatal: repository 'https://github.com/ana-souza/receita.git/' not found
+$ git clone https://github.com/ana-souza/receitas.git
+fatal: destination path 'receitas' already exists and is not an empty directory.
+</pre>
+<p><strong>"Repository not found"</strong> ("repositório não encontrado"): o endereço está errado (aqui, faltou o <code>s</code>) <strong>ou</strong> o repositório é privado e você não está logado com uma conta que tem acesso: o GitHub responde "não encontrado" nos dois casos, para não revelar que um repositório privado existe. Confira a URL no botão de copiar da página do repositório e o seu login (<a href="https-token.html">HTTPS e Token</a>).</p>
+<p><strong>"destination path … already exists"</strong> ("a pasta de destino já existe e não está vazia"): já há uma pasta <code>receitas</code> aqui. Clone com outro nome (<code>git clone URL receitas-2</code>) ou entre na pasta que já existe e use <code>git pull</code>.</p>
+</div>
+
+<div class="cenario">
+<h3>Erros de login no GitHub (ilustrativo)</h3>
+<p>Estes dependem do GitHub de verdade e não rodam no laboratório do guia. As mensagens abaixo seguem a documentação oficial do GitHub (docs.github.com/pt, "Erro: Permissão negada (publickey)" e "Gerenciar seus tokens de acesso pessoal").</p>
+<ul>
+  <li><code>Permission denied (publickey)</code> com SSH: o GitHub não reconheceu nenhuma chave sua. Confira com <code>ssh -T git@github.com</code> e veja <a href="ssh.html">Chave SSH</a>.</li>
+  <li><code>Authentication failed</code> com HTTPS: o GitHub não aceita a senha da conta no Git; use um token no lugar da senha. Veja <a href="https-token.html">HTTPS e Token</a>.</li>
+</ul>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">1. O <code>git push</code> respondeu <code>! [rejected] main -&gt; main (fetch first)</code>. O que fazer primeiro?</p>
+<label><input type="radio" name="q1"> <code>git push --force</code></label>
+<label><input type="radio" name="q1"> Apagar a pasta e clonar de novo.</label>
+<label><input type="radio" name="q1"> <code>git pull</code>, para trazer o que está no servidor, e depois <code>git push</code>.</label>
+<label><input type="radio" name="q1"> <code>git commit --amend</code></label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. Uma mensagem que começa com <code>fatal:</code> quer dizer que…</p>
+<label><input type="radio" name="q2"> o repositório foi corrompido.</label>
+<label><input type="radio" name="q2"> o comando parou sem fazer nada.</label>
+<label><input type="radio" name="q2"> o comando funcionou, mas com um aviso.</label>
+<label><input type="radio" name="q2"> é preciso reinstalar o Git.</label>
+</div>
+
+<div class="exercise">
+<h3>3. Ligando o branch ao servidor</h3>
+<p>O Git disse <code>The current branch main has no upstream branch</code>. Complete a forma curta do comando sugerido:</p>
+<div class="ex-code">git push <input data-answer="-u|--set-upstream" aria-label="opção"> origin main</div>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. <code>nada adicionado ao envio mas arquivos não registrados estão presentes</code>. O que faltou?</p>
+<label><input type="radio" name="q4"> O <code>git add</code> dos arquivos.</label>
+<label><input type="radio" name="q4"> O <code>git init</code>.</label>
+<label><input type="radio" name="q4"> Configurar o e-mail.</label>
+<label><input type="radio" name="q4"> Um <code>git push</code>.</label>
+</div>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
