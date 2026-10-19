@@ -1,0 +1,254 @@
+## Git simulado × Git real do lab (~/guia-git-lab). Cada caso começa na pasta da Ana recém-criada.
+### basico-status-add-commit
+mkdir receitas && cd receitas
+git status
+git init
+ls -A .git
+git status
+echo '# Receitas' > README.md
+git status
+git status -s
+git add README.md
+git status
+git status -s
+git commit -m 'Primeiro commit'
+git log
+git log --oneline
+echo 'Bolo de cenoura' >> README.md
+echo 'farinha' > bolo.txt
+git status
+git diff
+git add .
+git status
+git diff --staged
+git commit -m 'Adiciona bolo'
+git log --oneline
+git log --stat
+git show
+cd ..; mkdir x; cd x; git status; git log; cd ../receitas
+git commit -m nada
+git branch
+git branch nova
+git branch
+git switch nova
+git status
+echo 'ovos' >> bolo.txt
+git commit -am 'Ovos no bolo'
+git switch main
+git merge nova
+git log --oneline --graph --all
+git branch -d nova
+git restore README.md
+echo lixo >> README.md
+git restore README.md
+git status
+echo lixo >> README.md
+git add README.md
+git restore --staged README.md
+git status
+git checkout -- README.md
+git log -p -1
+git config user.name
+git config --list
+cat ~/.gitconfig
+cat .git/config
+cat .git/HEAD
+git rev-parse HEAD
+git cat-file -p HEAD
+git cat-file -p HEAD^{tree}
+git switch inexistente
+git foo
+git add nada.txt
+### rm-mv-ignore-merge-tag
+mkdir r && cd r && git init -q
+printf 'a\nb\nc\n' > f.txt; mkdir dir; echo x > dir/x.txt; echo y > dir/y.txt
+git add . && git commit -q -m inicial
+git rm f.txt
+git status
+git status -s
+git commit -q -m rm
+git mv dir/x.txt dir/z.txt
+git status
+git commit -m mv
+rm dir/y.txt
+git status
+git add -A; git commit -q -m del
+mkdir novo; echo 1 > novo/a; echo 2 > novo/b
+git status
+git status --short
+echo '*.log' > .gitignore; echo oi > app.log
+git status -s
+git status --ignored
+git check-ignore -v app.log
+git add app.log
+git switch -c feature
+echo F > feature.txt; git add feature.txt; git commit -q -m 'feature'
+git switch main
+echo M > main.txt; git add main.txt; git commit -q -m 'main'
+git merge feature -m 'Merge feature'
+git log --oneline --graph
+git log --oneline --graph --all
+git branch -v
+git branch -a
+git tag v1.0
+git tag -a v2.0 -m 'Versão 2'
+git tag
+git show v2.0
+git log --oneline --decorate -3
+git log --oneline -3
+### checkout-sugestoes-switch
+mkdir r && cd r && git init -q && echo a > a.txt && git add . && git commit -qm um
+echo b >> a.txt
+git checkout a.txt
+echo b >> a.txt
+git checkout -- a.txt
+echo b >> a.txt
+git checkout HEAD a.txt
+git stauts
+git comit
+git lgo
+git sw
+git co
+git xyzzy
+git brnach
+git ad
+git psuh
+git log HEAD^{tree}
+git show HEAD:a.txt
+git show HEAD:nada.txt
+git rev-parse --short HEAD
+git log --oneline --format='%h %s %an %ar'
+git log --pretty=format:'%h - %an, %ar : %s'
+git branch -m main principal
+git branch
+git branch -m principal main
+git switch -c x
+git switch -
+git switch -
+git checkout main
+git checkout HEAD~0
+git status
+git switch main
+git log --oneline nada
+git diff nada
+### conflito-grafo
+mkdir receitas && cd receitas && git init -q
+echo "# Receitas da Ana" > README.md; git add README.md; git commit -qm "Cria o README"
+printf "Bolo de cenoura\n- 3 cenouras\n- 2 xícaras de açúcar\n" > bolo.txt
+git add bolo.txt
+git commit -qm "Adiciona receita de bolo"
+git switch -c mais-doce
+sed -i "s/2 xícaras/3 xícaras/" bolo.txt
+git commit -am "Mais açúcar no bolo"
+git switch main
+sed -i "s/2 xícaras/1 xícara/" bolo.txt
+git commit -am "Menos açúcar no bolo"
+git merge mais-doce
+git status
+git status -s
+git diff
+cat bolo.txt
+git merge mais-doce
+git commit -m x
+git merge --abort
+git status
+git merge mais-doce
+printf "Bolo de cenoura\n- 3 cenouras\n- 2 xícaras de açúcar\n" > bolo.txt
+git add bolo.txt
+git status
+git commit --no-edit
+git log --oneline --graph
+git log --graph
+git log --graph --stat -2
+git log --oneline --graph --decorate --all
+git switch -c b2 HEAD~2
+echo x > x.txt; git add x.txt; git commit -qm x
+git switch main
+git merge --no-ff b2 -m 'junta b2'
+git log --oneline --graph --all
+git branch -d b2
+git branch -d mais-doce
+git branch -v
+git checkout HEAD~1
+git status
+git branch
+git switch main
+### rebase
+mkdir r && cd r && git init -q
+printf '1\n2\n3\n' > a.txt; git add .; git commit -qm um
+git switch -qc tema
+echo t > t.txt; git add .; git commit -qm 'tema 1'
+echo t2 >> t.txt; git commit -qam 'tema 2'
+git switch -q main
+echo m > m.txt; git add .; git commit -qm 'main 1'
+git switch tema
+git rebase main
+git log --oneline --graph --all
+git rebase main
+git switch main
+git rebase tema
+git merge tema
+git reflog
+git switch -qc conf HEAD~3
+sed -i s/2/C/ a.txt; git commit -qam 'conf C'
+git switch -q main
+sed -i s/2/M/ a.txt; git commit -qam 'main M'
+git switch -q conf
+git rebase main
+git status -s
+git rebase --continue
+echo C > a.txt
+git add a.txt
+git -c core.editor=true rebase --continue
+git log --oneline -3
+git rebase
+git status
+git branch -u main
+git rebase
+git rebase --abort
+git -c core.editor=true rebase -i HEAD~1
+### rebase-interativo
+mkdir receitas && cd receitas && git init -q && echo 'Bolo de cenoura' > bolo.txt && git add bolo.txt && git commit -q -m 'Adiciona receita de bolo' && git switch -q -c doces && echo 'Pudim de leite' > pudim.txt && git add pudim.txt && git commit -q -m 'Adiciona recita de pudim' && echo 'teste' > teste.txt && git add teste.txt && git commit -q -m 'teste' && echo 'Brigadeiro' > brigadeiro.txt && git add brigadeiro.txt && git commit -q -m 'Adiciona receita de brigadeiro'
+GIT_SEQUENCE_EDITOR='sed -i /recita/s/^pick/reword/' GIT_EDITOR='sed -i s/recita/receita/' git rebase -i main
+git log --oneline
+GIT_SEQUENCE_EDITOR='sed -i /teste/s/^pick/drop/' git rebase -i main
+git log --oneline
+GIT_SEQUENCE_EDITOR='sed -i 2s/^pick/squash/' GIT_EDITOR=true git rebase -i main
+git log --oneline
+git log -1
+GIT_SEQUENCE_EDITOR='sed -i 1s/^pick/edit/' git rebase -i main~0 2>&1 | head -3
+git reset -q --hard HEAD~1
+git status
+git reflog -5
+### bisect-blame-grep
+mkdir r && cd r && git init -q
+for i in 1 2 3 4 5 6; do echo "linha $i" >> a.txt; [ $i = 4 ] && echo "bug" >> a.txt; git add a.txt; git commit -qm "commit $i"; done
+git tag v1 HEAD~5
+git bisect start
+git bisect bad
+git bisect good v1
+git status
+git bisect bad
+git bisect good
+git bisect bad
+git bisect log
+git bisect reset
+git bisect start HEAD v1
+git bisect run grep -vq bug a.txt
+git bisect reset
+git blame a.txt
+git blame -L 2,3 a.txt
+git grep linha
+git grep -n bug
+git grep -c linha
+git grep nada
+printf '1\n2\n3\n4 ovos\n' > b.txt; git add b.txt; git commit -qm b; sed -i 's/4 ovos/3 ovos/' b.txt
+git diff --word-diff
+git mv -n b.txt c.txt
+echo x > lixo.log; echo y > fica.txt
+git clean -n -e '*.log'
+git clean -n
+git clean -fe fica.txt
+git status -h
+git add -h
+git commit -h

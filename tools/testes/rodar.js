@@ -3,7 +3,7 @@
   tools/testes/rodar.js — testes diferenciais do simulador.
 
   Cada caso (arquivos tools/testes/*.casos) roda no simulador e no Bash real do laboratório
-  (~/guia-bash-lab/lab), e as saídas são comparadas.
+  (~/guia-bash-lab/lab; os 2*-git*.casos no Git do ~/guia-git-lab/lab), e as saídas são comparadas.
 
   Formato dos arquivos .casos:
       ### nome-do-caso            sessão interativa (como "lab -i": $ / >, stderr junto)
@@ -27,6 +27,8 @@ var fs = require("fs"), path = require("path"), cp = require("child_process"), c
 var sim = require(path.join(__dirname, "..", "sim.js"));
 var DIR = __dirname, CACHE = path.join(DIR, ".cache-lab.json");
 var LAB = path.join(process.env.HOME || "/home/wallyson", "guia-bash-lab", "lab");
+var LAB_GIT = path.join(process.env.HOME || "/home/wallyson", "guia-git-lab", "lab"); // casos 2*-git*.casos: o Git real do lab do Guia Git
+function ehGit(c) { return /^2\d-git/.test(c.arq); }
 
 function lerCasos(filtro) {
   var casos = [];
@@ -87,7 +89,8 @@ function rodarLab(casos) {
     return "\x1e" + cab + "\n" + c.texto;
   }).join("");
   process.stderr.write("laboratório: rodando " + casos.length + " caso(s) numa só chamada...\n");
-  var r = cp.spawnSync("timeout", ["900", LAB, "-n", "testes", "-r", "--", "bash", "-c", DRIVER], { input: entrada, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  var git = ehGit(casos[0]);
+  var r = cp.spawnSync("timeout", ["900", git ? LAB_GIT : LAB, "-n", git ? "testes-git" : "testes", "-r", "--", "bash", "-c", DRIVER], { input: entrada, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
   if (r.error) throw r.error;
   var res = {};
   r.stdout.split("\x1d").slice(1).forEach(function (bloco) {
@@ -98,6 +101,7 @@ function rodarLab(casos) {
 }
 
 function rodarSim(c) {
+  require(path.join(__dirname, "..", "..", "assets", "bashsim.js")).opcoes.casaGuiaBash = !ehGit(c);
   if (c.tipo === "i") {
     var r = sim.rodarSessao(c.texto.replace(/\n$/, "").split("\n"), { tty: false });
     var t = r.texto;
@@ -132,7 +136,8 @@ function main(argv) {
   try { cache = JSON.parse(fs.readFileSync(CACHE, "utf8")); } catch (e) { /* sem cache */ }
   var faltam = casos.filter(function (c) { return forcar || cache[c.id] === undefined; });
   if (faltam.length) {
-    var novos = rodarLab(faltam);
+    var novos = rodarLab(faltam.filter(function (c) { return !ehGit(c); }));
+    var novosG = rodarLab(faltam.filter(ehGit)); Object.keys(novosG).forEach(function (k) { novos[k] = novosG[k]; });
     Object.keys(novos).forEach(function (k) { cache[k] = novos[k]; });
     // limpa entradas que não existem mais
     var todosIds = {}; lerCasos().forEach(function (c) { todosIds[c.id] = 1; });

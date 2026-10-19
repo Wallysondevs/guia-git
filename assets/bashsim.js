@@ -57,6 +57,7 @@
   var GROUPS = [1000, 4, 24, 27, 30, 46, 100];
   var TZ_OFF = -3 * 3600 * 1000; // America/Sao_Paulo (sem horário de verão)
   var NOW0 = Date.UTC(2026, 9, 15, 13, 30, 0); // 15/10/2026 10:30 -03
+  var OPCOES = { casaGuiaBash: false }; // BashSim.opcoes: a pasta da Ana do Guia Bash (testes antigos)
   var BASH_VERSION = "5.3.9(1)-release";
   var STEP_LIMIT = 300000;
   var MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
@@ -113,7 +114,7 @@
   function epochDe(Y, M, D, h, m, s) { return Date.UTC(Y, M, D, h || 0, m || 0, s || 0) - TZ_OFF; }
   function dataLs(ms, agora) {
     var t = tm(ms), seis = 15778476000; // 365.2425*24*3600/2 s
-    var s = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][t.M] + " " + pad(t.D, 2) + " "; // uutils ls: meses em inglês
+    var s = (OPCOES.casaGuiaBash ? MESES : ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"])[t.M] + " " + pad(t.D, 2) + " "; // uutils ls: meses em inglês
     return s + ((agora - ms) < seis && (ms - agora) < 3600000 ? dois(t.h) + ":" + dois(t.m) : " " + t.Y);
   }
   function humano(b, si) {
@@ -251,6 +252,43 @@
     por("/dev/fd", mkL("/proc/self/fd", DV));
     // /home/ana — igual a ~/guia-bash-lab/template
     var hm = por("/home", mkD(UID, 493, NOW0)); hm.tam = 60;
+    if (OPCOES.casaGuiaBash) { // a pasta da Ana do Guia Bash (só para os testes antigos, tools/testes/0*.casos e 1*.casos)
+    var h = por("/home/ana", mkD(UID, 488, dataT(2026, 10, 15, 8, 47)));
+      var d12 = dataT(2026, 10, 12, 8, 3);
+      // a ordem de criação imita a ordem do readdir no laboratório (find, du, grep -r)
+      h.c["Documentos"] = mkD(UID, 509, dataT(2026, 10, 15, 9, 7));
+      h.c["Música"] = mkD(UID, 509, d12);
+      h.c["Área de trabalho"] = mkD(UID, 509, d12);
+      h.c[".bashrc"] = mkF(UID, 420, TXT.bashrc, T0);
+      h.c["frutas.txt"] = mkF(UID, 436, TXT.frutas, dataT(2026, 10, 14, 16, 5));
+      h.c["Downloads"] = mkD(UID, 509, dataT(2026, 10, 15, 8, 47));
+      h.c["Modelos"] = mkD(UID, 509, d12);
+      h.c[".profile"] = mkF(UID, 420, TXT.profile, T0);
+      h.c[".bash_history"] = mkF(UID, 384, "", dataT(2026, 10, 15, 8, 40));
+      h.c[".gitconfig"] = mkF(UID, 420, "[user]\n\tname = Ana Souza\n\temail = ana@exemplo.com\n[init]\n\tdefaultBranch = main\n[core]\n\teditor = nano\n", dataT(2026, 10, 15, 8, 40)); // Git da Ana já configurado
+      h.c["Público"] = mkD(UID, 509, d12);
+      h.c["Vídeos"] = mkD(UID, 509, d12);
+      h.c["Imagens"] = mkD(UID, 509, d12);
+      var doc = h.c["Documentos"].c;
+      doc["alunos.csv"] = mkF(UID, 436, TXT.alunos, dataT(2026, 10, 14, 18, 12));
+      doc["notas.txt"] = mkF(UID, 436, TXT.notas, dataT(2026, 10, 14, 17, 40));
+      doc["acesso.log"] = mkF(UID, 436, TXT.acesso, dataT(2026, 10, 15, 9, 7));
+      doc["relatorio.odt"] = mkF(UID, 436, null, dataT(2026, 10, 14, 17, 40), 8394);
+      doc["projetos"] = mkD(UID, 509, dataT(2026, 10, 15, 9, 15));
+      doc["projetos"].c["site"] = mkD(UID, 509, d12);
+      doc["projetos"].c["backup.sh"] = mkF(UID, 509, TXT.backup, dataT(2026, 10, 15, 9, 15));
+      doc["projetos"].c["site"].c["index.html"] = mkF(UID, 436, "<h1>Olá</h1>\n", d12);
+      doc["projetos"].c["site"].c["style.css"] = mkF(UID, 436, "h1 { color: orange; }\n", d12);
+      var dl = h.c["Downloads"].c;
+      dl["manual.pdf"] = mkF(UID, 436, null, dataT(2026, 10, 13, 11, 2), 2411520);
+      dl["fotos-viagem.zip"] = mkF(UID, 436, null, dataT(2026, 10, 1, 19, 30), 104857600);
+      dl["musica.mp3"] = mkF(UID, 436, null, dataT(2026, 10, 9, 20, 10), 5242880);
+      dl["ubuntu-26.04-desktop-amd64.iso"] = mkF(UID, 436, null, dataT(2026, 10, 10, 21, 14), 6333579264);
+      dl["foto.jpg"] = mkF(UID, 436, null, dataT(2026, 10, 15, 8, 47), 49152);
+      var im = h.c["Imagens"].c;
+      im["perfil.png"] = mkF(UID, 436, null, dataT(2026, 9, 20, 10, 0), 102400);
+      im["ferias.jpg"] = mkF(UID, 436, null, dataT(2026, 8, 2, 14, 0), 2097152);
+    } else {
     var h = por("/home/ana", mkD(UID, 488, dataT(2026, 10, 15, 9, 58)));
     // /home/ana — igual a ~/guia-git-lab/template (pastas padrão vazias, ~/.gitconfig da Ana)
     var dT = dataT(2026, 10, 14, 10, 11), dA = dataT(2026, 10, 14, 10, 26);
@@ -269,6 +307,7 @@
     h.c["Vídeos"] = mkD(UID, 509, dT);
     h.c[".profile"] = mkF(UID, 420, "# ~/.profile: executed by the command interpreter for login shells.\n# This file is not read by bash(1), if ~/.bash_profile or ~/.bash_login\n# exists.\n# see /usr/share/doc/bash/examples/startup-files for examples.\n# the files are located in the bash-doc package.\n\n# the default umask is set in /etc/profile; for setting the umask\n# for ssh logins, install and configure the libpam-umask package.\n#umask 022\n\n# if running bash\nif [ -n \"$BASH_VERSION\" ]; then\n    # include .bashrc if it exists\n    if [ -f \"$HOME/.bashrc\" ]; then\n\t. \"$HOME/.bashrc\"\n    fi\nfi\n\n# set PATH so it includes user's private bin if it exists\nif [ -d \"$HOME/bin\" ] ; then\n    PATH=\"$HOME/bin:$PATH\"\nfi\n\n# set PATH so it includes user's private bin if it exists\nif [ -d \"$HOME/.local/bin\" ] ; then\n    PATH=\"$HOME/.local/bin:$PATH\"\nfi\n", dA);
     h.c["Música"] = mkD(UID, 509, dT);
+    }
     return raiz;
   }
   // nomes de uma pasta na ordem do disco (readdir): ext4 = ordem de criação; tmpfs = inversa
@@ -6262,7 +6301,7 @@
     var todos = o.a, quase = o.A && !o.a, umPor = o["1"] || (!tty && !o.C && !o.x && !o.m);
     var lcAll = sh.valor("LC_ALL") || sh.valor("LC_COLLATE") || sh.valor("LANG") || "";
     var ordemC = /^(C|POSIX)(\.|$)/.test(lcAll);
-    var cmpNome = cmpBytes; // Guia Git: o ls do Ubuntu 26.04 (uutils) ordena por bytes (HEAD antes de config; Área de trabalho por último)
+    var cmpNome = OPCOES.casaGuiaBash ? (ordemC ? cmpBytes : collate) : cmpBytes; // Guia Git: o ls do Ubuntu 26.04 (uutils) ordena por bytes (HEAD antes de config; Área de trabalho por último)
     var ops = g.ops.length ? g.ops : ["."];
     var semOps = !g.ops.length;
     var st = 0, arquivos = [], pastas = [];
@@ -10833,7 +10872,7 @@
      ------------------------------------------------------------------ */
   var BashSim = {
     Sessao: Sessao, Shell: Shell, Kernel: Kernel, Parser: Parser,
-    checarMeta: checarMeta, dividirMetas: dividirMetas, semCor: semCor,
+    opcoes: OPCOES, checarMeta: checarMeta, dividirMetas: dividirMetas, semCor: semCor,
     incompleta: incompleta, BUILTINS: BUILTINS, EXT: EXT, versao: BASH_VERSION,
     _internos: { mkF: mkF, mkD: mkD, utf8bytes: utf8bytes, compilarSed: compilarSed, casaPadrao: casaPadrao, ereParaJs: ereParaJs, imprimirCmd: imprimirCmd, Arith: Arith }
   };

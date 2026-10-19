@@ -1458,6 +1458,20 @@
       }
       return s;
     }
+    // datas do --since/--until (o "approxidate" do git, no essencial). Devolve segundos ou null
+    function dataAprox(t, agora) {
+      t = t.trim().toLowerCase(); var m, dia = 86400;
+      var base = new Date((agora - 3 * 3600) * 1000), hh = base.getUTCHours(), mi = base.getUTCMinutes(), ss = base.getUTCSeconds();
+      if (t === "now" || t === "today") return t === "now" ? agora : agora - (hh * 3600 + mi * 60 + ss) + (hh * 3600 + mi * 60 + ss);
+      if (t === "yesterday") return agora - dia;
+      if ((m = /^(\d+)\.?\s*(second|minute|hour|day|week|month|year)s?(\.|\s)*(ago)?$/.exec(t))) { var n = +m[1], u = { second: 1, minute: 60, hour: 3600, day: dia, week: 7 * dia, month: 30 * dia, year: 365 * dia }[m[2]]; return agora - n * u; }
+      if ((m = /^(\d{4})-(\d\d)-(\d\d)(?:[ t](\d\d):(\d\d)(?::(\d\d))?)?$/.exec(t))) {
+        var H = m[4] !== undefined ? +m[4] : hh, M = m[5] !== undefined ? +m[5] : mi, S = m[6] !== undefined ? +m[6] : (m[4] !== undefined ? 0 : ss);
+        return Math.floor(Date.UTC(+m[1], +m[2] - 1, +m[3], H, M, S) / 1000) + 3 * 3600;
+      }
+      if ((m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(t))) return Math.floor(Date.UTC(+m[3], +m[1] - 1, +m[2], hh, mi, ss) / 1000) + 3 * 3600;
+      return null;
+    }
     function expandirTabs(l) { if (l.indexOf("\t") < 0) return l; var r = ""; for (var i = 0; i < l.length; i++) { if (l[i] === "\t") { do r += " "; while (r.length % 8); } else r += l[i]; } return r; }
     function assunto(msg) { return msg.split(/\n[ \t]*\n/)[0].replace(/\n$/, "").split("\n").map(function (x) { return x.trim(); }).join(" "); }
     function formatoLivre(repo, h, c, f) {
@@ -1526,6 +1540,17 @@
         else if (a === "--grep") o.grep.push(args[++i]);
         else if ((m = /^--author=(.*)$/.exec(a))) o.author.push(m[1]);
         else if ((m = /^-S(.+)$/.exec(a))) o.pickaxe = m[1];
+        else if (a === "-S") o.pickaxe = args[++i];
+        else if ((m = /^-G(.+)$/.exec(a))) o.pickaxeRe = m[1];
+        else if (a === "-G") o.pickaxeRe = args[++i];
+        else if (a === "-i" || a === "--regexp-ignore-case") o.ic = true;
+        else if (a === "-E" || a === "--extended-regexp" || a === "-F" || a === "--fixed-strings") { if (a[1] === "F" || a === "--fixed-strings") o.fixo = true; }
+        else if (a === "--all-match" || a === "--invert-grep") o[a === "--all-match" ? "allMatch" : "invertGrep"] = true;
+        else if (a === "-g" || a === "--walk-reflogs") o.reflog = true;
+        else if ((m = /^--(since|after|until|before)=(.*)$/.exec(a))) o[m[1] === "since" || m[1] === "after" ? "since" : "until"] = m[2];
+        else if (/^--(since|after|until|before)$/.test(a)) o[/since|after/.test(a) ? "since" : "until"] = args[++i];
+        else if ((m = /^--author$/.exec(a))) o.author.push(args[++i]);
+        else if ((m = /^--date=(.*)$/.exec(a))) o.dataFmt = m[1];
         else if (a === "--follow" || a === "--color=never" || a === "--no-color" || a === "--date-order" || a === "--topo-order") { if (a === "--topo-order") o.topo = true; }
         else if (a[0] === "-") return { erro: a };
         else o.revs.push(a);
@@ -1567,10 +1592,11 @@
       var revs = separarRevs(repo, o, io), incl = [], excl = [];
       revs.forEach(function (r) {
         if (r.tres) { var a1 = repo.commitDe(r.excl), b1 = repo.commitDe(r.incl); incl.push(a1, b1); var mb = repo.mergeBase(a1, b1); if (mb) excl.push(mb); return; }
-        if (r.incl) { var h = repo.commitDe(r.incl); if (!h) fatal("bad revision '" + r.incl + "'"); incl.push(h); }
+        if (r.incl) { var h = repo.commitDe(r.incl); if (!h) { var ob = repo.rev(r.incl); if (ob && !ob.ambiguo && repo.ler(ob) && repo.ler(ob).type !== "commit") { r.soArvore = true; return; } fatal("bad revision '" + r.incl + "'"); } incl.push(h); }
         if (r.excl) { var e = repo.commitDe(r.excl); if (!e) fatal("bad revision '" + r.excl + "'"); excl.push(e); }
       });
       if (o.all) { repo.listarRefs("refs/").forEach(function (r) { if (r.nome.indexOf("refs/stash") === 0) return; var hh = repo.descascar(r.hash); if (repo.ler(hh) && repo.ler(hh).type === "commit") incl.push(hh); }); if (repo.head()) incl.unshift(repo.head()); }
+      if (revs.length && revs.every(function (r) { return r.soArvore; })) return 0; // git log ÁRVORE: não mostra nada
       if (!revs.some(function (r) { return r.incl; }) && !o.all) {
         var hd = repo.head();
         if (!hd) { var rb = repo.branchAtual(); fatal("your current branch '" + rb + "' does not have any commits yet"); }
@@ -1578,17 +1604,36 @@
       }
       var specs = o.paths.map(function (p) { return pathspec(repo, p); });
       var lista = repo.revList(incl, excl, { firstParent: o.firstParent, topo: o.graph || o.topo });
+      var agoraS = Math.floor(sh.k.clock / 1000), desde = o.since ? dataAprox(o.since, agoraS) : null, ate = o.until ? dataAprox(o.until, agoraS) : null;
+      if ((o.since && desde === null) || (o.until && ate === null)) { /* data que não entendemos: o git ignora em silêncio */ }
+      var flags = o.ic ? "i" : "";
+      function reTxt(p) { return new RegExp(o.fixo ? p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") : p, flags + "m"); }
+      if (o.reflog) {
+        var rl = repo.reflog("HEAD"), outR = "";
+        if (o.n >= 0) rl = rl.slice(0, o.n);
+        rl.forEach(function (e, i) {
+          var cc = repo.ler(e.neu);
+          if (o.oneline) outR += repo.abrev(e.neu) + " HEAD@{" + i + "}: " + e.msg + "\n";
+          else { var idr = parseIdent(e.id + ""); outR += (i ? "\n" : "") + "commit " + e.neu + "\nReflog: HEAD@{" + i + "} (" + e.id.replace(/ \d+ [+-]\d{4}$/, "") + ")\nReflog message: " + e.msg + "\n" + formatarCommit(repo, e.neu, {}).replace(/^commit .*\n/, "").replace(/^Merge: .*\n/, ""); }
+        });
+        io.out(outR); return 0;
+      }
       lista = lista.filter(function (h) {
-        var c = repo.ler(h);
+        var c = repo.ler(h), cts = parseIdent(c.committer).ts;
+        if (desde !== null && cts < desde) return false;
+        if (ate !== null && cts > ate) return false;
         if (o.merges && c.parents.length < 2) return false;
         if (o.noMerges && c.parents.length > 1) return false;
-        if (o.grep.length && !o.grep.some(function (g) { return new RegExp(g).test(c.msg); })) return false;
-        if (o.author.length && !o.author.some(function (g) { return new RegExp(g).test(c.author.replace(/ \d+ [+-]\d{4}$/, "")); })) return false;
+        if (o.grep.length) { var casaG = o.allMatch ? o.grep.every(function (g) { return reTxt(g).test(c.msg); }) : o.grep.some(function (g) { return reTxt(g).test(c.msg); }); if (o.invertGrep) casaG = !casaG; if (!casaG) return false; }
+        if (o.author.length && !o.author.some(function (g) { return reTxt(g).test(c.author.replace(/ \d+ [+-]\d{4}$/, "")); })) return false;
         if (specs.length) {
           if (c.parents.length > 1) return false;
           var mud = mudancasCommit(repo, h);
           if (!mud.some(function (m) { return specs.some(function (s) { return casaSpec(s, m.para) || casaSpec(s, m.de); }); })) return false;
         }
+        if (o.pickaxeRe) { var muG = mudancasCommit(repo, h), achouG = false, reG = new RegExp(o.pickaxeRe, flags);
+          muG.forEach(function (m) { var ta = m.a ? repo.textoBlob(m.a.hash) : "", tb = m.b ? repo.textoBlob(m.b.hash) : ""; diffUnificado(ta, tb, 0).txt.split("\n").forEach(function (l) { if (/^[-+]/.test(l) && reG.test(l.slice(1))) achouG = true; }); });
+          if (!achouG) return false; }
         if (o.pickaxe) { var mu = mudancasCommit(repo, h), achou = false; mu.forEach(function (m) { var ta = m.a ? repo.textoBlob(m.a.hash) : "", tb = m.b ? repo.textoBlob(m.b.hash) : ""; if (ta.split(o.pickaxe).length !== tb.split(o.pickaxe).length) achou = true; }); if (!achou) return false; }
         return true;
       });
@@ -2127,7 +2172,7 @@
         if (atualRef === "refs/heads/" + alvo.ramo) e += "Already on '" + alvo.ramo + "'\n";
         else e += (opt.novo ? "Switched to a new branch '" : "Switched to branch '") + alvo.ramo + "'\n";
         var up = upstream(repo, alvo.ramo);
-        if (up && destHash) s2 += textoUpstream(repo, destHash, up).replace(/\n\n$/, "\n");
+        if (up && destHash && !opt.novo) s2 += textoUpstream(repo, destHash, up).replace(/\n\n$/, "\n");
       } else {
         if (!atualRef && head === destHash) e += "HEAD is now at " + repo.abrev(destHash) + " " + repo.ler(destHash).msg.split("\n")[0] + "\n";
         else {
@@ -2173,8 +2218,9 @@
         repo.gravarRef("refs/heads/" + novo, h, "branch: Created from " + de, ZERO);
         var mr = /^([^/]+)\/(.+)$/.exec(de), extra = "";
         if (mr && repo.resolverRef("refs/remotes/" + de) && !o["--no-track"]) { definirUpstream(repo, novo, mr[1], mr[2]); extra = "branch '" + novo + "' set up to track '" + de + "'.\n"; }
+        var rt2 = trocarPara(repo, io, { ramo: novo }, { novo: true, forcar: o["-f"] });
         io.out(extra);
-        return trocarPara(repo, io, { ramo: novo }, { novo: true, forcar: o["-f"] });
+        return rt2;
       }
       if (!ops.length) fatal("missing branch or commit argument");
       var alvo = ops[0] === "-" ? ramoAnterior(repo) : ops[0];
@@ -2189,8 +2235,9 @@
         var r2 = repo.trocarArvore(repo.arvoreDe(repo.head()), dest2, { forcar: o["-f"] }); if (r2) { io.err(erroTroca(r2, "checkout")); return 1; }
         repo.gravarRef("refs/heads/" + alvo, remotos[0].hash, "branch: Created from " + rn, ZERO);
         var mm = /^([^/]+)\/(.+)$/.exec(rn); definirUpstream(repo, alvo, mm[1], mm[2]);
+        var rt = trocarPara(repo, io, { ramo: alvo }, { novo: true });
         io.out("branch '" + alvo + "' set up to track '" + rn + "'.\n");
-        return trocarPara(repo, io, { ramo: alvo }, { novo: true });
+        return rt;
       }
       if (repo.commitDe(alvo)) fatal("a branch is expected, got " + (repo.resolverRef("refs/tags/" + alvo) ? "tag '" + alvo + "'" : repo.resolverRef("refs/remotes/" + alvo) ? "remote branch '" + alvo + "'" : "commit '" + alvo + "'") + "\nhint: If you want to detach HEAD at the commit, try again with the --detach option.\nhint: Disable this message with \"git config set advice.suggestDetachingHead false\"");
       fatal("invalid reference: " + alvo);
@@ -2913,7 +2960,7 @@
       });
       para._todos = null;
     }
-    function remotosConfig(repo) { var r = []; repo.configTodas().forEach(function (e) { var m = /^remote\.(.*)\.url$/.exec(e.k); if (m && r.indexOf(m[1]) < 0) r.push(m[1]); }); return r; }
+    function remotosConfig(repo) { var r = []; repo.configTodas().forEach(function (e) { var m = /^remote\.(.*)\.url$/.exec(e.k); if (m && r.indexOf(m[1]) < 0) r.push(m[1]); }); return r.sort(); }
     // remove ou renomeia uma seção inteira de .git/config
     function editarSecao(txt, secao, novaSecao) {
       var linhas = (txt || "").split("\n"), res = [], dentro = false;
@@ -3102,7 +3149,7 @@
       if (opt.prune && url) repo.listarRefs("refs/remotes/" + nomeR + "/").forEach(function (r) { var b = r.nome.slice(("refs/remotes/" + nomeR + "/").length); if (b === "HEAD") return; if (!rs["refs/heads/" + b]) { linhas.push(" - [deleted]         " + pad("(none)", 10) + " -> " + nomeR + "/" + b); repo.apagarArq(r.nome); repo.apagarArq("logs/" + r.nome); } });
       repo.gravar("FETCH_HEAD", fetchHead.join("\n") + (fetchHead.length ? "\n" : ""));
       var hsRef = srv.headRef();
-      if (url && hsRef && srv.resolverRef(hsRef) && !repo.lerRef("refs/remotes/" + nomeR + "/HEAD") && opt.criarHead) repo.gravar("refs/remotes/" + nomeR + "/HEAD", "ref: refs/remotes/" + nomeR + "/" + hsRef.slice(11) + "\n");
+      if (url && hsRef && srv.resolverRef(hsRef) && !repo.lerRef("refs/remotes/" + nomeR + "/HEAD") && repo.resolverRef("refs/remotes/" + nomeR + "/" + hsRef.slice(11))) repo.gravar("refs/remotes/" + nomeR + "/HEAD", "ref: refs/remotes/" + nomeR + "/" + hsRef.slice(11) + "\n");
       return { st: 0, linhas: linhas, url: urlReal, rs: rs, srv: srv };
     }
     function pad(s, n) { while (s.length < n) s += " "; return s; }
