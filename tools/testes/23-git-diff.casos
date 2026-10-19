@@ -34,7 +34,8 @@ git diff
 git diff --stat
 git log --oneline --stat -1
 ### tag-sort-format-vazio
-mkdir r && cd r && git init -q && echo a > a && git add a && git commit -qm um
+mkdir r && cd r && git init -q
+echo a > a && git add a && git commit -qm um
 for v in v1.0.0 v1.2.0 v1.10.0 v1.9.0 v2.0.0; do git tag $v; done
 git tag
 git tag --sort=version:refname
