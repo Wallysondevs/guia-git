@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Rebase Interativo — arrumando os commits antes de compartilhar | Guia Git</title>
+<meta name="description" content="O git rebase -i para iniciantes: a lista de tarefas que abre no editor (pick, reword, edit, squash, fixup, drop, exec, break), como apagar um commit, corrigir uma mensagem antiga, trocar a ordem e parar num commit para emendá-lo, com a lista real e as saídas do Git 2.53 e os erros mais comuns.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Rebase Interativo (-i)</span></h1>
+
+<p class="intro">O <code>git commit --amend</code> (aula <a href="commit-amend.html">Corrigindo o Último Commit</a>) conserta só o <strong>último</strong> commit. E se o erro de digitação estiver na mensagem de três commits atrás? E se você fez um commit "teste" que não devia existir, ou quer trocar a ordem de dois commits? Para isso existe o <strong>rebase interativo</strong>, <code>git rebase -i</code>: o Git abre no editor uma <strong>lista de tarefas</strong> com os seus commits, você escreve o que quer fazer com cada um, salva, e ele refaz o histórico seguindo a lista.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Abrir o rebase interativo (<code>git rebase -i main</code> ou <code>git rebase -i HEAD~3</code>) e ler a lista que aparece no editor.</li>
+  <li>O que faz cada comando da lista: <code>pick</code>, <code>reword</code>, <code>edit</code>, <code>squash</code>, <code>fixup</code>, <code>drop</code> (e <code>exec</code>, <code>break</code>).</li>
+  <li>Apagar um commit, corrigir uma mensagem antiga, trocar a ordem e parar num commit para emendá-lo.</li>
+  <li>Os erros mais comuns: comando digitado errado, lista vazia, rebase sem dizer a base.</li>
+</ul>
+</div>
+
+<p>Todos os comandos rodaram no <strong>Git 2.53</strong> da máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português. A lista do rebase interativo e várias mensagens dele saem <strong>em inglês</strong> (não há tradução no Git do Ubuntu): tudo está traduzido no texto. Para colher as saídas, o laboratório usou um truque explicado na seção 7: em vez de abrir o editor, a lista foi mostrada (<code>GIT_SEQUENCE_EDITOR=cat</code>) ou editada por um comando (<code>sed</code>).</p>
+
+<hr>
+
+<h2>A ideia: arrumar o álbum de fotos antes de mostrar</h2>
+<p>Depois de uma viagem, você tem 40 fotos no celular. Antes de mandar para a família, você <strong>arruma o álbum</strong>: apaga a foto tremida, junta as três fotos repetidas do mesmo prato numa só, corrige uma legenda, troca a ordem para contar a viagem do começo ao fim. As fotos boas continuam lá; o álbum só fica mais fácil de entender.</p>
+<p>O rebase interativo é a arrumação do álbum. Você faz commits pequenos e bagunçados enquanto trabalha (o que é ótimo!) e, <strong>antes de compartilhar</strong>, arruma a sequência. Como todo rebase, ele cria commits novos (hashes novos), então vale a regra: só arrume o que ainda não foi enviado (aula <a href="regra-de-ouro.html">A Regra de Ouro</a>).</p>
+
+<hr>
+
+<h2>1. A situação: o branch <code>doces</code> bagunçado</h2>
+<p>A Ana fez quatro commits no branch <code>doces</code>, a partir do <code>main</code>:</p>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+bf43330 Acrescenta a calda do pudim
+b46ad5f Adiciona receita de brigadeiro
+c55f4ed teste                                 « um commit de teste que não devia ficar
+0c2cdd3 Adiciona recita de pudim              « "recita": erro de digitação
+8bf5d5b Adiciona receita de bolo              « o main: a base
+</pre>
+<p>Três problemas: o commit <code>teste</code> não devia existir, a mensagem do pudim tem um erro de digitação, e a calda do pudim ficaria melhor logo depois do pudim, não depois do brigadeiro.</p>
+
+<hr>
+
+<h2>2. Abrindo o rebase interativo e lendo a lista</h2>
+
+<pre class="term" data-cwd="~/receitas">$ git rebase -i main
+</pre>
+
+<dl class="anatomy">
+  <dt>git rebase</dt><dd>O rebase (aula <a href="git-rebase.html">git rebase</a>).</dd>
+  <dt>-i</dt><dd>De <em>interactive</em>, "interativo": antes de refazer os commits, o Git mostra a lista e deixa você decidir.</dd>
+  <dt>main</dt><dd>A base. O Git lista os commits que estão no branch atual e <strong>não</strong> estão no <code>main</code>: os quatro do <code>doces</code>. A base continua a mesma; só os commits depois dela são refeitos.</dd>
+</dl>
+
+<p>O editor do Git (no Ubuntu da Ana, o <code>nano</code>) abre com este texto, gerado pelo Git:</p>
+
+<pre class="file" data-file="lista do rebase (no editor)">pick 0c2cdd3 # Adiciona recita de pudim
+pick c55f4ed # teste
+pick b46ad5f # Adiciona receita de brigadeiro
+pick bf43330 # Acrescenta a calda do pudim
+
+# Rebase 8bf5d5b..bf43330 onto 8bf5d5b (4 commands)
+#
+# Commands:
+# p, pick &lt;commit&gt; = use commit
+# r, reword &lt;commit&gt; = use commit, but edit the commit message
+# e, edit &lt;commit&gt; = use commit, but stop for amending
+# s, squash &lt;commit&gt; = use commit, but meld into previous commit
+# f, fixup [-C | -c] &lt;commit&gt; = like "squash" but keep only the previous
+#                    commit's log message, unless -C is used, in which case
+#                    keep only this commit's message; -c is same as -C but
+#                    opens the editor
+# x, exec &lt;command&gt; = run command (the rest of the line) using shell
+# b, break = stop here (continue rebase later with 'git rebase --continue')
+# d, drop &lt;commit&gt; = remove commit
+# l, label &lt;label&gt; = label current HEAD with a name
+# t, reset &lt;label&gt; = reset HEAD to a label
+# m, merge [-C &lt;commit&gt; | -c &lt;commit&gt;] &lt;label&gt; [# &lt;oneline&gt;]
+#         create a merge commit using the original merge commit's
+#         message (or the oneline, if no original merge commit was
+#         specified); use -c &lt;commit&gt; to reword the commit message
+# u, update-ref &lt;ref&gt; = track a placeholder for the &lt;ref&gt; to be updated
+#                       to this position in the new commits. The &lt;ref&gt; is
+#                       updated at the end of the rebase
+#
+# These lines can be re-ordered; they are executed from top to bottom.
+#
+# If you remove a line here THAT COMMIT WILL BE LOST.
+#
+# However, if you remove everything, the rebase will be aborted.
+#
+</pre>
+
+<h3>Lendo a lista</h3>
+<ul>
+  <li><strong>As linhas de cima</strong> são as tarefas, uma por commit: o comando (<code>pick</code>), o hash curto e, depois do <code>#</code>, a mensagem (só para você se achar).</li>
+  <li><strong>A ordem é do mais antigo para o mais novo</strong>, ao contrário do <code>git log</code>. A lista é uma receita executada <strong>de cima para baixo</strong> ("These lines can be re-ordered; they are executed from top to bottom": "estas linhas podem ser reordenadas; são executadas de cima para baixo").</li>
+  <li><code># Rebase 8bf5d5b..bf43330 onto 8bf5d5b (4 commands)</code>: "rebase dos commits depois do <code>8bf5d5b</code> até o <code>bf43330</code>, sobre o <code>8bf5d5b</code> (4 tarefas)". A base não muda: o objetivo aqui é arrumar, não mudar de base.</li>
+  <li>Tudo o que começa com <code>#</code> é comentário: o Git ignora.</li>
+  <li>Os três avisos do fim: "se você apagar uma linha aqui, AQUELE COMMIT SERÁ PERDIDO"; "mas, se você apagar tudo, o rebase será cancelado".</li>
+</ul>
+
+<h3>Os comandos, um por um</h3>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando (e atalho)</th><th>O que o Git diz</th><th>Em português</th></tr>
+<tr><td><code>pick</code> (<code>p</code>)</td><td><em>use commit</em></td><td>"Pegar": usa o commit como está. É o padrão de todas as linhas.</td></tr>
+<tr><td><code>reword</code> (<code>r</code>)</td><td><em>use commit, but edit the commit message</em></td><td>"Reescrever": usa o commit, mas abre o editor para você mudar a <strong>mensagem</strong>.</td></tr>
+<tr><td><code>edit</code> (<code>e</code>)</td><td><em>use commit, but stop for amending</em></td><td>"Editar": usa o commit e <strong>para</strong> logo depois, para você emendá-lo (mudar arquivos, dividir em dois…).</td></tr>
+<tr><td><code>squash</code> (<code>s</code>)</td><td><em>use commit, but meld into previous commit</em></td><td>"Espremer": funde este commit no da linha <strong>de cima</strong> e abre o editor para você escrever a mensagem do commit juntado (aula <a href="squash.html">squash</a>).</td></tr>
+<tr><td><code>fixup</code> (<code>f</code>)</td><td><em>like "squash" but keep only the previous commit's log message</em></td><td>"Consertar": igual ao <code>squash</code>, mas <strong>joga fora</strong> a mensagem deste commit e fica só com a de cima, sem abrir o editor (com <code>-C</code>, fica com a deste).</td></tr>
+<tr><td><code>drop</code> (<code>d</code>)</td><td><em>remove commit</em></td><td>"Largar": <strong>apaga</strong> o commit do histórico (as mudanças dele somem).</td></tr>
+<tr><td><code>exec</code> (<code>x</code>)</td><td><em>run command … using shell</em></td><td>Roda um comando do terminal naquele ponto (por exemplo, os testes do projeto).</td></tr>
+<tr><td><code>break</code> (<code>b</code>)</td><td><em>stop here</em></td><td>Para ali; você continua depois com <code>git rebase --continue</code>.</td></tr>
+<tr><td><code>label</code>, <code>reset</code>, <code>merge</code>, <code>update-ref</code></td><td>(veja a lista)</td><td>Para históricos com merges e vários branches: assunto avançado, fora desta aula.</td></tr>
+</table>
+</div>
+<p>Para usar um comando, troque a palavra <code>pick</code> do começo da linha (pode usar o atalho de uma letra), salve e feche o editor (no <code>nano</code>: <kbd>Ctrl</kbd>+<kbd>O</kbd>, <kbd>Enter</kbd>, <kbd>Ctrl</kbd>+<kbd>X</kbd>). Se você fechar <strong>sem mudar nada</strong>, todos são <code>pick</code>: o Git refaz tudo igual e responde <code>Successfully rebased and updated refs/heads/doces.</code> sem mudar nenhum hash.</p>
+
+<hr>
+
+<h2>3. <code>drop</code>: apagando o commit "teste"</h2>
+<p>A Ana troca o <code>pick</code> da linha do <code>teste</code> por <code>drop</code>, salva e fecha:</p>
+<pre class="file" data-file="lista do rebase (editada)">pick 0c2cdd3 # Adiciona recita de pudim
+drop c55f4ed # teste
+pick b46ad5f # Adiciona receita de brigadeiro
+pick bf43330 # Acrescenta a calda do pudim
+</pre>
+<pre class="term" data-cwd="~/receitas">$ git rebase -i main
+Rebasing (3/4)Rebasing (4/4)Successfully rebased and updated refs/heads/doces.
+$ git log --oneline
+b023d49 Acrescenta a calda do pudim           « hash novo
+b5d1e50 Adiciona receita de brigadeiro        « hash novo
+0c2cdd3 Adiciona recita de pudim              « o MESMO hash
+8bf5d5b Adiciona receita de bolo
+$ ls
+bolo.txt
+brigadeiro.txt
+pudim.txt
+</pre>
+<ul>
+  <li>O commit <code>teste</code> sumiu, e o arquivo <code>teste.txt</code>, que só ele criava, também.</li>
+  <li>O progresso começou em <code>(3/4)</code>: as tarefas 1 e 2 não precisaram refazer nada. O commit do pudim ficou <strong>igual</strong> (<code>0c2cdd3</code>), porque nada antes dele mudou; o Git só o reaproveitou. Já os dois de cima têm pai novo e, por isso, hashes novos.</li>
+  <li>Num terminal, o contador <code>Rebasing (3/4)…</code> se apaga, e sobra só o <code>Successfully rebased…</code>.</li>
+</ul>
+<p>Apagar a linha inteira tem o mesmo efeito do <code>drop</code> ("se você apagar uma linha aqui, aquele commit será perdido"). O <code>drop</code> é melhor porque deixa claro que foi de propósito.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;git switch -q -c doces;;echo 'Pudim de leite' &gt; pudim.txt;;git add pudim.txt;;git commit -q -m 'Adiciona recita de pudim';;echo 'teste' &gt; teste.txt;;git add teste.txt;;git commit -q -m 'teste';;echo 'Brigadeiro' &gt; brigadeiro.txt;;git add brigadeiro.txt;;git commit -q -m 'Adiciona receita de brigadeiro'" data-goal="head:doces,commits:3,absent:teste.txt,semconflito,limpo" data-solucao="GIT_SEQUENCE_EDITOR='sed -i /teste/s/^pick/drop/' git rebase -i main">
+<p class="try-task"><strong>Missão:</strong> apague o commit <code>teste</code> do branch <code>doces</code> com um rebase interativo sobre o <code>main</code> (troque o <code>pick</code> dele por <code>drop</code>). Se o editor não abrir no terminal do guia, use o jeito sem editor da seção 7: <code>GIT_SEQUENCE_EDITOR='sed -i /teste/s/^pick/drop/' git rebase -i main</code>. Confira com <code>git log --oneline</code> e <code>ls</code>.</p>
+</div>
+
+<hr>
+
+<h2>4. <code>reword</code>: corrigindo uma mensagem antiga</h2>
+<p>Agora o "recita". A Ana abre a lista de novo e marca o commit do pudim com <code>reword</code>:</p>
+<pre class="file" data-file="lista do rebase (editada)">reword 0c2cdd3 # Adiciona recita de pudim
+pick b5d1e50 # Adiciona receita de brigadeiro
+pick b023d49 # Acrescenta a calda do pudim
+</pre>
+<p>Ao salvar a lista, o Git começa e, ao chegar no <code>reword</code>, abre o editor <strong>de novo</strong>, agora com a mensagem do commit:</p>
+<pre class="file" data-file="mensagem do commit (no editor)">Adiciona recita de pudim
+
+# Please enter the commit message for your changes. Lines starting
+# with '#' will be ignored, and an empty message aborts the commit.
+#
+# Date:      Thu Oct 15 10:30:00 2026 -0300
+#
+# interactive rebase in progress; onto 8bf5d5b
+# Last command done (1 command done):
+#    reword 0c2cdd3 # Adiciona recita de pudim
+# Next commands to do (2 remaining commands):
+#    pick b5d1e50 # Adiciona receita de brigadeiro
+#    pick b023d49 # Acrescenta a calda do pudim
+# You are currently editing a commit while rebasing branch 'doces' on '8bf5d5b'.
+#
+# Mudanças a serem submetidas:
+#	new file:   pudim.txt
+#
+</pre>
+<p>Os comentários contam onde o rebase está: a tarefa feita (o <code>reword</code>) e as duas que faltam. A Ana corrige a primeira linha para "Adiciona receita de pudim", salva e fecha:</p>
+<pre class="term" data-cwd="~/receitas">$ git rebase -i main
+Rebasing (1/3)[detached HEAD 31f4dad] Adiciona receita de pudim     « o commit com a mensagem nova
+ Date: Thu Oct 15 10:30:00 2026 -0300
+ 1 file changed, 1 insertion(+)
+ create mode 100644 pudim.txt
+Rebasing (2/3)Rebasing (3/3)Successfully rebased and updated refs/heads/doces.
+$ git log --oneline
+9d5bd3d Acrescenta a calda do pudim
+123c8e8 Adiciona receita de brigadeiro
+31f4dad Adiciona receita de pudim
+8bf5d5b Adiciona receita de bolo
+</pre>
+<p>A mensagem foi corrigida, e todos os três commits têm hashes novos (a mensagem também entra no cálculo do hash; mudou o primeiro, mudam os de cima). Os arquivos são exatamente os mesmos.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;git switch -q -c doces;;echo 'Pudim de leite' &gt; pudim.txt;;git add pudim.txt;;git commit -q -m 'Adiciona recita de pudim';;echo 'Brigadeiro' &gt; brigadeiro.txt;;git add brigadeiro.txt;;git commit -q -m 'Adiciona receita de brigadeiro'" data-goal="head:doces,commits:3,logre:[0-9a-f]+ Adiciona receita de pudim,semconflito" data-solucao="GIT_SEQUENCE_EDITOR='sed -i /recita/s/^pick/reword/' GIT_EDITOR='sed -i s/recita/receita/' git rebase -i main">
+<p class="try-task"><strong>Missão:</strong> corrija a mensagem "Adiciona recita de pudim" para "Adiciona receita de pudim" com <code>reword</code>. Sem editor, o jeito da seção 7 é: <code>GIT_SEQUENCE_EDITOR='sed -i /recita/s/^pick/reword/' GIT_EDITOR='sed -i s/recita/receita/' git rebase -i main</code>.</p>
+</div>
+
+<hr>
+
+<h2>5. Trocando a ordem</h2>
+<p>Para mudar a ordem, basta mudar a ordem das <strong>linhas</strong>. A Ana sobe a calda para logo depois do pudim:</p>
+<pre class="file" data-file="lista do rebase (editada)">pick 31f4dad # Adiciona receita de pudim
+pick 9d5bd3d # Acrescenta a calda do pudim
+pick 123c8e8 # Adiciona receita de brigadeiro
+</pre>
+<pre class="term" data-cwd="~/receitas">$ git rebase -i main
+Rebasing (2/3)Rebasing (3/3)Successfully rebased and updated refs/heads/doces.
+$ git log --oneline
+235db56 Adiciona receita de brigadeiro
+9280e8c Acrescenta a calda do pudim
+31f4dad Adiciona receita de pudim
+8bf5d5b Adiciona receita de bolo
+</pre>
+<p>Agora o histórico conta a história na ordem certa: o pudim, a calda dele, depois o brigadeiro. Trocar a ordem só funciona sem conflito quando os commits mexem em coisas diferentes (aqui, arquivos diferentes). Se dois commits mudam a mesma linha, trocar a ordem pode dar conflito: resolva como na aula <a href="rebase-conflitos.html">Conflitos no Rebase</a>.</p>
+
+<hr>
+
+<h2>6. <code>edit</code>: parar num commit para emendá-lo</h2>
+<p>A Ana percebe que a receita de brigadeiro ficou sem os ingredientes. Em vez de fazer um commit novo "esqueci os ingredientes", ela quer pôr os ingredientes <strong>dentro</strong> do commit do brigadeiro. Ela marca a linha com <code>edit</code>:</p>
+<pre class="file" data-file="lista do rebase (editada)">pick 31f4dad # Adiciona receita de pudim
+pick 9280e8c # Acrescenta a calda do pudim
+edit 235db56 # Adiciona receita de brigadeiro
+</pre>
+<pre class="term" data-cwd="~/receitas">$ git rebase -i main
+Rebasing (3/3)Stopped at 235db56...  # Adiciona receita de brigadeiro
+You can amend the commit now, with
+
+  git commit --amend
+
+Once you are satisfied with your changes, run
+
+  git rebase --continue
+$ git status
+interactive rebase in progress; onto 8bf5d5b
+Last commands done (3 commands done):
+   pick 9280e8c # Acrescenta a calda do pudim
+   edit 235db56 # Adiciona receita de brigadeiro
+  (see more in file .git/rebase-merge/done)
+No commands remaining.
+You are currently editing a commit while rebasing branch 'doces' on '8bf5d5b'.
+  (utilize "git commit --amend" para emendar a atual submissão)
+  (use "git rebase --continue" assim que você estiver satisfeitos com as mudanças)
+
+nothing to commit, working tree clean
+</pre>
+<p>"Parei no <code>235db56</code>. Você pode emendar o commit agora, com <code>git commit --amend</code>. Quando estiver satisfeita, rode <code>git rebase --continue</code>." O rebase está <strong>pausado</strong> logo depois do commit do brigadeiro. A Ana acrescenta os ingredientes e emenda o commit (aula <a href="commit-amend.html">--amend</a>):</p>
+<pre class="term" data-cwd="~/receitas">$ echo 'Leite condensado, chocolate e manteiga' &gt;&gt; brigadeiro.txt
+$ git add brigadeiro.txt
+$ git commit --amend --no-edit
+[detached HEAD 6ce862f] Adiciona receita de brigadeiro
+ Date: Thu Oct 15 10:30:00 2026 -0300
+ 1 file changed, 2 insertions(+)                « agora o commit tem as 2 linhas
+ create mode 100644 brigadeiro.txt
+$ git rebase --continue
+Successfully rebased and updated refs/heads/doces.
+$ git log --oneline
+6ce862f Adiciona receita de brigadeiro
+9280e8c Acrescenta a calda do pudim
+31f4dad Adiciona receita de pudim
+8bf5d5b Adiciona receita de bolo
+</pre>
+<p>O <code>--no-edit</code> mantém a mensagem. O commit do brigadeiro agora cria o arquivo já com os ingredientes, como se tivesse sido feito certo da primeira vez. Se houvesse commits depois dele, o <code>--continue</code> os refaria em cima.</p>
+
+<hr>
+
+<h2>7. Formas diferentes de abrir e editar a lista</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Forma</th><th>O que faz</th><th>Quando usar</th></tr>
+<tr><td><code>git rebase -i main</code></td><td>Lista os commits do branch que não estão no <code>main</code></td><td>Arrumar um branch inteiro antes do merge</td></tr>
+<tr><td><code>git rebase -i HEAD~3</code></td><td>Lista os <strong>3 últimos</strong> commits (<code>HEAD~3</code> = "3 commits antes do HEAD": a base)</td><td>Arrumar só os últimos commits, em qualquer branch</td></tr>
+<tr><td><code>git config --global core.editor "code --wait"</code></td><td>Faz a lista abrir no VS Code em vez do <code>nano</code></td><td>Quem prefere outro editor (aula <a href="git-config.html">git config</a>)</td></tr>
+<tr><td><code>GIT_SEQUENCE_EDITOR=cat git rebase -i main</code></td><td>Só <strong>mostra</strong> a lista (o "editor" é o <code>cat</code>, que imprime e sai) e segue com tudo <code>pick</code>: nada muda</td><td>Ver a lista no terminal; foi assim que o laboratório a mostrou</td></tr>
+<tr><td><code>GIT_SEQUENCE_EDITOR='sed -i /teste/s/^pick/drop/' git rebase -i main</code></td><td>Edita a lista com um comando, sem abrir editor: na linha que tem "teste", troca <code>pick</code> por <code>drop</code></td><td>Scripts e o terminal do guia</td></tr>
+</table>
+</div>
+<p>Com <code>git rebase -i HEAD~2</code>, a lista mostra só os dois últimos commits (aqui, antes da arrumação):</p>
+<pre class="file" data-file="lista do rebase (trecho)">pick b46ad5f # Adiciona receita de brigadeiro
+pick bf43330 # Acrescenta a calda do pudim
+</pre>
+<p>A variável <code>GIT_SEQUENCE_EDITOR</code> diz ao Git qual programa usar para a <strong>lista</strong>; a <code>GIT_EDITOR</code>, qual usar para as <strong>mensagens</strong> (o <code>reword</code> e o <code>squash</code>). Escritas antes do comando, na mesma linha, valem só para aquele comando.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Rodou <code>git rebase -i</code> sem dizer a base</strong>
+<pre class="term" data-cwd="~/receitas">$ git rebase -i
+There is no tracking information for the current branch.
+Please specify which branch you want to rebase against.
+See git-rebase(1) for details.
+
+    git rebase '&lt;branch&gt;'
+
+If you wish to set tracking information for this branch you can do so with:
+
+    git branch --set-upstream-to=&lt;remote&gt;/&lt;branch&gt; doces
+
+</pre>
+<p>"Não há informação de rastreamento para o branch atual. Diga sobre qual branch fazer o rebase." Sem argumento, o Git usa o branch remoto que o seu branch acompanha (aula <a href="upstream.html">upstream</a>), e o <code>doces</code> não acompanha nenhum. <strong>Como resolver:</strong> diga a base: <code>git rebase -i main</code> ou <code>git rebase -i HEAD~3</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Escreveu o comando errado na lista</strong>
+<pre class="term" data-cwd="~/receitas">$ git rebase -i main
+error: invalid command 'pik'
+error: invalid line 1: pik 31f4dad # Adiciona receita de pudim
+error: invalid command 'pik'
+error: invalid line 2: pik 9280e8c # Acrescenta a calda do pudim
+error: invalid command 'pik'
+error: invalid line 3: pik 6ce862f # Adiciona receita de brigadeiro
+You can fix this with 'git rebase --edit-todo' and then run 'git rebase --continue'.
+Or you can abort the rebase with 'git rebase --abort'.
+</pre>
+<p>"Comando inválido: <code>pik</code>", com o número de cada linha errada. O rebase fica <strong>em andamento</strong>, esperando (o <code>git status</code> mostra <code>interactive rebase in progress</code>). <strong>Como resolver:</strong> "conserte com <code>git rebase --edit-todo</code>" (que reabre a lista no editor) "e rode <code>git rebase --continue</code>", ou desista com <code>git rebase --abort</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Apagou todas as linhas</strong>
+<pre class="term" data-cwd="~/receitas">$ git rebase -i main
+error: nothing to do
+</pre>
+<p>"Nada a fazer": como a própria lista avisa, apagar tudo <strong>cancela</strong> o rebase. Nenhum commit foi apagado; o <code>git log</code> continua igual. (Para apagar <strong>todos</strong> os commits do branch de verdade, use <code>drop</code> em cada linha.)</p>
+</div>
+
+<div class="cenario">
+<strong>Apagou o commit errado com <code>drop</code></strong>
+<p>O commit some do branch, mas não do Git, por enquanto: ele aparece no <code>git reflog</code> (aula <a href="git-reflog.html">git reflog</a>). Logo depois do rebase, o atalho <code>ORIG_HEAD</code> aponta para onde o branch estava antes, e <code>git reset --hard ORIG_HEAD</code> volta tudo (aula <a href="git-reset.html">git reset</a>; cuidado: o <code>--hard</code> descarta mudanças não commitadas). A aula <a href="recuperar-commit.html">Recuperando Commits Perdidos</a> mostra o caminho completo.</p>
+</div>
+
+<div class="cenario">
+<strong>Parou com conflito</strong>
+<p>Ao trocar a ordem ou apagar commits, um commit seguinte pode depender do que mudou e dar conflito. É o mesmo procedimento da aula <a href="rebase-conflitos.html">Conflitos no Rebase</a>: resolva, <code>git add</code>, <code>git rebase --continue</code>; ou <code>git rebase --abort</code> para voltar ao começo.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git rebase -i main</code></td><td>Abre a lista com os commits do branch que não estão no <code>main</code></td></tr>
+<tr><td><code>git rebase -i HEAD~N</code></td><td>Abre a lista com os N últimos commits</td></tr>
+<tr><td><code>pick</code> / <code>p</code></td><td>Usa o commit como está</td></tr>
+<tr><td><code>reword</code> / <code>r</code></td><td>Usa o commit e muda a mensagem</td></tr>
+<tr><td><code>edit</code> / <code>e</code></td><td>Usa o commit e para, para emendar (<code>git commit --amend</code>, depois <code>--continue</code>)</td></tr>
+<tr><td><code>squash</code> / <code>s</code></td><td>Funde no commit de cima e junta as mensagens no editor</td></tr>
+<tr><td><code>fixup</code> / <code>f</code></td><td>Funde no commit de cima e fica só com a mensagem dele</td></tr>
+<tr><td><code>drop</code> / <code>d</code></td><td>Apaga o commit</td></tr>
+<tr><td><code>exec</code> / <code>x</code></td><td>Roda um comando do terminal naquele ponto</td></tr>
+<tr><td>Mudar a ordem das linhas</td><td>Muda a ordem dos commits</td></tr>
+<tr><td><code>git rebase --edit-todo</code></td><td>Reabre a lista de um rebase em andamento</td></tr>
+<tr><td><code>git rebase --continue</code> / <code>--abort</code></td><td>Continua depois de uma parada / cancela tudo</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Qual comando?</h3>
+<p>Complete a lista para apagar o commit "teste" e corrigir a mensagem do commit do pudim:</p>
+<div class="ex-code"><input data-answer="reword" aria-label="comando para mudar a mensagem"> 0c2cdd3 # Adiciona recita de pudim<br><input data-answer="drop" aria-label="comando para apagar"> c55f4ed # teste<br>pick b46ad5f # Adiciona receita de brigadeiro</div>
+</div>
+
+<div class="exercise">
+<h3>2. Os últimos commits</h3>
+<p>Complete para abrir o rebase interativo com os <strong>4</strong> últimos commits:</p>
+<div class="ex-code">git rebase -i <input data-answer="HEAD~4" aria-label="base"></div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. Em que ordem aparecem os commits na lista do rebase interativo?</p>
+<label><input type="radio" name="q3"> Do mais novo para o mais antigo, como no <code>git log</code></label>
+<label><input type="radio" name="q3"> Em ordem alfabética das mensagens</label>
+<label><input type="radio" name="q3"> Do mais antigo para o mais novo: a lista é executada de cima para baixo</label>
+<label><input type="radio" name="q3"> Em ordem aleatória</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. Qual a diferença entre <code>squash</code> e <code>fixup</code>?</p>
+<label><input type="radio" name="q4"> Os dois fundem o commit no de cima; o <code>squash</code> abre o editor para juntar as mensagens, o <code>fixup</code> fica só com a mensagem de cima</label>
+<label><input type="radio" name="q4"> O <code>squash</code> apaga o commit; o <code>fixup</code> o conserta</label>
+<label><input type="radio" name="q4"> O <code>fixup</code> funde no commit de baixo</label>
+<label><input type="radio" name="q4"> Nenhuma: são nomes diferentes para o mesmo comando</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">5. A Ana marcou um commit com <code>edit</code>, o rebase parou, e ela mudou um arquivo e deu <code>git add</code>. Quais são os próximos dois comandos?</p>
+<label><input type="radio" name="q5"> <code>git commit -m "..."</code> e <code>git push</code></label>
+<label><input type="radio" name="q5"> <code>git rebase --abort</code> e <code>git rebase -i</code></label>
+<label><input type="radio" name="q5"> <code>git rebase --skip</code> e <code>git log</code></label>
+<label><input type="radio" name="q5"> <code>git commit --amend</code> e <code>git rebase --continue</code></label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git rebase -i main</code> (ou <code>HEAD~N</code>) abre no editor a <strong>lista de tarefas</strong>: um <code>pick</code> por commit, do mais antigo ao mais novo, executada de cima para baixo.</li>
+  <li>Troque o <code>pick</code> por <code>reword</code> (mensagem), <code>edit</code> (parar e emendar), <code>squash</code>/<code>fixup</code> (fundir no de cima), <code>drop</code> (apagar); mude a ordem das linhas para mudar a ordem dos commits.</li>
+  <li>Salve e feche o editor para o Git executar. Apagar todas as linhas cancela (<code>error: nothing to do</code>).</li>
+  <li>Os commits refeitos ganham hashes novos: arrume só o que ainda não foi compartilhado.</li>
+  <li>Se algo parar: <code>git status</code> mostra onde; <code>--continue</code> segue, <code>--abort</code> volta ao começo, <code>--edit-todo</code> reabre a lista.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
