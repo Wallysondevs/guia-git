@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Conventional Commits — feat, fix, escopo, ! e BREAKING CHANGE | Guia Git</title>
+<meta name="description" content="Conventional Commits para iniciantes: o formato tipo(escopo): descrição, os tipos feat, fix, docs, chore e outros, o ! e o rodapé BREAKING CHANGE, a ligação com o Versionamento Semântico, como filtrar o histórico com git log --grep, a armadilha do ! entre aspas duplas no Bash e um hook que recusa mensagens fora do padrão, com saídas reais.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Conventional Commits</span></h1>
+
+<p class="intro">Na aula <a href="mensagens-commit.html">Boas Mensagens de Commit</a> você aprendeu a escrever mensagens claras. Muitas equipes vão um passo além e combinam um <strong>formato fixo</strong> para a primeira linha, para que pessoas <strong>e programas</strong> entendam de cara o tipo de cada mudança. O formato mais usado tem nome e especificação pública: <strong>Conventional Commits</strong> ("commits convencionais"). Uma mensagem nesse formato se parece com isto: <code>fix(index): corrige link do bolo</code>.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O formato <code>tipo(escopo): descrição</code>, com corpo e rodapé opcionais.</li>
+  <li>Os tipos <code>feat</code> e <code>fix</code> (os únicos obrigatórios da especificação) e os costumeiros <code>docs</code>, <code>chore</code>, <code>refactor</code>, <code>test</code>…</li>
+  <li>Como marcar uma mudança que quebra compatibilidade: o <code>!</code> e o rodapé <code>BREAKING CHANGE:</code>, e a ligação com o <a href="versionamento-semantico.html">Versionamento Semântico</a>.</li>
+  <li>Como achar commits por tipo com <code>git log --grep</code>.</li>
+  <li>A armadilha do <code>!</code> entre aspas duplas no terminal, e como um hook pode recusar mensagens fora do padrão.</li>
+</ul>
+</div>
+
+<p>Os comandos desta aula rodaram no Git do Ubuntu da Ana (usuária <code>ana</code>, computador <code>notebook</code>). As regras do formato vêm da especificação oficial, a versão 1.0.0, que tem tradução em português: <a href="https://www.conventionalcommits.org/pt-br/v1.0.0/">conventionalcommits.org/pt-br</a>.</p>
+
+<hr>
+
+<h2>A ideia: a etiqueta da caixa de mudança</h2>
+<p>Numa mudança de casa, quem escreve na caixa só "coisas" obriga todo mundo a abrir caixa por caixa. Quem escreve <strong>COZINHA – copos (frágil)</strong> deixa claro, sem abrir, <strong>de que tipo</strong> é o conteúdo, <strong>de que parte</strong> da casa ele é, e se tem algum <strong>cuidado especial</strong>. A mensagem no padrão Conventional Commits é essa etiqueta:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Na caixa</th><th>No commit</th><th>Exemplo</th></tr>
+<tr><td>De que tipo é</td><td>o <strong>tipo</strong></td><td><code>fix</code> (correção)</td></tr>
+<tr><td>De que cômodo</td><td>o <strong>escopo</strong>, opcional, entre parênteses</td><td><code>(index)</code></td></tr>
+<tr><td>Frágil!</td><td>o <code>!</code>, quando a mudança quebra algo para quem usa</td><td><code>feat(busca)!:</code></td></tr>
+<tr><td>O que tem dentro</td><td>a <strong>descrição</strong></td><td><code>corrige link do bolo</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>1. O formato</h2>
+<p>A especificação define esta estrutura:</p>
+<pre class="file" data-file="estrutura da mensagem">&lt;tipo&gt;[escopo opcional]: &lt;descrição&gt;
+
+[corpo opcional]
+
+[rodapé(s) opcional(is)]
+</pre>
+
+<dl class="anatomy">
+  <dt>tipo</dt><dd>Uma palavra que diz o tipo da mudança: <code>feat</code>, <code>fix</code>, <code>docs</code>… (seção 2). Obrigatório.</dd>
+  <dt>(escopo)</dt><dd>Opcional: um substantivo entre parênteses dizendo <strong>qual parte</strong> do projeto mudou: <code>(index)</code>, <code>(busca)</code>, <code>(pudim)</code>. Cada equipe combina a sua lista.</dd>
+  <dt>: </dt><dd>Dois-pontos e <strong>um espaço</strong>. Fazem parte do formato.</dd>
+  <dt>descrição</dt><dd>Obrigatória: um resumo curto da mudança. O costume é escrever em minúsculas, no imperativo ou no presente (<code>adiciona</code>, <code>corrige</code>), sem ponto final.</dd>
+  <dt>corpo</dt><dd>Opcional, depois de <strong>uma linha em branco</strong>: texto livre explicando o porquê, com quantos parágrafos quiser.</dd>
+  <dt>rodapé</dt><dd>Opcional, depois de outra linha em branco: linhas no formato <code>Palavra-chave: valor</code> (ou <code>Palavra-chave #valor</code>), como <code>Refs: #12</code>, <code>Reviewed-by: Bruno</code> ou <code>BREAKING CHANGE: …</code>. A palavra-chave usa <code>-</code> no lugar de espaços; a única exceção é <code>BREAKING CHANGE</code>.</dd>
+</dl>
+
+<p>Na prática, a maioria dos commits tem só a primeira linha. A Ana fez três commits no site de receitas nesse formato:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git add pudim.md
+$ git commit -m "feat: adiciona receita de pudim"
+[main 45d0c75] feat: adiciona receita de pudim
+ 1 file changed, 1 insertion(+)
+ create mode 100644 pudim.md
+$ sed -i 's/bolo.htm/bolo.md/' index.md
+$ git commit -am "fix(index): corrige link do bolo"
+[main 14b8e2b] fix(index): corrige link do bolo
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+$ printf '\nComo contribuir: abra uma issue.\n' &gt;&gt; README.md
+$ git commit -am "docs: explica como contribuir no README"
+[main a8e5d96] docs: explica como contribuir no README
+ 1 file changed, 2 insertions(+)
+</pre>
+
+<p>Para o Git, nada mudou: <code>feat: adiciona receita de pudim</code> é uma mensagem como outra qualquer, e ele a guardou do jeito que veio (o <code>sed</code> e o <code>printf</code> só mudam os arquivos pelo terminal; você pode usar o editor). O formato é um <strong>combinado entre pessoas</strong>, e serve para o que vem depois: ler o histórico, filtrar, gerar a lista de novidades de uma versão.</p>
+
+<hr>
+
+<h2>2. Os tipos</h2>
+<p>A especificação só define dois tipos e diz o que eles significam; os outros são permitidos e vêm de um costume que começou no projeto Angular:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Tipo</th><th>Quando usar</th><th>Exemplo no site da Ana</th></tr>
+<tr><td><code>feat</code></td><td>Uma funcionalidade nova (de <em>feature</em>). <strong>Definido na especificação.</strong></td><td><code>feat: adiciona receita de pudim</code></td></tr>
+<tr><td><code>fix</code></td><td>Uma correção de defeito. <strong>Definido na especificação.</strong></td><td><code>fix(index): corrige link do bolo</code></td></tr>
+<tr><td><code>docs</code></td><td>Só documentação (README, comentários)</td><td><code>docs: explica como contribuir no README</code></td></tr>
+<tr><td><code>style</code></td><td>Formatação, espaços, ponto e vírgula, sem mudar o comportamento</td><td><code>style: alinha a indentação do index</code></td></tr>
+<tr><td><code>refactor</code></td><td>Reorganiza o código sem corrigir defeito nem criar funcionalidade</td><td><code>refactor(busca): separa a busca em duas funções</code></td></tr>
+<tr><td><code>perf</code></td><td>Melhora de desempenho</td><td><code>perf: reduz o tamanho das fotos</code></td></tr>
+<tr><td><code>test</code></td><td>Testes novos ou corrigidos</td><td><code>test: testa a busca sem resultados</code></td></tr>
+<tr><td><code>build</code></td><td>O sistema de construção ou as dependências</td><td><code>build: atualiza o gerador do site</code></td></tr>
+<tr><td><code>ci</code></td><td>A integração contínua (veja <a href="github-actions.html">GitHub Actions</a>)</td><td><code>ci: roda os testes em todo pull request</code></td></tr>
+<tr><td><code>chore</code></td><td>Tarefas de manutenção que não entram em nenhum dos outros</td><td><code>chore: cria o site de receitas</code></td></tr>
+<tr><td><code>revert</code></td><td>Desfaz um commit anterior (veja <a href="git-revert.html">git revert</a>)</td><td><code>revert: volta a busca antiga</code></td></tr>
+</table>
+</div>
+<p>Os tipos são escritos em <strong>inglês</strong> mesmo quando a descrição é em português: eles funcionam como palavras-chave, e as ferramentas que leem o histórico esperam exatamente essas.</p>
+
+<hr>
+
+<h2>3. Mudança que quebra: o <code>!</code> e o <code>BREAKING CHANGE</code></h2>
+<p>Às vezes uma mudança obriga quem usa o projeto a mudar também. O site da Ana tinha uma busca por código de ingrediente (<code>?codigo=12</code>); ela trocou por uma busca por nome, e os links antigos deixaram de funcionar. Isso é uma <strong>mudança que quebra compatibilidade</strong> (<em>breaking change</em>). A especificação manda marcar de um destes dois jeitos (ou dos dois):</p>
+<ul>
+  <li>um <code>!</code> logo antes dos dois-pontos: <code>feat(busca)!: …</code>;</li>
+  <li>um rodapé que começa com <code>BREAKING CHANGE:</code> (assim, em maiúsculas), explicando o que quebrou.</li>
+</ul>
+<p>Com <code>-m</code> repetido, cada <code>-m</code> vira um parágrafo: o primeiro é o título, o segundo o corpo, o terceiro o rodapé. Repare nas <strong>aspas simples</strong>; o motivo está logo abaixo.</p>
+
+<pre class="term" data-cwd="~/receitas">$ git commit -m 'feat(busca)!: busca receitas pelo nome do ingrediente' -m 'A busca antiga, pelo código do ingrediente, foi removida.' -m 'BREAKING CHANGE: links de busca com ?codigo= deixam de funcionar.'
+[main d0e7d7c] feat(busca)!: busca receitas pelo nome do ingrediente
+ 1 file changed, 1 insertion(+)
+ create mode 100644 busca.txt
+$ git log -1
+commit d0e7d7ce7be446feaf08233756cd5fa4230de6d0
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    feat(busca)!: busca receitas pelo nome do ingrediente               « título, com o !
+
+    A busca antiga, pelo código do ingrediente, foi removida.          « corpo
+
+    BREAKING CHANGE: links de busca com ?codigo= deixam de funcionar.  « rodapé
+</pre>
+
+<div class="warning">
+<strong>O <code>!</code> entre aspas duplas dá erro no terminal</strong>
+<p>Antes, a Ana tinha tentado com aspas duplas:</p>
+<pre class="term" data-cwd="~/receitas">$ git commit -m "feat(busca)!: busca receitas pelo ingrediente"
+bash:  : unrecognized history modifier
+</pre>
+<p>O erro é do <strong>Bash</strong>, não do Git: o commit nem foi tentado. No terminal, o <code>!</code> dentro de aspas duplas puxa um comando do histórico (é a "expansão de histórico": <code>!!</code> repete o último comando), e o <code>!:</code> confundiu o Bash ("modificador de histórico não reconhecido"). <strong>Como resolver:</strong> use aspas simples, que desligam esse efeito: <code>git commit -m 'feat(busca)!: …'</code>. Ou rode só <code>git commit</code> e escreva a mensagem no editor, onde o <code>!</code> não tem nada de especial.</p>
+</div>
+
+<h3>A ligação com o Versionamento Semântico</h3>
+<p>Aqui está a maior utilidade do formato. No <a href="versionamento-semantico.html">Versionamento Semântico</a>, a versão tem três números, <code>MAIOR.MENOR.CORREÇÃO</code> (em inglês, <code>MAJOR.MINOR.PATCH</code>). Os tipos dos commits dizem qual número sobe na próxima versão:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Commits desde a última versão</th><th>O que sobe</th><th>Exemplo, a partir de 1.4.2</th></tr>
+<tr><td>Só <code>fix</code></td><td>CORREÇÃO (PATCH)</td><td>1.4.3</td></tr>
+<tr><td>Algum <code>feat</code></td><td>MENOR (MINOR)</td><td>1.5.0</td></tr>
+<tr><td>Algum <code>!</code> ou <code>BREAKING CHANGE</code> (de qualquer tipo)</td><td>MAIOR (MAJOR)</td><td>2.0.0</td></tr>
+<tr><td>Só <code>docs</code>, <code>chore</code>, <code>style</code>…</td><td>Nada, pela especificação</td><td>—</td></tr>
+</table>
+</div>
+<p>Como a regra é mecânica, existem programas que leem o histórico e decidem a versão nova e a lista de novidades (o <em>changelog</em>) sozinhos. Eles não vêm com o Git; são instalados à parte, e cada um tem a sua documentação.</p>
+
+<hr>
+
+<h2>4. Filtrando o histórico pelo tipo</h2>
+<p>Com o formato, o <code>git log</code> vira um índice. O histórico da Ana:</p>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+d0e7d7c feat(busca)!: busca receitas pelo nome do ingrediente
+a8e5d96 docs: explica como contribuir no README
+14b8e2b fix(index): corrige link do bolo
+45d0c75 feat: adiciona receita de pudim
+8695ad4 chore: cria o site de receitas
+</pre>
+<p>A opção <code>--grep</code> mostra só os commits cuja mensagem casa com um padrão (veja <a href="log-filtros.html">git log: Filtros e Formatos</a>). O <code>^</code> quer dizer "no começo da linha":</p>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --grep="^feat"
+d0e7d7c feat(busca)!: busca receitas pelo nome do ingrediente
+45d0c75 feat: adiciona receita de pudim
+$ git log --oneline --grep="^fix"
+14b8e2b fix(index): corrige link do bolo
+$ git log --oneline --grep="BREAKING CHANGE"
+d0e7d7c feat(busca)!: busca receitas pelo nome do ingrediente     « achou pelo rodapé, que não aparece no --oneline
+</pre>
+<p>Em segundos, a Ana sabe o que entrou de novo (<code>feat</code>), o que foi corrigido (<code>fix</code>) e o que pode quebrar para quem usa o site. Com mensagens como "arrumei umas coisas", isso seria impossível.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '- [Pudim](pudim.htm)' &gt; index.md;;git add index.md;;git commit -q -m 'chore: cria o site de receitas';;echo '- [Pudim](pudim.md)' &gt; index.md" data-goal="commits:2,limpo,msg:fix(index): ,ran:--grep" data-solucao="git commit -am 'fix(index): corrige link do pudim';;git log --oneline --grep='^fix'">
+<p class="try-task"><strong>Missão:</strong> no repositório <code>receitas</code>, o arquivo <code>index.md</code> já foi corrigido (o link do pudim estava errado), mas ainda não foi commitado. Faça o commit no padrão Conventional Commits, com o tipo de correção e o escopo <code>index</code>: <code>fix(index): corrige link do pudim</code>. Depois, liste só as correções com <code>git log --oneline --grep="^fix"</code>.</p>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de escrever a mensagem</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Forma</th><th>Quando usar</th></tr>
+<tr><td><code>git commit -m "fix(index): corrige link do bolo"</code></td><td>Só o título, sem <code>!</code>: o caso mais comum.</td></tr>
+<tr><td><code>git commit -m 'feat(busca)!: …'</code></td><td>Com <code>!</code>: aspas simples, sempre.</td></tr>
+<tr><td><code>git commit -m 'título' -m 'corpo' -m 'BREAKING CHANGE: …'</code></td><td>Título, corpo e rodapé sem abrir o editor.</td></tr>
+<tr><td><code>git commit</code> (abre o editor)</td><td>Mensagens longas: título na 1ª linha, linha em branco, corpo, linha em branco, rodapé.</td></tr>
+<tr><td>Extensões de editor e programas como o commitizen</td><td>Perguntam o tipo, o escopo e a descrição e montam a mensagem. São instalados à parte (não rodaram no laboratório desta aula).</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Escrevi fora do padrão e o Git aceitou</strong>
+<pre class="term" data-cwd="~/receitas">$ git commit -am "arrumei umas coisas"
+[main fe76230] arrumei umas coisas
+ 1 file changed, 1 insertion(+)
+</pre>
+<p><strong>O que aconteceu:</strong> nada de errado, para o Git: ele não conhece o Conventional Commits e aceita qualquer mensagem. <strong>Como resolver,</strong> se o commit ainda <strong>não foi enviado</strong>: corrija a mensagem com <code>--amend</code> (veja <a href="commit-amend.html">Corrigindo o Último Commit</a>):</p>
+<pre class="term" data-cwd="~/receitas">$ git commit --amend -m "fix(pudim): acrescenta o leite condensado"
+[main 0234c44] fix(pudim): acrescenta o leite condensado
+ Date: Thu Oct 15 10:30:00 2026 -0300
+ 1 file changed, 1 insertion(+)
+$ git log --oneline -2
+0234c44 fix(pudim): acrescenta o leite condensado
+d0e7d7c feat(busca)!: busca receitas pelo nome do ingrediente
+</pre>
+<p>O commit ganhou um hash novo (<code>0234c44</code> no lugar de <code>fe76230</code>): o <code>--amend</code> troca o commit. Por isso, se ele já foi enviado, deixe como está (veja <a href="regra-de-ouro.html">A Regra de Ouro</a>).</p>
+</div>
+
+<div class="cenario">
+<strong>O commit foi recusado: "Mensagem fora do padrão"</strong>
+<p>Equipes que levam o formato a sério instalam um <strong>hook</strong> (um script que o Git roda sozinho em certos momentos; veja <a href="hooks.html">Git Hooks</a>). O hook <code>commit-msg</code> recebe a mensagem e pode recusar o commit. A Ana instalou um bem simples, em <code>.git/hooks/commit-msg</code> (com permissão de execução):</p>
+<pre class="file" data-file=".git/hooks/commit-msg">#!/bin/sh
+# Recusa mensagens fora do padrão Conventional Commits
+padrao='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9-]+\))?!?: .+'
+if ! head -n 1 "$1" | grep -qE "$padrao"; then
+  echo "Mensagem fora do padrão Conventional Commits: $(head -n 1 "$1")" &gt;&amp;2
+  echo "Exemplo: feat(busca): adiciona filtro por tempo de preparo" &gt;&amp;2
+  exit 1
+fi
+</pre>
+<pre class="term" data-cwd="~/receitas">$ git commit -am "mais leite"
+Mensagem fora do padrão Conventional Commits: mais leite
+Exemplo: feat(busca): adiciona filtro por tempo de preparo
+$ git status --short
+ M pudim.md                                  « nada foi commitado: a mudança continua lá
+$ git commit -am "Fix: mais leite"
+Mensagem fora do padrão Conventional Commits: Fix: mais leite
+Exemplo: feat(busca): adiciona filtro por tempo de preparo
+$ git commit -am "fix(pudim): acrescenta o leite"
+[main 69fa58f] fix(pudim): acrescenta o leite
+ 1 file changed, 1 insertion(+)
+</pre>
+<p><strong>O que aconteceu:</strong> as duas primeiras mensagens não casaram com o padrão do hook, e o commit foi cancelado (as duas linhas são do hook, não do Git). O <code>Fix:</code> com F maiúsculo foi recusado porque <strong>este</strong> hook só aceita minúsculas; a especificação, na verdade, diz que maiúsculas e minúsculas não fazem diferença (exceto em <code>BREAKING CHANGE</code>), mas o costume é escrever o tipo em minúsculas. <strong>Como resolver:</strong> reescreva a mensagem no formato. As mensagens de erro de verificadores prontos (como o commitlint) são diferentes destas, mas a ideia é a mesma.</p>
+</div>
+
+<div class="cenario">
+<strong><code>bash: !…: event not found</code> ou <code>unrecognized history modifier</code></strong>
+<p>É o <code>!</code> dentro de aspas duplas, como você viu na seção 3. O Bash tentou usar o <code>!</code> para buscar um comando antigo. <strong>Como resolver:</strong> troque as aspas duplas por simples (<code>'feat!: …'</code>), ou escreva a mensagem no editor com <code>git commit</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Não sei se é <code>feat</code> ou <code>fix</code></strong>
+<p>Pergunte: "quem usa o site ganhou uma coisa que <strong>não existia</strong>?" Então é <code>feat</code>. "Uma coisa que <strong>devia funcionar e não funcionava</strong> passou a funcionar?" Então é <code>fix</code>. Se o commit faz as duas coisas, provavelmente devia ser <strong>dois commits</strong> (veja <a href="boas-praticas.html">Boas Práticas</a>).</p>
+</div>
+
+<hr>
+
+<h2>Referência</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Item</th><th>Formato</th><th>Exemplo</th></tr>
+<tr><td>Título mínimo</td><td><code>tipo: descrição</code></td><td><code>docs: corrige erro de digitação</code></td></tr>
+<tr><td>Com escopo</td><td><code>tipo(escopo): descrição</code></td><td><code>fix(index): corrige link do bolo</code></td></tr>
+<tr><td>Quebra compatibilidade</td><td><code>tipo!:</code> ou <code>tipo(escopo)!:</code></td><td><code>feat(busca)!: busca pelo nome</code></td></tr>
+<tr><td>Rodapé de quebra</td><td><code>BREAKING CHANGE: texto</code> (ou <code>BREAKING-CHANGE:</code>)</td><td><code>BREAKING CHANGE: links antigos param de funcionar</code></td></tr>
+<tr><td>Outros rodapés</td><td><code>Palavra-Chave: valor</code> ou <code>Palavra-Chave #valor</code></td><td><code>Refs: #12</code>, <code>Reviewed-by: Bruno</code></td></tr>
+<tr><td>Versão</td><td><code>fix</code> → PATCH · <code>feat</code> → MINOR · quebra → MAJOR</td><td>1.4.2 → 1.4.3 / 1.5.0 / 2.0.0</td></tr>
+<tr><td>Filtrar por tipo</td><td><code>git log --oneline --grep="^tipo"</code></td><td><code>git log --oneline --grep="^feat"</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete a mensagem</h3>
+<p>A Ana corrigiu um erro no cálculo de porções da receita de bolo. Complete:</p>
+<div class="ex-code">git commit -m "<input data-answer="fix" aria-label="tipo">(bolo)<input data-answer=":" aria-label="separador"> corrige o cálculo de porções"</div>
+</div>
+
+<div class="exercise">
+<h3>2. Qual tipo?</h3>
+<p>Ela escreveu um README novo, sem mexer no site. Qual tipo usar?</p>
+<div class="ex-code"><input data-answer="docs" aria-label="tipo">: reescreve o README</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. A versão atual é 2.3.1. Desde ela, entraram um <code>fix</code>, dois <code>docs</code> e um <code>feat</code>. Qual é a próxima versão, pelo Versionamento Semântico?</p>
+<label><input type="radio" name="q3"> 2.3.2</label>
+<label><input type="radio" name="q3"> 3.0.0</label>
+<label><input type="radio" name="q3"> 2.4.0</label>
+<label><input type="radio" name="q3"> 2.3.1 (não muda)</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. Qual destas mensagens está no formato Conventional Commits?</p>
+<label><input type="radio" name="q4"> <code>feat(contato): adiciona formulário de contato</code></label>
+<label><input type="radio" name="q4"> <code>Adicionei o formulário de contato.</code></label>
+<label><input type="radio" name="q4"> <code>feat - adiciona formulário de contato</code></label>
+<label><input type="radio" name="q4"> <code>[feat] formulário</code></label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">5. O que o Git faz com um commit cuja mensagem não segue o Conventional Commits, num repositório sem hooks?</p>
+<label><input type="radio" name="q5"> Recusa com <code>fatal: invalid commit message</code></label>
+<label><input type="radio" name="q5"> Aceita normalmente: o formato é um combinado da equipe, não uma regra do Git</label>
+<label><input type="radio" name="q5"> Aceita, mas mostra um aviso amarelo</label>
+<label><input type="radio" name="q5"> Corrige a mensagem sozinho</label>
+</div>
+
+<h3>Missão final: a mudança que quebra</h3>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '- [Pudim](pudim.htm)' &gt; index.md;;git add index.md;;git commit -q -m 'chore: cria o site de receitas';;echo 'receitas/pudim' &gt; rotas.txt;;git add rotas.txt" data-goal="commits:2,limpo,msg:feat(rotas)!: muda,msg:BREAKING CHANGE: os links antigos" data-solucao="git commit -m 'feat(rotas)!: muda os endereços das receitas' -m 'BREAKING CHANGE: os links antigos deixam de funcionar.'">
+<p class="try-task"><strong>Missão:</strong> a Ana mudou os endereços das receitas (o arquivo <code>rotas.txt</code>, já na área de preparo), e os links antigos vão parar de funcionar. Faça o commit com o título <code>feat(rotas)!: muda os endereços das receitas</code> e o rodapé <code>BREAKING CHANGE: os links antigos deixam de funcionar.</code> (dica: dois <code>-m</code>, e cuidado com as aspas por causa do <code>!</code>).</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Conventional Commits é um formato combinado para a mensagem: <code>tipo(escopo): descrição</code>, com corpo e rodapé opcionais, cada um depois de uma linha em branco.</li>
+  <li><code>feat</code> = funcionalidade nova; <code>fix</code> = correção. Outros tipos comuns: <code>docs</code>, <code>style</code>, <code>refactor</code>, <code>perf</code>, <code>test</code>, <code>build</code>, <code>ci</code>, <code>chore</code>, <code>revert</code>.</li>
+  <li>Mudança que quebra compatibilidade: <code>!</code> antes dos dois-pontos e/ou rodapé <code>BREAKING CHANGE:</code>. Pelo Versionamento Semântico: <code>fix</code> sobe o PATCH, <code>feat</code> o MINOR, quebra o MAJOR.</li>
+  <li>O Git aceita qualquer mensagem; quem confere o formato é a equipe, ou um hook <code>commit-msg</code>.</li>
+  <li><code>git log --oneline --grep="^feat"</code> lista os commits de um tipo.</li>
+  <li>No terminal, mensagem com <code>!</code> vai entre <strong>aspas simples</strong>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
