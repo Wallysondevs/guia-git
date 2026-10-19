@@ -336,8 +336,8 @@ v1.0
 
 <h3>Missão final: a décima versão</h3>
 
-<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeira versão';;git tag v1.0.0;;git tag v1.2.0;;git tag v1.9.0;;echo 'Lista de compras' &gt; compras.txt;;git add compras.txt;;git commit -q -m 'Adiciona a lista de compras'" data-goal="tag:v1.10.0,ran:sort=-?v:refname" data-solucao="git tag -a v1.10.0 -m 'Lista de compras';;git tag --sort=v:refname">
-<p class="try-task"><strong>Missão:</strong> a última versão do site é a <code>v1.9.0</code>, e a Ana acabou de acrescentar a lista de compras, uma funcionalidade nova e compatível. Crie a tag anotada da próxima versão. Depois, liste as tags com <code>git tag</code> e repare onde a nova aparece; liste de novo em ordem de versão.</p>
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeira versão';;git tag v1.0.0;;git tag v1.2.0;;git tag v1.9.0;;echo 'Lista de compras' &gt; compras.txt;;git add compras.txt;;git commit -q -m 'Adiciona a lista de compras'" data-goal="tag:v1.10.0,ran:sort( -V|=-?v:refname)" data-solucao="git tag -a v1.10.0 -m 'Lista de compras';;git tag | sort -V">
+<p class="try-task"><strong>Missão:</strong> a última versão do site é a <code>v1.9.0</code>, e a Ana acabou de acrescentar a lista de compras, uma funcionalidade nova e compatível. Crie a tag anotada da próxima versão. Depois, liste as tags com <code>git tag</code> e repare onde a nova aparece; liste de novo em ordem de versão: no seu computador, com <code>git tag --sort=v:refname</code>; no terminal do guia, que ainda não tem o <code>--sort</code>, com <code>git tag | sort -V</code> (o <code>-V</code> do <code>sort</code> também ordena como versão).</p>
 </div>
 
 <hr>
