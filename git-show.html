@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git show — vendo um commit por dentro | Guia Git</title>
+<meta name="description" content="O git show para quem nunca usou Git: ver o último commit e qualquer commit pelo hash ou por HEAD~1, a saída explicada linha por linha (cabeçalho e diff), --stat, --name-only, -s, ver um arquivo como ele era num commit antigo (git show commit:arquivo) e os erros reais (ambiguous argument, path does not exist in HEAD, exists on disk but not in).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">show</span></h1>
+
+<p class="intro">O <a href="git-log.html">git log</a> mostra a lista de fotos do álbum. O <code>git show</code> ("mostrar") pega <strong>uma</strong> foto e mostra tudo sobre ela: quem fez, quando, a mensagem inteira e, principalmente, <strong>o que mudou</strong>, linha por linha. Ele também abre um arquivo do jeito que ele era num commit antigo, sem mexer na sua pasta. É o comando para responder "o que exatamente esse commit fez?" e "como era esse arquivo antes?".</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A ver o último commit com <code>git show</code> e qualquer outro pelo hash ou por <code>HEAD~1</code>, <code>HEAD~2</code>…</li>
+  <li>A ler a saída: o cabeçalho (igual ao do <code>git log</code>) e o <strong>diff</strong> (as linhas que saíram e entraram).</li>
+  <li>A resumir com <code>--stat</code>, <code>--name-only</code> e <code>-s</code>.</li>
+  <li>A ver um arquivo como ele era num commit: <code>git show commit:arquivo</code>.</li>
+  <li>Os erros reais: hash que não existe e arquivo que não existe naquele commit.</li>
+</ul>
+</div>
+
+<p>As saídas são <strong>reais</strong>, do Git 2.53 da máquina da Ana (Ubuntu 26.04), no mesmo repositório <code>receitas</code> da aula <a href="git-log.html">git log</a>, com cinco commits:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+e4dc867 (HEAD -&gt; main) Adiciona o e-mail de contato no README
+ea0e4fa Corrige a quantidade de ovos do bolo
+cce6adb Adiciona a receita de pudim
+da810ac Adiciona a receita de bolo de cenoura
+d84dc97 Adiciona o README
+</pre>
+
+<hr>
+
+<h2>A ideia: a foto ampliada, com o antes e o depois</h2>
+<p>Pense numa revista de reforma de casas: a reportagem mostra a sala <strong>antes</strong> e <strong>depois</strong>, lado a lado, com uma legenda. O <code>git show</code> faz isso com um commit: a legenda (autor, data, mensagem) e, embaixo, as linhas como eram antes (com <code>-</code>) e como ficaram depois (com <code>+</code>).</p>
+
+<hr>
+
+<h2>1. O último commit: <code>git show</code></h2>
+<p>Sem nada depois, o <code>git show</code> mostra o commit onde você está (o <code>HEAD</code>), que normalmente é o último:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git show
+commit e4dc8675c7066aa6015b13725c2d51e94dd0cb02 (HEAD -&gt; main)
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Adiciona o e-mail de contato no README
+
+diff --git a/README.md b/README.md          « daqui para baixo: o que mudou
+index 2644316..bd4bba2 100644
+--- a/README.md
++++ b/README.md
+@@ -1 +1,2 @@
+ # Receitas da Ana
++Contato: ana@exemplo.com                   « a linha que entrou
+</pre>
+
+<p>A primeira parte (até a mensagem) é o mesmo cabeçalho do <code>git log</code>: hash, etiquetas, autor, data e mensagem (veja cada linha explicada em <a href="git-log.html">git log</a>). A segunda parte é o <strong>diff</strong>, as diferenças entre este commit e o anterior:</p>
+
+<dl class="anatomy">
+  <dt>diff --git a/README.md b/README.md</dt><dd>Começa o trecho de um arquivo: o <code>README.md</code>. O <code>a/</code> é a versão de antes; o <code>b/</code>, a de depois. Um commit que muda três arquivos tem três trechos assim.</dd>
+  <dt>index 2644316..bd4bba2 100644</dt><dd>Os códigos internos do conteúdo do arquivo antes e depois, e o modo (<code>100644</code> = arquivo comum). Você quase nunca precisa olhar esta linha.</dd>
+  <dt>--- a/README.md e +++ b/README.md</dt><dd>A legenda das marcas: linhas com <code>-</code> são do arquivo de antes; com <code>+</code>, do arquivo de depois.</dd>
+  <dt>@@ -1 +1,2 @@</dt><dd>Onde fica o trecho: no arquivo de antes, a linha 1 (1 linha); no de depois, a partir da linha 1, 2 linhas.</dd>
+  <dt>" # Receitas da Ana" (começa com espaço)</dt><dd>Linha que não mudou, mostrada só para você se localizar (o <strong>contexto</strong>).</dd>
+  <dt>+Contato: ana@exemplo.com</dt><dd>Linha <strong>acrescentada</strong> pelo commit. No terminal, aparece em verde.</dd>
+</dl>
+
+<p>A leitura do diff tem uma aula inteira: <a href="git-diff.html">git diff</a>. O formato é o mesmo.</p>
+
+<hr>
+
+<h2>2. Qualquer commit, pelo hash</h2>
+<p>Copie o hash do <code>git log --oneline</code> (os 7 caracteres bastam) e dê ao <code>git show</code>. O commit dos ovos tem uma linha que saiu e uma que entrou:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git show ea0e4fa
+commit ea0e4fa83f1c338c65c14e143ca02e2de44b0e68
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Corrige a quantidade de ovos do bolo
+
+    A receita da vó leva 4 ovos, não 3.          « a mensagem inteira, com o corpo
+
+diff --git a/bolo.txt b/bolo.txt
+index 29056e1..10a5c6d 100644
+--- a/bolo.txt
++++ b/bolo.txt
+@@ -1,3 +1,3 @@
+ Bolo de cenoura
+ 3 cenouras
+-3 ovos                                         « saiu (vermelho)
++4 ovos                                         « entrou (verde)
+</pre>
+
+<p>Para o Git, uma linha <strong>modificada</strong> é uma linha que saiu (<code>-3 ovos</code>) e outra que entrou no lugar (<code>+4 ovos</code>). Não existe "linha alterada" no diff. E o corpo da mensagem explica o porquê: é aí que uma boa mensagem paga a conta (<a href="mensagens-commit.html">Boas Mensagens de Commit</a>).</p>
+
+<h3>O primeiro commit: arquivo novo</h3>
+<pre class="term" data-cwd="~/receitas">$ git show d84dc97
+commit d84dc9769de7f3c81874872c30843402cbae59f9
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Adiciona o README
+
+diff --git a/README.md b/README.md
+new file mode 100644                           « o arquivo é novo neste commit
+index 0000000..2644316
+--- /dev/null                                  « "antes" não existia nada
++++ b/README.md
+@@ -0,0 +1 @@
++# Receitas da Ana
+</pre>
+
+<p>Quando o arquivo é novo, o diff mostra <code>new file mode</code>, o "antes" é <code>/dev/null</code> (o "nada" do Linux), o código de antes é só zeros, e todas as linhas têm <code>+</code>.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add .;;git commit -q -m 'Adiciona o README';;printf 'Bolo de cenoura\n3 ovos\n' &gt; bolo.txt;;git add .;;git commit -q -m 'Adiciona a receita de bolo';;sed -i 's/3 ovos/4 ovos/' bolo.txt;;git add .;;git commit -q -m 'Corrige a quantidade de ovos do bolo';;echo 'Contato' &gt;&gt; README.md;;git add .;;git commit -q -m 'Adiciona o contato no README'" data-goal="ran:git show,out:-3 ovos" data-solucao="git show HEAD~1">
+<p class="try-task"><strong>Missão:</strong> use o <code>git log --oneline</code> para achar o commit que corrigiu os ovos do bolo e mostre esse commit com <code>git show</code> e o hash dele. Qual linha saiu e qual entrou?</p>
+</div>
+
+<hr>
+
+<h2>3. Sem decorar hashes: <code>HEAD~1</code>, <code>HEAD~2</code>…</h2>
+<p><code>HEAD</code> é o commit onde você está. <code>HEAD~1</code> é o anterior a ele (o "pai"), <code>HEAD~2</code> é o de dois commits atrás, e assim por diante. É um jeito de apontar para commits recentes sem copiar o hash:</p>
+
+<pre>d84dc97 ── da810ac ── cce6adb ── ea0e4fa ── e4dc867 ◀── HEAD (main)
+HEAD~4     HEAD~3     HEAD~2     HEAD~1     HEAD
+</pre>
+
+<pre class="term" data-cwd="~/receitas">$ git show --oneline -s HEAD~3
+da810ac Adiciona a receita de bolo de cenoura
+</pre>
+
+<p>(O <code>--oneline -s</code> resume o commit numa linha; veja a próxima seção.) Mais sobre o <code>HEAD</code> e o <code>~</code> em <a href="head.html">O que é HEAD</a>.</p>
+
+<hr>
+
+<h2>4. Resumindo: <code>--stat</code>, <code>--name-only</code> e <code>-s</code></h2>
+<p>Num commit grande, o diff inteiro é longo demais. Três opções resumem:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git show HEAD~1 --stat
+commit ea0e4fa83f1c338c65c14e143ca02e2de44b0e68
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Corrige a quantidade de ovos do bolo
+
+    A receita da vó leva 4 ovos, não 3.
+
+ bolo.txt | 2 +-                               « no lugar do diff: arquivos e contagem
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+$ git show --name-only HEAD~1
+commit ea0e4fa83f1c338c65c14e143ca02e2de44b0e68
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Corrige a quantidade de ovos do bolo
+
+    A receita da vó leva 4 ovos, não 3.
+
+bolo.txt                                       « só os nomes dos arquivos
+$ git show -s
+commit e4dc8675c7066aa6015b13725c2d51e94dd0cb02 (HEAD -&gt; main)
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Adiciona o e-mail de contato no README     « só o cabeçalho, sem diff
+</pre>
+
+<dl class="anatomy">
+  <dt>--stat</dt><dd>No lugar do diff, os arquivos mudados e quantas linhas entraram (<code>+</code>) e saíram (<code>-</code>). A ordem não importa: <code>git show --stat HEAD~1</code> dá no mesmo.</dd>
+  <dt>--name-only</dt><dd>Só os nomes dos arquivos mudados.</dd>
+  <dt>-s</dt><dd>De <em>no patch</em> (também se escreve <code>--no-patch</code>): só o cabeçalho, como um <code>git log -1</code>.</dd>
+</dl>
+
+<p>Dá para pedir vários commits de uma vez:</p>
+<pre class="term" data-cwd="~/receitas">$ git show HEAD~1 HEAD~2 --oneline --stat
+ea0e4fa Corrige a quantidade de ovos do bolo
+ bolo.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+cce6adb Adiciona a receita de pudim
+ pudim.txt | 1 +
+ 1 file changed, 1 insertion(+)
+</pre>
+
+<hr>
+
+<h2>5. Um arquivo como ele era: <code>git show commit:arquivo</code></h2>
+<p>Esta é uma das funções mais úteis do <code>git show</code>: ver o <strong>conteúdo inteiro</strong> de um arquivo do jeito que ele estava num commit, sem mudar nada na pasta. Escreva o commit, dois-pontos e o caminho do arquivo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git show da810ac:bolo.txt
+Bolo de cenoura
+3 cenouras
+3 ovos                          « como era quando a receita entrou
+$ git show HEAD:bolo.txt
+Bolo de cenoura
+3 cenouras
+4 ovos                          « como está no último commit
+$ git show HEAD~1:README.md
+# Receitas da Ana               « o README antes do contato
+</pre>
+
+<dl class="anatomy">
+  <dt>da810ac</dt><dd>O commit (pode ser o hash, <code>HEAD</code>, <code>HEAD~1</code>, um nome de ramo…).</dd>
+  <dt>:</dt><dd>Os dois-pontos, colados, separam o commit do caminho. Sem espaço.</dd>
+  <dt>bolo.txt</dt><dd>O caminho do arquivo <strong>a partir da pasta principal do repositório</strong> (por exemplo, <code>doces/cocada.txt</code>).</dd>
+</dl>
+
+<p>A saída é só o conteúdo, como um <code>cat</code> do passado. Para guardar essa versão antiga num arquivo e comparar com calma, use um redirecionamento do terminal: <code>git show da810ac:bolo.txt &gt; bolo-antigo.txt</code>. (Para <strong>voltar</strong> o arquivo da pasta a uma versão antiga, o comando certo é o <a href="git-restore.html">git restore</a>.)</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;printf 'Pudim de leite\nForno: 30 minutos\n' &gt; pudim.txt;;git add .;;git commit -q -m 'Adiciona a receita de pudim';;sed -i 's/30 minutos/50 minutos/' pudim.txt;;git add .;;git commit -q -m 'Corrige o tempo de forno do pudim';;echo 'Calda de caramelo' &gt;&gt; pudim.txt;;git add .;;git commit -q -m 'Acrescenta a calda no pudim'" data-goal="ran:git show [^ ]+:pudim\.txt,out:30 minutos" data-solucao="git show HEAD~2:pudim.txt">
+<p class="try-task"><strong>Missão:</strong> o tempo de forno do pudim mudou num dos commits. Mostre o <code>pudim.txt</code> como ele era no <strong>primeiro</strong> commit (com <code>git show COMMIT:pudim.txt</code>), para descobrir o tempo original. Dica: veja os hashes com <code>git log --oneline</code>, ou use <code>HEAD~2</code>.</p>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Quero ver…</th><th>Comando</th></tr>
+<tr><td>o último commit, completo</td><td><code>git show</code></td></tr>
+<tr><td>um commit qualquer</td><td><code>git show ea0e4fa</code> ou <code>git show HEAD~1</code></td></tr>
+<tr><td>só os arquivos que um commit mudou</td><td><code>git show --stat</code> ou <code>--name-only</code></td></tr>
+<tr><td>só o cabeçalho</td><td><code>git show -s</code> (ou <code>git log -1</code>)</td></tr>
+<tr><td>um arquivo como era num commit</td><td><code>git show commit:arquivo</code></td></tr>
+<tr><td>vários commits com o diff</td><td><code>git log -p</code> (aula <a href="git-log.html">git log</a>)</td></tr>
+<tr><td>a diferença entre dois commits quaisquer</td><td><code>git diff commit1 commit2</code> (aula <a href="git-diff.html">git diff</a>)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>"ambiguous argument … unknown revision"</strong>
+<pre class="term" data-cwd="~/receitas">$ git show abc1234
+fatal: ambiguous argument 'abc1234': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git &lt;command&gt; [&lt;revision&gt;...] -- [&lt;file&gt;...]'
+$ git show HEAD~9
+fatal: ambiguous argument 'HEAD~9': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git &lt;command&gt; [&lt;revision&gt;...] -- [&lt;file&gt;...]'
+</pre>
+<p>"Revisão desconhecida". No primeiro, não existe commit com o hash <code>abc1234</code> neste repositório (erro ao copiar, ou o hash é de outro repositório). No segundo, a Ana pediu 9 commits para trás, mas o repositório só tem 5. <strong>Como resolver:</strong> copie o hash de novo do <code>git log --oneline</code>, e confira quantos commits existem.</p>
+</div>
+
+<div class="cenario">
+<strong>"path … does not exist in 'HEAD'"</strong>
+<pre class="term" data-cwd="~/receitas">$ git show HEAD:pudin.txt
+fatal: path 'pudin.txt' does not exist in 'HEAD'
+</pre>
+<p>"O caminho <code>pudin.txt</code> não existe no commit <code>HEAD</code>". Erro de digitação: o arquivo é <code>pudim.txt</code>. Lembre também que o caminho é a partir da pasta principal do repositório, e que maiúsculas contam. <strong>Como resolver:</strong> confira o nome com <code>git show --name-only</code> ou <code>git ls-files</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>"exists on disk, but not in"</strong>
+<pre class="term" data-cwd="~/receitas">$ git show HEAD~3:pudim.txt
+fatal: path 'pudim.txt' exists on disk, but not in 'HEAD~3'
+</pre>
+<p>"O <code>pudim.txt</code> existe na pasta, mas não no commit <code>HEAD~3</code>". O nome está certo, mas naquele commit a receita de pudim ainda não tinha sido criada (ela entrou no <code>HEAD~2</code>). <strong>Como resolver:</strong> veja em quais commits o arquivo existe com <code>git log --oneline -- pudim.txt</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Repositório sem commits</strong>
+<pre class="term" data-cwd="~/vazio">$ git show
+fatal: your current branch 'main' does not have any commits yet
+</pre>
+<p>"O ramo atual ainda não tem commits": não há o que mostrar. Faça o primeiro commit (<a href="primeiro-commit.html">Seu Primeiro Commit</a>).</p>
+</div>
+
+<div class="cenario">
+<strong>A saída não acaba e o prompt não volta</strong>
+<p>Commit grande abre no pager, como o <code>git log</code>: role com <kbd>Espaço</kbd> e saia com <kbd>q</kbd> (veja <a href="git-log.html">git log</a>).</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git show</code></td><td>O commit atual (HEAD): cabeçalho + diff.</td></tr>
+<tr><td><code>git show HASH</code></td><td>O commit desse hash.</td></tr>
+<tr><td><code>git show HEAD~N</code></td><td>O commit N passos antes do atual.</td></tr>
+<tr><td><code>git show --stat</code></td><td>Arquivos e contagem de linhas, sem o diff.</td></tr>
+<tr><td><code>git show --name-only</code></td><td>Só os nomes dos arquivos.</td></tr>
+<tr><td><code>git show -s</code></td><td>Só o cabeçalho.</td></tr>
+<tr><td><code>git show --oneline -s</code></td><td>O commit numa linha.</td></tr>
+<tr><td><code>git show COMMIT:arquivo</code></td><td>O conteúdo do arquivo naquele commit.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">1. No diff do <code>git show</code>, o que quer dizer uma linha que começa com <code>-</code>?</p>
+<label><input type="radio" name="q1"> Uma linha com erro</label>
+<label><input type="radio" name="q1"> Uma linha que entrou no commit</label>
+<label><input type="radio" name="q1"> Uma linha que saiu (estava antes e não está mais)</label>
+<label><input type="radio" name="q1"> Um comentário</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. O que mostra <code>git show HEAD~1:bolo.txt</code>?</p>
+<label><input type="radio" name="q2"> O diff do <code>bolo.txt</code> no último commit</label>
+<label><input type="radio" name="q2"> O conteúdo do <code>bolo.txt</code> como era no penúltimo commit</label>
+<label><input type="radio" name="q2"> Volta o <code>bolo.txt</code> da pasta para a versão antiga</label>
+<label><input type="radio" name="q2"> Apaga o commit anterior</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">3. Qual comando mostra só os nomes dos arquivos que o último commit mudou?</p>
+<label><input type="radio" name="q3"> <code>git show -s</code></label>
+<label><input type="radio" name="q3"> <code>git show HEAD:arquivos</code></label>
+<label><input type="radio" name="q3"> <code>git log --oneline</code></label>
+<label><input type="radio" name="q3"> <code>git show --name-only</code></label>
+</div>
+
+<div class="exercise">
+<h3>4. Complete</h3>
+<p>Complete para ver o <code>README.md</code> como era dois commits atrás:</p>
+<div class="ex-code">git show HEAD<input data-answer="~2" aria-label="dois commits atrás"><input data-answer=":" aria-label="separador">README.md</div>
+</div>
+
+<h3>Missão final: o que o commit fez?</h3>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;printf 'Bolo de cenoura\n2 xícaras de açúcar\n' &gt; bolo.txt;;git add .;;git commit -q -m 'Adiciona a receita de bolo';;sed -i 's/2 xícaras de açúcar/1 xícara de açúcar mascavo/' bolo.txt;;echo 'Brigadeiro' &gt; brigadeiro.txt;;git add .;;git commit -q -m 'Ajusta receitas'" data-goal="ran:git show,out:mascavo" data-solucao="git show">
+<p class="try-task"><strong>Missão:</strong> o último commit tem uma mensagem vaga ("Ajusta receitas"). Use o <code>git show</code> para descobrir o que ele fez de verdade: quais arquivos mudaram (<code>--stat</code>) e o que entrou no lugar do açúcar refinado.</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git show</code> mostra um commit por dentro: o cabeçalho (como no <code>git log</code>) e o diff (<code>-</code> saiu, <code>+</code> entrou).</li>
+  <li>Sem argumento, mostra o <code>HEAD</code>; com um hash ou <code>HEAD~N</code>, qualquer commit.</li>
+  <li><code>--stat</code>, <code>--name-only</code> e <code>-s</code> resumem.</li>
+  <li><code>git show commit:arquivo</code> mostra o arquivo como ele era naquele commit, sem mexer na pasta.</li>
+  <li>Hash errado ou commit além do começo: <code>unknown revision</code>. Arquivo que não existe no commit: <code>does not exist in</code> (ou <code>exists on disk, but not in</code>).</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
