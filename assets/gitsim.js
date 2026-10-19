@@ -1125,7 +1125,10 @@
       if (g.erro) { io.err("error: " + g.erro + "\n"); return 129; }
       var repo = precisaRepo(io); precisaArvore(repo);
       var o = g.o;
-      if (o["-p"] || o["-i"]) { io.err("(simulador) o modo interativo (git add -p/-i) não existe aqui; adicione os arquivos inteiros.\n"); return 1; }
+      if (o["-p"] || o["-i"]) {
+        var stP = repo.estado(), spP = g.ops.map(function (p) { return pathspec(repo, p); });
+        if (!stP.naoPrep.some(function (m) { return !spP.length || spP.some(function (x) { return casaSpec(x, m.para); }); })) { io.err("No changes.\n"); return 0; }
+        io.err("(simulador) o modo interativo (git add -p/-i) não existe aqui; adicione os arquivos inteiros.\n"); return 1; }
       if (!g.ops.length && !o["-A"] && !o["-u"]) { io.err("Nada especificado, nada adicionado.\nhint: Maybe you wanted to say 'git add .'?\nhint: Disable this message with \"git config set advice.addEmptyPathspec false\"\n"); return 0; }
       var specs = g.ops.length ? g.ops.map(function (p) { return pathspec(repo, p); }) : [""];
       var st = repo.estado(), idx = {}, W = st.W;
@@ -2214,7 +2217,7 @@
           e = "Warning: you are leaving " + plural(perdidos.length, "commit", "commits") + " behind, not connected to\nany of your branches:\n\n" + perdidos.slice(0, 5).map(function (h) { return "  " + repo.abrev(h) + " " + repo.ler(h).msg.split("\n")[0] + "\n"; }).join("") + (perdidos.length > 5 ? " ... and " + (perdidos.length - 5) + " more.\n" : "") + "\nIf you want to keep " + (perdidos.length === 1 ? "it" : "them") + " by creating a new branch, this may be a good time\nto do so with:\n\n git branch <new-branch-name> " + repo.abrev(head) + "\n\n" + e;
         } else if (head !== destHash) e = "Previous HEAD position was " + repo.abrev(head) + " " + repo.ler(head).msg.split("\n")[0] + "\n" + e;
       }
-      io.out(s); io.err(e); io.out(s2);
+      io.err(e); io.out(s); io.out(s2);
       return 0;
     }
     function ramoAnterior(repo) {
@@ -2911,7 +2914,7 @@
       var o = repo.ler(h);
       if (modo === "-e") return 0;
       if (modo === "-t") { io.out(o.type + "\n"); return 0; }
-      if (modo === "-s") { io.out(bytesObjeto(o).length - (o.type.length + 1 + String(bytesObjeto(o).length).length + 1) + "\n"); return 0; }
+      if (modo === "-s") { var bo = bytesObjeto(o), z = 0; while (bo[z] !== 0) z++; io.out((bo.length - z - 1) + "\n"); return 0; }
       if (modo === "-p" || modo === o.type) {
         if (o.type === "tree") io.out(o.ents.map(function (e) { var m = e.mode === "40000" ? "040000" : e.mode; return m + " " + (m === "040000" ? "tree" : m === "160000" ? "commit" : "blob") + " " + e.hash + "\t" + e.name + "\n"; }).join(""));
         else io.out(corpoTexto(o));

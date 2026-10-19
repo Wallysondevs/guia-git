@@ -1,0 +1,37 @@
+### comandos-do-dia-a-dia
+git init loja
+cd loja
+printf 'a\nb\nc\n' > bolo.txt; mkdir img; echo x > img/f.png; git add .; git commit -qm um
+git switch -qc tema
+echo d >> bolo.txt
+git switch main
+git status -s
+git switch tema
+git restore -s HEAD~0 bolo.txt
+echo d >> bolo.txt
+git blame bolo.txt
+git commit -qam dois
+git restore --source=HEAD~1 bolo.txt
+git diff --stat
+git checkout HEAD -- bolo.txt
+mkdir tmp; echo t > tmp/t.txt; echo l > lixo.txt
+git clean -n
+git clean -nd
+git clean -fd
+git config --global alias.st status
+git config --global alias.lg "log --oneline --graph"
+git st -s
+git lg
+git config --global --list
+git add -p
+git commit -v -qm tres
+git log --author=Ana --oneline
+git log --grep=DOIS -i --oneline
+git log --oneline --no-merges -1
+git rev-list --count HEAD
+git rev-parse --abbrev-ref HEAD
+git rev-parse --show-toplevel
+git ls-files
+git cat-file -t HEAD
+git cat-file -s HEAD:bolo.txt
+git hash-object bolo.txt
