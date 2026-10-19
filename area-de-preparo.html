@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Área de Preparo — o staging, ou index, entre a pasta e o histórico | Guia Git</title>
+<meta name="description" content="A área de preparo do Git (staging area, ou index) para quem nunca usou Git: por que ela existe, como separar mudanças em commits com um assunto só, as três versões de um arquivo (pasta, preparo, commit), git diff e git diff --staged, git add -p para preparar só um pedaço, git commit -a para pular o preparo, e os enganos comuns, com saídas reais.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Área de Preparo</span> (staging)</h1>
+
+<p class="intro">Quem vem de outros programas estranha: por que o Git não tem um botão "salvar versão"? Por que é preciso <code>git add</code> <strong>e depois</strong> <code>git commit</code>? A resposta é a <strong>área de preparo</strong> (em inglês, <em>staging area</em>; nos textos técnicos, também <em>index</em>, "índice"). Ela é o lugar onde você monta o próximo commit, com calma, escolhendo o que entra. Esta aula explica a ideia, mostra as três versões que um arquivo pode ter ao mesmo tempo e ensina a usar a área de preparo a seu favor.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é a área de preparo e por que ela existe.</li>
+  <li>Como separar mudanças misturadas em <strong>commits com um assunto só</strong>.</li>
+  <li>As <strong>três versões</strong> de um arquivo (pasta, área de preparo, último commit) e como ver a diferença entre elas com <code>git diff</code> e <code>git diff --staged</code>.</li>
+  <li>Como preparar só <strong>um pedaço</strong> de um arquivo com <code>git add -p</code>.</li>
+  <li>Como pular a área de preparo com <code>git commit -a</code>, e quando isso dá errado.</li>
+</ul>
+</div>
+
+<p>As saídas são <strong>reais</strong>, do Git 2.53 da máquina da Ana (Ubuntu 26.04, em português; parte das mensagens do Git ainda sai em inglês, porque a tradução está incompleta). Esta aula usa o <a href="git-status.html">git status</a> e o <a href="git-add.html">git add</a>: se ainda não viu essas aulas, comece por elas.</p>
+
+<hr>
+
+<h2>A ideia: a caixa do correio</h2>
+<p>A Ana vende doces pela internet. No fim do dia, ela monta as caixas para o correio. Na bancada (a <strong>pasta de trabalho</strong>) tem de tudo: bolos prontos, um pudim pela metade, embalagens. Ela não despacha a bancada inteira: pega uma caixa (a <strong>área de preparo</strong>), põe dentro só o pedido da dona Maria, confere, fecha, cola a etiqueta e despacha (o <strong>commit</strong>). Depois monta a caixa do próximo pedido.</p>
+
+<pre>  pasta de trabalho          área de preparo            histórico
+  (a bancada)                (a caixa aberta)           (o que já foi despachado)
+
+  você edita aqui  ──git add──▶  você monta aqui  ──git commit──▶  fica guardado
+                   ◀──git restore --staged──
+</pre>
+
+<p>Sem a caixa, cada despacho levaria tudo o que está na bancada. Com ela, você decide. No Git é igual: você pode ter mexido em cinco arquivos, mas fazer um commit só com os dois que tratam do mesmo assunto.</p>
+
+<hr>
+
+<h2>1. Para que serve: commits com um assunto só</h2>
+<p>A Ana fez duas coisas que não têm nada a ver uma com a outra: acrescentou os ovos na receita de bolo e pôs o e-mail de contato no README.</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'Contato: ana@exemplo.com' &gt;&gt; README.md
+$ printf 'Bolo de cenoura\n3 cenouras\n2 xícaras de açúcar\n3 ovos\n' &gt; bolo.txt
+$ git status -s
+ M README.md
+ M bolo.txt
+</pre>
+
+<p>Ela poderia fazer um commit só, com a mensagem "Muda o bolo e o README". Mas, se um dia quiser desfazer só a mudança do bolo, ou procurar quando o contato entrou, vai ser mais fácil se cada assunto tiver o seu commit. Com a área de preparo, isso é simples:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git add bolo.txt
+$ git commit -m "Acrescenta os ovos no bolo"
+[main 10fedce] Acrescenta os ovos no bolo
+ 1 file changed, 1 insertion(+)                « só o bolo.txt entrou
+$ git add README.md
+$ git commit -m "Adiciona o contato no README"
+[main 6d6ce07] Adiciona o contato no README
+ 1 file changed, 1 insertion(+)
+$ git log --oneline
+6d6ce07 Adiciona o contato no README
+10fedce Acrescenta os ovos no bolo
+7ffc6d7 Primeira versão
+</pre>
+
+<p>O <code>1 file changed</code> do primeiro commit confirma: o <code>README.md</code> também estava modificado, mas não estava na caixa, então não foi despachado. Ele esperou o commit seguinte.</p>
+
+<div class="tip">
+<strong>Um commit, um assunto</strong>
+<p>É uma das boas práticas mais importantes do Git: cada commit deve fazer <strong>uma</strong> coisa, que caiba numa mensagem curta (aula <a href="mensagens-commit.html">Boas Mensagens de Commit</a>). Se a mensagem precisa de um "e" ("Muda o bolo <strong>e</strong> o README"), talvez sejam dois commits. A área de preparo existe para isso.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;echo 'Bolo de cenoura' &gt; bolo.txt;;git add .;;git commit -q -m 'Primeira versão';;echo 'Contato: ana@exemplo.com' &gt;&gt; README.md;;echo '3 ovos' &gt;&gt; bolo.txt" data-goal="commits:3,limpo,contem:HEAD~1:bolo.txt=3 ovos" data-solucao="git add bolo.txt;;git commit -m 'Acrescenta os ovos no bolo';;git add README.md;;git commit -m 'Adiciona o contato no README'">
+<p class="try-task"><strong>Missão:</strong> o <code>README.md</code> e o <code>bolo.txt</code> foram modificados. Faça <strong>dois</strong> commits: primeiro só o <code>bolo.txt</code>, depois só o <code>README.md</code>. Confira com <code>git log --oneline</code> e com o <code>git status</code> entre um commit e outro.</p>
+</div>
+
+<hr>
+
+<h2>2. A área de preparo não fica vazia depois do commit</h2>
+<p>Um engano comum é achar que, depois do commit, a área de preparo fica vazia. Ela não fica: ela guarda <strong>uma cópia de todos os arquivos rastreados</strong>, do jeito que vão estar no próximo commit. Logo depois de um commit, essa cópia é igual ao commit, e por isso o <code>git status</code> não mostra nada nela. O comando <code>git ls-files</code> lista os arquivos que estão na área de preparo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main
+nothing to commit, working tree clean
+$ git ls-files
+README.md
+bolo.txt
+</pre>
+
+<p>O <code>git status</code> diz "nada a commitar", mas o <code>git ls-files</code> mostra que os dois arquivos estão lá. O <code>git status</code> mostra <strong>diferenças</strong>, não o conteúdo: em "Mudanças a serem submetidas" aparece só o que, na área de preparo, é diferente do último commit.</p>
+<p>Por isso, "preparar" um arquivo é <strong>trocar</strong> a cópia dele na área de preparo pela versão da pasta. E o próximo commit é, sempre, uma fotografia da área de preparo inteira (não só do que você preparou agora).</p>
+
+<hr>
+
+<h2>3. As três versões de um arquivo</h2>
+<p>Então um mesmo arquivo pode existir em três versões ao mesmo tempo: a do último commit, a da área de preparo e a da pasta. Veja o <code>bolo.txt</code> da Ana: ela acrescentou o óleo, preparou, e depois acrescentou o forno:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo '1 xícara de óleo' &gt;&gt; bolo.txt
+$ git add bolo.txt
+$ echo 'Forno a 180 graus' &gt;&gt; bolo.txt
+$ git status -s
+MM bolo.txt
+</pre>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Último commit</th><th>Área de preparo</th><th>Pasta de trabalho</th></tr>
+<tr><td>Bolo de cenoura<br>3 cenouras<br>2 xícaras de açúcar<br>3 ovos</td><td>Bolo de cenoura<br>3 cenouras<br>2 xícaras de açúcar<br>3 ovos<br><strong>1 xícara de óleo</strong></td><td>Bolo de cenoura<br>3 cenouras<br>2 xícaras de açúcar<br>3 ovos<br>1 xícara de óleo<br><strong>Forno a 180 graus</strong></td></tr>
+</table>
+</div>
+
+<p>O <code>MM</code> do formato curto é exatamente isso: o primeiro <code>M</code> diz que a área de preparo é diferente do commit; o segundo, que a pasta é diferente da área de preparo. Dois comandos mostram <strong>o que</strong> mudou em cada passo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git diff
+diff --git a/bolo.txt b/bolo.txt
+index 7b5e30a..21c5954 100644
+--- a/bolo.txt
++++ b/bolo.txt
+@@ -3,3 +3,4 @@ Bolo de cenoura
+ 2 xícaras de açúcar
+ 3 ovos
+ 1 xícara de óleo
++Forno a 180 graus              « pasta × área de preparo: o que ainda NÃO foi preparado
+$ git diff --staged
+diff --git a/bolo.txt b/bolo.txt
+index 4f7a1aa..7b5e30a 100644
+--- a/bolo.txt
++++ b/bolo.txt
+@@ -2,3 +2,4 @@ Bolo de cenoura
+ 3 cenouras
+ 2 xícaras de açúcar
+ 3 ovos
++1 xícara de óleo               « área de preparo × último commit: o que VAI entrar no commit
+</pre>
+
+<dl class="anatomy">
+  <dt>git diff</dt><dd>Compara a <strong>pasta</strong> com a <strong>área de preparo</strong>: mostra o que você mudou e ainda não preparou. Aqui, só o forno.</dd>
+  <dt>git diff --staged</dt><dd>Compara a <strong>área de preparo</strong> com o <strong>último commit</strong>: mostra o que vai entrar no próximo commit. Aqui, só o óleo. (<code>--cached</code> é outro nome para a mesma opção.)</dd>
+  <dt>linhas com <code>+</code></dt><dd>Linhas acrescentadas. As linhas sem sinal, em volta, são o contexto, para você se localizar. A leitura completa da saída do <code>diff</code> está nas aulas <a href="git-diff.html">git diff</a> e <a href="git-diff-staged.html">git diff --staged</a>.</dd>
+</dl>
+
+<p>Se a Ana fizer o commit agora, ele leva o óleo e <strong>não</strong> leva o forno. Para levar os dois, <code>git add bolo.txt</code> de novo.</p>
+
+<hr>
+
+<h2>4. Preparar só um pedaço do arquivo: <code>git add -p</code></h2>
+<p>Às vezes as duas mudanças estão no <strong>mesmo arquivo</strong>. A Ana mudou o título da receita para "Bolo de cenoura da vó" e, no fim, acrescentou o tempo de forno. Ela quer um commit só com o tempo de forno. O <code>git add -p</code> (de <em>patch</em>, "remendo") mostra cada pedaço modificado e pergunta, um por um, se é para preparar:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git add -p bolo.txt
+diff --git a/bolo.txt b/bolo.txt
+index e19900e..b745303 100644
+--- a/bolo.txt
++++ b/bolo.txt
+@@ -1,4 +1,4 @@
+-Bolo de cenoura
++Bolo de cenoura da vó
+
+ Ingredientes:
+ 3 cenouras
+(1/2) Stage this hunk [y,n,q,a,d,k,K,j,J,g,/,e,p,P,?]? n          « o título: não
+@@ -10,3 +10,4 @@ Ingredientes:
+
+ Modo de preparo:
+ Bata tudo no liquidificador.
++Asse por 40 minutos.
+(2/2) Stage this hunk [y,n,q,a,d,K,J,g,/,e,p,P,?]? y              « o forno: sim
+
+$ git status -s
+MM bolo.txt
+</pre>
+
+<dl class="anatomy">
+  <dt>(1/2)</dt><dd>Pedaço 1 de 2. O Git divide as mudanças do arquivo em pedaços (<em>hunks</em>) separados por linhas que não mudaram.</dd>
+  <dt>Stage this hunk</dt><dd>"Preparar este pedaço?"</dd>
+  <dt>y / n</dt><dd>As respostas que você mais vai usar: <code>y</code> (<em>yes</em>) prepara o pedaço; <code>n</code> (<em>no</em>) deixa de fora.</dd>
+  <dt>q, a, d, s, e, ?</dt><dd><code>q</code> sai (o que já foi respondido fica); <code>a</code> prepara este e todos os seguintes do arquivo; <code>d</code> nenhum dos seguintes; <code>s</code> divide o pedaço em pedaços menores, quando dá; <code>e</code> abre o pedaço no editor; <code>?</code> mostra a ajuda com todas as letras. A lista muda de um pedaço para outro: o <code>k</code> ("volta ao anterior"), por exemplo, não aparece no último.</dd>
+</dl>
+
+<p>O <code>MM</code> mostra o resultado: o arquivo agora tem uma parte preparada e outra não. Os dois <code>diff</code> confirmam qual é qual:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git diff --staged
+diff --git a/bolo.txt b/bolo.txt
+index e19900e..44b9d52 100644
+--- a/bolo.txt
++++ b/bolo.txt
+@@ -10,3 +10,4 @@ Ingredientes:
+
+ Modo de preparo:
+ Bata tudo no liquidificador.
++Asse por 40 minutos.             « vai entrar no commit
+$ git diff
+diff --git a/bolo.txt b/bolo.txt
+index 44b9d52..b745303 100644
+--- a/bolo.txt
++++ b/bolo.txt
+@@ -1,4 +1,4 @@
+-Bolo de cenoura
++Bolo de cenoura da vó            « fica para depois
+
+ Ingredientes:
+ 3 cenouras
+$ git commit -q -m "Acrescenta o tempo de forno"
+$ git status -s
+ M bolo.txt                       « o título continua modificado, esperando o seu commit
+</pre>
+
+<p>O <code>git add -p</code> é interativo: ele precisa de você no teclado, respondendo. Por isso ele não está nas missões do terminal do guia; experimente no seu computador. Sem nenhuma mudança para mostrar, ele responde só <code>No changes.</code> ("nenhuma mudança").</p>
+
+<hr>
+
+<h2>5. Tirar da área de preparo</h2>
+<p>Pôs na caixa o que não devia? Tire antes de despachar. Num repositório em que a Ana tinha acabado de criar o <code>bolo.txt</code> e apagar o <code>pudim.txt</code>, ela rodou <code>git add .</code> e o rascunho dela foi junto. A própria dica do <code>git status</code> mostra o comando para tirar:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'ligar pro Bruno' &gt; rascunho.txt
+$ git add .
+$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	new file:   bolo.txt
+	deleted:    pudim.txt
+	new file:   rascunho.txt
+
+$ git restore --staged rascunho.txt
+$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	new file:   bolo.txt
+	deleted:    pudim.txt
+
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	rascunho.txt
+</pre>
+
+<p>O <code>git restore --staged</code> devolve a cópia da área de preparo ao que estava no último commit. O arquivo da pasta <strong>não muda</strong>: nenhuma edição se perde. Os detalhes estão em <a href="restore-staged.html">Tirando da Área de Preparo</a>.</p>
+
+<hr>
+
+<h2>6. Pular a área de preparo: <code>git commit -a</code></h2>
+<p>Quando tudo o que mudou é de um assunto só, preparar arquivo por arquivo dá trabalho. O <code>git commit -a</code> (de <em>all</em>, "todos") prepara <strong>todos os arquivos rastreados</strong> que mudaram e faz o commit, de uma vez. Mas atenção ao "rastreados":</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'Pudim de leite' &gt; pudim.txt
+$ echo 'Site de receitas' &gt;&gt; README.md
+$ git status -s
+ M README.md
+?? pudim.txt
+$ git commit -a -m "Atualiza o README"
+[main efb72c3] Atualiza o README
+ 1 file changed, 1 insertion(+)              « só o README
+$ git status -s
+?? pudim.txt                                  « o arquivo novo ficou de fora
+</pre>
+
+<p>O <code>pudim.txt</code> era novo (<code>??</code>), então o <code>-a</code> não o pegou. Arquivo novo sempre precisa de um <code>git add</code> na primeira vez. A aula <a href="git-commit.html">git commit</a> mostra o <code>-a</code> com mais detalhes.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;echo 'Bolo de cenoura' &gt; bolo.txt;;git add .;;git commit -q -m 'Primeira versão';;echo 'Site de receitas' &gt;&gt; README.md;;echo '3 ovos' &gt;&gt; bolo.txt;;echo 'Pudim de leite' &gt; pudim.txt" data-goal="commits:2,limpo,rastreado:pudim.txt" data-solucao="git add pudim.txt;;git commit -a -m 'Atualiza as receitas'">
+<p class="try-task"><strong>Missão:</strong> há duas mudanças em arquivos rastreados e um arquivo novo (<code>pudim.txt</code>). Faça <strong>um</strong> commit que leve as três coisas, usando o <code>git commit -a</code>. Dica: o que o <code>-a</code> não pega sozinho?</p>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Como fazer</th></tr>
+<tr><td>Mudei vários arquivos, cada um de um assunto</td><td><code>git add arquivo</code> + <code>git commit</code>, um assunto por vez</td></tr>
+<tr><td>Duas mudanças no mesmo arquivo, assuntos diferentes</td><td><code>git add -p arquivo</code>, respondendo <code>y</code>/<code>n</code></td></tr>
+<tr><td>Tudo o que mudou é do mesmo assunto, nada de arquivo novo</td><td><code>git commit -a -m "…"</code></td></tr>
+<tr><td>Tudo o que mudou é do mesmo assunto, com arquivos novos</td><td><code>git add .</code> (olhando o <code>git status</code> antes) + <code>git commit</code></td></tr>
+<tr><td>Quero ver o que vai entrar no commit</td><td><code>git status</code> (quais arquivos) e <code>git diff --staged</code> (quais linhas)</td></tr>
+<tr><td>Quero ver o que ainda não preparei</td><td><code>git diff</code></td></tr>
+<tr><td>Preparei o que não devia</td><td><code>git restore --staged arquivo</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>"Preparei, mas o commit não levou a última mudança"</strong>
+<p>Você preparou o arquivo e o editou de novo antes do commit (seção 3). O commit leva a cópia da área de preparo. <strong>Como confirmar:</strong> depois do commit, o <code>git status</code> ainda mostra o arquivo como modificado, e o <code>git diff</code> mostra a linha que ficou de fora. <strong>Como resolver:</strong> <code>git add arquivo</code> e outro commit; ou, se ainda não enviou para o GitHub, junte ao commit anterior com <a href="commit-amend.html">git commit --amend</a>.</p>
+</div>
+
+<div class="cenario">
+<strong>Respondi <code>n</code> para tudo no <code>git add -p</code> e o commit não aconteceu</strong>
+<pre class="term" data-cwd="~/receitas">$ git commit -q -m "Adiciona a cobertura"
+No ramo main
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   bolo.txt
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+</pre>
+<p>A caixa estava vazia: nenhum pedaço foi preparado, então não há o que commitar, e o Git mostra o <code>git status</code> no lugar do commit (mesmo com o <code>-q</code>, que só silencia o commit bem-sucedido). <strong>Como resolver:</strong> rode o <code>git add -p</code> de novo e responda <code>y</code> nos pedaços que devem entrar, ou <code>git add arquivo</code> para o arquivo inteiro.</p>
+</div>
+
+<div class="cenario">
+<strong>O <code>git commit -a</code> deixou um arquivo de fora</strong>
+<p>Era um arquivo novo (seção 6): o <code>-a</code> só pega os rastreados. <strong>Como resolver:</strong> <code>git add arquivo-novo</code> e outro commit.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git add arquivo</code></td><td>Copia a versão da pasta para a área de preparo.</td></tr>
+<tr><td><code>git add -p [arquivo]</code></td><td>Pergunta pedaço por pedaço o que preparar.</td></tr>
+<tr><td><code>git restore --staged arquivo</code></td><td>Tira da área de preparo (volta a cópia ao último commit); a pasta não muda.</td></tr>
+<tr><td><code>git diff</code></td><td>Pasta × área de preparo: o que ainda não foi preparado.</td></tr>
+<tr><td><code>git diff --staged</code> (ou <code>--cached</code>)</td><td>Área de preparo × último commit: o que vai entrar no commit.</td></tr>
+<tr><td><code>git ls-files</code></td><td>Lista os arquivos que estão na área de preparo (os rastreados).</td></tr>
+<tr><td><code>git commit -a</code></td><td>Prepara todos os rastreados que mudaram e faz o commit. Não pega arquivos novos.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">1. Logo depois de um commit, o que tem na área de preparo?</p>
+<label><input type="radio" name="q1"> Nada: ela fica vazia</label>
+<label><input type="radio" name="q1"> Uma cópia dos arquivos rastreados, igual ao commit que acabou de ser feito</label>
+<label><input type="radio" name="q1"> Só os arquivos novos</label>
+<label><input type="radio" name="q1"> Os arquivos do commit anterior a esse</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">2. Qual comando mostra as linhas que <strong>vão entrar</strong> no próximo commit?</p>
+<label><input type="radio" name="q2"> <code>git diff</code></label>
+<label><input type="radio" name="q2"> <code>git ls-files</code></label>
+<label><input type="radio" name="q2"> <code>git diff --staged</code></label>
+<label><input type="radio" name="q2"> <code>git log</code></label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">3. A Ana criou <code>pudim.txt</code> (novo) e mudou o <code>README.md</code> (rastreado). Ela rodou <code>git commit -a -m "Atualiza"</code>. O que entrou no commit?</p>
+<label><input type="radio" name="q3"> Os dois</label>
+<label><input type="radio" name="q3"> Só o <code>pudim.txt</code></label>
+<label><input type="radio" name="q3"> Nada</label>
+<label><input type="radio" name="q3"> Só o <code>README.md</code></label>
+</div>
+
+<div class="exercise">
+<h3>4. Leia o código</h3>
+<p>O <code>git status -s</code> mostrou <code>MM bolo.txt</code>. Complete:</p>
+<div class="ex-code">O 1º M quer dizer que a área de preparo é diferente do último <input data-answer="commit" aria-label="comparação da 1ª coluna">.<br>O 2º M quer dizer que a <input data-answer="pasta" aria-label="comparação da 2ª coluna"> é diferente da área de preparo.</div>
+</div>
+
+<div class="exercise">
+<h3>5. Responda ao <code>git add -p</code></h3>
+<p>Qual letra você digita para preparar o pedaço que o <code>git add -p</code> está mostrando? E para deixá-lo de fora?</p>
+<div class="ex-code">Preparar: <input data-answer="y" aria-label="letra para preparar"> · Deixar de fora: <input data-answer="n" aria-label="letra para não preparar"></div>
+</div>
+
+<h3>Missão final: três assuntos, três commits</h3>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;echo 'Bolo de cenoura' &gt; bolo.txt;;echo 'Pudim de leite' &gt; pudim.txt;;git add .;;git commit -q -m 'Primeira versão';;echo 'Contato: ana@exemplo.com' &gt;&gt; README.md;;echo '3 ovos' &gt;&gt; bolo.txt;;echo 'Calda de caramelo' &gt;&gt; pudim.txt" data-goal="commits:4,limpo,logre:README,logre:bolo,logre:pudim" data-solucao="git add README.md;;git commit -m 'Adiciona o contato no README';;git add bolo.txt;;git commit -m 'Acrescenta os ovos no bolo';;git add pudim.txt;;git commit -m 'Acrescenta a calda no pudim'">
+<p class="try-task"><strong>Missão:</strong> três arquivos foram modificados, cada um com um assunto. Faça <strong>três</strong> commits, um por arquivo, e cite o nome de cada um na mensagem (por exemplo, "Acrescenta os ovos no bolo"). No fim, a pasta deve estar limpa e o <code>git log --oneline</code> deve mostrar quatro commits.</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>A <strong>área de preparo</strong> (<em>staging area</em>, ou <em>index</em>) é onde você monta o próximo commit. O commit é uma fotografia dela inteira.</li>
+  <li>Ela existe para você escolher o que entra: <strong>um commit, um assunto</strong>, mesmo que tenha mexido em muita coisa.</li>
+  <li>Ela nunca fica vazia: guarda uma cópia de todos os arquivos rastreados. O <code>git status</code> mostra só as diferenças.</li>
+  <li>Um arquivo pode ter três versões: último commit, área de preparo e pasta. <code>git diff --staged</code> mostra o que vai entrar; <code>git diff</code>, o que ainda não foi preparado.</li>
+  <li><code>git add -p</code> prepara pedaço por pedaço; <code>git restore --staged</code> tira da área de preparo; <code>git commit -a</code> pula o preparo, mas só para arquivos rastreados.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
