@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Comandos — referência de todos os comandos do guia, com links para as aulas | Guia Git</title>
+<meta name="description" content="Referência dos comandos do Git ensinados no Guia Git, organizados por tarefa: configurar, criar repositório, preparar e commitar, ver o histórico, desfazer, branches e merge, stash e tags, remotos e GitHub, reescrever o histórico e ferramentas, cada um com as opções mais usadas e o link para a aula completa.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Comandos</span></h1>
+
+<p class="intro">Esta página é uma <strong>tabela de consulta</strong>: todos os comandos do Git que o guia ensina, agrupados pela tarefa que você quer fazer, com as opções mais usadas e um link para a aula onde cada um é explicado com calma, com saídas reais e exercícios. Use <kbd>Ctrl</kbd>+<kbd>F</kbd> no navegador para procurar um comando.</p>
+
+<div class="note">
+<strong>Como ler as tabelas</strong>
+<ul>
+  <li>O que está entre <code>&lt;</code> e <code>&gt;</code> você troca pelo seu valor: <code>git add &lt;arquivo&gt;</code> vira <code>git add index.html</code>.</li>
+  <li>O que está entre <code>[</code> e <code>]</code> é opcional.</li>
+  <li><span class="versao">git 2.23+</span> marca comandos que não existem em versões antigas do Git (o guia usa o Git 2.53 do Ubuntu; confira a sua com <code>git --version</code>).</li>
+  <li>Os comandos marcados com ⚠️ podem apagar trabalho: leia a aula antes de usar.</li>
+</ul>
+</div>
+
+<p>Ir para: <a href="#configurar">Configurar</a> · <a href="#criar">Criar e copiar</a> · <a href="#commitar">Preparar e commitar</a> · <a href="#ver">Ver</a> · <a href="#desfazer">Desfazer</a> · <a href="#branches">Branches</a> · <a href="#merge">Merge</a> · <a href="#stash-tag">Stash e tags</a> · <a href="#remotos">Remotos</a> · <a href="#reescrever">Reescrever o histórico</a> · <a href="#ferramentas">Ferramentas</a> · <a href="#refs">Como apontar para um commit</a></p>
+
+<hr>
+
+<h2 id="configurar">Configurar e pedir ajuda</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th><th>Aula</th></tr>
+<tr><td><code>git --version</code></td><td>Mostra a versão do Git instalada.</td><td><a href="instalar.html">Instalar o Git</a></td></tr>
+<tr><td><code>git config --global user.name "Seu Nome"</code></td><td>Define o nome que vai nos seus commits (uma vez por computador).</td><td><a href="git-config.html">git config</a></td></tr>
+<tr><td><code>git config --global user.email voce@exemplo.com</code></td><td>Define o e-mail dos seus commits.</td><td><a href="git-config.html">git config</a></td></tr>
+<tr><td><code>git config --global init.defaultBranch main</code></td><td>Faz o <code>git init</code> criar o branch <code>main</code>.</td><td><a href="git-init.html">git init</a></td></tr>
+<tr><td><code>git config --global core.editor nano</code></td><td>Escolhe o editor que o Git abre (mensagens de commit, merge).</td><td><a href="config-util.html">Configurações Úteis</a></td></tr>
+<tr><td><code>git config --global pull.rebase false</code></td><td>Faz o <code>git pull</code> juntar com merge quando os dois lados andaram.</td><td><a href="git-pull.html">git pull</a></td></tr>
+<tr><td><code>git config --list</code></td><td>Lista todas as configurações em vigor.</td><td><a href="ref-config.html">Configurações</a></td></tr>
+<tr><td><code>git config --global alias.st status</code></td><td>Cria um atalho: <code>git st</code> passa a ser <code>git status</code>.</td><td><a href="alias.html">Atalhos (alias)</a></td></tr>
+<tr><td><code>git help &lt;comando&gt;</code> / <code>git &lt;comando&gt; -h</code></td><td>Manual completo / resumo das opções.</td><td><a href="git-help.html">git help</a></td></tr>
+</table>
+</div>
+
+<h2 id="criar">Criar e copiar repositórios</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th><th>Aula</th></tr>
+<tr><td><code>git init</code></td><td>Transforma a pasta atual num repositório (cria a pasta oculta <code>.git</code>).</td><td><a href="git-init.html">git init</a></td></tr>
+<tr><td><code>git init &lt;pasta&gt;</code></td><td>Cria a pasta e o repositório dentro dela.</td><td><a href="git-init.html">git init</a></td></tr>
+<tr><td><code>git clone &lt;url&gt;</code></td><td>Baixa uma cópia completa de um repositório remoto, com todo o histórico.</td><td><a href="git-clone.html">git clone</a></td></tr>
+<tr><td><code>git clone &lt;url&gt; &lt;pasta&gt;</code></td><td>Clona numa pasta com outro nome.</td><td><a href="git-clone.html">git clone</a></td></tr>
+</table>
+</div>
+
+<h2 id="commitar">Preparar e commitar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th><th>Aula</th></tr>
+<tr><td><code>git status</code></td><td>Mostra o branch atual, o que mudou, o que está preparado e o que não é rastreado. Rode sempre.</td><td><a href="git-status.html">git status</a></td></tr>
+<tr><td><code>git status -s</code></td><td>A versão curta, duas letras por arquivo.</td><td><a href="git-status.html">git status</a></td></tr>
+<tr><td><code>git add &lt;arquivo&gt;</code></td><td>Põe o arquivo na área de preparo (o que vai no próximo commit).</td><td><a href="git-add.html">git add</a></td></tr>
+<tr><td><code>git add .</code></td><td>Prepara tudo o que mudou na pasta atual (e nas de dentro).</td><td><a href="git-add.html">git add</a></td></tr>
+<tr><td><code>git add -p</code></td><td>Prepara por partes, perguntando trecho por trecho.</td><td><a href="area-de-preparo.html">A Área de Preparo</a></td></tr>
+<tr><td><code>git commit -m "mensagem"</code></td><td>Grava o que está preparado como um commit novo.</td><td><a href="git-commit.html">git commit</a></td></tr>
+<tr><td><code>git commit</code></td><td>Abre o editor para escrever a mensagem (título e corpo).</td><td><a href="mensagens-commit.html">Boas Mensagens de Commit</a></td></tr>
+<tr><td><code>git commit -am "mensagem"</code></td><td>Prepara os arquivos <strong>já rastreados</strong> que mudaram e commita (arquivos novos ficam de fora).</td><td><a href="git-commit.html">git commit</a></td></tr>
+<tr><td><code>git rm &lt;arquivo&gt;</code></td><td>Apaga o arquivo da pasta e prepara a remoção.</td><td><a href="git-rm.html">git rm</a></td></tr>
+<tr><td><code>git rm --cached &lt;arquivo&gt;</code></td><td>Para de rastrear, mas mantém o arquivo na pasta (útil com o <code>.gitignore</code>).</td><td><a href="git-rm.html">git rm</a></td></tr>
+<tr><td><code>git mv &lt;velho&gt; &lt;novo&gt;</code></td><td>Renomeia ou move o arquivo e prepara a mudança.</td><td><a href="git-mv.html">git mv</a></td></tr>
+<tr><td><code>.gitignore</code> (arquivo)</td><td>Lista o que o Git deve ignorar (senhas, arquivos gerados, pessoais).</td><td><a href="gitignore.html">.gitignore</a> · <a href="ref-gitignore.html">Modelos</a></td></tr>
+</table>
+</div>
+
+<h2 id="ver">Ver o histórico e as diferenças</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th><th>Aula</th></tr>
+<tr><td><code>git log</code></td><td>Lista os commits, do mais novo ao mais antigo.</td><td><a href="git-log.html">git log</a></td></tr>
+<tr><td><code>git log --oneline</code></td><td>Um commit por linha: hash curto e título.</td><td><a href="git-log.html">git log</a></td></tr>
+<tr><td><code>git log --oneline --graph --all</code></td><td>Desenha os galhos de todos os branches.</td><td><a href="log-graph.html">log --graph</a></td></tr>
+<tr><td><code>git log -n 5</code> · <code>--author=Ana</code> · <code>--since=…</code> · <code>-- arquivo</code></td><td>Filtra: os 5 últimos, de um autor, desde uma data, de um arquivo.</td><td><a href="log-filtros.html">Filtros e Formatos</a> · <a href="ref-log.html">Formatos do git log</a></td></tr>
+<tr><td><code>git log -S "texto"</code></td><td>Acha os commits que acrescentaram ou tiraram aquele texto.</td><td><a href="buscar-historico.html">Procurando no Histórico</a></td></tr>
+<tr><td><code>git show [&lt;commit&gt;]</code></td><td>Mostra um commit (ou tag) e as mudanças dele. Sem argumento, o último.</td><td><a href="git-show.html">git show</a></td></tr>
+<tr><td><code>git diff</code></td><td>O que mudou na pasta e ainda <strong>não</strong> foi preparado.</td><td><a href="git-diff.html">git diff</a></td></tr>
+<tr><td><code>git diff --staged</code></td><td>O que está preparado (vai no próximo commit).</td><td><a href="git-diff-staged.html">git diff --staged</a></td></tr>
+<tr><td><code>git diff &lt;a&gt; &lt;b&gt;</code></td><td>Compara dois commits ou branches.</td><td><a href="git-diff.html">git diff</a></td></tr>
+<tr><td><code>git blame &lt;arquivo&gt;</code></td><td>Quem mudou cada linha, e em qual commit.</td><td><a href="git-blame.html">git blame</a></td></tr>
+<tr><td><code>git grep "texto"</code></td><td>Procura o texto nos arquivos rastreados.</td><td><a href="buscar-historico.html">Procurando no Histórico</a></td></tr>
+<tr><td><code>git reflog</code></td><td>O diário do HEAD: cada passo, mesmo os "perdidos".</td><td><a href="git-reflog.html">git reflog</a></td></tr>
+</table>
+</div>
+
+<h2 id="desfazer">Desfazer</h2>
+<p>O mapa completo, situação por situação, está em <a href="ref-desfazer.html">Como Desfazer Qualquer Coisa</a> e em <a href="desfazer.html">Desfazendo: o Mapa</a>.</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th><th>Aula</th></tr>
+<tr><td>⚠️ <code>git restore &lt;arquivo&gt;</code> <span class="versao">git 2.23+</span></td><td>Descarta as mudanças não preparadas do arquivo (volta à última versão commitada).</td><td><a href="git-restore.html">git restore</a></td></tr>
+<tr><td><code>git restore --staged &lt;arquivo&gt;</code> <span class="versao">git 2.23+</span></td><td>Tira da área de preparo, sem perder a mudança.</td><td><a href="restore-staged.html">Tirando da Área de Preparo</a></td></tr>
+<tr><td><code>git restore --source=&lt;commit&gt; &lt;arquivo&gt;</code></td><td>Traz o arquivo como ele era num commit.</td><td><a href="git-restore.html">git restore</a></td></tr>
+<tr><td><code>git commit --amend</code></td><td>Refaz o último commit (mensagem ou conteúdo). Só antes de enviar.</td><td><a href="commit-amend.html">--amend</a></td></tr>
+<tr><td><code>git revert &lt;commit&gt;</code></td><td>Cria um commit novo que desfaz outro. Seguro para o que já foi enviado.</td><td><a href="git-revert.html">git revert</a></td></tr>
+<tr><td><code>git reset --soft &lt;commit&gt;</code></td><td>Volta o branch; as mudanças ficam preparadas.</td><td><a href="reset-modos.html">Modos do reset</a></td></tr>
+<tr><td><code>git reset &lt;commit&gt;</code> (<code>--mixed</code>)</td><td>Volta o branch; as mudanças ficam na pasta, não preparadas.</td><td><a href="git-reset.html">git reset</a></td></tr>
+<tr><td>⚠️ <code>git reset --hard &lt;commit&gt;</code></td><td>Volta o branch e descarta as mudanças não commitadas.</td><td><a href="reset-modos.html">Modos do reset</a></td></tr>
+<tr><td>⚠️ <code>git clean -n</code> / <code>-f</code></td><td>Mostra / apaga os arquivos não rastreados.</td><td><a href="git-clean.html">git clean</a></td></tr>
+<tr><td><code>git reset --hard HEAD@{1}</code></td><td>Desfaz um reset errado, voltando ao passo anterior do HEAD.</td><td><a href="recuperar-commit.html">Recuperando Commits</a> · <a href="projeto-desastre.html">Projeto reflog</a></td></tr>
+</table>
+</div>
+
+<h2 id="branches">Branches</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th><th>Aula</th></tr>
+<tr><td><code>git branch</code></td><td>Lista os branches locais; o <code>*</code> marca o atual.</td><td><a href="git-branch.html">git branch</a></td></tr>
+<tr><td><code>git branch -a</code> · <code>-v</code> · <code>--merged</code></td><td>Inclui os remotos · mostra o último commit · só os já juntados no atual.</td><td><a href="git-branch.html">git branch</a></td></tr>
+<tr><td><code>git branch &lt;nome&gt; [&lt;commit&gt;]</code></td><td>Cria um branch (no commit atual, ou no indicado), sem trocar.</td><td><a href="git-branch.html">git branch</a></td></tr>
+<tr><td><code>git switch &lt;nome&gt;</code> <span class="versao">git 2.23+</span></td><td>Troca para o branch.</td><td><a href="git-switch.html">git switch</a></td></tr>
+<tr><td><code>git switch -c &lt;nome&gt;</code> <span class="versao">git 2.23+</span></td><td>Cria o branch e troca para ele.</td><td><a href="git-switch.html">git switch</a> · <a href="projeto-funcionalidade.html">Projeto</a></td></tr>
+<tr><td><code>git switch -</code></td><td>Volta para o branch anterior.</td><td><a href="git-switch.html">git switch</a></td></tr>
+<tr><td><code>git switch --detach &lt;commit ou tag&gt;</code></td><td>Visita um commit antigo (HEAD destacado).</td><td><a href="head-destacado.html">HEAD Destacado</a></td></tr>
+<tr><td><code>git checkout &lt;nome&gt;</code> · <code>git checkout -b &lt;nome&gt;</code></td><td>Os jeitos antigos de trocar e de criar+trocar.</td><td><a href="git-checkout.html">git checkout</a></td></tr>
+<tr><td><code>git branch -m &lt;velho&gt; &lt;novo&gt;</code></td><td>Renomeia um branch.</td><td><a href="apagar-branch.html">Renomeando e Apagando</a></td></tr>
+<tr><td><code>git branch -d &lt;nome&gt;</code></td><td>Apaga um branch já juntado (recusa se não foi).</td><td><a href="apagar-branch.html">Renomeando e Apagando</a></td></tr>
+<tr><td>⚠️ <code>git branch -D &lt;nome&gt;</code></td><td>Apaga mesmo sem merge.</td><td><a href="apagar-branch.html">Renomeando e Apagando</a></td></tr>
+</table>
+</div>
+
+<h2 id="merge">Juntar trabalho (merge) e conflitos</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th><th>Aula</th></tr>
+<tr><td><code>git merge &lt;branch&gt;</code></td><td>Traz os commits do branch para o branch atual.</td><td><a href="git-merge.html">git merge</a></td></tr>
+<tr><td><code>git merge --no-edit &lt;branch&gt;</code></td><td>Aceita a mensagem pronta do commit de merge, sem abrir o editor.</td><td><a href="git-merge.html">git merge</a></td></tr>
+<tr><td><code>git merge --no-ff &lt;branch&gt;</code></td><td>Cria commit de merge mesmo quando daria para só avançar.</td><td><a href="fast-forward.html">Fast-forward</a></td></tr>
+<tr><td><code>git merge --ff-only &lt;branch&gt;</code></td><td>Só junta se der para avançar; senão, recusa.</td><td><a href="fast-forward.html">Fast-forward</a></td></tr>
+<tr><td><code>git merge --abort</code></td><td>Desiste do merge em andamento e volta ao estado de antes.</td><td><a href="abortar-merge.html">Desistindo de um Merge</a></td></tr>
+<tr><td><code>git merge --continue</code></td><td>Conclui o merge depois de resolver (como o <code>git commit</code>).</td><td><a href="resolver-conflitos.html">Resolvendo Conflitos</a></td></tr>
+<tr><td><code>git checkout --ours</code> / <code>--theirs &lt;arquivo&gt;</code></td><td>No conflito, fica com a versão do branch atual / do que está chegando.</td><td><a href="resolver-conflitos.html">Resolvendo Conflitos</a> · <a href="projeto-conflito.html">Projeto</a></td></tr>
+<tr><td><code>git diff --check</code></td><td>Procura marcadores de conflito esquecidos.</td><td><a href="projeto-conflito.html">Projeto conflito</a></td></tr>
+<tr><td><code>git mergetool</code></td><td>Abre a ferramenta visual de merge configurada.</td><td><a href="interfaces-graficas.html">Git no VS Code</a></td></tr>
+</table>
+</div>
+
+<h2 id="stash-tag">Guardar para depois (stash) e marcar versões (tag)</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th><th>Aula</th></tr>
+<tr><td><code>git stash</code></td><td>Guarda as mudanças não commitadas e limpa a pasta.</td><td><a href="git-stash.html">git stash</a></td></tr>
+<tr><td><code>git stash -u</code></td><td>Guarda também os arquivos não rastreados.</td><td><a href="git-stash.html">git stash</a></td></tr>
+<tr><td><code>git stash list</code> · <code>pop</code> · <code>apply</code> · <code>drop</code></td><td>Lista · traz de volta e apaga · traz de volta e mantém · apaga.</td><td><a href="stash-lista.html">Vários Stashes</a></td></tr>
+<tr><td><code>git tag</code> · <code>git tag -l "v1.*"</code></td><td>Lista as tags (todas ou por padrão).</td><td><a href="git-tag.html">git tag</a></td></tr>
+<tr><td><code>git tag -a v1.0.0 -m "msg" [&lt;commit&gt;]</code></td><td>Cria uma tag anotada (para versões).</td><td><a href="git-tag.html">git tag</a> · <a href="projeto-versao.html">Projeto</a></td></tr>
+<tr><td><code>git tag -d &lt;tag&gt;</code></td><td>Apaga a tag local.</td><td><a href="git-tag.html">git tag</a></td></tr>
+<tr><td><code>git describe</code></td><td>Diz a tag anotada mais próxima do commit atual.</td><td><a href="projeto-versao.html">Projeto versão</a></td></tr>
+</table>
+</div>
+
+<h2 id="remotos">Remotos e GitHub</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th><th>Aula</th></tr>
+<tr><td><code>git remote -v</code></td><td>Lista os remotos e os endereços.</td><td><a href="git-remote.html">git remote</a></td></tr>
+<tr><td><code>git remote add origin &lt;url&gt;</code></td><td>Liga o repositório a um remoto com o apelido <code>origin</code>.</td><td><a href="git-remote.html">git remote</a></td></tr>
+<tr><td><code>git remote set-url origin &lt;url&gt;</code></td><td>Troca o endereço do remoto.</td><td><a href="git-remote.html">git remote</a></td></tr>
+<tr><td><code>git push -u origin &lt;branch&gt;</code></td><td>Primeiro envio de um branch, gravando o upstream.</td><td><a href="git-push.html">git push</a> · <a href="upstream.html">Upstream</a></td></tr>
+<tr><td><code>git push</code></td><td>Envia os commits novos do branch atual.</td><td><a href="git-push.html">git push</a></td></tr>
+<tr><td><code>git push origin &lt;tag&gt;</code> · <code>--tags</code> · <code>--follow-tags</code></td><td>Envia uma tag · todas · as anotadas junto com os commits.</td><td><a href="git-tag.html">git tag</a></td></tr>
+<tr><td><code>git push origin --delete &lt;branch ou tag&gt;</code></td><td>Apaga o branch ou a tag no remoto.</td><td><a href="git-push.html">git push</a></td></tr>
+<tr><td><code>git push --force-with-lease</code></td><td>Força o envio só se ninguém mais enviou desde o seu último fetch.</td><td><a href="push-force.html">push --force-with-lease</a></td></tr>
+<tr><td><code>git fetch</code></td><td>Baixa as novidades do remoto sem mexer nos seus branches.</td><td><a href="git-fetch.html">git fetch</a></td></tr>
+<tr><td><code>git pull</code></td><td>Baixa e junta (<code>fetch</code> + <code>merge</code>).</td><td><a href="git-pull.html">git pull</a> · <a href="projeto-dupla.html">Projeto dupla</a></td></tr>
+<tr><td><code>git pull --rebase</code> · <code>--ff-only</code></td><td>Junta com rebase · só aceita avanço rápido.</td><td><a href="git-pull.html">git pull</a> · <a href="rebase-ou-merge.html">Rebase ou Merge?</a></td></tr>
+<tr><td><code>git branch -vv</code></td><td>Mostra cada branch com o upstream e se está à frente ou atrás.</td><td><a href="upstream.html">Upstream</a></td></tr>
+<tr><td><code>ssh-keygen -t ed25519 -C "voce@exemplo.com"</code></td><td>Cria uma chave SSH para o GitHub (não é comando do Git).</td><td><a href="ssh.html">Chave SSH</a></td></tr>
+<tr><td><code>gh …</code></td><td>A linha de comando do GitHub (repositórios, pull requests, issues). Programa separado.</td><td><a href="github-cli.html">GitHub CLI</a></td></tr>
+</table>
+</div>
+<p>O que se faz <strong>no site</strong> do GitHub (criar repositório, fork, pull request, issues, Pages) está em <a href="github-repositorio.html">Criando um Repositório</a>, <a href="fork.html">Fork</a>, <a href="pull-request.html">Pull Request</a>, <a href="issues.html">Issues</a> e <a href="github-pages.html">GitHub Pages</a>.</p>
+
+<h2 id="reescrever">Reescrever o histórico</h2>
+<div class="warning"><strong>A regra de ouro:</strong> não reescreva commits que outras pessoas já baixaram (<a href="regra-de-ouro.html">A Regra de Ouro</a>).</div>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th><th>Aula</th></tr>
+<tr><td><code>git rebase &lt;branch&gt;</code></td><td>Reaplica os commits do branch atual em cima de outro.</td><td><a href="git-rebase.html">git rebase</a></td></tr>
+<tr><td><code>git rebase --continue</code> · <code>--abort</code> · <code>--skip</code></td><td>Continua depois de resolver · desiste · pula o commit atual.</td><td><a href="rebase-conflitos.html">Conflitos no Rebase</a></td></tr>
+<tr><td><code>git rebase -i HEAD~3</code></td><td>Edita os 3 últimos commits: reordenar, juntar, renomear, apagar.</td><td><a href="rebase-interativo.html">Rebase Interativo</a> · <a href="squash.html">Squash</a></td></tr>
+<tr><td><code>git merge --squash &lt;branch&gt;</code></td><td>Traz as mudanças do branch como um commit só (você commita depois).</td><td><a href="squash.html">Squash</a></td></tr>
+<tr><td><code>git cherry-pick &lt;commit&gt;</code></td><td>Copia um commit de outro branch para o atual.</td><td><a href="cherry-pick.html">cherry-pick</a></td></tr>
+</table>
+</div>
+
+<h2 id="ferramentas">Ferramentas</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th><th>Aula</th></tr>
+<tr><td><code>git bisect start</code> · <code>good</code> · <code>bad</code> · <code>reset</code></td><td>Busca binária pelo commit que trouxe um bug.</td><td><a href="git-bisect.html">git bisect</a></td></tr>
+<tr><td><code>git worktree add &lt;pasta&gt; &lt;branch&gt;</code></td><td>Abre outro branch numa segunda pasta, ao mesmo tempo.</td><td><a href="git-worktree.html">git worktree</a></td></tr>
+<tr><td><code>git submodule add &lt;url&gt;</code> · <code>update --init</code></td><td>Põe um repositório dentro de outro · baixa os submódulos.</td><td><a href="submodulos.html">Submódulos</a></td></tr>
+<tr><td><code>.git/hooks/</code> (pasta)</td><td>Scripts que rodam em momentos do Git (antes do commit, antes do push).</td><td><a href="hooks.html">Git Hooks</a></td></tr>
+<tr><td><code>.gitattributes</code> (arquivo)</td><td>Regras por tipo de arquivo, como o fim de linha.</td><td><a href="gitattributes.html">.gitattributes</a></td></tr>
+<tr><td><code>git lfs track "*.psd"</code></td><td>Guarda arquivos grandes fora do repositório (Git LFS, extensão à parte).</td><td><a href="git-lfs.html">Git LFS</a></td></tr>
+<tr><td><code>git cat-file -t &lt;objeto&gt;</code> · <code>-p</code></td><td>Mostra o tipo / o conteúdo de um objeto do Git.</td><td><a href="como-git-guarda.html">Como o Git Guarda as Coisas</a></td></tr>
+</table>
+</div>
+
+<h2 id="refs">Como apontar para um commit</h2>
+<p>Onde a tabela diz <code>&lt;commit&gt;</code>, você pode escrever qualquer uma destas formas:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Forma</th><th>Significa</th><th>Aula</th></tr>
+<tr><td><code>a939be6</code></td><td>O hash (o começo dele basta, se não for ambíguo).</td><td><a href="hash.html">O Hash do Commit</a></td></tr>
+<tr><td><code>HEAD</code></td><td>O commit atual.</td><td><a href="head.html">O que é HEAD</a></td></tr>
+<tr><td><code>HEAD~1</code>, <code>HEAD~3</code></td><td>Um, três commits antes do atual.</td><td><a href="head.html">O que é HEAD</a></td></tr>
+<tr><td><code>main</code>, <code>origin/main</code></td><td>O último commit daquele branch (local ou remoto).</td><td><a href="branches.html">O que é um Branch</a></td></tr>
+<tr><td><code>v1.0.0</code></td><td>O commit da tag.</td><td><a href="git-tag.html">git tag</a></td></tr>
+<tr><td><code>HEAD@{1}</code></td><td>Onde o HEAD estava um passo atrás (do reflog).</td><td><a href="git-reflog.html">git reflog</a></td></tr>
+<tr><td><code>main..contato</code></td><td>Os commits que estão no <code>contato</code> e não no <code>main</code> (em <code>git log</code>).</td><td><a href="log-filtros.html">Filtros e Formatos</a></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Veja também</h2>
+<ul>
+  <li><a href="ref-resumo.html">Folha de Consulta</a>: o essencial numa página só, para imprimir.</li>
+  <li><a href="ref-erros.html">Mensagens de Erro Comuns</a>: o que cada mensagem quer dizer e como sair dela.</li>
+  <li><a href="ref-glossario.html">Glossário</a>: commit, branch, HEAD, upstream e os outros termos.</li>
+  <li><a href="ref-config.html">Configurações</a> e <a href="ref-log.html">Formatos do git log</a>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
