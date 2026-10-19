@@ -93,7 +93,7 @@ $ git commit -m 'Adiciona busca de receitas'
  create mode 100644 .env
  create mode 100644 busca.js
 $ git show --stat --oneline HEAD
-db57cbc Adiciona busca de receitas
+db57cbc (HEAD -&gt; main) Adiciona busca de receitas
  .env       | 1 +                           « a chave está no commit
  busca.js   | 1 +
  index.html | 1 +
@@ -128,7 +128,7 @@ $ git commit --amend --no-edit
  create mode 100644 .gitignore
  create mode 100644 busca.js
 $ git show --stat --oneline HEAD
-2790fde Adiciona busca de receitas               « um commit novo, com outro hash
+2790fde (HEAD -&gt; main) Adiciona busca de receitas  « um commit novo, com outro hash
  .gitignore | 1 +
  busca.js   | 1 +
  index.html | 1 +                               « e sem o .env
@@ -180,7 +180,7 @@ $ git push -q
 $ ls
 bolo.txt  busca.js  index.html  pudim.txt        « sumiu da pasta…
 $ git log --oneline -- credenciais.txt
-3bf4b84 Remove as credenciais
+3bf4b84 (HEAD -&gt; main, origin/main) Remove as credenciais
 b81e404 Adiciona dados do painel                 « …mas o commit antigo continua lá
 $ git show b81e404:credenciais.txt
 SENHA_DO_PAINEL=senha-de-exemplo-123             « qualquer um com o repositório lê</pre>
