@@ -1,0 +1,52 @@
+### funcao-basica
+ola() { echo "Olá, $1!"; }
+ola Ana
+function tchau { echo "Tchau, $1"; return 3; }
+tchau Bruno; echo $?
+ola
+### funcao-args
+f() { echo $# "$@"; echo $0; }
+f a "b c"
+### funcao-return
+f() { return 5; }; f; echo $?
+g() { false; }; g; echo $?
+h() { echo x; return; }; h; echo $?
+return 1
+echo $?
+### funcao-recursiva
+fat() { if (( $1 <= 1 )); then echo 1; else echo $(( $1 * $(fat $(( $1 - 1 ))) )); fi; }
+fat 5
+fib() { local n=$1; (( n < 2 )) && { echo $n; return; }; echo $(( $(fib $((n-1))) + $(fib $((n-2))) )); }
+fib 10
+### funcao-local
+contador=0
+inc() { local contador=99; contador=$((contador+1)); echo $contador; }
+inc; echo $contador
+### funcao-varias-linhas
+soma() {
+  local total=0
+  for n in "$@"; do
+    total=$((total + n))
+  done
+  echo $total
+}
+soma 1 2 3
+type soma
+### funcao-type-declare
+f() { echo oi; echo tchau; }
+declare -f f
+declare -F
+g() { if [ "$1" ]; then echo a; else echo b; fi; for i in 1 2; do echo $i; done; }
+type g
+h() ( echo sub )
+type h
+### funcao-alias-conflito
+alias busca='grep -i'
+busca() { echo x; }
+### funcname
+f() { echo ${FUNCNAME[@]}; g; }; g() { echo ${FUNCNAME[@]}; }
+f
+### funcao-redirect
+f() { echo saida; echo erro >&2; } 
+f 2>/dev/null
+f > /dev/null

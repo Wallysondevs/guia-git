@@ -1,0 +1,187 @@
+### script-simples [script args="a b c"]
+#!/usr/bin/env bash
+echo "nome: $0"
+echo "args: $# $*"
+echo "primeiro: $1"
+for a in "$@"; do echo "- $a"; done
+exit 3
+### script-erro-comando [script]
+echo um
+xyz
+echo $?
+cd /nada
+echo fim
+### script-erro-sintaxe [script]
+echo um
+if true; then
+  echo dois
+### script-erro-fi [script]
+echo um
+fi
+echo tres
+### script-aspas-abertas [script]
+echo um
+echo "abc
+x
+### script-for-incompleto [script]
+f() {
+  echo a
+  for i in 1 2; do
+### script-aritmetica-erros [script]
+x=$((1/0))
+echo depois
+y=$(( 2 + ))
+echo ${x:?vazio}
+echo nunca
+### script-set-e [script]
+set -e
+echo antes
+false
+echo depois
+### script-set-e-condicoes [script]
+set -e
+if false; then echo nao; fi
+false || echo ou
+false && echo e
+! false
+f() { false; echo "dentro f"; }
+f || echo "f falhou"
+echo "fim $?"
+x=$(false; echo sub)
+echo "x=$x"
+false
+echo nunca
+### script-set-u [script]
+set -u
+echo ${a:-ok}
+echo $a
+echo nunca
+### script-set-x [script]
+set -x
+x=1
+echo "valor $x" 'a b'
+y=$(echo sub)
+[[ $x == 1 ]]
+(( x + 1 ))
+for i in a b; do :; done
+set +x
+echo fim
+### script-pipefail [script]
+set -euo pipefail
+ls nada | wc -l
+echo nunca
+### script-trap-exit [script]
+trap 'echo saindo $?' EXIT
+echo trabalho
+exit 7
+### script-trap-err [script]
+set -e
+trap 'echo "erro na linha $LINENO"' ERR
+echo um
+false
+echo dois
+### script-lineno [script]
+echo $LINENO
+f() {
+  echo $LINENO
+}
+f
+echo $LINENO
+### script-heredoc-sem-fim [script]
+cat <<FIM
+abc
+### script-local-funcao [script]
+local x=1
+echo $?
+### script-return-fora [script]
+return 2
+echo depois
+### script-exit-subshell [script]
+(exit 5)
+echo $?
+x=$(exit 6; echo nao)
+echo $? [$x]
+exit
+### script-funcname [script]
+f() { echo "${FUNCNAME[@]}"; g; }
+g() { echo "${FUNCNAME[@]}"; caller 0; }
+f
+echo "${FUNCNAME[@]}"
+### script-break-fora [script]
+break
+echo $?
+f() { break; }
+for i in 1 2; do f; echo $i; done
+### script-expand-aliases [script]
+alias oi='echo oi'
+oi
+shopt -s expand_aliases
+alias tchau='echo tchau'
+tchau
+### script-bashrc [script]
+source ~/.bashrc
+echo depois
+### script-dolar-traco [script]
+echo $-
+bash -c 'echo $-'
+### script-read-stdin [script stdin="Ana\n29\n"]
+read -p "Nome: " nome
+read idade
+echo "$nome tem $idade"
+read x
+echo "status $?"
+### script-read-ifs [script stdin="a b c d\n  x  y  \nu,v,w\n"]
+read p q
+echo "[$p] [$q]"
+read l
+echo "[$l]"
+IFS=, read -r m n
+echo "[$m] [$n]"
+### script-read-backslash [script stdin="a\\\\b c\\\\\nd\n"]
+read x
+echo "[$x]"
+### script-getopts [script args="-a -b valor -c arq1 arq2"]
+while getopts "ab:c" op; do
+  case $op in
+    a) echo "a";;
+    b) echo "b=$OPTARG";;
+    c) echo "c";;
+    ?) echo "erro";;
+  esac
+done
+shift $((OPTIND-1))
+echo "resto: $@"
+### script-getopts-erros [script args="-x -b"]
+while getopts "ab:" op; do echo "op=$op arg=${OPTARG-}"; done
+while getopts ":ab:" op; do echo "op=$op arg=${OPTARG-}"; done
+### script-select [script stdin="2\n9\n1\n"]
+PS3="Escolha: "
+select f in maçã pera uva; do
+  echo "[$f] [$REPLY]"
+  [ -n "$f" ] && break
+done
+### script-eval [script]
+x='echo dentro do eval'
+eval $x
+eval 'y=5'; echo $y
+eval 'if'
+echo depois
+### script-source [script]
+echo 'v=fonte; echo "no source: $1"' > /tmp/s.sh
+source /tmp/s.sh arg
+echo $v
+. /tmp/nada.sh
+echo $?
+### script-shebang-exec [script]
+printf '#!/bin/bash\necho executou $1\n' > /tmp/x.sh
+/tmp/x.sh a
+chmod +x /tmp/x.sh
+/tmp/x.sh b
+mkdir /tmp/d; /tmp/d
+echo $?
+### script-bash-c [script]
+bash -c 'echo $0 $1' meu arg
+bash -c 'exit 4'; echo $?
+bash -c 'xyz'
+bash -c 'if'
+bash -n /dev/null; echo $?

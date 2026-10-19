@@ -1,0 +1,72 @@
+### redir-basico
+echo um > /tmp/a.txt
+echo dois >> /tmp/a.txt
+cat /tmp/a.txt
+cat < /tmp/a.txt
+wc -l < /tmp/a.txt
+ls nada 2> /tmp/e.txt; cat /tmp/e.txt
+ls nada frutas.txt &> /tmp/t.txt; cat /tmp/t.txt
+ls nada 2>&1 | cat
+echo erro >&2
+echo x 1>&2 2>/dev/null
+### redir-erros
+cat < /nada
+echo x > /root/x
+echo x > /tmp
+echo $?
+x="a b"; echo y > $x
+### noclobber
+echo a > /tmp/n.txt
+set -C
+echo b > /tmp/n.txt
+echo c >| /tmp/n.txt; cat /tmp/n.txt
+set +C
+### exec-descritores
+exec 3> /tmp/fd3.txt
+echo linha >&3
+echo outra >&3
+exec 3>&-
+cat /tmp/fd3.txt
+exec 4< frutas.txt
+read -r l <&4; echo $l
+read -r l <&4; echo $l
+exec 4<&-
+echo x >&5
+### here-string-heredoc
+cat <<< "texto $HOME"
+cat <<FIM
+Olá $USER
+Hoje: $((1+1))
+\$nao
+FIM
+cat <<'FIM'
+literal $USER
+FIM
+cat <<"X" | tr a-z A-Z
+abc
+X
+### heredoc-em-funcao
+f() {
+  cat <<EOF
+dentro: $1
+EOF
+}
+f arg
+### dev-null-stdin
+echo oi > /dev/null; echo $?
+cat /dev/null | wc -l
+echo a | cat /dev/stdin
+echo b > /dev/stderr
+### procsub
+diff <(echo a) <(echo b)
+cat <(echo um) <(echo dois)
+while read -r l; do echo "[$l]"; done < <(printf 'x\ny\n')
+echo z > >(cat)
+sleep 0.1
+### pipes-e-subshell-var
+x=0; echo a | while read l; do x=1; done; echo $x
+shopt -s lastpipe; echo a | while read l; do y=1; done; echo "[$y]"
+### pipe-and-stderr
+ls nada |& cat
+### fdvar
+exec {meu}>/tmp/v.txt; echo ok >&$meu; exec {meu}>&-; cat /tmp/v.txt

@@ -1,0 +1,382 @@
+### canto-c01
+x='a  b'; printf '[%s]' $x "$x"; echo
+### canto-c02
+set -- 'a b' c; for i in "$@"; do echo "<$i>"; done; for i in $@; do echo "($i)"; done
+### canto-c03
+set -- 'a b' c; f() { echo $#; }; f "$*"; f $*; f "$@"; f $@
+### canto-c04
+set -- a b; IFS=:; echo "$*" "$@"; unset IFS
+### canto-c05
+set --; f() { echo $#; }; f "$@"; f "$*"; f ''"$@"
+### canto-c06
+echo "$(echo "a b" | tr a x)"
+### canto-c07
+echo "$(echo 'single' "double")"
+### canto-c08
+x=$(echo "  espaços  "); echo "[$x]"
+### canto-c09
+echo $(echo a; echo b) "$(echo a; echo b)"
+### canto-c10
+v=$(cat <<EOF
+linha $HOME
+EOF
+); echo "$v"
+### canto-c11
+cat <<"EOF"
+$HOME \$x `pwd`
+EOF
+### canto-c12
+cat << EOF
+a\
+b \\ \$ \`
+EOF
+### canto-c13
+f() { local x=1; g; }; g() { echo ${x:-sem}; }; f; g
+### canto-c14
+x=global; f() { local x=local; unset x; echo "[${x-unset}]"; }; f; echo $x
+### canto-c15
+f() { local -i n=3; n+=4; echo $n; }; f
+### canto-c16
+f() { declare x=d; }; f; echo "[${x-nao}]"
+### canto-c17
+f() { declare -g y=glob; }; f; echo $y
+### canto-c18
+IFS=, read a b c <<< "1,2,3,4"; echo "$a|$b|$c"
+### canto-c19
+IFS=: read -r a b <<< "x:y:z"; echo "$a|$b"
+### canto-c20
+read -r a b <<< "   x   y   z   "; echo "[$a][$b]"
+### canto-c21
+IFS= read -r l <<< "   pad   "; echo "[$l]"
+### canto-c22
+a=([3]=c [1]=a); a[7]=g; echo ${!a[@]} "${a[@]}" ${#a[@]}
+### canto-c23
+a=(x y z); unset 'a[0]'; echo ${a[@]:0:1} ${a[0]-vazio}
+### canto-c24
+a=(1 2 3); a+=([10]=x); echo ${!a[@]}
+### canto-c25
+printf '%s-%s|' a b c d e; echo
+### canto-c26
+printf '%d %s\n' 1 um 2 dois 3
+### canto-c27
+printf '%5.2f%%\n' 12,345
+### canto-c28
+printf '[%-6s][%6s]\n' ab cd
+### canto-c29
+printf '%s\n' "$(printf '%03d ' 1 2 3)"
+### canto-c30
+case abc in a*c) echo ok;; esac
+### canto-c31
+case x in [[:alpha:]]) echo alfa;; esac; case 5 in [[:digit:]]) echo dig;; esac
+### canto-c32
+case "a b" in "a b") echo citado;; esac; case 'a*' in 'a*') echo lit;; a*) echo pad;; esac
+### canto-c33
+p='*.txt'; case a.txt in $p) echo glob;; esac; case a.txt in "$p") echo lit;; *) echo nao;; esac
+### canto-c34
+echo $((2#1111)) $((8#17)) $((16#ff)) $((0xff)) $((077))
+### canto-c35
+echo $((10 % 3)) $((-10 % 3)) $((10 / -3)) $((2 ** 3 ** 2))
+### canto-c36
+x=5; echo $((x += 2)) $((x -= 1)) $((x *= 3)) $((x /= 2)) $((x %= 4)) $((x <<= 2)) $((x >>= 1)) $((x |= 8)) $((x &= 12)) $((x ^= 5))
+### canto-c37
+echo $((1 && 0)) $((1 || 0)) $((!5)) $((~5)) $((-(-3)))
+### canto-c38
+echo $(( (3 > 2) ? 100 : 200 )) $(( 3 > 2 ? 4 > 5 ? 1 : 2 : 3 ))
+### canto-c39
+a=3 b=4; echo $(( a*a + b*b ))
+### canto-c40
+arr=(10 20 30); echo $(( arr[1] + arr[2] )) $(( ${#arr[@]} * 2 ))
+### canto-c41
+i=0; echo $((i++ + ++i)) $i
+### canto-c42
+echo $(( 1 / 0 )) ; echo st=$?
+### canto-c43
+echo $((5 ** -1))
+### canto-c44
+n=010; echo $((n)) $((10#$n))
+### canto-c45
+echo $(( 64#Z )) $(( 2#102 ))
+### canto-c46
+if
+### canto-c47
+for in a; do echo; done
+### canto-c48
+case x in
+### canto-c49
+echo a |
+### canto-c50
+foo() { echo
+### canto-c51
+while true do echo; done
+### canto-c52
+echo $(( 
+### canto-c53
+{ echo a
+### canto-c54
+echo "a" 'b
+### canto-c55
+[[ a = a
+### canto-c56
+x=( a b
+### canto-c57
+cat <<FIM
+### canto-c58
+echo `echo a
+### canto-c59
+echo ${a
+### canto-c60
+set -e; f() { false; echo depois; }; f; echo fora
+### canto-c61
+bash -c 'set -e; false && true; echo continua'
+### canto-c62
+bash -c 'set -e; if false; then :; fi; false || true; echo ok; false; echo nao'
+### canto-c63
+bash -c 'set -e; f() { return 3; }; f || echo "f=$?"; f; echo nao'; echo $?
+### canto-c64
+bash -c 'set -e; ( false ); echo nao'; echo $?
+### canto-c65
+bash -c 'set -e; x=$(false); echo "x=[$x]"'; echo $?
+### canto-c66
+bash -c 'set -e; ! true; echo continua'
+### canto-c67
+bash -c 'set -e; true | false; echo continua-sem-pipefail'
+### canto-c68
+bash -c 'set -eo pipefail; true | false; echo nao'; echo $?
+### canto-c69
+bash -c 'set -u; echo ${1:-padrao}; echo $1'; echo $?
+### canto-c70
+bash -c 'set -u; a=(); echo "${a[@]}" ok'
+### canto-c71
+bash -c 'set -x; a=1; echo "$a" >/dev/null' 2>&1
+### canto-c72
+bash -c 'PS4="+[\$LINENO] "; set -x; echo oi' 2>&1
+### canto-c73
+bash -c 'set -v; echo verboso' 2>&1
+### canto-c74
+bash -n -c 'if true; then echo' ; echo $?
+### canto-c75
+bash -c 'echo $0 $# "$@"' nome a b
+### canto-c76
+bash -c 'exit 256'; echo $?; bash -c 'exit -1'; echo $?
+### canto-c78
+bash -c 'trap "echo pego" TERM; kill -TERM $$; echo depois'
+### canto-c79
+bash -c 'trap "echo fim" EXIT; exit 3'; echo $?
+### canto-c80
+bash -c 'trap "echo a" EXIT; trap - EXIT; echo b'
+### canto-c81
+bash -c 'f() { trap "echo ret" RETURN; :; }; f' ; echo ok
+### canto-c82
+bash -c 'trap "echo debug" DEBUG; x=1' 2>&1
+### canto-c83
+ls -d Documentos Downloads; ls -d .
+### canto-c84
+ls -l Documentos/projetos
+### canto-c85
+ls -la Documentos/projetos/site | tail -2
+### canto-c86
+ls -lt Documentos | head -3
+### canto-c87
+ls -lS Documentos | tail -3
+### canto-c88
+ls -s Documentos
+### canto-c89
+ls -sh Downloads
+### canto-c90
+ls -p Documentos; ls -F Documentos/projetos
+### canto-c91
+ls -l /dev/null | cut -c1-30
+### canto-c92
+ls -ld /tmp /home | cut -c1-11
+### canto-c93
+ls --color=never Documentos
+### canto-c94
+ls Documentos/*.{txt,csv}
+### canto-c95
+ls -Q Documentos | head -2
+### canto-c96
+ls ~ | wc -l; ls -a ~ | wc -l
+### canto-c97
+cat -s <<< $'a\n\n\n\nb'
+### canto-c98
+cat -E -T <<< $'a\tb'
+### canto-c99
+head -n 2 Documentos/notas.txt frutas.txt
+### canto-d01
+tail -n 3 Documentos/acesso.log | cut -d' ' -f1
+### canto-d02
+wc -c Downloads/foto.jpg
+### canto-d03
+sort -k2 -t: /etc/group | head -3
+### canto-d04
+sort -n -k3 -t: /etc/passwd | cut -d: -f1
+### canto-d05
+sort -r -n <<< $'3\n10\n2'
+### canto-d06
+sort -f <<< $'b\nA\na\nB'
+### canto-d07
+sort -b <<< $'  b\na\n c'
+### canto-d08
+sort -t, -k1,1 -u <<< $'a,1\na,2\nb,3'
+### canto-d09
+sort -h <<< $'1K\n2M\n500\n1G'
+### canto-d10
+sort -M <<< $'mar\njan\nfev'
+### canto-d11
+uniq -i <<< $'a\nA\nb'
+### canto-d12
+uniq -f1 <<< $'1 a\n2 a\n3 b'
+### canto-d13
+uniq -c <<< $'x\nx\ny' | cat -A
+### canto-d14
+cut -d: -f1,7 /etc/passwd | tail -2
+### canto-d15
+cut -c2- frutas.txt | head -2
+### canto-d16
+cut -f2 <<< $'a\tb\tc'
+### canto-d17
+cut -d, -f2 -s <<< $'sem\ncom,valor'
+### canto-d18
+cut --complement -c1 frutas.txt | head -2
+### canto-d19
+cut -d' ' -f2- <<< "um dois três"
+### canto-d20
+tr -s ' ' <<< "a    b     c"
+### canto-d21
+tr ' ' '\n' <<< "a b c"
+### canto-d22
+tr -dc 'a-z\n' <<< "Olá, Mundo 123!"
+### canto-d23
+tr '[:upper:][:lower:]' '[:lower:][:upper:]' <<< "AbC"
+### canto-d24
+tr 'abc' 'x' <<< "aabbcc"
+### canto-d25
+tr -t 'abc' 'xy' <<< "aabbcc"
+### canto-d27
+grep -c ^ Documentos/acesso.log
+### canto-d28
+grep -o '[0-9]\{3\}$' Documentos/acesso.log | sort | uniq -c
+### canto-d29
+grep -E -o '([0-9]{1,3}\.){3}[0-9]{1,3}' Documentos/acesso.log | sort -u
+### canto-d30
+grep -n '' frutas.txt | tail -2
+### canto-d31
+grep -i -c 'BANANA' frutas.txt
+### canto-d32
+grep -w -c 'a' Documentos/notas.txt
+### canto-d33
+grep -x 'maçã' frutas.txt | wc -l
+### canto-d34
+grep -v -c 'a' frutas.txt
+### canto-d35
+grep -E '^.{3}$' frutas.txt
+### canto-d36
+grep -e '^b' -e '^u' frutas.txt
+### canto-d37
+grep -F '.' Documentos/alunos.csv | head -2
+### canto-d38
+grep '\.' Documentos/alunos.csv | wc -l
+### canto-d39
+grep -E 'a+n' frutas.txt | head -1
+### canto-d40
+grep 'an\{2\}' frutas.txt; echo $?
+### canto-d41
+grep -r --include='*.txt' -l a Documentos
+### canto-d42
+grep -rc Bash Documentos | sort
+### canto-d43
+grep -n -A1 -B1 uva frutas.txt
+### canto-d44
+grep -o 'b.' frutas.txt | head -3
+### canto-d45
+sed 's/\(a\)\(n\)/\2\1/g' frutas.txt | head -1
+### canto-d46
+sed -n '/^b/!p' frutas.txt
+### canto-d47
+sed -E 's/[0-9]+/<&>/g' <<< "a1b22c333"
+### canto-d48
+sed 's/a*/x/g' <<< "baaac"
+### canto-d49
+sed -n '2{p;q}' frutas.txt
+### canto-d50
+sed '0,/banana/s//BANANA/' frutas.txt
+### canto-d51
+sed -e :a -e '$!N;s/\n/,/;ta' frutas.txt
+### canto-d52
+sed 'G' <<< $'a\nb'
+### canto-d53
+sed -n 'h;n;G;p' <<< $'1\n2\n3\n4'
+### canto-d54
+sed '1!G;h;$!d' frutas.txt
+### canto-d55
+sed 's/[[:space:]]\+/ /g' <<< $'a   b\tc'
+### canto-d56
+sed 's/\bba/BA/g' <<< "banana ba ab"
+### canto-d57
+sed -E 's/(^|_)([a-z])/\U\2/g' <<< "nome_do_arquivo"
+### canto-d58
+sed 's/x/y/w /tmp/sw.txt' <<< $'x1\nz\nx2' >/dev/null; cat /tmp/sw.txt
+### canto-d59
+sed '/^$/d' <<< $'a\n\nb'
+### canto-d60
+sed -n '$=' frutas.txt
+### canto-d61
+awk '{n+=NF} END {print n}' Documentos/notas.txt
+### canto-d62
+awk -F: '$3 >= 1000 {print $1}' /etc/passwd
+### canto-d63
+awk 'BEGIN{FS=","} NR==1{for(i=1;i<=NF;i++) print i": "$i}' Documentos/alunos.csv
+### canto-d64
+awk '{print $1, $NF}' OFS=' -> ' Documentos/acesso.log | head -2
+### canto-d65
+awk '!visto[$0]++' frutas.txt
+### canto-d66
+awk '{a[NR]=$0} END {for(i=NR;i>0;i--) print a[i]}' frutas.txt
+### canto-d67
+awk 'NR==2{next} {print}' frutas.txt | head -3
+### canto-d68
+awk '{ if ($0 ~ /^b/) print "B:" $0; else print "-" }' frutas.txt | head -3
+### canto-d69
+awk 'BEGIN { for (i=1; i<=3; i++) printf "%d%s", i, (i<3 ? "," : "\n") }'
+### canto-d70
+awk 'BEGIN { x = "10"; y = 9; print (x > y), ("10" > "9"), (x+0 > y) }'
+### canto-d71
+awk '{ print length() }' frutas.txt | head -2
+### canto-d72
+awk 'BEGIN { printf "%s %s\n", "a" }'
+### canto-d73
+awk 'BEGIN { print substr("hello", 0), substr("hello", -1, 3), substr("hello", 2) }'
+### canto-d74
+awk 'BEGIN { print index("banana", "nan"), match("banana", /na+/), RSTART, RLENGTH }'
+### canto-d75
+awk -v n=3 'BEGIN { while (n--) print n }'
+### canto-d76
+awk 'BEGIN { do { i++ } while (i < 5); print i }'
+### canto-d77
+awk 'BEGIN { s = sprintf("%05.1f", 3.14159); print s }'
+### canto-d78
+awk 'END { print $0 }' frutas.txt
+### canto-d79
+awk '{ $3 = "x" } 1' <<< "a b"
+### canto-d80
+awk 'NF' <<< $'a\n\nb'
+### canto-d81
+awk '{ print NR, FNR, FILENAME }' frutas.txt Documentos/notas.txt | sed -n '7,9p'
+### canto-d82
+awk 'BEGIN { split("2026-10-15", d, "-"); print d[3] "/" d[2] "/" d[1] }'
+### canto-d83
+awk 'BEGIN { print toupper(substr("ana", 1, 1)) substr("ana", 2) }'
+### canto-d84
+awk 'BEGIN { print 1/3 }' ; LC_NUMERIC=C awk 'BEGIN { print 1/3 }'
+### canto-d85
+awk 'BEGIN { print 2 ^ 0.5, exp(1), log(10), sqrt(2) }'
+### canto-d86
+awk 'BEGIN { printf "%c%c%c\n", 72, 105, 33 }'
+### canto-d87
+echo "a b c" | awk '{ $1 = ""; print }'
+### canto-d88
+echo "a,b;c" | awk -F'[,;]' '{ print $2 }'
+### canto-d89
+echo "x" | awk '{ print > "/dev/stderr" }' 2>&1
+### canto-d90
+awk 'BEGIN { n = split("", v); print n, length(v) }'

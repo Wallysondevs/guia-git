@@ -1,0 +1,126 @@
+### echo-simples
+echo oi
+echo -n sem; echo fim
+echo -e 'a\tb\nc'
+echo -E 'a\tb'
+echo -ne 'x\c' depois; echo
+echo -- -n
+echo "a   b"   c    d
+### comentarios
+echo a # comentario
+# linha toda
+echo b#nao
+### lista-e-ou
+true && echo sim || echo nao
+false && echo sim || echo nao
+false || false || echo terceiro
+true; echo $?; false; echo $?
+! true; echo $?
+! false; echo $?
+### pipeline-status
+false | true; echo $?
+true | false; echo $?
+false | true; echo ${PIPESTATUS[@]}
+set -o pipefail; false | true; echo $?
+### continua-barra
+echo um \
+dois \
+tres
+### varias-linhas-if
+if true; then
+echo dentro
+fi
+### comando-nao-encontrado
+xyz
+echo $?
+./naoexiste
+echo $?
+### erro-sintaxe-fi
+fi
+echo $?
+### erro-sintaxe-varios
+if then
+echo depois
+;
+echo ok
+| ls
+echo ok2
+)
+### erro-sintaxe-done
+for x in 1; do echo $x; done done
+while do echo; done
+### grupo-e-subshell
+{ echo a; echo b; }
+( echo c; echo d )
+x=1; ( x=2; echo $x ); echo $x
+x=1; { x=3; }; echo $x
+(exit 3); echo $?
+{ false; }; echo $?
+### subshell-cd
+(cd /tmp && pwd); pwd
+### true-false-colon
+:; echo $?
+true; echo $?
+false; echo $?
+### pwd-cd-basico
+pwd
+cd Documentos
+pwd
+cd ..
+pwd
+cd /nao/existe
+echo $?
+cd frutas.txt
+cd
+pwd
+cd -
+cd -
+### cd-erros
+cd -
+cd ""
+cd a b
+echo $?
+### cd-oldpwd
+cd /tmp
+cd -
+echo $OLDPWD
+### type-varios
+type ls
+type cd
+type if
+type xyz
+echo $?
+type -t echo ls if cd ll
+f() { echo oi; }
+type f
+### alias-basico
+alias
+alias oi='echo oi'
+oi
+alias oi
+unalias oi
+oi
+unalias nada
+### alias-na-mesma-linha
+alias ola='echo ola'; ola
+ola
+### history-basico
+echo um
+echo dois
+history
+### historico-expansao
+echo oi
+!!
+!echo
+echo a b c
+echo !$
+echo !*
+!nada
+^oi^tchau
+### hash-basico
+hash
+ls > /dev/null
+hash
+type ls
+PATH=$PATH
+hash

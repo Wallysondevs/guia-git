@@ -1,0 +1,261 @@
+### cat-variantes
+cat -n frutas.txt
+cat -A Documentos/notas.txt
+cat -b /dev/null
+cat nada
+cat Documentos
+cat frutas.txt nada | wc -l
+### head-tail
+head -3 frutas.txt
+head -n -5 frutas.txt
+tail -2 frutas.txt
+tail -n +6 frutas.txt
+head -c 10 frutas.txt; echo
+tail -c 8 frutas.txt
+head -n 1 frutas.txt Documentos/notas.txt
+head nada
+head -n x frutas.txt
+### wc-variantes
+wc frutas.txt
+wc -l frutas.txt
+wc -c frutas.txt; wc -m frutas.txt
+wc -w Documentos/notas.txt
+wc -l frutas.txt Documentos/notas.txt
+cat frutas.txt | wc -l
+cat frutas.txt | wc
+wc -L Documentos/notas.txt
+wc < frutas.txt
+### sort-uniq
+sort frutas.txt
+sort -r frutas.txt
+sort -u frutas.txt
+sort frutas.txt | uniq -c | sort -rn
+sort -t, -k2 -n Documentos/alunos.csv
+sort -t, -k4 -rn Documentos/alunos.csv
+sort -t, -k3 Documentos/alunos.csv
+printf '10\n9\n100\n1.5\n2,5\n' | sort -n
+printf 'b\nB\na\nA\n_c\n' | sort
+printf 'x 2K\ny 1M\nz 512\n' | sort -k2 -h
+uniq -d frutas.txt
+sort frutas.txt | uniq -u
+### cut-tr
+cut -d, -f1 Documentos/alunos.csv
+cut -d, -f1,3 Documentos/alunos.csv
+cut -d, -f2- Documentos/alunos.csv | head -2
+cut -c1-3 frutas.txt
+cut -c3 frutas.txt
+cut -f1 -d' ' Documentos/acesso.log | sort -u
+echo "Olá Mundo" | tr a-z A-Z
+echo "banana" | tr -d a
+echo "aaabbb" | tr -s ab
+echo "a1b2" | tr -cd '0-9'; echo
+echo maçã | tr ç c
+echo "abc" | tr 'a-c' 'A'
+cut -d, frutas.txt
+### grep-variantes
+grep banana frutas.txt
+grep -c banana frutas.txt
+grep -n a frutas.txt
+grep -v banana frutas.txt
+grep -i BASH Documentos/notas.txt
+grep -w uva frutas.txt
+grep -x uva frutas.txt
+grep -o 'an' frutas.txt | head -3
+grep -E '^(uva|maçã)$' frutas.txt
+grep 'ba\(na\)\+' frutas.txt
+grep -r Bash Documentos
+grep -rl 200 Documentos
+grep -l banana frutas.txt Documentos/notas.txt
+grep -q banana frutas.txt; echo $?
+grep nada frutas.txt; echo $?
+grep x nada; echo $?
+grep -A1 laranja frutas.txt
+grep -B1 -n uva frutas.txt
+grep -C1 laranja frutas.txt
+grep -e uva -e laranja frutas.txt
+grep '403\|404' Documentos/acesso.log
+grep -E '" (403|404)$' Documentos/acesso.log | cut -d' ' -f1
+grep -h a frutas.txt Documentos/notas.txt | head -2
+grep -m2 banana frutas.txt
+grep
+grep -P x frutas.txt
+grep '[' frutas.txt
+grep Documentos -e x
+### sed-variantes
+sed 's/banana/BANANA/' frutas.txt
+sed 's/a/A/g' frutas.txt | head -2
+sed -n '2p' frutas.txt
+sed -n '2,4p' frutas.txt
+sed '3d' frutas.txt
+sed '/banana/d' frutas.txt
+sed -n '/maçã/=' frutas.txt
+sed 's/\(.*\)a$/[\1]/' frutas.txt
+sed -E 's/(ba)(na)/\2\1/' frutas.txt | head -1
+sed 's/.*/\U&/' frutas.txt | head -2
+sed '1i\cabeçalho' frutas.txt | head -2
+sed '$a fim' frutas.txt | tail -2
+sed -e 's/a/1/' -e 's/b/2/' frutas.txt | head -1
+sed 'y/abc/xyz/' frutas.txt | head -1
+sed '2q' frutas.txt
+sed -n '$p' frutas.txt
+sed 's/a/b' frutas.txt
+sed 'k' frutas.txt
+sed -n p nada
+cp frutas.txt /tmp/f.txt; sed -i 's/uva/UVA/' /tmp/f.txt; cat /tmp/f.txt | tail -3
+sed 's/,/;/2' Documentos/alunos.csv | head -2
+sed '/^nome/!s/,/ | /g' Documentos/alunos.csv | head -2
+echo "a b c" | sed 's/ /\n/g'
+### awk-variantes
+awk '{print $1}' Documentos/acesso.log
+awk -F, '{print $1, $4}' Documentos/alunos.csv
+awk -F, 'NR>1 {s+=$4} END {print s/(NR-1)}' Documentos/alunos.csv
+awk -F, 'NR>1 && $4 >= 8 {print $1}' Documentos/alunos.csv
+awk '{print NR": "$0}' frutas.txt | head -3
+awk 'BEGIN {print 7/2; print 1/3; x=0.5; print x+1}'
+awk '{c[$1]++} END {for (k in c) n++; print n}' frutas.txt
+awk 'length > 5' frutas.txt
+awk '/ana/ {print toupper($0)}' frutas.txt
+awk -F, -v OFS=';' 'NR==2 {$1="X"; print}' Documentos/alunos.csv
+awk '{printf "%-8s|%3d\n", $1, NR}' frutas.txt | head -2
+awk 'BEGIN {printf "%.2f\n", 3.14159; printf "%d\n", 7.9}'
+awk 'NR==1, NR==2' frutas.txt
+awk '{ sub(/a/, "A"); print }' frutas.txt | head -2
+awk '{ n=gsub(/a/, "A"); print n, $0 }' frutas.txt | head -2
+awk 'BEGIN { s="a:b:c"; n=split(s, p, ":"); print n, p[3] }'
+awk 'BEGIN { print substr("abcdef", 2, 3), index("abc", "c"), length("maçã") }'
+awk 'BEGIN { if (match("foo123", /[0-9]+/)) print RSTART, RLENGTH }'
+awk '{print $NF}' Documentos/acesso.log | sort | uniq -c
+awk 'END {print NR}' frutas.txt
+awk -F, '$3 ~ /^S/' Documentos/alunos.csv
+awk '{'
+awk '{print}' nada
+### arquivos-ops
+mkdir /tmp/t1; cd /tmp/t1
+touch a b
+mkdir -v d1 d2
+mkdir d1
+mkdir x/y
+mkdir -p x/y; ls -R x
+cp a d1/; ls d1
+cp -v b c
+cp d1 d3
+cp -r d1 d3; ls d3
+mv c d1/; ls d1
+mv -v a z
+rm z; ls
+rm d1
+rm -r d1 d3; ls
+rmdir d2 x
+rmdir nada
+rm nada
+rm -f nada; echo $?
+rm -f; echo $?
+ln -s b lb; ls -l lb | cut -c1-10
+ln -s b lb
+cat lb
+chmod 600 b; stat -c '%a %A' b
+chmod u+x,g=r b; stat -c '%a' b
+chmod -v 644 b
+chmod xyz b
+touch -d '2026-01-02 03:04' b; stat -c '%y' b
+### basename-dirname-etc
+basename /a/b/arq.txt
+basename /a/b/arq.txt .txt
+basename -s .txt a.txt b.txt
+dirname /a/b/arq.txt
+dirname arq.txt
+dirname /
+realpath Documentos/../frutas.txt
+realpath -m /x/y/../z
+readlink -f /bin/sh
+basename
+### seq-expr-bc
+seq 3
+seq 2 5
+seq 1 2 9
+seq -s, 5
+seq -w 8 11
+seq 0.5 0.5 2
+seq 5 -1 3
+expr 2 + 3
+expr 10 / 3
+expr 5 \* 3
+expr length banana
+expr substr banana 2 3
+expr index banana n
+expr banana : 'ban\(.*\)'
+expr 1 +
+expr a + 1
+expr 3 \> 2
+expr 0 + 0; echo $?
+echo '1+2*3' | bc
+echo 'scale=2; 10/3' | bc
+echo 'scale=2; (9.5+7.0+8.5)/3' | bc
+echo '2^10; sqrt(16); 5%3' | bc
+echo '-0.5 + 0.25' | bc
+echo 'x=3; x*x' | bc
+bc <<< 'scale=3; 1/7'
+echo '1/0' | bc
+### date-seq-misc
+date -d '2026-10-15 10:30' '+%d/%m/%Y %H:%M %A %B %j %u'
+date -d '2026-01-01' +%F
+date -d @0 -u
+date -d '2026-10-15 + 1 day' +%F
+date -d 'xyz'
+date -u -d '2026-10-15 13:30' +%T
+### stat-du-df-file
+stat -c '%n %s %F %U %a' frutas.txt Documentos
+du -s Documentos
+du -sh Documentos Downloads
+du Documentos
+du -h --max-depth=1 Documentos
+file frutas.txt Documentos Documentos/projetos/backup.sh Documentos/relatorio.odt Downloads/foto.jpg
+file nada; echo $?
+file Documentos/alunos.csv Documentos/projetos/site/index.html
+stat nada
+### id-uname-etc
+whoami
+uname
+uname -s -r -m
+echo $HOSTNAME
+which ls bash nada; echo $?
+### xargs-basico
+echo a b c | xargs echo
+echo a b c | xargs -n 1 echo item
+printf 'x\ny\n' | xargs -I {} echo "<{}>"
+echo | xargs echo vazio
+echo | xargs -r echo vazio; echo $?
+printf 'frutas.txt\nDocumentos/notas.txt\n' | xargs wc -l
+echo 1 2 3 4 | xargs -n 2
+### find-basico
+find Documentos
+find Documentos -name '*.txt'
+find Documentos -type d
+find . -maxdepth 1 -name '*.txt'
+find Documentos -type f -size +100c
+find Documentos -name '*.csv' -exec wc -l {} \;
+find Documentos -name '*.log' -exec echo achei {} +
+find nada
+find Documentos -iname '*.TXT' -printf '%f %s\n'
+find Documentos -empty
+find . -path ./Downloads -prune -o -name '*.sh' -print
+find Documentos -foo
+### nl-paste-rev-etc
+nl frutas.txt
+nl -b a Documentos/notas.txt
+paste -sd, frutas.txt
+paste frutas.txt Documentos/notas.txt
+echo abc | rev
+tac frutas.txt | head -2
+printf 'a b\ncc d\n' | column -t
+printf '1\n2\n' > /tmp/a; printf '1\n3\n' > /tmp/b; diff /tmp/a /tmp/b; echo $?
+diff -u /tmp/a /tmp/b | tail -3
+comm /tmp/a /tmp/b
+fold -w 3 <<< abcdefgh
+### tee-yes-misc
+echo x | tee /tmp/tee.txt
+cat /tmp/tee.txt
+env -i A=1 env
+printenv HOME
+printenv NADA; echo $?
+echo frutas.txt | xargs cat | head -1

@@ -1,0 +1,101 @@
+### printf-basico
+printf '%s\n' a b c
+printf '%s-%s\n' 1 2 3
+printf '%d %i %5d|%-5d|%05d\n' 42 7 3 3 3
+printf '%x %X %o %#x %#o\n' 255 255 8 255 8
+printf '%c%c\n' Ana Bruno
+printf '%5s|%-5s|%.2s\n' ab ab abcdef
+printf '%%\n'
+printf 'sem nl'; echo
+printf '%s\n'
+printf '%d\n' abc
+printf '%d\n' 3.5
+printf '%d\n' "'A"
+printf '%b\n' 'a\tb' 'c\nd'
+printf '%q\n' 'a b' "it's" '' 'x$y'
+printf '\101\x42ç\n'
+printf -v v '%03d' 7; echo $v
+printf '%*s|\n' 5 x
+printf '%.0s-' 1 2 3; echo
+printf '%z\n' 1
+printf '%s %s\n' um
+### printf-float-locale
+printf '%.2f\n' 3,14159
+printf '%.2f\n' 3.5
+printf '%f %e %g\n' 1,5 1,5 1,5
+LC_NUMERIC=C printf '%.2f\n' 3.5
+printf '%5.1f|\n' 2,25
+printf '%d\n' 08
+printf '%d\n' 0x1f 010
+### read-varios
+read x <<< "um dois"; echo "[$x]"
+read -r a b <<< "1 2 3 4"; echo "[$a] [$b]"
+read <<< "  com espaços  "; echo "[$REPLY]"
+read -d , x <<< "a,b"; echo "[$x]"
+read -n 3 x <<< "abcdef"; echo "[$x]"
+read -N 2 x <<< "a
+b"; echo "[$x]"
+read x < /dev/null; echo "$? [$x]"
+echo "linha" | { read x; echo "[$x]"; }
+read -t 0 x < /dev/null; echo $?
+read -a v <<< "x y z"; echo ${v[2]}
+### set-opcoes
+set -o | head -5
+set -o pipefail; set -o | grep pipefail
+shopt extglob
+shopt -s extglob; shopt extglob
+shopt -p nullglob
+shopt nada
+set -o nada
+set -Z
+echo $-
+### trap-varios
+trap 'echo pego' USR1
+trap
+kill -USR1 $$
+trap - USR1
+trap -p
+trap 'echo x' NADA
+trap -l | head -2
+### kill-erros
+kill 999999
+kill %3
+kill
+kill -l 15
+kill -l TERM
+kill -s NADA 1
+### umask-e-times
+umask
+umask -S
+umask 077; umask; umask 0002
+### help-basico
+help cd
+help -s echo
+help nada
+### dirs-pushd
+pushd /tmp
+pushd /etc
+dirs
+dirs -v
+popd
+popd
+popd
+### declare-funcao-export
+f() { echo exportada; }
+export -f f
+bash -c f
+### command-builtin
+command -v ls echo if f nada; echo $?
+command -V cd
+builtin echo oi
+builtin nada
+command echo oi
+enable -n echo; type echo; enable echo
+### compgen
+compgen -W "maçã manga pera" -- ma
+compgen -b | head -3
+compgen -A function
+### caller-e-times
+times | wc -l
+### exit-interativo
+(exit 300); echo $?

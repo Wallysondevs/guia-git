@@ -1,0 +1,256 @@
+### canto2-e01
+echo -e 'a\x41\0101é\c depois'; echo
+### canto2-e02
+echo -e '\e[1mnegrito\e[0m' | cat -v
+### canto2-e03
+printf '%b\n' '\x41\101é' 'a\cb' 'c'
+### canto2-e04
+printf '%(%Y-%m-%d)T\n' 0
+### canto2-e05
+printf '%s\n' "${PS1@P}" | wc -l
+### canto2-e06
+printf '%5s|%-5s|%05d|%+d|% d\n' é ç 42 5 5
+### canto2-e07
+printf '%i %o %X %#o %#X\n' 010 8 255 8 255
+### canto2-e08
+printf '%e %E %g %G\n' 12345,678 0,000012 100000 1e-5
+### canto2-e09
+printf '%10.3e|%-12.2g|\n' 3,14159 31415,9
+### canto2-e10
+printf "%s\n" a\ b 'c d' "e f"
+### canto2-e11
+printf '%c' ABC; echo; printf '%.1s\n' xyz
+### canto2-e12
+printf '[%*d] [%-*d]\n' 5 42 5 42
+### canto2-e13
+printf '%s=%d ' a 1 b 2 c; echo
+### canto2-e14
+printf -v 'arr[2]' '%s' x; declare -p arr
+### canto2-e15
+printf '%q ' 'a"b' $'t\tab' 'é'; echo
+### canto2-e16
+echo $'\'' "\"" \\ '\'
+### canto2-e17
+echo "a\$b" 'a$b' a\$b
+### canto2-e18
+x=5; echo "${x}a" "$xa" "${x:+set}" "${y:-unset}"
+### canto2-e19
+echo "$((1+1))$(echo 2)${#HOME}"
+### canto2-e20
+v="a*"; echo $v; echo "$v"; touch a1 a2; echo $v; rm a1 a2
+### canto2-e21
+IFS=; v="a b"; set -- $v; echo $#; unset IFS
+### canto2-e22
+v=" a "; [ $v = a ] && echo sem-aspas
+### canto2-e23
+v=""; [ -z "$v" ] && echo vazio; [ -n $v ] && echo cuidado
+### canto2-e24
+a=b; b=c; echo ${!a} ${!a:-x}
+### canto2-e25
+f() { echo "${@: -1}" "${@:2:1}" "${*:1:2}"; }; f a b c
+### canto2-e26
+set -- 1 2 3 4 5; echo ${@:2} ${@:0:2} ${#@} ${!#}
+### canto2-e27
+declare -A m=([a]=1 [b]=2); echo ${#m[@]} ${m[@]:-x}
+### canto2-e28
+declare -A m; m[x y]=1; m["z"]=2; for k in "${!m[@]}"; do echo "<$k>"; done
+### canto2-e29
+a=(1 2 3); echo ${a[@]:-v} ${a[5]:-v} ${a:-v} ${#a}
+### canto2-e30
+unset a; a[2]=x; echo ${#a[@]} ${!a[@]}; a=(); echo ${#a[@]}
+### canto2-e31
+a=(x y); a[1]+=z; a+=(w); echo "${a[@]}"
+### canto2-e32
+s=hello; echo ${s:1:-1} ${s: -2} ${s:7} [${s:2:0}]
+### canto2-e33
+s=abcabc; echo ${s/b} ${s//b} ${s/#a/X} ${s/%c/X} ${s/[ab]/-}
+### canto2-e34
+s=/a/b/c.d.e; echo ${s##*/} ${s%/*} ${s#*.} ${s%%.*}
+### canto2-e35
+s=AbC; echo ${s,,} ${s^^} ${s~~} 2>/dev/null; echo ${s~}
+### canto2-e36
+f=arquivo.TXT; echo ${f%.*}.${f##*.} ${f,,}
+### canto2-e37
+x=10; y=x; echo $((y)) $(( $y + 1 ))
+### canto2-e38
+echo $(( 0x10 + 010 + 2#10 ))
+### canto2-e39
+(( x = 3, y = x * 2 )); echo $x $y
+### canto2-e40
+n=5; while (( n-- > 0 )); do printf '%d ' $n; done; echo
+### canto2-e41
+for ((i=1, j=10; i<=3; i++, j--)); do echo "$i $j"; done
+### canto2-e42
+for i in {a..c}{1..2}; do printf '%s ' $i; done; echo
+### canto2-e43
+for i in $(seq 3); do :; done; echo $i
+### canto2-e44
+i=0; until ((i >= 3)); do ((i++)); done; echo $i
+### canto2-e45
+for x in a b; do for y in 1 2; do [[ $y == 2 ]] && continue 2; echo $x$y; done; done
+### canto2-e46
+select x in a; do break; done <<< ""; echo "[$x]"
+### canto2-e47
+case 10 in [0-9]) echo um;; [0-9][0-9]) echo dois;; esac
+### canto2-e48
+case "" in "") echo vazio;; esac; case x in (x) echo par;; esac
+### canto2-e49
+shopt -s nocasematch; case ABC in abc) echo ok;; esac; [[ ABC =~ abc ]] && echo re
+### canto2-e50
+[[ abc < abd ]] && echo menor; [[ B > a ]] && echo B
+### canto2-e51
+[[ 1 -eq 01 ]] && echo igual; [[ 0x10 -eq 16 ]] && echo hex
+### canto2-e52
+[[ -e frutas.txt && ! -d frutas.txt ]] && echo arq
+### canto2-e53
+[[ frutas.txt -nt Documentos/notas.txt ]] && echo novo || echo velho
+### canto2-e54
+x=abc; [[ $x == *b* ]] && echo contem; [[ $x != a ]] && echo dif
+### canto2-e55
+[[ "a b" == a\ b ]] && echo esp
+### canto2-e56
+[ 1 -lt 2 ] && [ 2 -lt 3 ] && echo cadeia
+### canto2-e57
+test 5 -ge 5; echo $?; test a \< b; echo $?
+### canto2-e58
+[ -s frutas.txt ] && echo naovazio; [ -s /dev/null ] || echo vazio
+### canto2-e59
+[ -L /bin ] && echo link; [ -h /bin/sh ] && echo link2
+### canto2-e60
+f() { return 7; }; f; echo $? $?
+### canto2-e61
+f() { local -; set -e; false; }; f; echo "continua $?"
+### canto2-e62
+f() { echo $FUNCNAME; }; f; g() { f; }; g
+### canto2-e63
+f() { echo "a: $@"; shift; echo "d: $@"; }; f a b c; echo "g: $@"
+### canto2-e64
+f() { x=1; }; x=0; f; echo $x; ( f; x=9 ); echo $x
+### canto2-e65
+f() { echo dentro; } > /tmp/fo.txt; f; cat /tmp/fo.txt
+### canto2-e66
+f() ( cd /tmp; pwd ); f; pwd
+### canto2-e67
+declare -f nada; echo $?; type -t nada; echo $?
+### canto2-e68
+f() { :; }; declare -F f; declare -F | head -2
+### canto2-e69
+export -f nada; echo $?
+### canto2-e70
+unset -v PATH; echo "[$PATH]"; ls 2>&1 | head -1
+### canto2-e71
+x=1; unset x y z; echo ok
+### canto2-e72
+readonly R=1; unset R; R=2; echo $R
+### canto2-e73
+declare -r -i n=5; n=6; echo $n
+### canto2-e74
+declare -x V=1; env | grep '^V='
+### canto2-e75
+declare -i i; i=2+3; i+=1; echo $i; i=abc; echo $i
+### canto2-e76
+declare -l s="ABC"; s+="DEF"; echo $s
+### canto2-e77
+declare -n r=v; v=1; echo $r; unset -n r; echo ${r-unset}
+### canto2-e79
+local x 2>&1; echo st=$?
+### canto2-e80
+let a=5 b=a*2; echo $a $b; let "c = b / 0"; echo st=$?
+### canto2-e81
+shift 3; echo $?; set -- a; shift; echo $#
+### canto2-e82
+getopts ab: op -b; echo "$op $OPTARG $OPTIND"
+### canto2-e83
+OPTIND=1; while getopts ":a:" o -a; do echo "$o [$OPTARG]"; done
+### canto2-e84
+eval "x=1; y=2"; echo $x$y; eval echo '$x'
+### canto2-e85
+cmd='ls -d Doc*'; $cmd; eval "$cmd"
+### canto2-e86
+source /dev/null; echo $?; . nada 2>&1; echo $?
+### canto2-e87
+exec 9>&1; echo pelo9 >&9; exec 9>&-
+### canto2-e88
+{ echo erro >&2; } 2>&1 | cat
+### canto2-e89
+echo x 2>&1 >/dev/null | cat; (echo y >&2) 2>&1 >/dev/null | tr y Y
+### canto2-e90
+cat <<< "$(echo a; echo b)" | wc -l
+### canto2-e91
+cat <<< a <<< b
+### canto2-e92
+wc -l < frutas.txt > /tmp/c.txt; cat /tmp/c.txt
+### canto2-e93
+echo a > /tmp/x.txt b; cat /tmp/x.txt
+### canto2-e94
+> /tmp/vazio.txt; wc -c /tmp/vazio.txt
+### canto2-e95
+echo hi >> /tmp/ap.txt; echo hi >> /tmp/ap.txt; cat /tmp/ap.txt
+### canto2-e96
+ls nada 2>/dev/null || echo falhou
+### canto2-e97
+true > /dev/null 2>&1; echo $?
+### canto2-e98
+cat <(echo a) - <<< b
+### canto2-e99
+tee >(wc -l) < frutas.txt > /dev/null; sleep 0.1
+### canto2-f02
+times > /dev/null; echo $?
+### canto2-f03
+kill -l 9; kill -l SIGHUP; kill -l 130
+### canto2-f04
+trap 'echo 1' USR1; trap 'echo 2' USR2; trap -p USR1
+trap - USR1; trap -p
+### canto2-f05
+trap '' INT; trap -p INT
+### canto2-f06
+true &
+wait $!; echo st=$?
+### canto2-f07
+false & wait $!; echo $?
+### canto2-f08
+sleep 0.1 & sleep 0.1 & wait; echo fim
+### canto2-f09
+(exit 3) & wait $!; echo $?
+### canto2-f10
+wait 99999; echo $?
+### canto2-f11
+history -c; echo a > /dev/null; history | wc -l
+### canto2-f12
+hash -r; hash; type -t ls
+### canto2-f13
+umask 022; touch /tmp/um.txt; stat -c %a /tmp/um.txt; umask 002
+### canto2-f14
+cd /tmp && cd - && pwd
+### canto2-f15
+pushd /tmp > /dev/null; pushd / > /dev/null; dirs -l; popd > /dev/null; dirs; popd > /dev/null
+### canto2-f16
+dirs -c; dirs; pushd; echo $?
+### canto2-f17
+cd ..; pwd; cd ../..; pwd; cd /; cd ..; pwd
+### canto2-f18
+mkdir -p /tmp/l/a; ln -s /tmp/l/a /tmp/link; cd /tmp/link; pwd; pwd -P; cd ..; pwd
+### canto2-f19
+CDPATH=/tmp; mkdir -p /tmp/alvo; cd alvo; pwd
+### canto2-f20
+type cd pwd echo printf test; type -a printf
+### canto2-f21
+command ls -d /tmp; command -v nada || echo naoexiste
+### canto2-f22
+alias a1='echo um' a2='echo dois'; alias a1 a2; unalias a1 a2
+### canto2-f23
+alias e='echo '; alias x='X'; e x
+### canto2-f24
+help -s cd echo | head -2
+### canto2-f25
+help -d read
+### canto2-f26
+enable -n cd; type cd; enable cd; type cd
+### canto2-f27
+caller; echo $?
+### canto2-f28
+compgen -v | grep -c '^HOME$'; compgen -a | head -1; compgen -k | head -2
+### canto2-f29
+complete -W "a b" cmd; complete -p cmd; complete -r cmd; complete -p cmd; echo $?
+### canto2-f30
+ulimit -n; ulimit

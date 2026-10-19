@@ -1,0 +1,145 @@
+### ls-variantes
+ls -v Documentos
+ls -d */
+LC_ALL=C.UTF-8 ls
+ls -1 Documentos | head -3
+ls -S Downloads
+ls -t Documentos
+ls -r Documentos
+ls -R Documentos/projetos
+ls -A | head -4
+ls -lhS Downloads | head -3
+ls Documentos/*.txt
+ls -m Documentos
+ls nada; echo $?
+### ls-arquivos-espaco
+touch 'Minhas notas.txt' "it's.txt"
+ls
+ls -l | grep notas | cut -c1-25
+### copiar-chaves
+cp frutas.txt{,.bak}; ls frutas*
+cp -n frutas.txt frutas.txt.bak; echo $?
+mv -i frutas.txt.bak frutas.txt.bak
+### sort-variado
+sort -t, -k2,2n Documentos/alunos.csv
+sort -t, -k4,4nr -k1,1 Documentos/alunos.csv | head -3
+sort -k1.2,1.3 frutas.txt | head -3
+printf 'b\na\nb\n' | sort -u
+printf '3\n1\n2\n' | sort -c; echo $?
+sort -o /tmp/o.txt frutas.txt; head -2 /tmp/o.txt
+printf 'v1.10\nv1.9\nv1.2\n' | sort -V
+### grep-cores-contexto
+grep -n -i 'COMPRAR\|bash' Documentos/notas.txt
+grep -c '' frutas.txt
+grep -E 'a{2}' frutas.txt; echo $?
+grep -E '(an){2}' frutas.txt
+grep -w 'ba' frutas.txt; echo $?
+grep -ow '[0-9]\+' Documentos/alunos.csv | head -3
+grep -rn --include='*.css' color Documentos
+grep -L banana frutas.txt Documentos/notas.txt
+grep -v -e banana -e maçã frutas.txt
+grep ^$ frutas.txt; echo $?
+grep -x -F 'uva' frutas.txt
+### sed-mais
+sed -n '/^C/,/^E/p' Documentos/notas.txt
+sed '2,$d' frutas.txt
+sed '1~2d' frutas.txt
+sed -n '/maçã/{=;p}' frutas.txt
+sed 's/[aeiou]//g' frutas.txt | head -2
+sed -E 's/^([^,]+),([^,]+).*/\2 \1/' Documentos/alunos.csv | head -2
+sed 's/a/@/2g' frutas.txt | head -1
+sed '/^$/d; s/^/> /' Documentos/notas.txt
+sed = frutas.txt | head -4
+sed -n 'l' <<< $'a\tb'
+sed 'N;s/\n/+/' frutas.txt
+sed '$!d' frutas.txt
+sed 'c\trocado' Documentos/notas.txt | head -1
+printf 'x\n' | sed 'a\
+linha nova'
+sed --version | head -1
+### awk-mais
+awk -F, 'NR>1 {printf "%-6s %s\n", $1, $3}' Documentos/alunos.csv
+awk -F, 'NR>1 {n[$3]++} END {for (c in n) total++; print total}' Documentos/alunos.csv
+awk '{ $2 = "X"; print; print NF }' <<< "a b c"
+awk 'BEGIN { OFS="-" } { $1=$1; print }' <<< "a b c"
+awk -v nome=Ana 'BEGIN { print "Olá, " nome }'
+awk 'BEGIN { n = split("a,b,,c", p, ","); for (i=1; i<=n; i++) printf "[%s]", p[i]; print "" }'
+awk '{ print length($0) }' Documentos/notas.txt
+awk 'NR % 2 == 0' frutas.txt
+awk '{ s = s $0 } END { print s }' frutas.txt
+awk 'BEGIN { printf "%5.2f|%-5d|%x|%c\n", 3.14159, 42, 255, 65 }'
+awk 'BEGIN { print int(7.9), int(-7.9), 2^10, 10 % 3 }'
+awk 'BEGIN { print substr("Olá mundo", 1, 3) }'
+awk '$1 ~ /^b/ { c++ } END { print c+0 }' frutas.txt
+awk 'BEGIN { while ((getline l < "frutas.txt") > 0) n++; print n }'
+awk 'BEGIN { "date +%Y" | getline a; print (a > 2000) }'
+awk '{ print > "/tmp/awk-" NR ".txt" }' <<< $'x\ny'; cat /tmp/awk-2.txt
+awk 'function dobro(x) { return 2*x } BEGIN { print dobro(21) }'
+awk 'BEGIN { x["a"]=1; delete x["a"]; print length(x) }'
+echo "3 4" | awk '{ print $1 * $2, $1 / $2, $1 - $2 }'
+awk 'BEGIN { print 1e6, 1e7, 0.1 + 0.2, 100000 * 100000 }'
+### bc-mais
+echo 'scale=4; 22/7' | bc
+echo 'scale=2; 7.0 + 8.5' | bc
+echo '10 % 3; -7 / 2' | bc
+echo 'a=5; b=3; a*b; a^2' | bc
+echo 'if (3 > 2) print "maior\n"' | bc
+echo 'for (i=1; i<=3; i++) i' | bc
+echo 'sqrt(2)' | bc -l
+echo 'scale=2; sqrt(2)' | bc
+echo '1.5 * 2' | bc
+echo 'obase=2; 10' | bc
+echo 'ibase=16; FF' | bc
+echo '0.1 + 0.2' | bc
+### date-mais
+date -d '2026-10-15' '+%A, %d de %B de %Y'
+date -d '2026-10-15 10:30' '+%s'
+date -d '@1760535000' '+%F %T'
+date -d '2026-02-28 + 1 day' +%F
+date -d '2026-10-15 - 2 weeks' +%F
+date -d 'next monday' >/dev/null; echo $?
+date -d '2026-10-15' -I
+date -d '2026-10-15 10:30:15' -Iseconds
+date -d '2026-10-15' '+%U %V %W %j %u %w'
+date -d '2026-10-05' '+%e|%-d|%_m|%y'
+### stat-formatos
+stat -c '%n %s %a %A %U %G %F' frutas.txt Documentos Documentos/projetos/backup.sh
+stat --printf='%n\t%s\n' frutas.txt
+stat -c '%y' Documentos/notas.txt
+stat frutas.txt | head -2
+### find-mais
+find Documentos -maxdepth 1 -type f -name '*.*' | sort
+find . -name 'frutas*' -o -name 'notas*'
+find Documentos -not -name '*.txt' -type f | sort
+find Documentos -mindepth 2
+find Documentos -type f -newer Documentos/alunos.csv | sort
+find Downloads -size +1M | sort
+find Documentos -name '*.sh' -perm -u+x
+find . -maxdepth 1 -empty
+find Documentos -name '*.log' -printf '%p %k\n'
+find /nada 2>/dev/null; echo $?
+### outros-utils
+tr '[:lower:]' '[:upper:]' < frutas.txt | head -2
+tr -d '\n' < frutas.txt | wc -c
+echo "a,b,c" | tr ',' '\n'
+echo "hello" | tr 'a-y' 'b-z'
+uniq -c frutas.txt
+sort frutas.txt | uniq -cd
+nl -ba -s'. ' frutas.txt | head -2
+paste -d: Documentos/notas.txt frutas.txt | head -2
+paste - - < frutas.txt
+column -t -s, Documentos/alunos.csv
+rev Documentos/notas.txt
+wc -w frutas.txt Documentos/notas.txt
+echo 'um dois' | wc -w
+shuf -n 1 -e a > /dev/null; echo $?
+basename -a /x/a.txt /y/b.txt
+realpath --relative-to=Documentos frutas.txt
+tac Documentos/notas.txt
+head -c 5 Documentos/notas.txt | od -c
+echo -n abc | base64
+echo YWJj | base64 -d; echo
+echo abc | sha256sum
+echo abc | md5sum
+seq 3 | paste -sd+ | bc
+factor 360

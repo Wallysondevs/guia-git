@@ -1,0 +1,85 @@
+### if-elif
+x=5
+if [ $x -gt 10 ]; then echo grande; elif [ $x -gt 3 ]; then echo medio; else echo pequeno; fi
+if false; then echo a; fi; echo $?
+### for-basico
+for i in 1 2 3; do echo $i; done
+for i; do echo $i; done
+set -- p q; for i; do echo $i; done
+for ((i=0; i<3; i++)); do echo "i=$i"; done
+for ((;;)); do break; done; echo saiu
+for f in Documentos/*.txt; do echo "$f"; done
+### while-until
+i=0; while [ $i -lt 3 ]; do echo $i; i=$((i+1)); done
+until [ $i -eq 0 ]; do echo $i; ((i--)); done
+while read -r l; do echo "> $l"; done < Documentos/notas.txt
+### break-continue
+for i in 1 2 3 4 5; do [ $i = 2 ] && continue; [ $i = 4 ] && break; echo $i; done
+for i in 1 2; do for j in a b c; do [ $j = b ] && continue 2; echo $i$j; done; done
+for i in 1 2; do for j in a b; do break 2; done; echo nunca; done; echo fim
+break
+echo $?
+continue 0
+f() { break; }; for i in 1 2; do f; echo $i; done
+### case-basico
+for x in maçã Banana 42 xyz ''; do
+case $x in
+  maçã|pera) echo fruta;;
+  [Bb]*) echo B;;
+  [0-9]*) echo numero;;
+  '') echo vazio;;
+  *) echo outro;;
+esac
+done
+### case-fallthrough
+case a in a) echo um;& b) echo dois;;& *) echo tres;; esac
+case b in (a) echo a;; (b) echo b;; esac
+shopt -s nocasematch; case SIM in sim) echo ok;; esac; [[ ABC == abc ]] && echo igual
+### select-basico
+select f in maçã pera; do echo "escolheu $f ($REPLY)"; break; done
+2
+### cond-duplo-colchete
+x=abc
+[[ $x == a* ]] && echo comeca
+[[ $x == "a*" ]] || echo literal
+[[ $x =~ ^a(b)c$ ]] && echo ${BASH_REMATCH[0]} ${BASH_REMATCH[1]}
+[[ -n $x && -z $nada ]] && echo ok
+[[ ! -e /nada ]] && echo naoexiste
+[[ 10 -gt 9 ]] && echo num
+[[ 10 > 9 ]] || echo lexico
+[[ -v x ]] && echo definida
+[[ -d Documentos && -f frutas.txt ]] && echo arquivos
+[[ (1 -eq 1 || 1 -eq 2) && 2 -eq 2 ]] && echo grupos
+re='^[0-9]+$'; [[ 123 =~ $re ]] && echo numero
+[[ "a.b" =~ a.b ]] && echo ponto
+[[ "axb" =~ "a.b" ]] || echo citado
+### cond-erros
+[[ a b ]]
+[[ ]]
+[[ -z ]]
+echo fim
+[[ x =~ [ ]]; echo $?
+### test-colchete
+[ 1 -eq 1 ] && echo sim
+[ "a" = "a" ]; echo $?
+[ "a" != "b" ]; echo $?
+[ -z "" ]; echo $?
+[ -n "" ]; echo $?
+[ -f frutas.txt ]; echo $?
+[ -d frutas.txt ]; echo $?
+[ -e /nada ]; echo $?
+[ -r frutas.txt -a -w frutas.txt ]; echo $?
+[ 2 -lt 1 -o 1 -lt 2 ]; echo $?
+[ ! -e /nada ]; echo $?
+[ \( 1 -eq 1 \) ]; echo $?
+test -x Documentos/projetos/backup.sh; echo $?
+[ abc ]; echo $?
+[ ]; echo $?
+### test-erros
+[ 1 -eq 1
+[ = a ]
+[ a = b c ]
+[ abc -eq 1 ]
+[ 1 -eq ]
+x=; [ $x = a ]
+[ "a" == "a" ]; echo $?

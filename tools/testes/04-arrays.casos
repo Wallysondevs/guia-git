@@ -1,0 +1,58 @@
+### array-basico
+a=(maçã banana "uva verde")
+echo ${a[0]} ${a[2]}
+echo ${a[@]}
+echo ${#a[@]} ${#a[2]}
+echo ${!a[@]}
+a+=(kiwi); echo ${a[@]}
+a[10]=x; echo ${!a[@]}
+echo ${a[-1]} ${a[@]: -2}
+for f in "${a[@]}"; do echo "[$f]"; done
+### array-fatias
+a=(a b c d e)
+echo ${a[@]:1:2} ${a[@]:3}
+echo ${a[@]/a/A} ${a[@]^}
+echo "${a[@]/%/.jpg}"
+echo ${a[*]}
+IFS=,; echo "${a[*]}"; unset IFS
+### array-esparso
+a=([1]=um [5]=cinco)
+echo ${#a[@]} ${!a[@]}
+a+=(seis); echo ${!a[@]}
+unset 'a[1]'; declare -p a
+### array-declare-p
+a=(1 "dois tres" '$x')
+declare -p a
+declare -a b; declare -p b
+### array-negativo-erro
+frutas=(a b c)
+echo ${frutas[-10]}
+echo $?
+echo ${frutas[-1]}
+### assoc-basico
+declare -A cap=([PE]=Recife [BA]=Salvador [AM]=Manaus)
+echo ${cap[BA]}
+echo ${!cap[@]}
+echo ${cap[@]}
+declare -p cap
+cap[SP]="São Paulo"; echo ${#cap[@]}
+for k in "${!cap[@]}"; do echo "$k=${cap[$k]}"; done
+unset 'cap[PE]'; echo ${!cap[@]}
+### assoc-contagem
+declare -A c
+for f in banana maçã banana; do (( c[$f]++ )); done
+for k in "${!c[@]}"; do echo $k ${c[$k]}; done
+### assoc-ordem
+declare -A b; for k in k1 k2 k3 k4 k5 k6 k7 k8 k9 k10; do b[$k]=1; done; echo "${!b[@]}"
+declare -A n=([um]=1 [dois]=2 [tres]=3 [quatro]=4 [cinco]=5)
+echo "${!n[@]}"
+### mapfile-basico
+mapfile -t linhas < frutas.txt
+echo ${#linhas[@]} ${linhas[1]}
+mapfile -t -n 2 dois < frutas.txt; echo ${dois[@]}
+mapfile -t -s 5 fim < frutas.txt; echo ${fim[@]}
+readarray -t r < <(printf 'x\ny\n'); declare -p r
+printf 'a\0b\0' | { mapfile -d '' -t z; declare -p z; }
+### read-array
+read -a arr <<< "um dois tres"
+echo ${arr[1]} ${#arr[@]}

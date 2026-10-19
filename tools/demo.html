@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demonstração do simulador | Guia Bash</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+<style>body{max-width:900px;margin:0 auto;padding:16px;font-family:system-ui,sans-serif;background:var(--bg);color:var(--text)}</style>
+</head>
+<body>
+<h1>Demonstração do simulador (página de teste das ferramentas)</h1>
+<p>Esta página não faz parte do curso: serve para conferir a interface do <code>assets/bashsim.js</code>.</p>
+
+<div class="try" data-setup="mkdir projeto;;cd projeto" data-goal="dir:~/projeto/src,var:nome=Ana" data-solucao="mkdir src;;nome=Ana">
+<p class="try-head">Experimente você mesmo</p>
+<p class="try-task"><strong>Missão:</strong> crie a pasta src e uma variável nome com o valor Ana.</p>
+</div>
+
+<div class="tryscript" data-file="saudacao.sh" data-args="Ana" data-goal="out:Bom dia\, Ana!">
+<p class="try-head">Experimente: edite e rode o script</p>
+<p class="try-task"><strong>Missão:</strong> mude o script para dizer "Bom dia" em vez de "Olá" e clique em Rodar.</p>
+<pre class="script">#!/usr/bin/env bash
+nome=$1
+echo "Olá, $nome!"
+</pre>
+<pre class="solucao">#!/usr/bin/env bash
+nome=$1
+echo "Bom dia, $nome!"
+</pre>
+</div>
+
+<div class="tryscript" data-file="pergunta.sh">
+<p class="try-head">Experimente: edite e rode o script</p>
+<p class="try-task">Rode e responda às perguntas (o <code>read</code> abre um campo).</p>
+<pre class="script">#!/usr/bin/env bash
+read -p "Seu nome: " nome
+read -sp "Senha: " senha; echo
+echo -e "\e[1;32mOlá, $nome!\e[0m (senha com ${#senha} letras)"
+ls nada
+</pre>
+</div>
+
+<script src="../assets/bashsim.js"></script>
+</body>
+</html>

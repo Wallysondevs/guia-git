@@ -1,0 +1,174 @@
+### chaves
+echo {a,b,c}
+echo x{1,2}y
+echo {1..5}
+echo {5..1}
+echo {a..e}
+echo {01..10}
+echo {1..10..3}
+echo {a,b}{1,2}
+echo {a,{b,c}}d
+echo {a}
+echo {}
+echo a{,b}
+n=3; echo {1..$n}
+echo "{a,b}"
+echo \{a,b\}
+echo {x..z}{1..2}
+### til
+echo ~
+echo ~/Documentos
+echo ~ana ~root ~nobody ~nada
+echo "~"
+x=~/a:~/b; echo $x
+echo ~+ 
+cd /tmp; echo ~-; cd
+### parametros-basico
+nome=Ana
+echo $nome ${nome} "$nome" '$nome'
+echo ${#nome}
+echo ${nada:-padrao} ${nada-p2}
+vazio=; echo "[${vazio:-p}]" "[${vazio-p}]"
+echo ${nome:+tem} "[${nada:+tem}]"
+echo ${novo:=atribuido}; echo $novo
+### parametros-padroes
+arq=foto.backup.tar.gz
+echo ${arq#*.} ${arq##*.} ${arq%.*} ${arq%%.*}
+echo ${arq/./_} ${arq//./_}
+echo ${arq/#foto/img} ${arq/%gz/xz}
+echo ${arq/backup}
+s="banana"; echo ${s//a/A} ${s/a/[&]}
+echo ${s^} ${s^^} ${s,} ${s^^[an]}
+S=OLA; echo ${S,,} ${S,}
+### parametros-substring
+s=abcdefgh
+echo ${s:2} ${s:2:3} ${s: -3} ${s: -3:2} ${s:(-2)}
+echo ${s:0:-2}
+echo ${s:10}
+x=maçã; echo ${#x} ${x:2:2}
+### parametros-erro
+echo ${nada:?mensagem}
+echo depois
+echo ${nada:?}
+echo ${nome
+### parametros-indiretos
+var=nome; nome=Ana
+echo ${!var}
+pre_a=1 pre_b=2
+echo ${!pre_*}
+echo "${!pre_@}"
+### transformacoes
+s='a b'; echo ${s@Q}
+t='x\ty'; echo ${t@E}
+echo ${s@U} ${s@u}
+n=5; echo ${n@A}
+declare -i k=3; echo ${k@a}
+### aritmetica-expansao
+echo $((1+2*3)) $(( (1+2)*3 )) $((7/2)) $((7%3)) $((2**10)) $((-7/2))
+x=5; echo $((x+1)) $((x++)) $x $((++x)) $((x--)) $x
+echo $((0x1F)) $((017)) $((2#1010)) $((36#zz)) $((64#@))
+echo $((1<2)) $((1>2)) $((1==1)) $((1!=1)) $((!0)) $((~0))
+echo $((5&3)) $((5|3)) $((5^3)) $((1<<4)) $((256>>2))
+echo $((1 ? 10 : 20)) $((0 ? 10 : 20))
+echo $((x=3, x*2))
+echo $((2**62)) $((2**63)) $((2**64))
+echo $(( 9223372036854775807 + 1 ))
+a=2+3; echo $((a*2))
+echo $((nada + 1))
+### aritmetica-erros
+echo $((1/0))
+echo $((2 + ))
+echo $(( 08 ))
+echo $(( 1 2 ))
+echo $((x = ))
+echo fim
+### aritmetica-comando
+((x=5)); echo $x
+(( x > 3 )) && echo maior
+(( 0 )); echo $?
+(( 1 )); echo $?
+let y=2*3; echo $y
+let "z = 1 + 1" w=4; echo $z $w
+let 0; echo $?
+### subst-comando
+echo $(echo oi)
+echo "$(echo a; echo b)"
+echo $(echo a; echo b)
+x=$(printf 'a\n\n\n'); echo "[$x]"
+echo `echo crases`
+echo $(echo $(echo aninhado))
+echo "$(echo "aspas dentro")"
+echo $(false); echo $?
+x=$(exit 4); echo $?
+### subst-comando-arquivo
+x=$(< frutas.txt); echo "$x" | head -2
+### separacao-palavras
+x="a   b   c"
+for p in $x; do echo "[$p]"; done
+for p in "$x"; do echo "[$p]"; done
+y="  espaços  nas  pontas  "
+echo [$y]
+echo ["$y"]
+IFS=:; z="a:b::c"; for p in $z; do echo "<$p>"; done
+unset IFS
+### separacao-ifs-misto
+IFS=' :'
+v='a : b:c  d'
+printf '<%s>\n' $v
+IFS=,
+w=',a,,b,'
+printf '<%s>\n' $w
+### arroba-estrela
+set -- "a b" c "" d
+echo $#
+printf '<%s>\n' "$@"
+printf '<%s>\n' "$*"
+printf '<%s>\n' $@
+printf '<%s>\n' $*
+IFS=-; echo "$*"; unset IFS
+set --
+printf '<%s>\n' "$@"
+echo "[$@]"
+### curingas
+cd Documentos
+echo *
+echo *.txt
+echo ???????.csv
+echo [an]*
+echo [!a]*
+echo *.nada
+echo projetos/*
+echo */
+cd
+echo .*
+echo Doc*/*.log
+### curingas-opcoes
+cd Documentos
+shopt -s nullglob; echo *.nada; shopt -u nullglob
+shopt -s failglob; echo *.nada; echo $?; shopt -u failglob
+shopt -s nocaseglob; echo *.TXT; shopt -u nocaseglob
+shopt -s extglob; echo !(*.txt|*.log); echo @(notas|alunos).*; echo +([a-z]).csv
+shopt -s globstar; echo **/*.css; echo **
+set -f; echo *; set +f
+cd ~; shopt -s dotglob; echo .b*; echo * | head -c 40; echo
+### ordem-curingas
+cd /tmp
+touch aula1.txt aula10.txt aula2.txt Aula3.txt _x.txt a-b.txt ab.txt
+echo *
+ls
+### aspas
+echo 'simples $HOME \n'
+echo "duplas $HOME \$HOME \\ \" '"
+echo $'ansi\ttab\nnova'
+echo "a"'b'c
+echo ""
+echo '' x
+x="com   espaços"; echo $x; echo "$x"
+echo "$(echo "a   b")"
+echo \$HOME \\ \' \"
+echo "\a\t"
+### aspas-incompletas
+echo "abc
+def"
+echo 'x
+y'

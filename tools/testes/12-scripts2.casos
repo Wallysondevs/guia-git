@@ -1,0 +1,198 @@
+### trap-err-lineno [script]
+set -euo pipefail
+trap 'echo "erro na linha $LINENO" >&2' ERR
+echo copiando
+cp nada.txt /tmp/
+echo nunca
+### trap-exit-set-e [script]
+set -e
+touch ~/rascunho.txt
+trap 'rm -f ~/rascunho.txt; echo limpou' EXIT
+ls nada
+echo nunca
+### trap-err-sem-e [script]
+trap 'echo "falhou: $BASH_COMMAND ($?)"' ERR
+false
+ls nada 2>/dev/null
+echo fim
+### readonly-script [script]
+readonly X=1
+X=2
+echo "depois $X"
+X=3; echo "mesma linha"
+echo fim
+### funcname-pilha [script]
+a() { b; }
+b() { echo "${FUNCNAME[*]}"; echo "${BASH_SOURCE[*]}"; echo "${BASH_LINENO[*]}"; }
+a
+### break-em-funcao [script]
+f() { break; }
+for i in 1 2 3; do f; echo "i=$i"; done
+### select-stdin [script stdin="2\n3\n"]
+PS3="Opção: "
+select x in maçã pera uva; do echo "voce: $x"; done
+echo "fim $?"
+### getopts-mensagens [script args="-n -o"]
+while getopts "o:" op; do echo "op=$op"; done
+### read-p-sem-tty [script stdin="SIM\n"]
+read -p "Continuar? " r
+echo "[$r]"
+read -sp "Senha: " s
+echo "[$s]"
+### heredoc-sem-fim-b [script]
+echo antes
+cat <<FIM
+linha
+### procsub-heredoc-erro [script]
+cat <<(ls)
+echo depois
+### recursao-aritmetica [script]
+idade=idade
+(( idade + 1 ))
+echo "st=$?"
+### arrays-assoc-ordem [script]
+declare -A capitais=([PE]=Recife [BA]=Salvador [AM]=Manaus)
+echo "${!capitais[@]}"
+declare -A c
+for f in maçã banana maçã; do (( c[$f]++ )); done
+for k in "${!c[@]}"; do echo "$k ${c[$k]}"; done
+a=(x y z); unset 'a[1]'; declare -p a
+echo "${a[@]/%/.jpg}"
+### mapfile-opcoes [script]
+mapfile -t -O 1 l < frutas.txt; declare -p l | cut -c1-40
+mapfile -t -c 2 -C 'echo cb' m < frutas.txt
+exec 3< Documentos/notas.txt; mapfile -u 3 -t n; echo "${#n[@]}"
+printf 'a\0b\0' > /tmp/z; mapfile -d '' z < /tmp/z; declare -p z
+mapfile -x
+### strings-transform [script]
+s="O'Neil e \"aspas\""; echo "${s@Q}"
+t='a\tb'; echo "${t@E}"
+declare -i n=5; echo "${n@A}"
+arr=(1 2); echo "${arr[@]@A}"
+nome=ana; echo "${nome@U} ${nome@u} ${nome@L}"
+printf '%.0s-' {1..5}; echo
+printf '%*s|%-*s|\n' 6 ab 4 c
+printf '%d\n' 08
+printf -v x '%05.1f' 3,14159; echo "$x"
+### regex-erro-script [script]
+[[ abc =~ ( ]]
+echo "st=$?"
+[[ 2026-10-15 =~ ^([0-9]{4})-([0-9]{2}) ]] && echo "${BASH_REMATCH[1]} ${BASH_REMATCH[2]}"
+re='([0-9]{3})'; [[ "tel 123-456" =~ $re ]] && echo "${BASH_REMATCH[0]}"
+### locale-numeros [script]
+printf '%.2f\n' 3.5
+printf '%.2f\n' 3,14159
+LC_NUMERIC=C printf '%.2f\n' 3.5
+LC_ALL=pt_BR.UTF-8 LC_NUMERIC=C printf '%.2f\n' 3.5
+echo $((3,5 + 1))
+seq 0.5 0.5 2
+printf '1.000\n2,5\n100\n' | sort -n
+echo maçã | cut -c1-3
+echo maçã | cut -c4
+awk 'BEGIN { x = gensub(/a/, "b", "g", "aaa"); print x }'
+expr 5 * 3
+### indirecao [script]
+campo=cidade; cidade=Recife
+echo "${!campo}"
+printf -v "$campo" '%s' Olinda; echo "$cidade"
+f() { local -n ref=$1; ref=mudou; }; f cidade; echo "$cidade"
+echo "${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}"
+### descritores-exec [script]
+exec 3> /tmp/log.txt
+echo "um" >&3
+exec 3>&-
+exec 4< frutas.txt
+read -r a <&4; read -r b <&4
+echo "$a $b"
+exec 4<&-
+cat /tmp/log.txt
+### source-config [script]
+printf 'nome=Ana\ncidade="Porto Alegre"\n' > config.sh
+. ./config.sh
+echo "$nome / $cidade"
+source config.sh extra; echo "$1"
+### xargs-paralelo [script]
+printf '1\n2\n3\n' | xargs -P 2 -I {} echo "item {}"
+printf 'a b\nc\n' | xargs -L 1 echo linha:
+echo "frutas.txt" | xargs -t wc -l
+### jobs-script [script]
+sleep 0.2 &
+pid=$!
+jobs -l | sed 's/[0-9]\{3,\}/PID/'
+wait "$pid"; echo "status $?"
+sleep 5 &
+kill %1
+wait; echo "status $?"
+jobs
+### compgen-complete [script]
+compgen -W "start stop status" -- st
+complete -W "start stop" servico
+complete -p servico
+COMP_WORDS=(servico st); COMP_CWORD=1
+COMPREPLY=( $(compgen -W "start stop status" -- "${COMP_WORDS[COMP_CWORD]}") )
+echo "${COMPREPLY[@]}"
+### extglob-script [script]
+shopt -s extglob
+cd Documentos
+echo !(*.txt|*.odt)
+echo @(notas|alunos).*
+### shopt-globstar-script [script]
+shopt -s globstar
+cd Documentos
+for f in **/*.css **/*.sh; do echo "$f"; done
+### sh-dash [script]
+printf 'echo -e "a\\tb"\necho $((1+1))\n[[ 1 == 1 ]] && echo dc\narr=(1 2)\n' > d.sh
+sh d.sh
+echo "st=$?"
+### funcoes-retorno [script]
+f() { return 300; }; f; echo $?
+g() { local r; r=$(echo valor; return 3); echo "$? $r"; }; g
+h() { echo "$1"; shift; echo "$#"; }; h a b c
+echo "${FUNCNAME[@]:-vazio}"
+### set-e-subst [script]
+set -e
+v=$(false)
+echo "nao chega"
+### set-e-funcao-cond [script]
+set -e
+f() { false; echo "continua dentro de f"; }
+if f; then echo "if ok"; fi
+f && echo "and ok"
+f
+echo nunca
+### pipefail-status [script]
+set -o pipefail
+false | true; echo $?
+true | false | true; echo $? ${PIPESTATUS[@]}
+### here-doc-variado [script]
+cat <<-FIM
+	com tab
+		dois tabs
+	FIM
+x=5
+cat <<EOF
+x=$x \$x `echo crase` $(echo sub)
+EOF
+cat <<'EOF' > /tmp/q.txt
+$x literal
+EOF
+cat /tmp/q.txt
+### while-read-ifs [script]
+while IFS=, read -r nome idade cidade nota; do
+  echo "$nome|$cidade|$nota"
+done < Documentos/alunos.csv
+while read -r l || [[ -n $l ]]; do echo "[$l]"; done < <(printf 'a\nsem-fim')
+### case-padroes [script]
+for x in arq.txt ARQ.TXT img.jpeg 123 ab_c ''; do
+  case $x in
+    *.[tT][xX][tT]) echo "$x texto";;
+    *.@(jpg|jpeg)) echo "$x imagem";;
+    +([0-9])) echo "$x numero";;
+    ?(a)b*) echo "$x b";;
+    '') echo vazio;;
+  esac
+done
+### yes-head [script]
+yes | head -3
+yes não | head -2
+LC_NUMERIC=C awk -F, 'NR>1 {s+=$4} END {print s/(NR-1)}' Documentos/alunos.csv

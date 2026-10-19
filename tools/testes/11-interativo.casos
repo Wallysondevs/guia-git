@@ -1,0 +1,65 @@
+### hist-designadores
+echo a b c
+echo !^ !$
+echo !*:p
+!-2
+echo !!:1
+ls -l frutas.txt
+!ls:p
+### hist-erros
+echo !nada
+echo "a!b"
+echo 'a!b'
+echo a!
+echo ${!HOME*} | head -c 10; echo
+### alias-funcao-type
+alias busca='grep -i'
+f() { busca x; }
+type f
+### alias-expansao-linha
+alias oi='echo oi'; oi
+oi
+alias ll
+unalias -a; ll 2>&1 | head -1
+### funsub-53
+nome=Ana
+echo ${ echo oi; }
+echo "${ echo $nome; }"
+echo ${ nome; }
+### bash-c-flags
+bash -c 'echo $-'
+echo $-
+shopt login_shell
+bash ~/.bashrc
+echo $?
+### hash-movido
+mkdir -p ~/bin; printf '#!/bin/bash\necho bomdia\n' > ~/bin/bomdia; chmod +x ~/bin/bomdia
+PATH=$PATH:~/bin
+bomdia
+hash
+mv ~/bin/bomdia ~/bin/outro
+bomdia
+echo $?
+### shebang-erros
+printf '#!/bin/nada\necho x\n' > s1.sh; chmod +x s1.sh; ./s1.sh; echo $?
+printf '#!/usr/bin/env bash\r\necho x\n' > s2.sh; chmod +x s2.sh; ./s2.sh; echo $?
+printf 'echo sem shebang\n' > s3.sh; chmod +x s3.sh; ./s3.sh
+printf 'echo x\n' > s4.sh; ./s4.sh; echo $?
+mkdir -p ~/bin; printf 'echo y\n' > ~/bin/semx; PATH=$PATH:~/bin; semx; echo $?
+### type-opcoes
+type -a echo
+type -t ls if cd frutas.txt
+type -P ls
+type -p cd
+which -a ls
+command -v cd ls
+### prompt-cmd-ps1
+PS1='[\u@\h \W]\$ '
+echo "${PS1@P}"
+cd Documentos; echo "${PS1@P}"
+PS1='\j \! \# \s \v \V >'; echo "${PS1@P}" | wc -c
+### select-invalido
+select f in a b; do echo "[$f]"; [ -n "$f" ] && break; done
+9
+
+1

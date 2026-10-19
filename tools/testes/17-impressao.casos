@@ -1,0 +1,43 @@
+### imp-basico [script]
+f() { echo a; echo b; }
+type f
+g() { local x=1; if [ "$x" = 1 ]; then echo um; elif [ "$x" = 2 ]; then echo dois; else echo outro; fi; }
+type g
+### imp-lacos [script]
+f() { for i in 1 2 3; do echo $i; done; while read -r l; do echo "$l"; done < /etc/hostname; until false; do break; done; }
+type f
+g() { for ((i=0;i<3;i++)); do :; done; select x in a b; do break; done; }
+type g
+### imp-case [script]
+f() { case $1 in a|b) echo ab;; c) echo c;& d) echo d;;& *) echo outro;; esac; }
+type f
+### imp-redir-pipe [script]
+f() { ls -l | grep x > /dev/null 2>&1; echo a >> /tmp/x; cat < /etc/hostname; echo b 2>&1 | cat; }
+type f
+g() { { echo a; echo b; } > /tmp/y; ( cd /tmp; ls ) & wait; }
+type g
+### imp-arith-cond [script]
+f() { (( x = 1 + 2 )); [[ $x -eq 3 && -n "$y" ]] || echo nao; local -a arr=(1 2); x=$((x+1)); }
+type f
+### imp-heredoc [script]
+f() {
+  cat <<EOF
+linha $1
+EOF
+  echo depois
+}
+type f
+### imp-funcoes-aninhadas [script]
+f() { g() { echo g; }; g; }
+type f
+function h { echo h; }
+type h
+k() ( echo sub )
+type k
+declare -f k
+### imp-negacao-time [script]
+f() { ! true; time sleep 0; true && false || echo x; }
+type f
+### imp-subst [script]
+f() { x=$(date); y=`pwd`; z=${x:-a}; echo "$(( 1 + 2 ))" "${#y}"; }
+type f
