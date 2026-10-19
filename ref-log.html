@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Formatos do git log — opções, filtros, datas e marcadores do --pretty | Guia Git</title>
+<meta name="description" content="Referência do git log: formatos prontos (--oneline, --pretty), filtros por quantidade, data, autor, mensagem e arquivo, intervalos entre branches, formatos de data e os marcadores do --pretty=format (%h, %an, %s, %d…), com a saída real do Git do Ubuntu 26.04.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Formatos do git log</span></h1>
+
+<p class="intro">O <code>git log</code> é o diário do projeto, e dá para lê-lo de muitos jeitos: uma linha por commit, com o desenho dos branches, só os commits do Bruno, só os da última semana, só os que mexeram num arquivo, ou num formato que você mesmo monta. Esta página junta essas opções em tabelas, com a saída real do Git da máquina da Ana.</p>
+
+<div class="note">
+<strong>Como ler esta página</strong>
+<ul>
+  <li>Os exemplos usam o repositório <code>receitas</code> da Ana, com o histórico abaixo. As datas são fixas (o laboratório do guia vive em 15/10/2026), e os hashes mudam no seu computador.</li>
+  <li>As opções se combinam à vontade: <code>git log --oneline --graph --all -5</code>.</li>
+  <li>Para aprender com calma: <a href="git-log.html">git log</a>, <a href="log-filtros.html">Filtros e Formatos</a>, <a href="log-graph.html">log --graph</a> e <a href="buscar-historico.html">Procurando no Histórico</a>.</li>
+  <li>Saída longa abre no paginador (<code>less</code>): setas para rolar, <kbd>q</kbd> para sair.</li>
+</ul>
+</div>
+
+<p class="indice-letras"><a href="#historico">O histórico de exemplo</a> · <a href="#prontos">Formatos prontos</a> · <a href="#mais">Mostrar mais</a> · <a href="#filtros">Filtros</a> · <a href="#intervalos">Intervalos</a> · <a href="#datas">Datas</a> · <a href="#marcadores">Marcadores do format</a> · <a href="#receitas">Receitas prontas</a></p>
+
+<hr>
+
+<h2 id="historico">O histórico de exemplo</h2>
+<p>O <code>main</code> da Ana tem cinco commits, com a tag <code>v1.0</code> no quarto. Depois da tag, o Bruno fez um commit num branch <code>bolo</code>, que ainda não foi juntado ao <code>main</code>, e a Ana fez mais um no <code>main</code>. O desenho com <code>--graph --all</code> mostra os dois galhos:</p>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --graph --all
+* 70a65a8 (bolo) Ajusta a farinha do bolo            « o commit do Bruno, no branch bolo
+| * 152d79c (HEAD -&gt; main) Atualiza o título do README   « o mais novo do main (onde a Ana está)
+|/                                                   « aqui os dois galhos se separam
+* c8d0fdc (tag: v1.0) Adiciona receita de pudim
+* 8426608 Adiciona cobertura de chocolate ao bolo
+* c94a9e3 Adiciona receita de bolo
+* fe996fb Primeiro commit                            « o mais antigo fica embaixo
+</pre>
+
+<h2 id="prontos">Formatos prontos</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Opção</th><th>Mostra</th><th>Aula</th></tr>
+<tr><td>(nenhuma)</td><td>O formato completo (<code>medium</code>): hash inteiro, autor, data e a mensagem recuada.</td><td><a href="git-log.html">git log</a></td></tr>
+<tr><td><code>--oneline</code></td><td>Uma linha por commit: hash curto, os nomes que apontam para ele (<code>HEAD -&gt; main</code>, tags) e o título.</td><td><a href="git-log.html">git log</a></td></tr>
+<tr><td><code>--pretty=short</code></td><td>Hash, autor e só o título.</td><td><a href="log-filtros.html">Filtros e Formatos</a></td></tr>
+<tr><td><code>--pretty=full</code></td><td>Autor <strong>e</strong> quem fez o commit (<code>Commit:</code>), sem datas.</td><td><a href="log-filtros.html">Filtros e Formatos</a></td></tr>
+<tr><td><code>--pretty=fuller</code></td><td>Autor e committer, cada um com a sua data.</td><td><a href="log-filtros.html">Filtros e Formatos</a></td></tr>
+<tr><td><code>--pretty=reference</code></td><td><code>hash (título, data)</code>: o jeito de citar um commit num texto.</td><td><a href="log-filtros.html">Filtros e Formatos</a></td></tr>
+<tr><td><code>--pretty=format:"…"</code></td><td>O formato que você montar com os <a href="#marcadores">marcadores</a>.</td><td><a href="log-filtros.html">Filtros e Formatos</a></td></tr>
+</table>
+</div>
+<p>Os mesmos commits em formatos diferentes (saída real; <code>-1</code> = só o último, <code>-2</code> = os dois últimos):</p>
+<pre class="term" data-cwd="~/receitas">$ git log -2
+commit 152d79c53b87b35360d52fda30b84b2505e7a27d (HEAD -&gt; main)   « o hash inteiro (40 caracteres) e os nomes
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300           « o formato padrão da data é em inglês: quinta, 15 de outubro, fuso −03:00
+
+    Atualiza o título do README                   « a mensagem, recuada 4 espaços
+
+commit c8d0fdc30efc521187add8112ed19b6ffcdd208a (tag: v1.0)
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Adiciona receita de pudim
+$ git log --oneline
+152d79c (HEAD -&gt; main) Atualiza o título do README
+c8d0fdc (tag: v1.0) Adiciona receita de pudim
+8426608 Adiciona cobertura de chocolate ao bolo
+c94a9e3 Adiciona receita de bolo
+fe996fb Primeiro commit
+$ git log --pretty=short -1
+commit 152d79c53b87b35360d52fda30b84b2505e7a27d (HEAD -&gt; main)
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+
+    Atualiza o título do README
+$ git log --pretty=fuller -1
+commit 152d79c53b87b35360d52fda30b84b2505e7a27d (HEAD -&gt; main)
+Author:     Ana Souza &lt;ana@exemplo.com&gt;           « quem escreveu a mudança
+AuthorDate: Thu Oct 15 10:30:00 2026 -0300
+Commit:     Ana Souza &lt;ana@exemplo.com&gt;           « quem gravou o commit (muda num cherry-pick ou rebase)
+CommitDate: Thu Oct 15 10:30:00 2026 -0300
+
+    Atualiza o título do README
+$ git log --pretty=reference -2
+152d79c (Atualiza o título do README, 2026-10-15)
+c8d0fdc (Adiciona receita de pudim, 2026-10-15)
+</pre>
+<div class="note">
+<strong>Os nomes entre parênteses</strong>
+<p>No terminal, o <code>git log</code> mostra sozinho os nomes que apontam para cada commit: <code>HEAD -&gt; main</code> (você está no <code>main</code>), <code>tag: v1.0</code>, <code>bolo</code>, <code>origin/main</code>. Quando a saída vai para um arquivo ou para outro programa (<code>git log --oneline &gt; lista.txt</code>), eles somem; para forçar, use <code>--decorate</code>.</p>
+</div>
+
+<h2 id="mais">Mostrar mais (ou menos) de cada commit</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Opção</th><th>Acrescenta</th><th>Aula</th></tr>
+<tr><td><code>--graph</code></td><td>O desenho dos galhos à esquerda (<code>*</code> = commit, <code>|</code> <code>/</code> <code>\</code> = linhas).</td><td><a href="log-graph.html">log --graph</a></td></tr>
+<tr><td><code>--all</code></td><td>Os commits de <strong>todos</strong> os branches e tags, não só do atual.</td><td><a href="log-graph.html">log --graph</a></td></tr>
+<tr><td><code>--decorate</code> / <code>--no-decorate</code></td><td>Liga/desliga os nomes (<code>HEAD -&gt; main</code>, <code>tag: v1.0</code>). No terminal já vêm ligados.</td><td><a href="git-log.html">git log</a></td></tr>
+<tr><td><code>--stat</code></td><td>Os arquivos mudados e quantas linhas entraram (<code>+</code>) e saíram (<code>-</code>).</td><td><a href="log-filtros.html">Filtros e Formatos</a></td></tr>
+<tr><td><code>--shortstat</code></td><td>Só o total: "N files changed, X insertions(+)".</td><td><a href="log-filtros.html">Filtros e Formatos</a></td></tr>
+<tr><td><code>--name-only</code></td><td>Só os nomes dos arquivos mudados.</td><td><a href="log-filtros.html">Filtros e Formatos</a></td></tr>
+<tr><td><code>--name-status</code></td><td>Os nomes com uma letra: <code>A</code> criado, <code>M</code> modificado, <code>D</code> apagado, <code>R</code> renomeado.</td><td><a href="log-filtros.html">Filtros e Formatos</a></td></tr>
+<tr><td><code>-p</code> (ou <code>--patch</code>)</td><td>O diff completo de cada commit.</td><td><a href="git-diff.html">git diff</a></td></tr>
+<tr><td><code>--reverse</code></td><td>Do mais antigo para o mais novo.</td><td><a href="log-filtros.html">Filtros e Formatos</a></td></tr>
+<tr><td><code>--abbrev-commit</code></td><td>Hash curto em qualquer formato.</td><td><a href="hash.html">O Hash</a></td></tr>
+</table>
+</div>
+<pre class="term" data-cwd="~/receitas">$ git log --stat -2
+commit 152d79c53b87b35360d52fda30b84b2505e7a27d (HEAD -&gt; main)
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Atualiza o título do README
+
+ README.md | 2 +-                                « 2 linhas mexidas: uma entrou (+), uma saiu (-)
+ 1 file changed, 1 insertion(+), 1 deletion(-)   « 1 arquivo mudado, 1 linha acrescentada, 1 apagada
+
+commit c8d0fdc30efc521187add8112ed19b6ffcdd208a (tag: v1.0)
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Adiciona receita de pudim
+
+ pudim.txt | 1 +
+ 1 file changed, 1 insertion(+)
+$ git log --name-status --oneline
+152d79c (HEAD -&gt; main) Atualiza o título do README
+M       README.md                                « M = modificado
+c8d0fdc (tag: v1.0) Adiciona receita de pudim
+A       pudim.txt                                « A = acrescentado (arquivo novo)
+8426608 Adiciona cobertura de chocolate ao bolo
+M       bolo.txt
+c94a9e3 Adiciona receita de bolo
+A       bolo.txt
+fe996fb Primeiro commit
+A       README.md
+$ git log --oneline --reverse
+fe996fb Primeiro commit                          « agora o mais antigo vem primeiro
+c94a9e3 Adiciona receita de bolo
+8426608 Adiciona cobertura de chocolate ao bolo
+c8d0fdc (tag: v1.0) Adiciona receita de pudim
+152d79c (HEAD -&gt; main) Atualiza o título do README
+</pre>
+
+<h2 id="filtros">Filtros: quais commits aparecem</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Opção</th><th>Mostra só…</th><th>Exemplo</th><th>Aula</th></tr>
+<tr><td><code>-N</code> / <code>-n N</code></td><td>Os N commits mais recentes.</td><td><code>git log -3</code></td><td><a href="log-filtros.html">Filtros e Formatos</a></td></tr>
+<tr><td><code>--author="texto"</code></td><td>Commits cujo autor (nome ou e-mail) contém o texto.</td><td><code>git log --author=Bruno --all</code></td><td><a href="log-filtros.html">Filtros e Formatos</a></td></tr>
+<tr><td><code>--grep="texto"</code></td><td>Commits cuja <strong>mensagem</strong> contém o texto (<code>-i</code> ignora maiúsculas).</td><td><code>git log --grep=receita -i</code></td><td><a href="buscar-historico.html">Procurando no Histórico</a></td></tr>
+<tr><td><code>-S"texto"</code></td><td>Commits que <strong>acrescentaram ou tiraram</strong> o texto do código (a "picareta").</td><td><code>git log -S"chocolate" --oneline</code></td><td><a href="buscar-historico.html">Procurando no Histórico</a></td></tr>
+<tr><td><code>-G"regex"</code></td><td>Commits cujo diff tem linhas que casam com a expressão regular.</td><td><code>git log -G"farinha|açúcar"</code></td><td><a href="buscar-historico.html">Procurando no Histórico</a></td></tr>
+<tr><td><code>-- arquivo</code></td><td>Commits que mexeram no arquivo ou na pasta (o <code>--</code> separa caminhos de branches).</td><td><code>git log --oneline -- bolo.txt</code></td><td><a href="log-filtros.html">Filtros e Formatos</a></td></tr>
+<tr><td><code>--follow arquivo</code></td><td>Como o anterior, mas continua seguindo o arquivo antes de ele ser renomeado.</td><td><code>git log --follow -- receitas/bolo.txt</code></td><td><a href="git-mv.html">git mv</a></td></tr>
+<tr><td><code>--since</code> / <code>--after</code></td><td>Commits a partir de uma data.</td><td><code>git log --since="2 weeks ago"</code>, <code>--since=2026-10-01</code></td><td><a href="log-filtros.html">Filtros e Formatos</a></td></tr>
+<tr><td><code>--until</code> / <code>--before</code></td><td>Commits até uma data.</td><td><code>git log --until=2026-09-30</code></td><td><a href="log-filtros.html">Filtros e Formatos</a></td></tr>
+<tr><td><code>--merges</code> / <code>--no-merges</code></td><td>Só commits de merge / tudo menos eles.</td><td><code>git log --no-merges</code></td><td><a href="git-merge.html">git merge</a></td></tr>
+<tr><td><code>--first-parent</code></td><td>Segue só o "caminho principal" de um merge (o branch onde você estava).</td><td><code>git log --first-parent main</code></td><td><a href="merge-tres-vias.html">Merge de Três Vias</a></td></tr>
+</table>
+</div>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline -2
+152d79c (HEAD -&gt; main) Atualiza o título do README
+c8d0fdc (tag: v1.0) Adiciona receita de pudim
+$ git log --all --author=Bruno                  « sem o --all, procuraria só no main
+commit 70a65a89ecc6624af6b4cc9b756234ffb8a5a47b (bolo)
+Author: Bruno Lima &lt;bruno@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Ajusta a farinha do bolo
+$ git log --oneline --grep=bolo                 « "bolo" na mensagem
+8426608 Adiciona cobertura de chocolate ao bolo
+c94a9e3 Adiciona receita de bolo
+$ git log --oneline -S"chocolate"               « "chocolate" entrou ou saiu do conteúdo
+8426608 Adiciona cobertura de chocolate ao bolo
+$ git log --oneline -- pudim.txt                « só os commits que mexeram no pudim.txt
+c8d0fdc (tag: v1.0) Adiciona receita de pudim
+$ git log --oneline --until=2026-09-30          « nenhum commit antes de outubro: nada aparece
+</pre>
+<p>Um filtro que não encontra nada não dá erro: a lista simplesmente sai vazia. Vários filtros juntos precisam ser todos verdadeiros (<code>--author=Ana --since=2026-10-01</code> = da Ana <strong>e</strong> de outubro em diante); a exceção são vários <code>--grep</code>, em que basta um casar (use <code>--all-match</code> para exigir todos).</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;echo 'Cobertura de chocolate' &gt;&gt; bolo.txt;;git commit -q -am 'Adiciona cobertura de chocolate ao bolo';;echo 'Pudim de leite' &gt; pudim.txt;;git add pudim.txt;;git commit -q -m 'Adiciona receita de pudim';;git tag v1.0;;git switch -q -c bolo;;echo '2 xícaras de farinha' &gt;&gt; bolo.txt;;git commit -q -am 'Ajusta a farinha do bolo' --author='Bruno Lima &lt;bruno@exemplo.com&gt;';;git switch -q main;;echo '# Receitas da Ana e do Bruno' &gt; README.md;;git commit -q -am 'Atualiza o título do README'" data-goal="ran:git log,ran:--author,out:Bruno" data-solucao="git log --all --author=Bruno">
+<p class="try-task"><strong>Missão:</strong> o Bruno fez um commit num outro branch. Use o <code>git log</code> para mostrar só os commits dele, procurando em todos os branches.</p>
+</div>
+
+<h2 id="intervalos">Intervalos: comparando branches</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>Mostra os commits…</th><th>Exemplo</th></tr>
+<tr><td><code>A..B</code></td><td>Que estão em B e <strong>não</strong> em A ("o que B tem a mais").</td><td><code>git log main..bolo</code> = o que o <code>bolo</code> traria num merge</td></tr>
+<tr><td><code>A...B</code></td><td>Que estão em um dos dois, mas não em ambos (com <code>--left-right</code>, marca <code>&lt;</code> e <code>&gt;</code>).</td><td><code>git log --left-right --oneline main...bolo</code></td></tr>
+<tr><td><code>^A B</code> / <code>B --not A</code></td><td>O mesmo que <code>A..B</code>, com outra escrita.</td><td><code>git log bolo ^main</code></td></tr>
+<tr><td><code>origin/main..main</code></td><td>Os seus commits que ainda não foram enviados (o que o <code>push</code> vai mandar).</td><td><code>git log --oneline origin/main..main</code></td></tr>
+<tr><td><code>main..origin/main</code></td><td>O que chegou no <code>fetch</code> e você ainda não juntou.</td><td><code>git log --oneline main..origin/main</code></td></tr>
+<tr><td><code>HEAD~3..HEAD</code></td><td>Os três últimos commits (<code>~N</code> = N passos para trás).</td><td><code>git log --oneline HEAD~3..</code></td></tr>
+</table>
+</div>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline main..bolo                  « o que o bolo tem e o main não
+70a65a8 Ajusta a farinha do bolo
+$ git log --oneline bolo..main                  « o contrário: o que o main tem e o bolo não
+152d79c Atualiza o título do README
+$ git log --oneline --left-right main...bolo    « os dois lados, marcados
+&lt; 152d79c Atualiza o título do README          « &lt; = do lado esquerdo (main)
+&gt; 70a65a8 Ajusta a farinha do bolo             « &gt; = do lado direito (bolo)
+$ git log --oneline HEAD~2..                    « sem nada depois dos pontos = HEAD
+152d79c Atualiza o título do README
+c8d0fdc Adiciona receita de pudim
+</pre>
+<p>(Nessas quatro saídas, colhidas com a saída indo para um arquivo, os nomes entre parênteses não aparecem; no terminal eles aparecem.)</p>
+
+<h2 id="datas">Formatos de data (--date)</h2>
+<p>Valem para o formato completo e para os marcadores <code>%ad</code>/<code>%cd</code>. Para deixar um formato como padrão: <code>git config --global log.date iso</code> (veja <a href="ref-config.html">Configurações</a>). Exemplos com o commit das 10:30 de 15/10/2026, fuso de Brasília (−03:00):</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Opção</th><th>Resultado</th></tr>
+<tr><td>(padrão) ou <code>--date=default</code></td><td><code>Thu Oct 15 10:30:00 2026 -0300</code></td></tr>
+<tr><td><code>--date=iso</code></td><td><code>2026-10-15 10:30:00 -0300</code></td></tr>
+<tr><td><code>--date=iso-strict</code></td><td><code>2026-10-15T10:30:00-03:00</code> (o formato ISO 8601 "de verdade", bom para programas)</td></tr>
+<tr><td><code>--date=short</code></td><td><code>2026-10-15</code></td></tr>
+<tr><td><code>--date=rfc</code></td><td><code>Thu, 15 Oct 2026 10:30:00 -0300</code> (o formato dos e-mails)</td></tr>
+<tr><td><code>--date=local</code></td><td><code>Thu Oct 15 10:30:00 2026</code> (convertida para o fuso do <strong>seu</strong> computador, sem o fuso no fim)</td></tr>
+<tr><td><code>--date=relative</code></td><td><code>0 seconds ago</code> (no laboratório, o relógio está parado no exato momento do commit; num commit de três dias atrás sairia <code>3 days ago</code>. Neste Git, o texto sai em inglês mesmo com o sistema em português)</td></tr>
+<tr><td><code>--date=human</code></td><td>Relativa para datas recentes, completa (sem o que se repete) para as antigas. Aqui: <code>0 seconds ago</code></td></tr>
+<tr><td><code>--date=unix</code></td><td><code>1792071000</code> (segundos desde 1/1/1970)</td></tr>
+<tr><td><code>--date=format:'%d/%m/%Y %H:%M'</code></td><td><code>15/10/2026 10:30</code> (os códigos são os do <code>date</code>: <code>%d</code> dia, <code>%m</code> mês, <code>%Y</code> ano, <code>%H:%M</code> hora)</td></tr>
+<tr><td><code>--date=format-local:'%A, %d de %B'</code></td><td><code>quinta, 15 de outubro</code> (nomes de dia e mês no idioma do sistema)</td></tr>
+</table>
+</div>
+
+<h2 id="marcadores">Marcadores do --pretty=format</h2>
+<p>Monte a linha que quiser: tudo que não é marcador sai como está. Use aspas para o shell não quebrar o texto nos espaços. <code>--pretty=format:"…"</code> separa os commits com quebra de linha; <code>--pretty=tformat:"…"</code> (ou <code>--format="…"</code>) põe uma quebra também depois do último.</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Marcador</th><th>Vira</th><th>No exemplo</th></tr>
+<tr><td><code>%H</code> / <code>%h</code></td><td>Hash do commit, inteiro / curto</td><td><code>152d79c53b87b35360d52fda30b84b2505e7a27d</code> / <code>152d79c</code></td></tr>
+<tr><td><code>%P</code> / <code>%p</code></td><td>Hash do(s) pai(s), inteiro / curto (um merge tem dois)</td><td><code>c8d0fdc</code></td></tr>
+<tr><td><code>%T</code> / <code>%t</code></td><td>Hash da árvore (a "fotografia" das pastas; veja <a href="como-git-guarda.html">Como o Git Guarda</a>)</td><td><code>703ae57</code></td></tr>
+<tr><td><code>%an</code> / <code>%ae</code></td><td>Nome / e-mail do autor</td><td><code>Ana Souza</code> / <code>ana@exemplo.com</code></td></tr>
+<tr><td><code>%ad</code></td><td>Data do autor, no formato do <code>--date</code></td><td><code>Thu Oct 15 10:30:00 2026 -0300</code></td></tr>
+<tr><td><code>%ar</code></td><td>Data do autor, relativa</td><td><code>0 seconds ago</code></td></tr>
+<tr><td><code>%ai</code> / <code>%as</code></td><td>Data do autor em ISO / curta</td><td><code>2026-10-15 10:30:00 -0300</code> / <code>2026-10-15</code></td></tr>
+<tr><td><code>%cn</code> <code>%ce</code> <code>%cd</code> <code>%cr</code></td><td>O mesmo, para quem gravou o commit (committer)</td><td><code>Ana Souza</code>…</td></tr>
+<tr><td><code>%s</code></td><td>O título (a primeira linha da mensagem)</td><td><code>Atualiza o título do README</code></td></tr>
+<tr><td><code>%b</code></td><td>O corpo da mensagem (as linhas depois do título)</td><td>(vazio: o commit só tem título)</td></tr>
+<tr><td><code>%d</code> / <code>%D</code></td><td>Os nomes que apontam para o commit, com / sem parênteses</td><td><code> (HEAD -&gt; main)</code> / <code>HEAD -&gt; main</code></td></tr>
+<tr><td><code>%n</code></td><td>Quebra de linha</td><td></td></tr>
+<tr><td><code>%%</code></td><td>Um <code>%</code> de verdade</td><td></td></tr>
+<tr><td><code>%&lt;(N)</code></td><td>O próximo marcador ocupa N colunas (bom para alinhar)</td><td><code>%&lt;(12)%an</code> → <code>Ana Souza   </code></td></tr>
+<tr><td><code>%C(yellow)</code> … <code>%Creset</code></td><td>Liga uma cor / volta à cor normal (também <code>%C(auto)</code>, que usa as cores do Git)</td><td><code>%C(yellow)%h%Creset %s</code></td></tr>
+</table>
+</div>
+<pre class="term" data-cwd="~/receitas">$ git log --format='%h %an %s'
+152d79c Ana Souza Atualiza o título do README
+c8d0fdc Ana Souza Adiciona receita de pudim
+8426608 Ana Souza Adiciona cobertura de chocolate ao bolo
+c94a9e3 Ana Souza Adiciona receita de bolo
+fe996fb Ana Souza Primeiro commit
+$ git log --format='%h %&lt;(12)%an %s' --all     « o nome ocupa 12 colunas: tudo alinhado
+70a65a8 Bruno Lima   Ajusta a farinha do bolo
+152d79c Ana Souza    Atualiza o título do README
+c8d0fdc Ana Souza    Adiciona receita de pudim
+8426608 Ana Souza    Adiciona cobertura de chocolate ao bolo
+c94a9e3 Ana Souza    Adiciona receita de bolo
+fe996fb Ana Souza    Primeiro commit
+$ git log -1 --format='%ad' --date=format:'%d/%m/%Y %H:%M'
+15/10/2026 10:30
+$ git shortlog -sn --all                        « -s = só a contagem, -n = do maior para o menor
+     5	Ana Souza
+     1	Bruno Lima
+</pre>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;echo 'Cobertura de chocolate' &gt;&gt; bolo.txt;;git commit -q -am 'Adiciona cobertura de chocolate ao bolo';;echo 'Pudim de leite' &gt; pudim.txt;;git add pudim.txt;;git commit -q -m 'Adiciona receita de pudim';;git tag v1.0;;git switch -q -c bolo;;echo '2 xícaras de farinha' &gt;&gt; bolo.txt;;git commit -q -am 'Ajusta a farinha do bolo' --author='Bruno Lima &lt;bruno@exemplo.com&gt;';;git switch -q main;;echo '# Receitas da Ana e do Bruno' &gt; README.md;;git commit -q -am 'Atualiza o título do README'" data-goal="ran:git log,outre:^[0-9a-f]{7} Ana Souza" data-solucao="git log --format='%h %an %s'">
+<p class="try-task"><strong>Missão:</strong> monte um <code>git log</code> que mostre, em cada linha, o hash curto, o nome do autor e o título do commit, nessa ordem e separados por espaço (ex.: <code>a1b2c3d Ana Souza Primeiro commit</code>).</p>
+</div>
+
+<h2 id="receitas">Receitas prontas</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Quero ver…</th><th>Comando</th></tr>
+<tr><td>O histórico resumido</td><td><code>git log --oneline</code></td></tr>
+<tr><td>Todos os branches desenhados</td><td><code>git log --oneline --graph --all</code></td></tr>
+<tr><td>O último commit, completo, com o diff</td><td><code>git log -1 -p</code> (ou <a href="git-show.html"><code>git show</code></a>)</td></tr>
+<tr><td>Quais arquivos cada commit mexeu</td><td><code>git log --stat</code> ou <code>git log --name-status --oneline</code></td></tr>
+<tr><td>O que fiz hoje</td><td><code>git log --since=midnight --author="Ana"</code></td></tr>
+<tr><td>A história de um arquivo</td><td><code>git log --follow -p -- bolo.txt</code></td></tr>
+<tr><td>Quando um texto apareceu ou sumiu</td><td><code>git log -S"chocolate" --oneline</code></td></tr>
+<tr><td>Quantos commits cada pessoa fez</td><td><code>git shortlog -sn</code></td></tr>
+<tr><td>O que ainda não mandei para o GitHub</td><td><code>git log --oneline origin/main..main</code></td></tr>
+<tr><td>Uma lista para um relatório</td><td><code>git log --format="%ad %s" --date=short --reverse</code></td></tr>
+</table>
+</div>
+<p>Para guardar a sua receita favorita como um comando curto, crie um atalho: <code>git config --global alias.arvore "log --oneline --graph --all"</code> (veja <a href="alias.html">Atalhos</a>).</p>
+
+<h2>Quando dá errado</h2>
+<div class="cenario">
+<h3>fatal: ambiguous argument … unknown revision or path</h3>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline bolos
+fatal: ambiguous argument 'bolos': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git &lt;command&gt; [&lt;revision&gt;...] -- [&lt;file&gt;...]'
+</pre>
+<p><strong>O que aconteceu:</strong> o Git não achou nem um branch/commit chamado <code>bolos</code> nem um arquivo com esse nome na pasta ("argumento ambíguo: revisão desconhecida ou caminho fora da árvore de trabalho"). Quase sempre é erro de digitação (o branch é <code>bolo</code>) ou um arquivo que já foi apagado.</p>
+<p><strong>Como resolver:</strong> confira o nome com <code>git branch</code> ou <code>ls</code>. Se for um arquivo que não existe mais na pasta, ponha <code>--</code> antes do nome, como a dica sugere: <code>git log --oneline -- receita-antiga.txt</code>.</p>
+</div>
+
+<div class="cenario">
+<h3>O git log "travou" e não volta ao prompt</h3>
+<p><strong>O que aconteceu:</strong> a lista era maior que a tela e o Git abriu o paginador <code>less</code>. Na última linha aparece <code>:</code> ou <code>(END)</code>.</p>
+<p><strong>Como resolver:</strong> aperte <kbd>q</kbd>. Para não paginar uma vez: <code>git --no-pager log</code>; para limitar: <code>git log -10</code>.</p>
+</div>
+
+<div class="cenario">
+<h3>A lista saiu vazia</h3>
+<p><strong>O que aconteceu:</strong> nenhum commit passou nos filtros (autor escrito diferente, data fora do intervalo, commit em outro branch). Não é erro.</p>
+<p><strong>Como resolver:</strong> tire um filtro por vez; acrescente <code>--all</code> para procurar em todos os branches; lembre que <code>--author</code> diferencia maiúsculas (use <code>-i</code> para não diferenciar).</p>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Uma linha por commit</h3>
+<p>Complete para ver o histórico com uma linha por commit:</p>
+<div class="ex-code">git log <input data-answer="--oneline|--pretty=oneline" aria-label="opção"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. Você quer saber quais commits do branch <code>bolo</code> ainda não estão no <code>main</code>. Qual comando?</p>
+<label><input type="radio" name="q2"> <code>git log bolo..main</code></label>
+<label><input type="radio" name="q2"> <code>git log main..bolo</code></label>
+<label><input type="radio" name="q2"> <code>git log --all</code></label>
+<label><input type="radio" name="q2"> <code>git log main bolo</code></label>
+</div>
+
+<div class="exercise">
+<h3>3. Procurando na mensagem</h3>
+<p>Complete para mostrar só os commits cuja mensagem fala em "bolo":</p>
+<div class="ex-code">git log <input data-answer="--grep=bolo|--grep bolo|--grep=&quot;bolo&quot;|--grep &quot;bolo&quot;|--grep='bolo'" aria-label="opção"></div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. No <code>--pretty=format</code>, qual marcador vira o título (a primeira linha) da mensagem?</p>
+<label><input type="radio" name="q4"> <code>%h</code></label>
+<label><input type="radio" name="q4"> <code>%an</code></label>
+<label><input type="radio" name="q4"> <code>%s</code></label>
+<label><input type="radio" name="q4"> <code>%d</code></label>
+</div>
+
+<div class="exercise">
+<h3>5. Só os commits que mexeram num arquivo</h3>
+<p>Complete para ver os commits que mudaram o <code>README.md</code>:</p>
+<div class="ex-code">git log --oneline <input data-answer="-- README.md|README.md" aria-label="caminho"></div>
+</div>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
