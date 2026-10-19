@@ -53,13 +53,13 @@
  1 file changed, 1 insertion(+)
  create mode 100644 README.md
 $ git log
-commit fe996fb8ecae7fe25026045fd46f15ca756bc19c   « o hash completo
+commit fe996fb8ecae7fe25026045fd46f15ca756bc19c (HEAD -&gt; main)   « o hash completo
 Author: Ana Souza &lt;ana@exemplo.com&gt;
 Date:   Thu Oct 15 10:30:00 2026 -0300
 
     Primeiro commit
 $ git log --oneline
-fe996fb Primeiro commit
+fe996fb (HEAD -&gt; main) Primeiro commit
 </pre>
 
 <p>O <code>git log</code> mostra o hash completo, com 40 caracteres. O <code>git commit</code> e o <code>git log --oneline</code> mostram só o começo, <code>fe996fb</code>: o <strong>hash curto</strong> (ou abreviado). Ele tem 7 caracteres no começo de um projeto e o Git o aumenta sozinho quando o repositório cresce tanto que 7 caracteres já não bastam para distinguir os objetos.</p>
@@ -71,7 +71,7 @@ fe996fb8ecae7fe25026045fd46f15ca756bc19c
 $ git rev-parse --short HEAD
 fe996fb
 $ git log --oneline --abbrev=4
-fe99 Primeiro commit
+fe99 (HEAD -&gt; main) Primeiro commit
 $ git log --format='%H %s'
 fe996fb8ecae7fe25026045fd46f15ca756bc19c Primeiro commit
 </pre>
@@ -168,7 +168,7 @@ Primeiro commit
 <p>Você pode digitar o hash inteiro, o curto, ou ainda menos: o Git aceita o começo do hash a partir de <strong>4</strong> caracteres, desde que só um objeto comece assim.</p>
 
 <pre class="term" data-cwd="~/receitas">$ git show --stat fe99
-commit fe996fb8ecae7fe25026045fd46f15ca756bc19c
+commit fe996fb8ecae7fe25026045fd46f15ca756bc19c (HEAD -&gt; main)
 Author: Ana Souza &lt;ana@exemplo.com&gt;
 Date:   Thu Oct 15 10:30:00 2026 -0300
 
@@ -199,7 +199,7 @@ $ echo '# Receitas da Ana' &gt; README.md
 $ git add README.md
 $ git commit -q -m "Primeiro commit"
 $ git log --oneline
-2220c93 Primeiro commit
+2220c93 (HEAD -&gt; main) Primeiro commit
 $ git rev-parse HEAD
 2220c93091922ec2bbc6bc8e7d52a58e59153aebcdf239d31a7d5f826603112e
 $ git rev-parse --show-object-format
