@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git reflog — o diário do HEAD e o resgate de commits | Guia Git</title>
+<meta name="description" content="O git reflog para quem está começando: o diário de tudo o que o HEAD fez, como ler HEAD@{0}, HEAD@{1}…, como trazer de volta commits sumidos depois de um reset --hard ou de apagar um branch, o reflog de um branch, git log -g, quanto tempo o reflog guarda e os erros reais do Git.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">reflog: O Diário do HEAD</span></h1>
+
+<p class="intro">A Ana rodou um <code>git reset --hard</code> com o número errado e o commit do brigadeiro <strong>sumiu</strong> do <code>git log</code>. O arquivo também sumiu da pasta. Bate o desespero: "perdi tudo?". Quase nunca. O Git guarda um <strong>diário</strong> de todos os lugares por onde o <a href="head.html">HEAD</a> passou: cada commit, cada troca de branch, cada reset. Esse diário é o <code>git reflog</code>, e com ele dá para achar e trazer de volta commits que pareciam perdidos.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que o <code>git reflog</code> guarda e como ler cada linha (<code>HEAD@{0}</code>, <code>HEAD@{1}</code>…).</li>
+  <li>A desfazer um <code>git reset --hard</code> errado com <code>git reset --hard HEAD@{1}</code>.</li>
+  <li>A recuperar um branch apagado com <code>git branch -D</code>.</li>
+  <li>O reflog de um branch (<code>git reflog show main</code>) e o <code>git log -g</code>.</li>
+  <li>Os limites do reflog: é só seu (não vai para o GitHub) e não guarda para sempre.</li>
+</ul>
+</div>
+
+<p>As saídas desta aula saíram do Git 2.53 do Ubuntu 26.04, num terminal de verdade da máquina da Ana. Algumas mensagens, como <code>HEAD is now at</code>, aparecem em inglês: o Git do Ubuntu é só parcialmente traduzido.</p>
+
+<hr>
+
+<h2>A ideia: o histórico do navegador</h2>
+<p>Você fechou sem querer a aba de uma página importante. Ela sumiu da tela, mas não do <strong>histórico do navegador</strong>: lá está a lista de todas as páginas que você visitou, da mais recente para a mais antiga. É só achar e abrir de novo.</p>
+<p>O <code>git log</code> é como as abas abertas: mostra o caminho atual do branch. O <code>git reflog</code> é o histórico do navegador: mostra <strong>tudo por onde você passou</strong>, inclusive os commits que já não estão em nenhum branch. O nome vem de <em>reference log</em>, "diário das referências" (o HEAD e os branches são referências: etiquetas que apontam para commits).</p>
+
+<hr>
+
+<h2>1. O primeiro <code>git reflog</code></h2>
+<p>O repositório de receitas tem 3 commits:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+abceaaf (HEAD -&gt; main) Adiciona a receita de brigadeiro
+c34349b Adiciona a receita de bolo
+700bbd5 Cria o README
+$ git reflog
+abceaaf (HEAD -&gt; main) HEAD@{0}: commit: Adiciona a receita de brigadeiro
+c34349b HEAD@{1}: commit: Adiciona a receita de bolo
+700bbd5 HEAD@{2}: commit (initial): Cria o README
+</pre>
+
+<p>Por enquanto, o diário conta a mesma história do <code>git log</code>. Pegue a primeira linha:</p>
+
+<dl class="anatomy">
+  <dt>abceaaf</dt><dd>O commit em que o HEAD ficou depois desse passo.</dd>
+  <dt>(HEAD -&gt; main)</dt><dd>As etiquetas de sempre: você está no <code>main</code>, que aponta para esse commit.</dd>
+  <dt>HEAD@{0}</dt><dd>O "apelido" desse momento do diário: <code>HEAD@{0}</code> é <strong>agora</strong>, <code>HEAD@{1}</code> é "onde o HEAD estava 1 passo atrás", <code>HEAD@{2}</code>, 2 passos atrás, e assim por diante. Esses nomes funcionam em qualquer comando do Git, no lugar de um hash.</dd>
+  <dt>commit: Adiciona a receita de brigadeiro</dt><dd>O que aconteceu nesse passo: um <code>commit</code>, com a mensagem dele. No primeiro de todos, <code>commit (initial)</code>, o commit inicial.</dd>
+</dl>
+
+<p>A diferença aparece quando o HEAD anda para trás ou pula de galho. Aí o <code>git log</code> esquece, e o reflog lembra.</p>
+
+<hr>
+
+<h2>2. O resgate depois de um <code>reset --hard</code></h2>
+<p>A Ana queria desfazer uma mudança que ainda não tinha commit, mas digitou <code>git reset --hard HEAD~1</code>: isso volta o branch <strong>1 commit</strong> e apaga as mudanças da pasta (veja <a href="reset-modos.html">reset --soft, --mixed e --hard</a>).</p>
+
+<pre class="term" data-cwd="~/receitas">$ git reset --hard HEAD~1
+HEAD is now at c34349b Adiciona a receita de bolo
+$ git log --oneline
+c34349b (HEAD -&gt; main) Adiciona a receita de bolo
+700bbd5 Cria o README
+$ ls
+README.md  bolo.txt
+</pre>
+
+<p>"<code>HEAD is now at c34349b</code>": o HEAD agora está no commit do bolo. O commit do brigadeiro não aparece mais no <code>git log</code>, e o <code>brigadeiro.txt</code> sumiu da pasta. Mas o commit <strong>não foi apagado</strong>: ele só ficou sem nenhum branch apontando para ele. O diário mostra onde ele está:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git reflog
+c34349b (HEAD -&gt; main) HEAD@{0}: reset: moving to HEAD~1
+abceaaf HEAD@{1}: commit: Adiciona a receita de brigadeiro     «
+c34349b (HEAD -&gt; main) HEAD@{2}: commit: Adiciona a receita de bolo
+700bbd5 HEAD@{3}: commit (initial): Cria o README
+</pre>
+
+<dl class="anatomy">
+  <dt>HEAD@{0}: reset: moving to HEAD~1</dt><dd>O passo mais recente: o <code>reset</code> que "moveu para <code>HEAD~1</code>". Os números de todo mundo andaram uma casa: o que era <code>HEAD@{0}</code> virou <code>HEAD@{1}</code>.</dd>
+  <dt>abceaaf HEAD@{1}: commit: …brigadeiro</dt><dd>Onde o HEAD estava <strong>antes</strong> do reset: o commit do brigadeiro, com o hash <code>abceaaf</code>. É ele que a Ana quer de volta.</dd>
+</dl>
+
+<p>Para voltar, basta fazer outro reset, agora <strong>para</strong> esse ponto do diário. Dá para usar o apelido <code>HEAD@{1}</code> ou o hash <code>abceaaf</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git reset --hard HEAD@{1}
+HEAD is now at abceaaf Adiciona a receita de brigadeiro
+$ git log --oneline
+abceaaf (HEAD -&gt; main) Adiciona a receita de brigadeiro
+c34349b Adiciona a receita de bolo
+700bbd5 Cria o README
+$ ls
+README.md  bolo.txt  brigadeiro.txt
+</pre>
+
+<p>O commit voltou para o <code>main</code>, e o <code>brigadeiro.txt</code> voltou para a pasta, do jeito que estava no commit.</p>
+
+<div class="warning">
+<strong>O que o reflog <em>não</em> salva</strong>
+<p>O reflog guarda <strong>commits</strong>. Mudanças que você nunca commitou (arquivos editados e não salvos num commit) não entram no diário: se um <code>git reset --hard</code> ou um <code>git restore</code> as apagou, o reflog não traz de volta. Mais um motivo para fazer commits pequenos e frequentes.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;printf 'Bolo de cenoura\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona a receita de bolo';;printf 'Brigadeiro\n' &gt; brigadeiro.txt;;git add brigadeiro.txt;;git commit -q -m 'Adiciona a receita de brigadeiro';;git reset --hard HEAD~1" data-goal="commits:3,contem:HEAD:brigadeiro.txt=Brigadeiro,limpo" data-solucao="git reflog;;git reset --hard HEAD@{1}">
+<p class="try-task"><strong>Missão:</strong> a Ana acabou de rodar <code>git reset --hard HEAD~1</code> por engano e o commit do brigadeiro sumiu do <code>git log</code>. Olhe o diário com <code>git reflog</code> e traga o commit de volta para o <code>main</code>.</p>
+</div>
+
+<hr>
+
+<h2>3. O resgate de um branch apagado</h2>
+<p>A Ana criou o branch <code>doces</code>, fez um commit com o beijinho, voltou para o <code>main</code>… e apagou o branch com <code>-D</code> (o "apagar mesmo que não esteja juntado"; veja <a href="apagar-branch.html">Apagando Branches</a>), achando que era outro.</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch -c doces
+Switched to a new branch 'doces'
+$ printf 'Beijinho\n' &gt; beijinho.txt
+$ git add beijinho.txt
+$ git commit -q -m 'Adiciona a receita de beijinho'
+$ git switch main
+Switched to branch 'main'
+$ git branch -D doces
+Deleted branch doces (was e26a98a).
+$ git log --oneline --all
+abceaaf (HEAD -&gt; main) Adiciona a receita de brigadeiro
+c34349b Adiciona a receita de bolo
+700bbd5 Cria o README
+</pre>
+
+<p>Nem o <code>--all</code> mostra o beijinho: sem o branch, nenhuma etiqueta aponta para o commit. Repare, porém, que o próprio Git deixou uma pista: "<code>Deleted branch doces (was e26a98a)</code>", "branch <code>doces</code> apagado (estava em <code>e26a98a</code>)". Se a mensagem já saiu da tela, o reflog tem a mesma informação:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git reflog -3
+abceaaf (HEAD -&gt; main) HEAD@{0}: checkout: moving from doces to main
+e26a98a HEAD@{1}: commit: Adiciona a receita de beijinho     «
+abceaaf (HEAD -&gt; main) HEAD@{2}: checkout: moving from main to doces
+</pre>
+
+<dl class="anatomy">
+  <dt>-3</dt><dd>Só os 3 passos mais recentes, como no <code>git log</code>.</dd>
+  <dt>checkout: moving from main to doces</dt><dd>Uma troca de branch: "saindo do <code>main</code> para o <code>doces</code>". O reflog chama de <code>checkout</code> mesmo quando você usou o <code>git switch</code>.</dd>
+  <dt>e26a98a HEAD@{1}: commit: …beijinho</dt><dd>O commit que a Ana fez no <code>doces</code>, antes de voltar para o <code>main</code>.</dd>
+</dl>
+
+<p>Para ressuscitar o branch, crie um branch novo apontando para esse commit:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git branch doces HEAD@{1}
+$ git log --oneline --graph --all
+* e26a98a (doces) Adiciona a receita de beijinho
+* abceaaf (HEAD -&gt; main) Adiciona a receita de brigadeiro
+* c34349b Adiciona a receita de bolo
+* 700bbd5 Cria o README
+</pre>
+
+<p>O <code>git branch NOME PONTO</code> cria um branch em qualquer ponto: um hash, um <code>HEAD@{n}</code>, outro branch. O <code>doces</code> voltou, com o commit do beijinho, como se nada tivesse acontecido. (Com <code>git switch -c doces HEAD@{1}</code>, você cria o branch e já vai para ele.)</p>
+
+<div class="tip">
+<strong>Cuidado: os números andam</strong>
+<p>Cada comando que move o HEAD acrescenta uma linha no topo do diário, e todos os <code>HEAD@{n}</code> ganham +1. O <code>HEAD@{1}</code> de agora pode ser o <code>HEAD@{2}</code> daqui a pouco. Antes de usar o apelido, rode <code>git reflog</code> de novo; ou, mais seguro, use o <strong>hash</strong> (<code>git branch doces e26a98a</code>), que nunca muda.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;printf 'Bolo de cenoura\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona a receita de bolo';;printf 'Brigadeiro\n' &gt; brigadeiro.txt;;git add brigadeiro.txt;;git commit -q -m 'Adiciona a receita de brigadeiro';;git switch -c doces;;printf 'Beijinho\n' &gt; beijinho.txt;;git add beijinho.txt;;git commit -q -m 'Adiciona a receita de beijinho';;git switch main;;git branch -D doces" data-goal="branch:doces,contem:doces:beijinho.txt=Beijinho,head:main" data-solucao="git reflog;;git branch doces HEAD@{1}">
+<p class="try-task"><strong>Missão:</strong> a Ana acabou de apagar o branch <code>doces</code>, que tinha a receita de beijinho. Ache o commit no <code>git reflog</code> e recrie o branch <code>doces</code> nele, continuando no <code>main</code>.</p>
+</div>
+
+<hr>
+
+<h2>4. Cada branch tem o seu diário</h2>
+<p>Além do diário do HEAD, cada branch tem um diário próprio, com tudo o que aconteceu <strong>com aquele branch</strong>: <code>git reflog show NOME</code>.</p>
+
+<pre class="term" data-cwd="~/receitas">$ git reflog show main
+abceaaf (HEAD -&gt; main) main@{0}: reset: moving to HEAD@{1}
+c34349b main@{1}: reset: moving to HEAD~1
+abceaaf (HEAD -&gt; main) main@{2}: commit: Adiciona a receita de brigadeiro
+c34349b main@{3}: commit: Adiciona a receita de bolo
+700bbd5 main@{4}: commit (initial): Cria o README
+</pre>
+
+<p>Aqui não aparecem as trocas de branch (o <code>main</code> não se mexeu quando a Ana foi para o <code>doces</code>), só os commits e os dois resets. Os apelidos são <code>main@{0}</code>, <code>main@{1}</code>…: "onde o <code>main</code> estava n passos atrás".</p>
+
+<p>O diário de um branch é apagado <strong>junto com o branch</strong>. Depois do <code>git branch -D doces</code>, o diário dele já não existia (o Git nem reconhecia mais o nome):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git reflog show doces
+fatal: ambiguous argument 'doces': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git &lt;command&gt; [&lt;revision&gt;...] -- [&lt;file&gt;...]'
+</pre>
+
+<p>Por isso, para achar o commit de um branch apagado, procure no diário do <strong>HEAD</strong> (o <code>git reflog</code> sem nada), como na seção 3.</p>
+
+<h3>O reflog com cara de <code>git log</code>: <code>-g</code></h3>
+<p>O <code>git reflog</code> é um atalho para <code>git log -g --oneline</code> (o <code>-g</code> é de <em>walk reflogs</em>, "andar pelos diários"). Com o <code>git log -g</code>, valem os formatos e filtros do <code>git log</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log -g --oneline -3
+abceaaf (HEAD -&gt; main) HEAD@{0}: checkout: moving from doces to main
+e26a98a (doces) HEAD@{1}: commit: Adiciona a receita de beijinho
+abceaaf (HEAD -&gt; main) HEAD@{2}: checkout: moving from main to doces
+$ git reflog --date=iso -2
+abceaaf (HEAD -&gt; main) HEAD@{2026-10-15 10:30:00 -0300}: checkout: moving from doces to main
+e26a98a (doces) HEAD@{2026-10-15 10:30:00 -0300}: commit: Adiciona a receita de beijinho
+</pre>
+
+<p>Com <code>--date=iso</code>, cada passo mostra <strong>quando</strong> aconteceu, no lugar do número. No seu computador, isso responde a perguntas como "onde eu estava ontem às 15h?". (Na máquina da Ana, o relógio está parado em 15/10/2026 10:30, então todos os passos têm a mesma hora.)</p>
+
+<hr>
+
+<h2>5. Os limites do reflog</h2>
+<ul>
+  <li><strong>É só seu.</strong> O reflog fica dentro da pasta <code>.git</code> do seu computador. Ele não vai para o GitHub no <code>git push</code> e não vem no <code>git clone</code>: quem clona o repositório começa com um diário novo. Se você apagar a pasta do projeto, o diário vai junto.</li>
+  <li><strong>Não é para sempre.</strong> O Git faz faxina de vez em quando (o <code>git gc</code>, que roda sozinho). Por padrão, as linhas do diário duram <strong>90 dias</strong>, e as de commits que não estão em nenhum branch (como o brigadeiro depois do reset), <strong>30 dias</strong> (as configurações <code>gc.reflogExpire</code> e <code>gc.reflogExpireUnreachable</code>, no manual <code>git help gc</code>). Depois disso, um commit sem branch pode ser apagado de verdade. Resgate cedo.</li>
+  <li><strong>Só guarda commits.</strong> Como você viu, mudanças nunca commitadas não aparecem.</li>
+</ul>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer o resgate</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Comando</th><th>O que faz</th></tr>
+<tr><td>O branch atual voltou commits demais (reset errado)</td><td><code>git reset --hard HEAD@{1}</code></td><td>Volta o branch atual para onde estava antes</td></tr>
+<tr><td>Um commit perdido, e você quer guardá-lo sem mexer no branch atual</td><td><code>git branch resgate HASH</code></td><td>Cria um branch novo no commit; o atual fica como está</td></tr>
+<tr><td>Um branch apagado</td><td><code>git branch doces HASH</code> ou <code>git switch -c doces HASH</code></td><td>Recria o branch no commit (o segundo já vai para ele)</td></tr>
+<tr><td>Só olhar como estava</td><td><code>git show HEAD@{2}</code> ou <code>git switch --detach HEAD@{2}</code></td><td>Mostra o commit / visita o commit sem branch (veja <a href="head-destacado.html">HEAD Destacado</a>)</td></tr>
+<tr><td>Só um commit de outro lugar no branch atual</td><td><code>git cherry-pick HASH</code></td><td>Copia aquele commit para cá (aula <a href="cherry-pick.html">git cherry-pick</a>)</td></tr>
+</table>
+</div>
+
+<p>A aula <a href="recuperar-commit.html">Recuperando um Commit Perdido</a> junta tudo isso num roteiro passo a passo para as emergências.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>fatal: log for 'HEAD' only has 8 entries</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git reflog HEAD@{99}
+fatal: log for 'HEAD' only has 8 entries
+</pre>
+<p><strong>O que aconteceu:</strong> "o diário do HEAD só tem 8 entradas", e você pediu a 99ª. O número depois do <code>@</code> passou do fim do diário.</p>
+<p><strong>Como resolver:</strong> rode <code>git reflog</code> sem nada para ver os números que existem (vão de <code>HEAD@{0}</code> até <code>HEAD@{7}</code>, aqui).</p>
+</div>
+
+<div class="cenario">
+<strong><code>fatal: ambiguous argument 'HEAD@{abc}'</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git show HEAD@{abc}
+fatal: ambiguous argument 'HEAD@{abc}': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git &lt;command&gt; [&lt;revision&gt;...] -- [&lt;file&gt;...]'
+</pre>
+<p><strong>O que aconteceu:</strong> dentro das chaves vai um <strong>número</strong> (<code>HEAD@{2}</code>) ou uma data em inglês (<code>HEAD@{yesterday}</code>, "onde o HEAD estava ontem"). Com outra coisa, o Git não entende o nome.</p>
+<p><strong>Como resolver:</strong> confira as chaves e o número no <code>git reflog</code>. Ou copie o <strong>hash</strong> da linha, que é mais seguro.</p>
+</div>
+
+<div class="cenario">
+<strong>Resetou para o número errado do diário</strong>
+<p>Os números andam a cada comando (seção 3). Se o <code>git reset --hard HEAD@{1}</code> levou você para um lugar inesperado, não se assuste: esse reset também entrou no diário. Rode <code>git reflog</code> de novo, ache a linha certa (pela mensagem) e faça o reset para o <strong>hash</strong> dela.</p>
+</div>
+
+<div class="cenario">
+<strong>O commit não aparece no reflog</strong>
+<p><strong>O que pode ter acontecido:</strong> o commit foi feito em <strong>outro computador</strong> (o reflog é local), em outro clone do projeto, ou faz mais de 30/90 dias. Ou a mudança nunca virou commit.</p>
+<p><strong>Como resolver:</strong> se o commit foi enviado para o GitHub, ele ainda pode estar lá (veja <a href="git-fetch.html">git fetch</a>). Se nunca virou commit, o Git não tem como trazê-lo.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git reflog</code></td><td>O diário do HEAD: por onde ele passou, do mais recente para o mais antigo</td></tr>
+<tr><td><code>git reflog -5</code></td><td>Só os 5 passos mais recentes</td></tr>
+<tr><td><code>git reflog show main</code></td><td>O diário de um branch</td></tr>
+<tr><td><code>git log -g --oneline</code></td><td>O mesmo que <code>git reflog</code>, aceitando as opções do <code>git log</code></td></tr>
+<tr><td><code>git reflog --date=iso</code></td><td>Mostra a data e a hora de cada passo</td></tr>
+<tr><td><code>HEAD@{1}</code></td><td>Onde o HEAD estava 1 passo atrás (vale em qualquer comando)</td></tr>
+<tr><td><code>main@{2}</code></td><td>Onde o <code>main</code> estava 2 passos atrás</td></tr>
+<tr><td><code>git reset --hard HEAD@{1}</code></td><td>Desfaz o último reset (ou outro movimento) do branch atual</td></tr>
+<tr><td><code>git branch NOME HASH</code></td><td>Recria um branch num commit achado no reflog</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o resgate</h3>
+<p>Volte o branch atual para onde o HEAD estava 1 passo atrás:</p>
+<div class="ex-code">git reset --hard <input data-answer="HEAD@{1}" aria-label="ponto do reflog"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. O que o <code>git reflog</code> mostra que o <code>git log</code> não mostra?</p>
+<label><input type="radio" name="q2"> Os commits dos outros desenvolvedores</label>
+<label><input type="radio" name="q2"> Todos os lugares por onde o HEAD passou, inclusive commits que não estão mais em nenhum branch</label>
+<label><input type="radio" name="q2"> As mudanças que ainda não foram commitadas</label>
+<label><input type="radio" name="q2"> Os commits que estão no GitHub</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. A Ana apagou o branch <code>doces</code> com <code>git branch -D</code>. Onde ela acha o commit que estava nele?</p>
+<label><input type="radio" name="q3"> Em <code>git reflog show doces</code></label>
+<label><input type="radio" name="q3"> Em <code>git log --all</code></label>
+<label><input type="radio" name="q3"> No diário do HEAD (<code>git reflog</code>), ou na mensagem <code>Deleted branch doces (was …)</code></label>
+<label><input type="radio" name="q3"> Em lugar nenhum: o commit foi apagado</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. O Bruno clonou o repositório da Ana. O reflog dele tem os passos que a Ana deu no computador dela?</p>
+<label><input type="radio" name="q4"> Não: o reflog é local, de cada computador, e não vai no clone nem no push</label>
+<label><input type="radio" name="q4"> Sim, o reflog vem junto no clone</label>
+<label><input type="radio" name="q4"> Só se a Ana fizer <code>git push --reflog</code></label>
+<label><input type="radio" name="q4"> Só os dos últimos 30 dias</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">5. Por que é mais seguro usar o hash (<code>abceaaf</code>) do que <code>HEAD@{1}</code> num resgate?</p>
+<label><input type="radio" name="q5"> Porque o <code>HEAD@{1}</code> só funciona no GitHub</label>
+<label><input type="radio" name="q5"> Porque o hash é mais curto</label>
+<label><input type="radio" name="q5"> Porque o <code>HEAD@{1}</code> apaga o diário</label>
+<label><input type="radio" name="q5"> Porque os números do diário andam a cada comando que move o HEAD, e o hash nunca muda</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git reflog</code> é o diário do HEAD: cada commit, troca de branch e reset, do mais recente (<code>HEAD@{0}</code>) para o mais antigo.</li>
+  <li>Um commit que "sumiu" do <code>git log</code> quase sempre está no reflog.</li>
+  <li>Reset errado: <code>git reset --hard HEAD@{1}</code> (ou o hash). Branch apagado: <code>git branch NOME HASH</code>.</li>
+  <li>Cada branch tem o seu diário (<code>git reflog show main</code>), que é apagado junto com o branch.</li>
+  <li>Os números andam a cada comando: confira de novo, ou use o hash.</li>
+  <li>O reflog é local, guarda só commits e dura 90 dias (30 para commits fora de branches).</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
