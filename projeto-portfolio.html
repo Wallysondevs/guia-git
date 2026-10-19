@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Projeto: Portfólio no GitHub Pages — do git init ao site no ar | Guia Git</title>
+<meta name="description" content="Projeto passo a passo: a Ana cria o portfólio dela do zero (git init, .gitignore, primeiro commit), envia para o repositório ana-souza.github.io, liga o GitHub Pages e atualiza o site com novos commits e um branch, com as saídas reais do Git 2.53 em português e missões no terminal do guia.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Projeto: Portfólio no GitHub Pages</span></h1>
+
+<p class="intro">A Ana quer um lugar na internet para mostrar quem ela é e o que já fez: um <strong>portfólio</strong>. Ela não quer pagar hospedagem, e não precisa: o <strong>GitHub Pages</strong> publica de graça um site feito de arquivos HTML e CSS, direto de um repositório. O endereço vai ser <code>https://ana-souza.github.io</code>. Neste último projeto, você junta quase tudo do guia: criar o repositório do zero, ignorar um arquivo pessoal, fazer o primeiro commit, enviar para o GitHub, ligar o Pages e atualizar o site com novos commits e um branch.</p>
+
+<div class="note">
+<strong>Você vai aprender (na prática)</strong>
+<ul>
+  <li>Montar um repositório novo do zero, com <code>.gitignore</code> para o que não deve ir para a internet.</li>
+  <li>Usar o nome especial <code>usuario.github.io</code> para o site pessoal.</li>
+  <li>Ligar o GitHub Pages para publicar a partir do branch <code>main</code> (ilustrativo).</li>
+  <li>Atualizar o site: cada <code>git push</code> no <code>main</code> vira uma nova versão no ar.</li>
+  <li>Testar uma mudança num branch antes de pôr no ar.</li>
+</ul>
+</div>
+
+<p>Este projeto põe em prática <a href="git-init.html">git init</a>, <a href="gitignore.html">.gitignore</a>, <a href="git-push.html">git push</a> e <a href="github-pages.html">Publicando um Site (GitHub Pages)</a>. As saídas do terminal saíram do <strong>Git 2.53</strong> do Ubuntu, na máquina da Ana, com um GitHub de treino. O que acontece <strong>no site</strong> do GitHub (criar o repositório, ligar o Pages, ver o site no ar) é <strong>ilustrativo</strong>, baseado na documentação oficial (docs.github.com/pt).</p>
+
+<div class="note"><strong>Português e inglês misturados?</strong> A tradução do Git que vem no Ubuntu é parcial: algumas mensagens saem em português, outras em inglês. As saídas abaixo estão exatamente como apareceram; as mensagens em inglês ganham tradução no texto.</div>
+
+<hr>
+
+<h2>A ideia: a vitrine da loja</h2>
+<p>Pense numa loja de bolos. Na cozinha (o computador da Ana), ela testa, erra, guarda rascunhos. Na <strong>vitrine</strong> (o site no ar), só entra o que está pronto. O caminho da cozinha para a vitrine é sempre o mesmo: <code>git commit</code> (o bolo está pronto) e <code>git push</code> (leva para a vitrine). O GitHub Pages é o funcionário que, toda vez que chega bolo novo no <code>main</code> do GitHub, arruma a vitrine sozinho.</p>
+<pre>computador da Ana  --git push-->  GitHub (main)  --Pages-->  https://ana-souza.github.io</pre>
+
+<hr>
+
+<h2>Etapa 1: o repositório no GitHub (ilustrativo)</h2>
+<p>Para um <strong>site pessoal</strong>, o nome do repositório tem de ser exatamente <code>usuario.github.io</code>, em letras minúsculas. Como o usuário da Ana é <code>ana-souza</code>, o repositório se chama <code>ana-souza.github.io</code>. Pela documentação ("Criar um site do GitHub Pages"), o caminho é: no ícone <strong>+</strong> do canto superior direito, criar um novo repositório, escolher o dono (a conta da Ana), digitar o nome, deixar <strong>público</strong> (no plano gratuito, o Pages exige repositório público) e criar.</p>
+<p>A documentação sugere marcar a opção de criar um README junto. A Ana <strong>não</strong> marca: ela vai criar os arquivos no computador e enviar tudo de lá, e um repositório vazio aceita o primeiro <code>git push</code> sem conflito (veja <a href="github-repositorio.html">Criando um Repositório no GitHub</a>).</p>
+<div class="tip"><strong>Site de projeto × site pessoal.</strong> Qualquer repositório pode ter um site, mas ele fica num endereço com o nome do repositório: o <code>receitas</code> viraria <code>https://ana-souza.github.io/receitas/</code>. Só o repositório com o nome <code>ana-souza.github.io</code> ganha o endereço "raiz".</div>
+
+<hr>
+
+<h2>Etapa 2: os arquivos e o primeiro commit</h2>
+<p>No computador, a Ana cria a pasta e o repositório:</p>
+
+<pre class="term">$ mkdir portfolio
+$ cd portfolio
+$ git init
+Repositório vazio Git inicializado em  /home/ana/portfolio/.git/</pre>
+
+<p>No editor, ela escreve três arquivos. A página:</p>
+<pre class="file" data-file="index.html">&lt;!doctype html&gt;
+&lt;html lang="pt-BR"&gt;
+&lt;head&gt;&lt;meta charset="utf-8"&gt;&lt;title&gt;Ana Souza&lt;/title&gt;&lt;link rel="stylesheet" href="estilo.css"&gt;&lt;/head&gt;
+&lt;body&gt;
+&lt;h1&gt;Ana Souza&lt;/h1&gt;
+&lt;p&gt;Estudante de programação. Gosto de cozinhar e de fazer sites.&lt;/p&gt;
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+<p>O estilo:</p>
+<pre class="file" data-file="estilo.css">body { font-family: sans-serif; max-width: 40em; margin: auto; }</pre>
+<p>E o README, que aparece na página do repositório no GitHub:</p>
+<pre class="file" data-file="README.md"># Portfólio da Ana Souza</pre>
+<p>Na mesma pasta, ela guarda um arquivo <code>notas-pessoais.txt</code> com ideias soltas, que <strong>não</strong> deve ir para a internet. Tudo o que vai para um repositório público fica visível para o mundo. Por isso, antes do primeiro <code>git add</code>, ela cria o <code>.gitignore</code>:</p>
+<pre class="file" data-file=".gitignore">notas-pessoais.txt</pre>
+
+<pre class="term" data-cwd="~/portfolio">$ touch notas-pessoais.txt
+$ echo 'notas-pessoais.txt' &gt; .gitignore
+$ git status
+No ramo main
+
+No commits yet
+
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+        .gitignore
+        README.md
+        estilo.css
+        index.html      « o notas-pessoais.txt não aparece
+
+nada adicionado ao envio mas arquivos não registrados estão presentes (use "git add" to registrar)
+$ git add .
+$ git status
+No ramo main
+
+No commits yet
+
+Mudanças a serem submetidas:
+  (utilize "git rm --cached &lt;arquivo&gt;..." para não apresentar)
+        new file:   .gitignore
+        new file:   README.md
+        new file:   estilo.css
+        new file:   index.html
+
+$ git commit -m 'Cria o portfólio'
+[main (root-commit) aaa5fb9] Cria o portfólio
+ 4 files changed, 11 insertions(+)
+ create mode 100644 .gitignore
+ create mode 100644 README.md
+ create mode 100644 estilo.css
+ create mode 100644 index.html
+$ git log --oneline
+aaa5fb9 (HEAD -&gt; main) Cria o portfólio</pre>
+
+<ul>
+  <li>No primeiro <code>git status</code>, a lista de "Arquivos não monitorados" tem o <code>.gitignore</code>, o README, o CSS e o HTML, mas <strong>não</strong> o <code>notas-pessoais.txt</code>: o <code>.gitignore</code> já está funcionando.</li>
+  <li>O <code>git add .</code> (o ponto é "a pasta atual inteira") preparou os quatro arquivos, e só eles. O <code>new file:</code> quer dizer "arquivo novo".</li>
+  <li><code>[main (root-commit) aaa5fb9]</code>: o <em>root-commit</em> é o primeiro commit do repositório, o que não tem pai.</li>
+</ul>
+
+<div class="warning"><strong>Confira antes do primeiro push.</strong> Num repositório público, até um arquivo apagado depois continua no histórico. Rode <code>git status</code> e leia a lista antes do <code>git add .</code>: nada de senhas, documentos pessoais ou arquivos enormes (veja <a href="senha-commitada.html">Commitei uma Senha! E Agora?</a>).</div>
+
+<div class="try" data-setup="mkdir portfolio;;cd portfolio;;git init -q;;printf '&lt;h1&gt;Ana Souza&lt;/h1&gt;\n&lt;p&gt;Estudante de programação.&lt;/p&gt;\n' &gt; index.html;;echo 'body { font-family: sans-serif; }' &gt; estilo.css;;echo '# Portfólio da Ana Souza' &gt; README.md;;echo 'ideias soltas' &gt; notas-pessoais.txt" data-goal="commits:1,limpo,rastreado:index.html,ignorado:notas-pessoais.txt" data-solucao="echo 'notas-pessoais.txt' &gt; .gitignore;;git add .;;git commit -m 'Cria o portfólio'">
+<p class="try-task"><strong>Missão 1:</strong> a pasta <code>portfolio</code> já é um repositório e tem o <code>index.html</code>, o <code>estilo.css</code>, o <code>README.md</code> e o arquivo pessoal <code>notas-pessoais.txt</code>. Faça o <code>notas-pessoais.txt</code> ser ignorado (com um <code>.gitignore</code>) e faça o primeiro commit com todo o resto. No fim, o <code>git status</code> tem de estar limpo.</p>
+</div>
+
+<hr>
+
+<h2>Etapa 3: enviar para o GitHub</h2>
+<p>Igual ao <a href="projeto-dupla.html">projeto da dupla</a>: ligar o repositório local ao do GitHub e fazer o primeiro envio com <code>-u</code>.</p>
+
+<pre class="term" data-cwd="~/portfolio">$ git remote add origin https://github.com/ana-souza/ana-souza.github.io.git
+$ git push -u origin main
+Enumerating objects: 6, done.
+Counting objects: 100% (6/6), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (4/4), done.
+Writing objects: 100% (6/6), 647 bytes | 647.00 KiB/s, done.
+Total 6 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/ana-souza.github.io.git
+ * [new branch]      main -&gt; main
+branch 'main' set up to track 'origin/main'.</pre>
+
+<p><code>* [new branch]      main -&gt; main</code>: o <code>main</code> nasceu no GitHub. Os arquivos já estão no repositório, mas o site ainda não está no ar: falta ligar o Pages.</p>
+
+<div class="try" data-setup="mkdir -p github/ana-souza;;git init -q --bare -b main github/ana-souza/ana-souza.github.io.git;;mkdir portfolio;;cd portfolio;;git init -q;;printf '&lt;h1&gt;Ana Souza&lt;/h1&gt;\n&lt;p&gt;Estudante de programação.&lt;/p&gt;\n' &gt; index.html;;echo 'body { font-family: sans-serif; }' &gt; estilo.css;;echo '# Portfólio da Ana Souza' &gt; README.md;;echo 'ideias soltas' &gt; notas-pessoais.txt;;echo 'notas-pessoais.txt' &gt; .gitignore;;git add .;;git commit -q -m 'Cria o portfólio'" data-goal="remoto:origin,contem:origin/main:index.html=Ana Souza" data-solucao="git remote add origin ~/github/ana-souza/ana-souza.github.io.git;;git push -u origin main">
+<p class="try-task"><strong>Missão 2:</strong> o portfólio já tem o primeiro commit. No treino, o "GitHub" é a pasta <code>~/github/ana-souza/ana-souza.github.io.git</code> (o Git aceita uma pasta como endereço de remoto). Ligue o repositório a ela com o apelido <code>origin</code> e envie o <code>main</code> com <code>-u</code>. Confira com <code>git status</code>.</p>
+</div>
+
+<hr>
+
+<h2>Etapa 4: ligar o GitHub Pages (ilustrativo)</h2>
+<p>Esta parte acontece no site do GitHub. Pela documentação ("Configurar uma fonte de publicação para o site do GitHub Pages"), os passos são:</p>
+<ol class="passo">
+  <li>Na página do repositório <code>ana-souza.github.io</code>, abrir a aba <strong>Settings</strong> (configurações).</li>
+  <li>Na barra lateral, na seção de código e automação, clicar em <strong>Pages</strong> (páginas).</li>
+  <li>Em <strong>Build and deployment</strong> (build e implantação), no campo <strong>Source</strong> (fonte), escolher <strong>Deploy from a branch</strong> (implantar a partir de um branch).</li>
+  <li>No menu de branch, escolher <code>main</code>; na pasta, <code>/ (root)</code> (a raiz do repositório, onde está o <code>index.html</code>).</li>
+  <li>Clicar em <strong>Save</strong> (salvar).</li>
+</ol>
+<p>O GitHub monta o site e o publica. Segundo a documentação, pode levar <strong>até 10 minutos</strong> depois de um push para as mudanças aparecerem. Quando estiver pronto, a mesma página de configurações do Pages mostra o endereço, com a opção de visitar o site: <code>https://ana-souza.github.io</code>.</p>
+<div class="note">Os nomes dos botões do site do GitHub mudam com o tempo e dependem do idioma da interface (a documentação em português traduz os nomes; o site costuma aparecer em inglês). Se não encontrar algo, procure "GitHub Pages" em docs.github.com/pt: a página é atualizada junto com o site. Mais detalhes em <a href="github-pages.html">Publicando um Site (GitHub Pages)</a>.</div>
+
+<hr>
+
+<h2>Etapa 5: atualizar o site</h2>
+<p>A partir de agora, publicar é só commitar e enviar. A Ana acrescenta, no editor, uma lista de projetos no <code>index.html</code>, com o link para o site de receitas, e confere a diferença:</p>
+
+<pre class="term" data-cwd="~/portfolio">$ git diff
+diff --git a/index.html b/index.html
+index f40fbd6..357c1ed 100644
+--- a/index.html
++++ b/index.html
+@@ -4,5 +4,7 @@
+ &lt;body&gt;
+ &lt;h1&gt;Ana Souza&lt;/h1&gt;
+ &lt;p&gt;Estudante de programação. Gosto de cozinhar e de fazer sites.&lt;/p&gt;
++&lt;h2&gt;Projetos&lt;/h2&gt;
++&lt;ul&gt;&lt;li&gt;&lt;a href="https://github.com/ana-souza/receitas"&gt;Site de receitas&lt;/a&gt;&lt;/li&gt;&lt;/ul&gt;
+ &lt;/body&gt;
+ &lt;/html&gt;
+$ git commit -am 'Adiciona a lista de projetos'
+[main cd808fc] Adiciona a lista de projetos
+ 1 file changed, 2 insertions(+)
+$ git push
+Enumerating objects: 5, done.
+Counting objects: 100% (5/5), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (3/3), done.
+Writing objects: 100% (3/3), 395 bytes | 395.00 KiB/s, done.
+Total 3 (delta 2), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/ana-souza.github.io.git
+   aaa5fb9..cd808fc  main -&gt; main      « no ar em alguns minutos</pre>
+
+<p>O <code>git push</code> sem nomes funciona porque o <code>-u</code> da etapa 3 deixou o <code>main</code> ligado ao <code>origin/main</code>. Minutos depois, a lista de projetos aparece no site.</p>
+
+<div class="try" data-setup="mkdir -p github/ana-souza;;git init -q --bare -b main github/ana-souza/ana-souza.github.io.git;;mkdir portfolio;;cd portfolio;;git init -q;;printf '&lt;h1&gt;Ana Souza&lt;/h1&gt;\n&lt;p&gt;Estudante de programação.&lt;/p&gt;\n' &gt; index.html;;echo 'body { font-family: sans-serif; }' &gt; estilo.css;;echo '# Portfólio da Ana Souza' &gt; README.md;;echo 'ideias soltas' &gt; notas-pessoais.txt;;echo 'notas-pessoais.txt' &gt; .gitignore;;git add .;;git commit -q -m 'Cria o portfólio';;git remote add origin ~/github/ana-souza/ana-souza.github.io.git;;git push -q -u origin main" data-goal="contem:origin/main:index.html=Projetos,limpo" data-solucao="echo '&lt;h2&gt;Projetos&lt;/h2&gt;' &gt;&gt; index.html;;git add index.html;;git commit -m 'Adiciona a lista de projetos';;git push">
+<p class="try-task"><strong>Missão 3:</strong> o portfólio já está no "GitHub" de treino. Acrescente um título de projetos no fim do <code>index.html</code> (por exemplo, <code>echo '&lt;h2&gt;Projetos&lt;/h2&gt;' &gt;&gt; index.html</code>), faça o commit e publique. No fim, o <code>git status</code> tem de dizer que o branch está em dia com o <code>origin/main</code>.</p>
+</div>
+
+<hr>
+
+<h2>Etapa 6: testar num branch antes de pôr no ar</h2>
+<p>A Ana quer experimentar um tema escuro, mas sem arriscar a vitrine: o Pages publica o <code>main</code>, então ela trabalha num branch (como no <a href="projeto-funcionalidade.html">projeto da funcionalidade</a>). Ela envia o branch também, para guardar uma cópia no GitHub e poder mostrar a alguém:</p>
+
+<pre class="term" data-cwd="~/portfolio">$ git switch -c tema-escuro
+Switched to a new branch 'tema-escuro'
+$ echo 'body { background: #222; color: #eee; }' &gt;&gt; estilo.css
+$ git commit -am 'Adiciona o tema escuro'
+[tema-escuro e1e8a2e] Adiciona o tema escuro
+ 1 file changed, 1 insertion(+)
+$ git push -u origin tema-escuro
+Enumerating objects: 5, done.
+Counting objects: 100% (5/5), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (3/3), done.
+Writing objects: 100% (3/3), 353 bytes | 353.00 KiB/s, done.
+Total 3 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)
+remote:
+remote: Create a pull request for 'tema-escuro' on GitHub by visiting:
+remote:      https://github.com/ana-souza/ana-souza.github.io/pull/new/tema-escuro
+remote:
+To https://github.com/ana-souza/ana-souza.github.io.git
+ * [new branch]      tema-escuro -&gt; tema-escuro
+branch 'tema-escuro' set up to track 'origin/tema-escuro'.</pre>
+
+<ul>
+  <li>As linhas <code>remote:</code> vêm do GitHub: "crie um pull request para 'tema-escuro' no GitHub visitando:" e o endereço. Num projeto em equipe, este é o caminho para pedir revisão antes do merge (veja <a href="pull-request.html">Pull Request</a>). Como o portfólio é só dela, a Ana junta no computador mesmo.</li>
+  <li>O branch <code>tema-escuro</code> não aparece no site: o Pages só olha o <code>main</code>.</li>
+</ul>
+
+<p>Gostou do tema. Hora de pôr no ar: juntar no <code>main</code>, enviar, e apagar o branch nos dois lugares.</p>
+
+<pre class="term" data-cwd="~/portfolio">$ git switch main
+Switched to branch 'main'
+Your branch is up to date with 'origin/main'.
+$ git merge tema-escuro
+Updating cd808fc..e1e8a2e
+Fast-forward
+ estilo.css | 1 +
+ 1 file changed, 1 insertion(+)
+$ git push
+Total 0 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/ana-souza.github.io.git
+   cd808fc..e1e8a2e  main -&gt; main      « o tema escuro vai para o site
+$ git push origin --delete tema-escuro
+To https://github.com/ana-souza/ana-souza.github.io.git
+ - [deleted]         tema-escuro
+$ git branch -d tema-escuro
+Deleted branch tema-escuro (was e1e8a2e).
+$ git log --oneline --graph --all
+* e1e8a2e (HEAD -&gt; main, origin/main) Adiciona o tema escuro
+* cd808fc Adiciona a lista de projetos
+* aaa5fb9 Cria o portfólio
+$ git status
+No ramo main
+Your branch is up to date with 'origin/main'.
+
+nothing to commit, working tree clean</pre>
+
+<ul>
+  <li><code>Fast-forward</code>: o <code>main</code> não tinha andado, então só avançou até o commit do tema (sem commit de merge; veja <a href="fast-forward.html">Merge Fast-forward</a>).</li>
+  <li><code>Total 0</code> no push: nenhum objeto novo precisou ir, porque o commit do tema já tinha sido enviado junto com o branch. O GitHub só moveu o <code>main</code> (<code>cd808fc..e1e8a2e</code>). É nesse momento que o tema escuro vai para o site.</li>
+  <li><code>git push origin --delete tema-escuro</code> apaga o branch no GitHub (<code>- [deleted]</code>); <code>git branch -d</code>, no computador.</li>
+</ul>
+
+<hr>
+
+<h2>Formas diferentes de publicar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Jeito</th><th>Como</th><th>Quando usar</th></tr>
+<tr><td>Site pessoal (deste projeto)</td><td>Repositório <code>usuario.github.io</code>, publicando o <code>main</code>, pasta raiz</td><td>Portfólio, página pessoal.</td></tr>
+<tr><td>Site de projeto</td><td>Qualquer repositório, publicando um branch; endereço <code>usuario.github.io/repositorio/</code></td><td>A página de um projeto (o site de receitas, por exemplo).</td></tr>
+<tr><td>Pasta <code>/docs</code></td><td>Mesma tela, escolhendo a pasta <code>/docs</code> em vez da raiz</td><td>Quando o repositório tem código e o site fica só numa pasta.</td></tr>
+<tr><td>GitHub Actions</td><td>Em <strong>Source</strong>, a opção do GitHub Actions</td><td>Sites que precisam ser "montados" antes (geradores de site); veja <a href="github-actions.html">Uma Olhada no GitHub Actions</a>.</td></tr>
+<tr><td>Editar direto no site</td><td>Botão de editar arquivo na página do GitHub</td><td>Correções pequenas e rápidas. Depois, faça <code>git pull</code> no computador para não divergir.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Quando dá errado</h2>
+
+<div class="cenario">
+<strong>"remote: Repository not found." no primeiro push</strong>
+<p><strong>O que aconteceu:</strong> o endereço do <code>origin</code> não bate com o repositório criado (um erro de digitação no nome, por exemplo <code>ana-souza.github.com</code> em vez de <code>.io</code>), ou o repositório não foi criado. A mensagem completa está no <a href="projeto-dupla.html">projeto da dupla</a>.</p>
+<p><strong>Como resolver:</strong> confira com <code>git remote -v</code> e corrija com <code>git remote set-url origin https://github.com/ana-souza/ana-souza.github.io.git</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>"! [rejected] … (fetch first)" no primeiro push</strong>
+<p><strong>O que aconteceu:</strong> o repositório do GitHub foi criado <strong>com</strong> README (ou licença, ou <code>.gitignore</code>), então ele já tem um commit que o seu computador não tem. É o mesmo push recusado do <a href="projeto-dupla.html">projeto da dupla</a>.</p>
+<p><strong>Como resolver:</strong> traga o commit do GitHub e junte: <code>git pull --no-rebase --allow-unrelated-histories origin main</code> (as duas histórias começaram separadas, por isso a opção extra), resolva conflitos se houver (provavelmente no README) e <code>git push -u origin main</code>. Para evitar: crie o repositório vazio quando os arquivos já existem no computador.</p>
+</div>
+
+<div class="cenario">
+<strong>Enviei, mas o site não mudou (ou mostra 404)</strong>
+<p><strong>O que aconteceu (ilustrativo):</strong> as causas mais comuns são: o Pages ainda não terminou de publicar (até 10 minutos, pela documentação); o Pages não foi ligado ou aponta para outro branch ou pasta; não há <code>index.html</code> (ou <code>README.md</code>) na pasta publicada; ou o navegador está mostrando uma cópia antiga (recarregue sem cache).</p>
+<p><strong>Como confirmar:</strong> do lado do Git, <code>git status</code> deve dizer <code>Your branch is up to date with 'origin/main'</code> (tudo enviado) e <code>git log --oneline -1 origin/main</code> mostra o último commit que o GitHub tem. Do lado do site, a página de configurações do Pages mostra a situação da publicação.</p>
+</div>
+
+<div class="cenario">
+<strong>Mandei sem querer um arquivo pessoal para o repositório público</strong>
+<p><strong>O que aconteceu:</strong> o arquivo foi commitado antes de entrar no <code>.gitignore</code>. Colocar o nome no <code>.gitignore</code> depois <strong>não</strong> tira o arquivo do repositório.</p>
+<p><strong>Como resolver:</strong> <code>git rm --cached notas-pessoais.txt</code> (para de rastrear, mas mantém na pasta), acrescente ao <code>.gitignore</code>, commite e envie. Ele continua nos commits antigos: se for algo sensível (senha, token, documento), siga <a href="senha-commitada.html">Commitei uma Senha! E Agora?</a>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida do projeto</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Etapa</th><th>Onde</th><th>O que fazer</th></tr>
+<tr><td>1</td><td>Site do GitHub</td><td>Criar o repositório público <code>usuario.github.io</code>, vazio.</td></tr>
+<tr><td>2</td><td>Terminal</td><td><code>git init</code>, arquivos, <code>.gitignore</code>, <code>git add .</code>, <code>git commit</code>.</td></tr>
+<tr><td>3</td><td>Terminal</td><td><code>git remote add origin URL</code>, <code>git push -u origin main</code>.</td></tr>
+<tr><td>4</td><td>Site do GitHub</td><td>Settings → Pages → Deploy from a branch → <code>main</code>, <code>/ (root)</code> → Save.</td></tr>
+<tr><td>5</td><td>Terminal</td><td>Editar, <code>git commit</code>, <code>git push</code>: o site se atualiza.</td></tr>
+<tr><td>6</td><td>Terminal</td><td>Testar num branch; <code>git merge</code> no <code>main</code> e <code>git push</code> para publicar.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. O nome do repositório</h3>
+<p>O usuário do Bruno no GitHub é <code>bruno-lima</code>. Complete o nome do repositório do site pessoal dele:</p>
+<div class="ex-code"><input data-answer="bruno-lima.github.io" aria-label="nome do repositório"></div>
+</div>
+
+<div class="exercise">
+<h3>2. Ignorar o arquivo pessoal</h3>
+<p>Complete para criar o <code>.gitignore</code> que ignora o <code>senhas.txt</code>:</p>
+<div class="ex-code">echo 'senhas.txt' &gt; <input data-answer=".gitignore" aria-label="arquivo"></div>
+</div>
+
+<div class="exercise">
+<h3>3. Publicar a atualização</h3>
+<p>A Ana já fez o commit da mudança no <code>main</code>. Complete o comando que põe a mudança no ar:</p>
+<div class="ex-code">git <input data-answer="push" aria-label="subcomando"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. A Ana enviou o branch <code>tema-escuro</code> para o GitHub, mas o site não mudou. Por quê?</p>
+<label><input type="radio" name="q4"> Porque o push de branch falhou.</label>
+<label><input type="radio" name="q4"> Porque o Pages publica o branch configurado (o <code>main</code>), e o tema ainda não foi juntado nele.</label>
+<label><input type="radio" name="q4"> Porque o GitHub Pages não aceita CSS.</label>
+<label><input type="radio" name="q4"> Porque falta rodar <code>git pages</code>.</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">5. Qual é o endereço do site do repositório <code>receitas</code> da conta <code>ana-souza</code>, publicado pelo Pages?</p>
+<label><input type="radio" name="q5"> <code>https://receitas.github.io</code></label>
+<label><input type="radio" name="q5"> <code>https://github.com/ana-souza/receitas.html</code></label>
+<label><input type="radio" name="q5"> <code>https://ana-souza.github.io/receitas/</code></label>
+<label><input type="radio" name="q5"> <code>https://ana-souza.github.io</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">6. A Ana colocou <code>notas-pessoais.txt</code> no <code>.gitignore</code> <strong>depois</strong> de já ter commitado e enviado o arquivo. O que acontece?</p>
+<label><input type="radio" name="q6"> O arquivo continua no repositório; é preciso <code>git rm --cached</code>, commit e push (e ele segue nos commits antigos).</label>
+<label><input type="radio" name="q6"> O Git apaga o arquivo do GitHub sozinho.</label>
+<label><input type="radio" name="q6"> O arquivo some da pasta da Ana.</label>
+<label><input type="radio" name="q6"> O push seguinte é recusado.</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Site pessoal no GitHub Pages: repositório público chamado <code>usuario.github.io</code>, com um <code>index.html</code> na raiz.</li>
+  <li>Antes do primeiro <code>git add .</code>, um <code>.gitignore</code> para o que é pessoal; e um <code>git status</code> para conferir a lista.</li>
+  <li>Primeiro envio: <code>git remote add origin URL</code> e <code>git push -u origin main</code>. Depois, ligar o Pages no site (Settings → Pages → <code>main</code>, raiz).</li>
+  <li>Publicar = <code>git commit</code> + <code>git push</code> no <code>main</code>. O site atualiza em alguns minutos.</li>
+  <li>Experimentos vão num branch; o Pages só publica o <code>main</code>. Junte e envie quando estiver pronto.</li>
+</ul>
+
+<p>Você chegou ao fim dos projetos! Para consultar qualquer comando rapidamente, use a <a href="ref-comandos.html">Referência de Comandos</a> e a <a href="ref-resumo.html">Folha de Consulta</a>.</p>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
