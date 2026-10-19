@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git GitHub Pages — publicando um site de graça a partir do repositório | Guia Git</title>
+<meta name="description" content="Como publicar um site estático no GitHub Pages: site de usuário (ana-souza.github.io) e site de projeto, o index.html na raiz ou em /docs, ligar o Pages nas Configurações (Fazer implantação de um branch), o ciclo editar → commit → push → até 10 minutos, o branch gh-pages, limites e os erros mais comuns, com os pushes reais do Git 2.53.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">GitHub Pages</span></h1>
+
+<p class="intro">Você fez uma página em HTML, ela abre bonita no seu navegador… mas só no seu computador. Para o mundo ver, ela precisa estar num <strong>servidor</strong> na internet. O <strong>GitHub Pages</strong> é esse servidor, de graça: você envia os arquivos do site para um repositório com <code>git push</code>, liga uma opção nas configurações, e o GitHub publica o site num endereço como <code>https://ana-souza.github.io</code>. A cada novo <code>push</code>, o site se atualiza sozinho. Nesta aula, a Ana publica o site de receitas.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que o GitHub Pages faz e que tipo de site ele publica (sites <strong>estáticos</strong>).</li>
+  <li>A diferença entre o site de <strong>usuário</strong> (<code>ana-souza.github.io</code>) e o site de <strong>projeto</strong> (<code>ana-souza.github.io/receitas</code>).</li>
+  <li>Como enviar o site com o Git e ligar o Pages nas configurações do repositório.</li>
+  <li>Como atualizar o site: editar, commitar, enviar e esperar.</li>
+  <li>Os problemas mais comuns: a página 404, o site que não muda, o <code>index.html</code> no lugar errado.</li>
+</ul>
+</div>
+
+<p>Os comandos do Git desta aula rodaram no <strong>Git 2.53</strong> da máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), enviando para o "GitHub de mentira" do laboratório. As telas do site do GitHub não rodam no laboratório: elas estão descritas com base na documentação oficial (<a href="https://docs.github.com/pt/pages/getting-started-with-github-pages/creating-a-github-pages-site">docs.github.com/pt</a>) e são <strong>ilustrativas</strong>; os nomes podem aparecer em inglês, conforme o idioma da sua conta.</p>
+
+<hr>
+
+<h2>A ideia: a vitrine da loja</h2>
+<p>O repositório no GitHub é como o <strong>estoque</strong> de uma loja: tudo guardado, organizado, com o histórico de cada peça. O GitHub Pages é a <strong>vitrine</strong>: você escolhe uma prateleira do estoque (um branch, e uma pasta dentro dele) e o GitHub expõe o que está lá para quem passa na rua. Quando você troca a peça no estoque (um novo commit enviado com <code>push</code>), a vitrine é rearrumada sozinha, em alguns minutos.</p>
+<p>Duas regras da vitrine:</p>
+<ul>
+  <li>Ela só mostra <strong>sites estáticos</strong>: arquivos prontos (HTML, CSS, JavaScript, imagens), que o navegador abre como estão. Não roda programas no servidor (PHP, banco de dados). Um portfólio, um currículo, a documentação de um projeto, o site de receitas: tudo isso serve.</li>
+  <li>A vitrine é <strong>pública</strong>: qualquer pessoa vê. Nunca ponha senhas ou dados pessoais nos arquivos; a documentação diz que os sites "não devem ser usados para transações confidenciais, como envio de senhas".</li>
+</ul>
+
+<hr>
+
+<h2>1. Site de usuário ou site de projeto?</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Tipo</th><th>Nome do repositório</th><th>Endereço do site</th><th>Quantos</th></tr>
+<tr><td>Site de <strong>usuário</strong></td><td><code>ana-souza.github.io</code> (o seu usuário + <code>.github.io</code>)</td><td><code>https://ana-souza.github.io</code></td><td>Um por conta</td></tr>
+<tr><td>Site de <strong>projeto</strong></td><td>Qualquer um, por exemplo <code>receitas</code></td><td><code>https://ana-souza.github.io/receitas</code></td><td>Um por repositório</td></tr>
+</table>
+</div>
+<p>O site de usuário é a "página principal" da pessoa (o portfólio). O de projeto fica numa "subpasta" do endereço e serve para cada projeto ter a sua página. O jeito de publicar é o mesmo nos dois. A Ana vai começar pelo site de usuário.</p>
+
+<div class="warning">
+<strong>Repositório público</strong>
+<p>Segundo a documentação, com o GitHub Free (o plano gratuito), o repositório do site precisa ser <strong>público</strong>. E mesmo nos planos que permitem publicar a partir de repositório privado, o site em si fica público na internet.</p>
+</div>
+
+<hr>
+
+<h2>2. O site no computador: o <code>index.html</code></h2>
+<p>O GitHub Pages procura um arquivo de entrada: <code>index.html</code>, <code>index.md</code> ou <code>README.md</code>, no nível de cima da pasta publicada. É a página que abre quando alguém digita só o endereço. A Ana cria a pasta, o repositório e a página:</p>
+
+<pre class="term">$ mkdir ana-souza.github.io &amp;&amp; cd ana-souza.github.io &amp;&amp; git init -q
+$ cat &gt; index.html &lt;&lt;'FIM'
+&gt; &lt;!doctype html&gt;
+&gt; &lt;html lang="pt-BR"&gt;
+&gt; &lt;head&gt;&lt;meta charset="utf-8"&gt;&lt;title&gt;Receitas da Ana&lt;/title&gt;&lt;/head&gt;
+&gt; &lt;body&gt;
+&gt; &lt;h1&gt;Receitas da Ana&lt;/h1&gt;
+&gt; &lt;p&gt;Bolo de cenoura, pão de queijo e outras delícias.&lt;/p&gt;
+&gt; &lt;/body&gt;
+&gt; &lt;/html&gt;
+&gt; FIM
+$ git add index.html
+$ git commit -m 'Primeira versão do site'
+[main (root-commit) 78bc0b4] Primeira versão do site
+ 1 file changed, 8 insertions(+)
+ create mode 100644 index.html
+</pre>
+<p>Nada de especial até aqui: um repositório comum, com um commit (aula <a href="primeiro-commit.html">Seu Primeiro Commit</a>). O nome da pasta no computador pode ser qualquer um; quem precisa se chamar <code>ana-souza.github.io</code> é o repositório no GitHub. (No dia a dia, a Ana escreveria o <code>index.html</code> num editor; o <code>cat</code> com <code>&lt;&lt;'FIM'</code> só cria o arquivo pelo terminal.)</p>
+
+<div class="try" data-setup="mkdir site;;cd site;;git init -q" data-goal="contem:HEAD:index.html=Receitas da Ana,limpo" data-solucao="echo '&lt;h1&gt;Receitas da Ana&lt;/h1&gt;' &gt; index.html;;git add index.html;;git commit -m 'Primeira versão do site'">
+<p class="try-task"><strong>Missão:</strong> na pasta <code>site</code> (já é um repositório, ainda sem commits), crie o <code>index.html</code> com um título: <code>echo '&lt;h1&gt;Receitas da Ana&lt;/h1&gt;' &gt; index.html</code>. Depois, adicione e faça o commit.</p>
+</div>
+
+<hr>
+
+<h2>3. Enviando para o GitHub</h2>
+<p>No site do GitHub, a Ana cria um repositório <strong>público</strong> chamado <code>ana-souza.github.io</code>, vazio (aula <a href="github-repositorio.html">Criando um Repositório no GitHub</a>). Depois, liga o repositório local a ele e envia (aulas <a href="git-remote.html">git remote</a> e <a href="git-push.html">git push</a>):</p>
+
+<pre class="term" data-cwd="~/ana-souza.github.io">$ git remote add origin https://github.com/ana-souza/ana-souza.github.io.git
+$ git push -u origin main
+To https://github.com/ana-souza/ana-souza.github.io.git
+ * [new branch]      main -&gt; main                      « o branch main foi criado no GitHub
+branch 'main' set up to track 'origin/main'.
+$ git status
+No ramo main
+Your branch is up to date with 'origin/main'.          « nada a enviar: o GitHub tem tudo
+
+nothing to commit, working tree clean
+</pre>
+<p>Algumas linhas saem em inglês mesmo com o sistema em português: a tradução do Git do Ubuntu não cobre todas as mensagens. <code>Your branch is up to date with 'origin/main'</code> quer dizer "o seu branch está igual ao <code>origin/main</code>", e <code>nothing to commit, working tree clean</code>, "nada a commitar, pasta limpa".</p>
+
+<hr>
+
+<h2>4. Ligando o Pages nas configurações (ilustrativo)</h2>
+<p>Os arquivos estão no GitHub, mas a vitrine ainda está apagada. Os passos, segundo a documentação:</p>
+<ol class="passo">
+  <li>Na página do repositório, clique em <strong>Configurações</strong> (<em>Settings</em>). Se não achar, ela está no menu <strong>⋯</strong>.</li>
+  <li>Na barra lateral, na seção "Código, planejamento e automação" (<em>Code and automation</em>), clique em <strong>Páginas</strong> (<em>Pages</em>).</li>
+  <li>Em "Build e implantação" (<em>Build and deployment</em>), no campo "Fonte" (<em>Source</em>), escolha <strong>Fazer implantação de um branch</strong> (<em>Deploy from a branch</em>).</li>
+  <li>No menu do branch, escolha <code>main</code>. No menu da pasta, escolha a raiz (<code>/ (root)</code>) ou <code>/docs</code> (seção 6).</li>
+  <li>Clique em <strong>Salvar</strong> (<em>Save</em>).</li>
+</ol>
+<p>Depois de salvar, o GitHub monta e publica o site. A documentação avisa que <strong>pode levar até 10 minutos</strong> para as mudanças aparecerem. Quando estiver pronto, a mesma tela mostra o endereço do site. A Ana abre <code>https://ana-souza.github.io</code> no navegador e vê o título "Receitas da Ana".</p>
+
+<div class="tip">
+<strong>No site de usuário, às vezes nem precisa ligar</strong>
+<p>O início rápido da documentação cria o repositório <code>ana-souza.github.io</code> já com um README e manda escolher a fonte nas configurações. Se, ao abrir a tela <strong>Páginas</strong>, a fonte já estiver escolhida, é só conferir que é o branch <code>main</code> e a pasta certa.</p>
+</div>
+
+<hr>
+
+<h2>5. Atualizando o site: editar, commitar, enviar</h2>
+<p>A partir de agora, publicar é o ciclo de sempre do Git. A Ana troca uma frase da página:</p>
+
+<pre class="term" data-cwd="~/ana-souza.github.io">$ sed -i 's/outras delícias/muito mais/' index.html
+$ git commit -am 'Atualiza a frase da página inicial'
+[main 64ebfc7] Atualiza a frase da página inicial
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+$ git push
+To https://github.com/ana-souza/ana-souza.github.io.git
+   78bc0b4..64ebfc7  main -&gt; main                     « o main do GitHub andou de 78bc0b4 para 64ebfc7
+</pre>
+<p>O <code>sed -i</code> fez a troca no arquivo (no dia a dia, o editor); o <code>-a</code> do <code>commit</code> adicionou o arquivo alterado e já commitou (aula <a href="git-commit.html">git commit</a>). Assim que o <code>push</code> chega, o GitHub refaz o site. Em alguns minutos, a frase nova está no ar. <strong>Sem <code>push</code>, nada muda no site</strong>: o GitHub só publica o que recebeu.</p>
+
+<div class="try" data-setup="git init -q --bare servidor.git;;mkdir site;;cd site;;git init -q;;echo '&lt;h1&gt;Receitas&lt;/h1&gt;' &gt; index.html;;git add index.html;;git commit -q -m 'Primeira versão do site';;git remote add origin ../servidor.git;;git push -q -u origin main;;echo '&lt;p&gt;Bolo de cenoura&lt;/p&gt;' &gt;&gt; index.html" data-goal="contem:origin/main:index.html=Bolo de cenoura,limpo" data-solucao="git add index.html;;git commit -m 'Acrescenta o bolo';;git push">
+<p class="try-task"><strong>Missão:</strong> a Ana já acrescentou uma linha ao <code>index.html</code>, mas o site não mudou. Confira com <code>git status</code>, faça o commit e <strong>envie</strong> com <code>git push</code> (aqui, o "GitHub" é a pasta <code>../servidor.git</code>). Depois, <code>git status</code> deve dizer que está tudo em dia.</p>
+</div>
+
+<hr>
+
+<h2>6. Formas diferentes: de onde o site é publicado</h2>
+<p>Nas configurações do Pages, você escolhe o branch e a pasta. As combinações mais comuns:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Fonte</th><th>Onde fica o <code>index.html</code></th><th>Quando usar</th></tr>
+<tr><td>Branch <code>main</code>, pasta <code>/ (root)</code></td><td>Na raiz do repositório</td><td>O repositório é só o site (o caso da Ana)</td></tr>
+<tr><td>Branch <code>main</code>, pasta <code>/docs</code></td><td>Na pasta <code>docs/</code></td><td>O repositório tem um programa, e o site (a documentação dele) fica separado na pasta <code>docs</code></td></tr>
+<tr><td>Branch <code>gh-pages</code></td><td>Na raiz desse branch</td><td>Um branch só para o site; nome tradicional, muito usado por ferramentas que geram o site sozinhas</td></tr>
+<tr><td>GitHub Actions</td><td>Onde o seu fluxo de trabalho mandar</td><td>Sites que precisam ser "montados" por um programa (aula <a href="github-actions.html">GitHub Actions</a>)</td></tr>
+</table>
+</div>
+
+<p>Para usar a pasta <code>/docs</code>, mova o site para lá (aula <a href="git-mv.html">git mv</a>), envie, e troque a pasta nas configurações:</p>
+<pre class="term" data-cwd="~/ana-souza.github.io">$ mkdir docs &amp;&amp; git mv index.html docs/
+$ git commit -m 'Move o site para a pasta docs'
+[main 91f2aa6] Move o site para a pasta docs
+ 1 file changed, 0 insertions(+), 0 deletions(-)
+ rename index.html =&gt; docs/index.html (100%)
+$ git push
+To https://github.com/ana-souza/ana-souza.github.io.git
+   64ebfc7..91f2aa6  main -&gt; main
+</pre>
+
+<p>E para o branch <code>gh-pages</code>: dá para criar o branch no GitHub enviando o seu <code>main</code> com outro nome, com <code>git push origin main:gh-pages</code> ("envie o meu <code>main</code> para o branch <code>gh-pages</code> de lá"):</p>
+<pre class="term" data-cwd="~/ana-souza.github.io">$ git push origin main:gh-pages
+remote:
+remote: Create a pull request for 'gh-pages' on GitHub by visiting:
+remote:      https://github.com/ana-souza/ana-souza.github.io/pull/new/gh-pages
+remote:
+To https://github.com/ana-souza/ana-souza.github.io.git
+ * [new branch]      main -&gt; gh-pages
+</pre>
+<p>As linhas <code>remote:</code> vêm do GitHub: ele sempre oferece abrir um <em>pull request</em> para um branch novo (aula <a href="pull-request.html">Pull Request</a>). Aqui é só ignorar. Depois, nas configurações do Pages, escolha o branch <code>gh-pages</code>.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>O endereço mostra "404" (ilustrativo)</strong>
+<p>O navegador mostra uma página de erro 404 do GitHub ("não encontrado"). As causas mais comuns:</p>
+<ul>
+  <li><strong>Ainda não deu tempo:</strong> espere até 10 minutos depois do <code>push</code> (ou de salvar as configurações).</li>
+  <li><strong>O Pages não foi ligado</strong>, ou a fonte aponta para outro branch ou pasta: confira em <strong>Configurações → Páginas</strong>.</li>
+  <li><strong>Não há arquivo de entrada</strong> no nível de cima da pasta publicada. Um site em <code>docs/index.html</code> com a fonte na raiz (<code>/ (root)</code>) não acha o <code>index.html</code>. Confira com <code>git ls-files</code>, que lista os arquivos do repositório.</li>
+  <li><strong>O nome do arquivo está diferente:</strong> <code>Index.html</code> ou <code>index.htm</code> não servem; o servidor do GitHub diferencia maiúsculas de minúsculas.</li>
+</ul>
+</div>
+
+<div class="cenario">
+<strong>Mudei o arquivo, mas o site não mudou</strong>
+<p>Primeiro, a pergunta de sempre: o commit foi <strong>enviado</strong>? Rode <code>git status</code>:</p>
+<pre class="term" data-cwd="~/ana-souza.github.io">$ git status
+No ramo main
+Seu ramo está à frente de 'origin/main' por 1 submissão.      « 1 commit que o GitHub não tem
+  (use "git push" to publish your local commits)
+
+nothing to commit, working tree clean
+</pre>
+<p>"À frente por 1 submissão" (1 commit) quer dizer: o commit existe no seu computador, mas não no GitHub. A dica diz o que fazer: <code>git push</code>. Se, em vez disso, o arquivo aparecer em <code>Changes not staged for commit</code> ("mudanças fora da área de preparo"), falta até o commit. Se está tudo enviado, espere alguns minutos e recarregue a página sem o cache do navegador (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd>).</p>
+</div>
+
+<div class="cenario">
+<strong>O repositório se chama <code>ana-souza.github.io</code>, mas o site não aparece nesse endereço</strong>
+<p>O nome tem de ser <strong>exatamente</strong> o seu usuário seguido de <code>.github.io</code>. Se a Ana criasse <code>anasouza.github.io</code> (sem o hífen), o GitHub o trataria como um site de projeto comum, em <code>https://ana-souza.github.io/anasouza.github.io</code>. Para consertar, renomeie o repositório nas configurações dele, e atualize o endereço do remoto com <code>git remote set-url</code> (aula <a href="git-remote.html">git remote</a>).</p>
+</div>
+
+<div class="cenario">
+<strong>O CSS e as imagens não carregam no site de projeto</strong>
+<p>No site de projeto (<code>ana-souza.github.io/receitas</code>), um caminho que começa com <code>/</code>, como <code>/style.css</code>, aponta para a raiz <code>ana-souza.github.io/style.css</code>, fora do projeto. Use caminhos <strong>relativos</strong>: <code>style.css</code> ou <code>imagens/bolo.jpg</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>O quê</th><th>Como</th></tr>
+<tr><td>Site de usuário</td><td>Repositório <code>USUARIO.github.io</code> → <code>https://USUARIO.github.io</code></td></tr>
+<tr><td>Site de projeto</td><td>Repositório <code>REPO</code> → <code>https://USUARIO.github.io/REPO</code></td></tr>
+<tr><td>Arquivo de entrada</td><td><code>index.html</code>, <code>index.md</code> ou <code>README.md</code>, no topo da pasta publicada</td></tr>
+<tr><td>Ligar o Pages</td><td>Configurações → Páginas → Fonte: Fazer implantação de um branch → branch e pasta → Salvar (ilustrativo)</td></tr>
+<tr><td>Publicar uma mudança</td><td><code>git add</code> → <code>git commit</code> → <code>git push</code>, e esperar até 10 minutos</td></tr>
+<tr><td>Criar o branch <code>gh-pages</code> no GitHub</td><td><code>git push origin main:gh-pages</code></td></tr>
+<tr><td>Limites (documentação)</td><td>Site publicado de até 1 GB; 100 GB de transferência por mês (limite flexível); 10 builds por hora (flexível)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Qual é o endereço?</h3>
+<p>O usuário do Bruno no GitHub é <code>bruno-lima</code>. Complete o nome do repositório do site de usuário dele:</p>
+<div class="ex-code"><input data-answer="bruno-lima.github.io" aria-label="nome do repositório"></div>
+</div>
+
+<div class="exercise">
+<h3>2. O arquivo de entrada</h3>
+<p>Qual é o nome do arquivo HTML que abre quando alguém digita só o endereço do site?</p>
+<div class="ex-code"><input data-answer="index.html" aria-label="nome do arquivo"></div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. A Ana mudou o <code>index.html</code> e fez o commit, mas o site continua igual depois de uma hora. O que provavelmente faltou?</p>
+<label><input type="radio" name="q3"> Apagar o repositório e criar de novo</label>
+<label><input type="radio" name="q3"> Um <code>git add</code> depois do commit</label>
+<label><input type="radio" name="q3"> O <code>git push</code></label>
+<label><input type="radio" name="q3"> Trocar o branch para <code>gh-pages</code></label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. Que tipo de site o GitHub Pages publica?</p>
+<label><input type="radio" name="q4"> Qualquer site, inclusive com PHP e banco de dados</label>
+<label><input type="radio" name="q4"> Sites estáticos: HTML, CSS, JavaScript e imagens</label>
+<label><input type="radio" name="q4"> Só arquivos Markdown</label>
+<label><input type="radio" name="q4"> Só sites de empresas</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. O repositório <code>receitas</code> da Ana, publicado pelo Pages, fica em qual endereço?</p>
+<label><input type="radio" name="q5"> <code>https://ana-souza.github.io/receitas</code></label>
+<label><input type="radio" name="q5"> <code>https://receitas.github.io</code></label>
+<label><input type="radio" name="q5"> <code>https://github.com/ana-souza/receitas</code></label>
+<label><input type="radio" name="q5"> <code>https://ana-souza.github.io</code></label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O GitHub Pages publica <strong>sites estáticos</strong> de graça, direto de um repositório; o site é público.</li>
+  <li>Repositório <code>USUARIO.github.io</code> → site de usuário em <code>https://USUARIO.github.io</code>; qualquer outro repositório → site de projeto em <code>https://USUARIO.github.io/REPO</code>.</li>
+  <li>O arquivo de entrada (<code>index.html</code>) fica no topo da pasta publicada: a raiz ou <code>/docs</code>, do branch escolhido.</li>
+  <li>Liga-se em Configurações → Páginas → Fazer implantação de um branch (ilustrativo).</li>
+  <li>Atualizar o site é o ciclo do Git: editar, <code>git commit</code>, <code>git push</code>, e esperar até 10 minutos. Sem <code>push</code>, nada muda. A aula <a href="projeto-portfolio.html">Projeto: Portfólio no GitHub Pages</a> faz tudo isso do zero.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
