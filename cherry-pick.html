@@ -445,12 +445,6 @@ $ git cherry-pick d07edbe
  Date: Thu Oct 15 10:30:00 2026 -0300
  1 file changed, 1 insertion(+), 1 deletion(-)
 $ git cherry-pick d07edbe
-The previous cherry-pick is now empty, possibly due to conflict resolution.
-If you wish to commit it anyway, use:
-
-    git commit --allow-empty
-
-Otherwise, please use 'git cherry-pick --skip'
 No ramo main
 You are currently cherry-picking commit d07edbe.
   (all conflicts fixed: run "git cherry-pick --continue")
@@ -458,6 +452,12 @@ You are currently cherry-picking commit d07edbe.
   (use "git cherry-pick --abort" to cancel the cherry-pick operation)
 
 nothing to commit, working tree clean
+The previous cherry-pick is now empty, possibly due to conflict resolution.
+If you wish to commit it anyway, use:
+
+    git commit --allow-empty
+
+Otherwise, please use 'git cherry-pick --skip'
 $ git cherry-pick --skip
 $ git log --oneline
 92c2d52 (HEAD -&gt; main) Corrige o acento de açúcar
@@ -466,7 +466,7 @@ e0ec859 Adiciona a receita de bolo
 700bbd5 Cria o README
 </pre>
 
-<p>Em português: "o cherry-pick anterior agora está <strong>vazio</strong> (<em>empty</em>), possivelmente por causa da resolução de conflitos. Se mesmo assim você quiser commitá-lo, use <code>git commit --allow-empty</code>. Senão, use <code>git cherry-pick --skip</code>". Embaixo, o Git já mostra o <code>status</code>: o cherry-pick está parado, sem nada a commitar. Gravar um commit vazio quase nunca é o que você quer; a Ana pulou com <code>--skip</code>, e o histórico ficou com uma cópia só.</p>
+<p>Em português: "o cherry-pick anterior agora está <strong>vazio</strong> (<em>empty</em>), possivelmente por causa da resolução de conflitos. Se mesmo assim você quiser commitá-lo, use <code>git commit --allow-empty</code>. Senão, use <code>git cherry-pick --skip</code>". Antes desse aviso, o Git já mostrou o <code>status</code>: o cherry-pick está parado, sem nada a commitar. Gravar um commit vazio quase nunca é o que você quer; a Ana pulou com <code>--skip</code>, e o histórico ficou com uma cópia só.</p>
 
 <hr>
 
