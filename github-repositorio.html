@@ -119,10 +119,10 @@ nothing to commit, working tree clean</pre>
 <hr>
 
 <h2>Experimente</h2>
-<p>No terminal abaixo, a Ana já tem o repositório <code>receitas</code> com dois commits. Um repositório vazio de treino, na pasta <code>~/servidor/receitas.git</code>, faz o papel do repositório recém-criado no GitHub: use esse caminho no lugar do endereço <code>https://…</code>.</p>
+<p>No terminal abaixo, a Ana já tem o repositório <code>receitas</code> com dois commits, e o repositório vazio <code>ana-souza/receitas</code> já foi criado no GitHub de treino do guia. No terminal do guia, as linhas de progresso (<code>Enumerating objects…</code>, <code>Writing objects…</code>) não aparecem: ele mostra a versão curta da saída.</p>
 
-<div class="try" data-setup="git init -q --bare ~/servidor/receitas.git;;mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -qm 'Adiciona README';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -qm 'Adiciona receita de bolo'" data-goal="remoto:origin,contem:origin/main:bolo.txt=cenoura,ran:git push" data-solucao="git remote add origin ~/servidor/receitas.git;;git push -u origin main">
-<p class="try-task"><strong>Missão:</strong> cadastre o remoto <code>origin</code> apontando para <code>~/servidor/receitas.git</code>, confira com <code>git remote -v</code> e envie o <code>main</code> já criando o par. Termine com <code>git status</code>.</p>
+<div class="try" data-setup="github novo ana-souza/receitas;;mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -qm 'Adiciona README';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -qm 'Adiciona receita de bolo'" data-goal="remoto:origin,contem:origin/main:bolo.txt=cenoura,ran:git push" data-solucao="git remote add origin https://github.com/ana-souza/receitas.git;;git push -u origin main">
+<p class="try-task"><strong>Missão:</strong> cadastre o remoto <code>origin</code> apontando para <code>https://github.com/ana-souza/receitas.git</code>, confira com <code>git remote -v</code> e envie o <code>main</code> já criando o par. Termine com <code>git status</code>.</p>
 </div>
 
 <hr>

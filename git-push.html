@@ -194,13 +194,13 @@ b830dc1 (HEAD -&gt; main, origin/main) Adiciona receita de pudim      « main e 
 <hr>
 
 <h2>Experimente</h2>
-<p>No terminal abaixo, o repositório <code>receitas</code> já tem o remoto <code>origin</code> configurado e o <code>main</code> ligado a ele. A Ana tem um commit que o remoto ainda não recebeu.</p>
+<p>No terminal abaixo, o repositório <code>receitas</code> já tem o remoto <code>origin</code> configurado e o <code>main</code> ligado a ele. A Ana tem um commit que o remoto (o GitHub de treino do guia) ainda não recebeu. No terminal do guia, as linhas de progresso (<code>Enumerating objects…</code>, <code>Writing objects…</code>) não aparecem: ele mostra a versão curta da saída.</p>
 
-<div class="try" data-setup="git init -q --bare ~/servidor/receitas.git;;mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -qm 'Adiciona README';;git remote add origin ~/servidor/receitas.git;;git push -q -u origin main;;printf 'Pudim\n' &gt; pudim.txt;;git add pudim.txt;;git commit -qm 'Adiciona receita de pudim'" data-goal="contem:origin/main:pudim.txt=Pudim,ran:git push" data-solucao="git push">
+<div class="try" data-setup="github novo ana-souza/receitas;;mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -qm 'Adiciona README';;git remote add origin https://github.com/ana-souza/receitas.git;;git push -q -u origin main;;printf 'Pudim\n' &gt; pudim.txt;;git add pudim.txt;;git commit -qm 'Adiciona receita de pudim'" data-goal="contem:origin/main:pudim.txt=Pudim,ran:git push" data-solucao="git push">
 <p class="try-task"><strong>Missão:</strong> confira com <code>git status</code> que a Ana está 1 commit à frente do <code>origin/main</code> e envie esse commit para o remoto. Depois, rode <code>git status</code> de novo e <code>git log --oneline</code> para ver o <code>origin/main</code> no mesmo lugar do <code>main</code>.</p>
 </div>
 
-<div class="try" data-setup="git init -q --bare ~/servidor/receitas.git;;mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -qm 'Adiciona README';;git remote add origin ~/servidor/receitas.git;;git push -q -u origin main;;echo '- 2 xícaras de farinha' &gt; bolo.txt" data-goal="contem:origin/main:bolo.txt=farinha" data-solucao="git add bolo.txt;;git commit -m 'Adiciona receita de bolo';;git push">
+<div class="try" data-setup="github novo ana-souza/receitas;;mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -qm 'Adiciona README';;git remote add origin https://github.com/ana-souza/receitas.git;;git push -q -u origin main;;echo '- 2 xícaras de farinha' &gt; bolo.txt" data-goal="contem:origin/main:bolo.txt=farinha" data-solucao="git add bolo.txt;;git commit -m 'Adiciona receita de bolo';;git push">
 <p class="try-task"><strong>Missão:</strong> a Ana criou o <code>bolo.txt</code>, mas ele ainda não está em commit nenhum. Faça o arquivo chegar ao remoto. (Dica: um <code>git push</code> sozinho responde <code>Everything up-to-date</code>. Por quê?)</p>
 </div>
 

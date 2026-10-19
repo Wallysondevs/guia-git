@@ -79,9 +79,9 @@ $ git log --oneline
 <hr>
 
 <h2>Experimente</h2>
-<p>O "GitHub" dos terminais abaixo é uma pasta de treino (<code>~/servidor/receitas.git</code>), e o Bruno já enviou um commit que a Ana não tem.</p>
+<p>Nos terminais abaixo, o "GitHub" é o GitHub de treino do guia, e o Bruno já enviou um commit que a Ana não tem. No terminal do guia, as linhas de progresso (<code>Enumerating objects…</code>, <code>Writing objects…</code>) não aparecem: ele mostra a versão curta da saída.</p>
 
-<div class="try" data-setup="git init -q --bare ~/servidor/receitas.git;;git clone -q ~/servidor/receitas.git bruno;;cd bruno;;echo '# Receitas' &gt; README.md;;git add README.md;;git commit -qm 'Adiciona README';;git push -q -u origin main;;cd ~;;git clone -q ~/servidor/receitas.git receitas;;cd bruno;;echo 'Suco de laranja' &gt; suco.txt;;git add suco.txt;;git commit -qm 'Adiciona suco';;git push -q;;cd ~/receitas" data-goal="commits:2,contem:HEAD:suco.txt=laranja,ran:git pull" data-solucao="git pull">
+<div class="try" data-setup="github novo ana-souza/receitas;;github bruno 'git clone -q https://github.com/ana-souza/receitas.git &amp;&amp; cd receitas &amp;&amp; echo &quot;# Receitas&quot; &gt; README.md &amp;&amp; git add README.md &amp;&amp; git commit -qm &quot;Adiciona README&quot; &amp;&amp; git push -q -u origin main';;git clone -q https://github.com/ana-souza/receitas.git;;github bruno 'cd receitas &amp;&amp; echo &quot;Suco de laranja&quot; &gt; suco.txt &amp;&amp; git add suco.txt &amp;&amp; git commit -qm &quot;Adiciona suco&quot; &amp;&amp; git push -q';;cd receitas" data-goal="commits:2,contem:HEAD:suco.txt=laranja,ran:git pull" data-solucao="git pull">
 <p class="try-task"><strong>Missão:</strong> traga o commit do Bruno para o seu <code>main</code> com um comando só. Depois, confira com <code>ls</code> e <code>git log --oneline</code>.</p>
 </div>
 
@@ -193,7 +193,7 @@ fatal: Not possible to fast-forward, aborting.                 « recusou: preci
 <strong>Escolha uma vez e esqueça.</strong> Para quem está começando, uma boa escolha é o merge, que nunca reescreve commits: <code>git config --global pull.rebase false</code>. Se a sua equipe pedir histórico linear, use <code>git config --global pull.rebase true</code>. Depois disso, o <code>git pull</code> sozinho não mostra mais a dica.
 </div>
 
-<div class="try" data-setup="git init -q --bare ~/servidor/receitas.git;;git clone -q ~/servidor/receitas.git bruno;;cd bruno;;echo '# Receitas' &gt; README.md;;git add README.md;;git commit -qm 'Adiciona README';;git push -q -u origin main;;cd ~;;git clone -q ~/servidor/receitas.git receitas;;cd bruno;;echo 'Suco de laranja' &gt; suco.txt;;git add suco.txt;;git commit -qm 'Adiciona suco';;git push -q;;cd ~/receitas;;echo 'Pudim' &gt; pudim.txt;;git add pudim.txt;;git commit -qm 'Adiciona receita de pudim'" data-goal="contem:HEAD:suco.txt=laranja,contem:HEAD:pudim.txt=Pudim,limpo" data-solucao="git pull --rebase">
+<div class="try" data-setup="github novo ana-souza/receitas;;github bruno 'git clone -q https://github.com/ana-souza/receitas.git &amp;&amp; cd receitas &amp;&amp; echo &quot;# Receitas&quot; &gt; README.md &amp;&amp; git add README.md &amp;&amp; git commit -qm &quot;Adiciona README&quot; &amp;&amp; git push -q -u origin main';;git clone -q https://github.com/ana-souza/receitas.git;;github bruno 'cd receitas &amp;&amp; echo &quot;Suco de laranja&quot; &gt; suco.txt &amp;&amp; git add suco.txt &amp;&amp; git commit -qm &quot;Adiciona suco&quot; &amp;&amp; git push -q';;cd receitas;;echo 'Pudim' &gt; pudim.txt;;git add pudim.txt;;git commit -qm 'Adiciona receita de pudim'" data-goal="contem:HEAD:suco.txt=laranja,contem:HEAD:pudim.txt=Pudim,limpo" data-solucao="git pull --rebase">
 <p class="try-task"><strong>Missão:</strong> a Ana fez o commit do pudim e o Bruno enviou o do suco: os branches divergiram. Rode <code>git pull</code> e leia a dica. Depois, junte os dois trabalhos com <code>git pull --rebase</code> (ou <code>git pull --no-rebase</code>) e confira o resultado com <code>git log --oneline --graph</code>.</p>
 </div>
 

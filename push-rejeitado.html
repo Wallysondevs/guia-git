@@ -148,9 +148,9 @@ nothing to commit, working tree clean</pre>
 <hr>
 
 <h2>Experimente</h2>
-<p>No terminal abaixo, o "GitHub" é uma pasta de treino (<code>~/servidor/receitas.git</code>). A Ana fez o commit do pudim, mas o Bruno enviou o do suco antes.</p>
+<p>No terminal abaixo, o "GitHub" é o GitHub de treino do guia. A Ana fez o commit do pudim, mas o Bruno enviou o do suco antes. No terminal do guia, as linhas de progresso (<code>Enumerating objects…</code>, <code>Writing objects…</code>) não aparecem: ele mostra a versão curta da saída.</p>
 
-<div class="try" data-setup="git init -q --bare ~/servidor/receitas.git;;git clone -q ~/servidor/receitas.git bruno;;cd bruno;;echo '# Receitas' &gt; README.md;;git add README.md;;git commit -qm 'Adiciona README';;git push -q -u origin main;;cd ~;;git clone -q ~/servidor/receitas.git receitas;;cd bruno;;echo 'Suco de laranja' &gt; suco.txt;;git add suco.txt;;git commit -qm 'Adiciona suco';;git push -q;;cd ~/receitas;;echo 'Pudim' &gt; pudim.txt;;git add pudim.txt;;git commit -qm 'Adiciona receita de pudim'" data-goal="contem:origin/main:suco.txt=laranja,contem:origin/main:pudim.txt=Pudim,limpo" data-solucao="git pull --rebase;;git push">
+<div class="try" data-setup="github novo ana-souza/receitas;;github bruno 'git clone -q https://github.com/ana-souza/receitas.git &amp;&amp; cd receitas &amp;&amp; echo &quot;# Receitas&quot; &gt; README.md &amp;&amp; git add README.md &amp;&amp; git commit -qm &quot;Adiciona README&quot; &amp;&amp; git push -q -u origin main';;git clone -q https://github.com/ana-souza/receitas.git;;github bruno 'cd receitas &amp;&amp; echo &quot;Suco de laranja&quot; &gt; suco.txt &amp;&amp; git add suco.txt &amp;&amp; git commit -qm &quot;Adiciona suco&quot; &amp;&amp; git push -q';;cd receitas;;echo 'Pudim' &gt; pudim.txt;;git add pudim.txt;;git commit -qm 'Adiciona receita de pudim'" data-goal="contem:origin/main:suco.txt=laranja,contem:origin/main:pudim.txt=Pudim,limpo" data-solucao="git pull --rebase;;git push">
 <p class="try-task"><strong>Missão:</strong> tente <code>git push</code> e leia a recusa. Depois, siga a receita: traga o commit do Bruno (<code>git pull --rebase</code> ou <code>git pull --no-rebase</code>) e envie de novo, até o remoto ter o suco <strong>e</strong> o pudim.</p>
 </div>
 

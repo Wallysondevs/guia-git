@@ -193,13 +193,13 @@ origin/main                                                    « qual é o par<
 <hr>
 
 <h2>Experimente</h2>
-<p>Nos terminais abaixo, o "GitHub" é uma pasta de treino (<code>~/servidor/receitas.git</code>).</p>
+<p>Nos terminais abaixo, o "GitHub" é o GitHub de treino do guia, com o repositório <code>ana-souza/receitas</code> já criado. No terminal do guia, as linhas de progresso (<code>Enumerating objects…</code>, <code>Writing objects…</code>) não aparecem: ele mostra a versão curta da saída.</p>
 
-<div class="try" data-setup="git init -q --bare ~/servidor/receitas.git;;mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas' &gt; README.md;;git add README.md;;git commit -qm 'Adiciona README';;git remote add origin ~/servidor/receitas.git;;git push -q origin main" data-goal="ran:git branch,out:[origin/main]" data-solucao="git branch -u origin/main;;git branch -vv">
+<div class="try" data-setup="github novo ana-souza/receitas;;mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas' &gt; README.md;;git add README.md;;git commit -qm 'Adiciona README';;git remote add origin https://github.com/ana-souza/receitas.git;;git push -q origin main" data-goal="ran:git branch,out:[origin/main]" data-solucao="git branch -u origin/main;;git branch -vv">
 <p class="try-task"><strong>Missão:</strong> a Ana enviou o <code>main</code> <strong>sem</strong> o <code>-u</code>. Confira com <code>git branch -vv</code> que ele está sem par, ligue o <code>main</code> ao <code>origin/main</code> sem enviar nada e rode <code>git branch -vv</code> de novo para ver os colchetes.</p>
 </div>
 
-<div class="try" data-setup="git init -q --bare ~/servidor/receitas.git;;mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas' &gt; README.md;;git add README.md;;git commit -qm 'Adiciona README';;git remote add origin ~/servidor/receitas.git;;git push -q -u origin main;;git switch -q -c doces;;echo 'Brigadeiro' &gt; brigadeiro.txt;;git add brigadeiro.txt;;git commit -qm 'Adiciona brigadeiro'" data-goal="contem:origin/doces:brigadeiro.txt=Brigadeiro,ran:git branch,out:[origin/doces]" data-solucao="git push -u origin doces;;git branch -vv">
+<div class="try" data-setup="github novo ana-souza/receitas;;mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas' &gt; README.md;;git add README.md;;git commit -qm 'Adiciona README';;git remote add origin https://github.com/ana-souza/receitas.git;;git push -q -u origin main;;git switch -q -c doces;;echo 'Brigadeiro' &gt; brigadeiro.txt;;git add brigadeiro.txt;;git commit -qm 'Adiciona brigadeiro'" data-goal="contem:origin/doces:brigadeiro.txt=Brigadeiro,ran:git branch,out:[origin/doces]" data-solucao="git push -u origin doces;;git branch -vv">
 <p class="try-task"><strong>Missão:</strong> a Ana está no branch novo <code>doces</code>. Tente <code>git push</code> e leia a mensagem. Depois, envie o branch criando o par e confira com <code>git branch -vv</code>.</p>
 </div>
 
