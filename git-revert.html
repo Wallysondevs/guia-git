@@ -50,7 +50,7 @@
 <p>O histórico tem cinco commits. O errado é o quarto, "Muda tempo do bolo para 90 minutos", e depois dele já veio o brigadeiro:</p>
 
 <pre class="term" data-cwd="~/receitas">$ git log --oneline
-8b27670 Adiciona receita de brigadeiro
+8b27670 (HEAD -&gt; main) Adiciona receita de brigadeiro
 f5b361b Muda tempo do bolo para 90 minutos   « o commit errado
 44ce6c7 Adiciona receita de pudim
 da935f4 Adiciona receita de bolo
@@ -105,7 +105,7 @@ index 5219fcf..a4904ee 100644
 <p>Agora o histórico e o arquivo:</p>
 
 <pre class="term" data-cwd="~/receitas">$ git log --oneline
-188c31a Revert "Muda tempo do bolo para 90 minutos"   « o estorno
+188c31a (HEAD -&gt; main) Revert "Muda tempo do bolo para 90 minutos"   « o estorno
 8b27670 Adiciona receita de brigadeiro
 f5b361b Muda tempo do bolo para 90 minutos            « continua aqui
 44ce6c7 Adiciona receita de pudim
@@ -125,7 +125,7 @@ nothing to commit, working tree clean
 <p>Veja o commit que o Git criou:</p>
 
 <pre class="term" data-cwd="~/receitas">$ git show HEAD
-commit 188c31a3404015f8effbbbd9591006100faa5489
+commit 188c31a3404015f8effbbbd9591006100faa5489 (HEAD -&gt; main)
 Author: Ana Souza &lt;ana@exemplo.com&gt;
 Date:   Thu Oct 15 10:30:00 2026 -0300
 
@@ -169,7 +169,7 @@ Bolo de cenoura
 Forno: 180 graus
 Tempo: 90 minutos
 $ git log --oneline
-4b4fbf8 Reapply "Muda tempo do bolo para 90 minutos"
+4b4fbf8 (HEAD -&gt; main) Reapply "Muda tempo do bolo para 90 minutos"
 188c31a Revert "Muda tempo do bolo para 90 minutos"
 8b27670 Adiciona receita de brigadeiro
 f5b361b Muda tempo do bolo para 90 minutos
@@ -206,7 +206,7 @@ Mudanças a serem submetidas:
 <p>O revert tenta aplicar "o contrário" de um commit antigo no código de <strong>hoje</strong>. Se, depois do commit errado, alguém mexeu nas mesmas linhas, o Git não sabe o que fazer e para no meio, com um <a href="conflitos.html">conflito</a>. Num outro repositório, a Ana mudou o tempo de 40 para 90 e, depois, de 90 para 50. Agora ela tenta reverter o "90":</p>
 
 <pre class="term" data-cwd="~/r2">$ git log --oneline
-7564c62 Ajusta tempo do bolo para 50 minutos
+7564c62 (HEAD -&gt; main) Ajusta tempo do bolo para 50 minutos
 aa77c8f Muda tempo do bolo para 90 minutos     « quer desfazer este
 5209e42 Adiciona receita de bolo
 $ git revert --no-edit HEAD~1
@@ -264,7 +264,7 @@ $ git status
 No ramo main
 nothing to commit, working tree clean
 $ git log --oneline
-7564c62 Ajusta tempo do bolo para 50 minutos
+7564c62 (HEAD -&gt; main) Ajusta tempo do bolo para 50 minutos
 aa77c8f Muda tempo do bolo para 90 minutos
 5209e42 Adiciona receita de bolo
 </pre>
