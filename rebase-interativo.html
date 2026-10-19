@@ -43,11 +43,11 @@
 <h2>1. A situação: o branch <code>doces</code> bagunçado</h2>
 <p>A Ana fez quatro commits no branch <code>doces</code>, a partir do <code>main</code>:</p>
 <pre class="term" data-cwd="~/receitas">$ git log --oneline
-bf43330 Acrescenta a calda do pudim
+bf43330 (HEAD -&gt; doces) Acrescenta a calda do pudim
 b46ad5f Adiciona receita de brigadeiro
 c55f4ed teste                                 « um commit de teste que não devia ficar
 0c2cdd3 Adiciona recita de pudim              « "recita": erro de digitação
-8bf5d5b Adiciona receita de bolo              « o main: a base
+8bf5d5b (main) Adiciona receita de bolo       « o main: a base
 </pre>
 <p>Três problemas: o commit <code>teste</code> não devia existir, a mensagem do pudim tem um erro de digitação, e a calda do pudim ficaria melhor logo depois do pudim, não depois do brigadeiro.</p>
 
@@ -139,21 +139,18 @@ pick b46ad5f # Adiciona receita de brigadeiro
 pick bf43330 # Acrescenta a calda do pudim
 </pre>
 <pre class="term" data-cwd="~/receitas">$ git rebase -i main
-Rebasing (3/4)Rebasing (4/4)Successfully rebased and updated refs/heads/doces.
+Successfully rebased and updated refs/heads/doces.
 $ git log --oneline
-b023d49 Acrescenta a calda do pudim           « hash novo
+b023d49 (HEAD -&gt; doces) Acrescenta a calda do pudim   « hash novo
 b5d1e50 Adiciona receita de brigadeiro        « hash novo
 0c2cdd3 Adiciona recita de pudim              « o MESMO hash
-8bf5d5b Adiciona receita de bolo
+8bf5d5b (main) Adiciona receita de bolo
 $ ls
-bolo.txt
-brigadeiro.txt
-pudim.txt
+bolo.txt  brigadeiro.txt  pudim.txt
 </pre>
 <ul>
   <li>O commit <code>teste</code> sumiu, e o arquivo <code>teste.txt</code>, que só ele criava, também.</li>
-  <li>O progresso começou em <code>(3/4)</code>: as tarefas 1 e 2 não precisaram refazer nada. O commit do pudim ficou <strong>igual</strong> (<code>0c2cdd3</code>), porque nada antes dele mudou; o Git só o reaproveitou. Já os dois de cima têm pai novo e, por isso, hashes novos.</li>
-  <li>Num terminal, o contador <code>Rebasing (3/4)…</code> se apaga, e sobra só o <code>Successfully rebased…</code>.</li>
+  <li>As tarefas 1 e 2 não precisaram refazer nada: o commit do pudim ficou <strong>igual</strong> (<code>0c2cdd3</code>), porque nada antes dele mudou; o Git só o reaproveitou. Já os dois de cima têm pai novo e, por isso, hashes novos.</li>
 </ul>
 <p>Apagar a linha inteira tem o mesmo efeito do <code>drop</code> ("se você apagar uma linha aqui, aquele commit será perdido"). O <code>drop</code> é melhor porque deixa claro que foi de propósito.</p>
 
@@ -191,16 +188,16 @@ pick b023d49 # Acrescenta a calda do pudim
 </pre>
 <p>Os comentários contam onde o rebase está: a tarefa feita (o <code>reword</code>) e as duas que faltam. A Ana corrige a primeira linha para "Adiciona receita de pudim", salva e fecha:</p>
 <pre class="term" data-cwd="~/receitas">$ git rebase -i main
-Rebasing (1/3)[detached HEAD 31f4dad] Adiciona receita de pudim     « o commit com a mensagem nova
+[detached HEAD 31f4dad] Adiciona receita de pudim     « o commit com a mensagem nova
  Date: Thu Oct 15 10:30:00 2026 -0300
  1 file changed, 1 insertion(+)
  create mode 100644 pudim.txt
-Rebasing (2/3)Rebasing (3/3)Successfully rebased and updated refs/heads/doces.
+Successfully rebased and updated refs/heads/doces.
 $ git log --oneline
-9d5bd3d Acrescenta a calda do pudim
+9d5bd3d (HEAD -&gt; doces) Acrescenta a calda do pudim
 123c8e8 Adiciona receita de brigadeiro
 31f4dad Adiciona receita de pudim
-8bf5d5b Adiciona receita de bolo
+8bf5d5b (main) Adiciona receita de bolo
 </pre>
 <p>A mensagem foi corrigida, e todos os três commits têm hashes novos (a mensagem também entra no cálculo do hash; mudou o primeiro, mudam os de cima). Os arquivos são exatamente os mesmos.</p>
 
@@ -217,12 +214,12 @@ pick 9d5bd3d # Acrescenta a calda do pudim
 pick 123c8e8 # Adiciona receita de brigadeiro
 </pre>
 <pre class="term" data-cwd="~/receitas">$ git rebase -i main
-Rebasing (2/3)Rebasing (3/3)Successfully rebased and updated refs/heads/doces.
+Successfully rebased and updated refs/heads/doces.
 $ git log --oneline
-235db56 Adiciona receita de brigadeiro
+235db56 (HEAD -&gt; doces) Adiciona receita de brigadeiro
 9280e8c Acrescenta a calda do pudim
 31f4dad Adiciona receita de pudim
-8bf5d5b Adiciona receita de bolo
+8bf5d5b (main) Adiciona receita de bolo
 </pre>
 <p>Agora o histórico conta a história na ordem certa: o pudim, a calda dele, depois o brigadeiro. Trocar a ordem só funciona sem conflito quando os commits mexem em coisas diferentes (aqui, arquivos diferentes). Se dois commits mudam a mesma linha, trocar a ordem pode dar conflito: resolva como na aula <a href="rebase-conflitos.html">Conflitos no Rebase</a>.</p>
 
@@ -235,7 +232,7 @@ pick 9280e8c # Acrescenta a calda do pudim
 edit 235db56 # Adiciona receita de brigadeiro
 </pre>
 <pre class="term" data-cwd="~/receitas">$ git rebase -i main
-Rebasing (3/3)Stopped at 235db56...  # Adiciona receita de brigadeiro
+Stopped at 235db56...  # Adiciona receita de brigadeiro
 You can amend the commit now, with
 
   git commit --amend
@@ -267,10 +264,10 @@ $ git commit --amend --no-edit
 $ git rebase --continue
 Successfully rebased and updated refs/heads/doces.
 $ git log --oneline
-6ce862f Adiciona receita de brigadeiro
+6ce862f (HEAD -&gt; doces) Adiciona receita de brigadeiro
 9280e8c Acrescenta a calda do pudim
 31f4dad Adiciona receita de pudim
-8bf5d5b Adiciona receita de bolo
+8bf5d5b (main) Adiciona receita de bolo
 </pre>
 <p>O <code>--no-edit</code> mantém a mensagem. O commit do brigadeiro agora cria o arquivo já com os ingredientes, como se tivesse sido feito certo da primeira vez. Se houvesse commits depois dele, o <code>--continue</code> os refaria em cima.</p>
 

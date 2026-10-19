@@ -52,11 +52,11 @@ Depois:  A---P'                (um commit com tudo)
 
 <h2>1. A situação</h2>
 <pre class="term" data-cwd="~/receitas">$ git log --oneline
-2209ebb Corrige a quantidade de leite
+2209ebb (HEAD -&gt; pudim) Corrige a quantidade de leite
 5a86526 Acrescenta os ovos
 89d6767 Acrescenta o leite
 528c363 Adiciona receita de pudim
-8bf5d5b Adiciona receita de bolo          « o main
+8bf5d5b (main) Adiciona receita de bolo   « o main
 </pre>
 <p>Os quatro de cima estão no branch <code>pudim</code>; o <code>8bf5d5b</code> é o <code>main</code>. O objetivo: um commit só, "Adiciona receita de pudim".</p>
 
@@ -116,16 +116,16 @@ Leite condensado, leite e ovos.
 </pre>
 <p>Ela salva e fecha o editor:</p>
 <pre class="term" data-cwd="~/receitas">$ git rebase -i main
-Rebasing (2/4)Rebasing (3/4)Rebasing (4/4)[detached HEAD 670194f] Adiciona receita de pudim
+[detached HEAD 670194f] Adiciona receita de pudim
  Date: Thu Oct 15 10:30:00 2026 -0300
  1 file changed, 4 insertions(+)                 « as 4 linhas do pudim, num commit só
  create mode 100644 pudim.txt
 Successfully rebased and updated refs/heads/pudim.
 $ git log --oneline
-670194f Adiciona receita de pudim
-8bf5d5b Adiciona receita de bolo
+670194f (HEAD -&gt; pudim) Adiciona receita de pudim
+8bf5d5b (main) Adiciona receita de bolo
 $ git log -1
-commit 670194fc68dafbf730aebea25be8d30f925c1256
+commit 670194fc68dafbf730aebea25be8d30f925c1256 (HEAD -&gt; pudim)
 Author: Ana Souza &lt;ana@exemplo.com&gt;
 Date:   Thu Oct 15 10:30:00 2026 -0300
 
@@ -138,7 +138,7 @@ Pudim de leite
 1 lata de leite
 3 ovos
 </pre>
-<p>Quatro commits viraram um, com a mensagem nova. O arquivo <code>pudim.txt</code> ficou <strong>exatamente</strong> como estava depois do último commit (com a correção para "1 lata de leite"): juntar commits não muda o resultado, só o caminho. (Os <code>Rebasing (2/4)…</code> são o contador de progresso, que um terminal apaga da tela.)</p>
+<p>Quatro commits viraram um, com a mensagem nova. O arquivo <code>pudim.txt</code> ficou <strong>exatamente</strong> como estava depois do último commit (com a correção para "1 lata de leite"): juntar commits não muda o resultado, só o caminho.</p>
 
 <hr>
 
@@ -150,10 +150,10 @@ fixup 5a86526 # Acrescenta os ovos
 fixup 2209ebb # Corrige a quantidade de leite
 </pre>
 <pre class="term" data-cwd="~/receitas">$ git rebase -i main
-Rebasing (2/4)Rebasing (3/4)Rebasing (4/4)Successfully rebased and updated refs/heads/pudim.
+Successfully rebased and updated refs/heads/pudim.
 $ git log --oneline
-dcdac71 Adiciona receita de pudim
-8bf5d5b Adiciona receita de bolo
+dcdac71 (HEAD -&gt; pudim) Adiciona receita de pudim
+8bf5d5b (main) Adiciona receita de bolo
 </pre>
 <p>Sem editor, sem pergunta: um commit, com a mensagem do primeiro.</p>
 
@@ -169,20 +169,17 @@ pick 5a86526 # Acrescenta os ovos
 fixup 2209ebb # Corrige a quantidade de leite
 </pre>
 <pre class="term" data-cwd="~/receitas">$ git rebase -i main
-Rebasing (2/4)# This is a combination of 2 commits.
-# This is the 1st commit message:
-…                                                  « o editor abre só para juntar pudim + leite
 [detached HEAD c8fe594] Adiciona receita de pudim
  Date: Thu Oct 15 10:30:00 2026 -0300
  1 file changed, 3 insertions(+)
  create mode 100644 pudim.txt
-Rebasing (3/4)Rebasing (4/4)Successfully rebased and updated refs/heads/pudim.
+Successfully rebased and updated refs/heads/pudim.
 $ git log --oneline
-7bfbb8b Acrescenta os ovos
+7bfbb8b (HEAD -&gt; pudim) Acrescenta os ovos
 c8fe594 Adiciona receita de pudim
-8bf5d5b Adiciona receita de bolo
+8bf5d5b (main) Adiciona receita de bolo
 </pre>
-<p>(No laboratório, o "editor" foi o <code>cat</code>, que imprime a mensagem combinada no meio da saída; o <code>…</code> marca o trecho cortado, igual ao da seção 2, agora com 2 mensagens. A mensagem ficou a do <code>cat</code>, sem mudanças: o título "Adiciona receita de pudim" e, embaixo, "Acrescenta o leite".) Resultado: dois commits. Repare que a correção do leite foi parar no commit dos ovos, porque o <code>fixup</code> funde no de cima. A <strong>ordem das linhas</strong> decide onde cada um entra; se precisar, mude a ordem (aula <a href="rebase-interativo.html">Rebase Interativo</a>, seção 5).</p>
+<p>No meio do caminho, o editor abriu uma vez, com a mensagem combinada de 2 commits (pudim + leite, no mesmo formato da seção 2); a Ana só salvou e fechou, então a mensagem do commit juntado ficou com as duas frases: o título "Adiciona receita de pudim" e, embaixo, "Acrescenta o leite". Resultado: dois commits. Repare que a correção do leite foi parar no commit dos ovos, porque o <code>fixup</code> funde no de cima. A <strong>ordem das linhas</strong> decide onde cada um entra; se precisar, mude a ordem (aula <a href="rebase-interativo.html">Rebase Interativo</a>, seção 5).</p>
 
 <hr>
 
@@ -193,12 +190,12 @@ $ git commit -a --fixup=528c363
 [pudim 51dce18] fixup! Adiciona receita de pudim       « a mensagem é feita sozinha
  1 file changed, 1 insertion(+), 1 deletion(-)
 $ git log --oneline
-51dce18 fixup! Adiciona receita de pudim
+51dce18 (HEAD -&gt; pudim) fixup! Adiciona receita de pudim
 2209ebb Corrige a quantidade de leite
 5a86526 Acrescenta os ovos
 89d6767 Acrescenta o leite
 528c363 Adiciona receita de pudim
-8bf5d5b Adiciona receita de bolo
+8bf5d5b (main) Adiciona receita de bolo
 </pre>
 <dl class="anatomy">
   <dt>git commit -a</dt><dd>Commit de tudo o que mudou nos arquivos rastreados (aula <a href="git-commit.html">git commit</a>).</dd>
@@ -214,13 +211,13 @@ pick 5a86526 # Acrescenta os ovos
 pick 2209ebb # Corrige a quantidade de leite
 </pre>
 <p>A Ana só confere e salva:</p>
-<pre class="term" data-cwd="~/receitas">Rebasing (2/5)Rebasing (3/5)Rebasing (4/5)Rebasing (5/5)Successfully rebased and updated refs/heads/pudim.
+<pre class="term" data-cwd="~/receitas">Successfully rebased and updated refs/heads/pudim.
 $ git log --oneline
-426ad18 Corrige a quantidade de leite
+426ad18 (HEAD -&gt; pudim) Corrige a quantidade de leite
 ba2b933 Acrescenta os ovos
 678f141 Acrescenta o leite
 9735255 Adiciona receita de pudim
-8bf5d5b Adiciona receita de bolo
+8bf5d5b (main) Adiciona receita de bolo
 $ git show HEAD~3:pudim.txt
 Pudim de leite condensado                 « o conserto entrou no 1º commit
 1 lata de leite condensado
@@ -245,8 +242,8 @@ $ git status --short
 A  pudim.txt                                      « na área de preparo, esperando o commit
 $ git commit -q -m 'Adiciona receita de pudim'
 $ git log --oneline --graph --all
-* dcdac71 Adiciona receita de pudim
-| * 2209ebb Corrige a quantidade de leite
+* dcdac71 (HEAD -&gt; main) Adiciona receita de pudim
+| * 2209ebb (pudim) Corrige a quantidade de leite
 | * 5a86526 Acrescenta os ovos
 | * 89d6767 Acrescenta o leite
 | * 528c363 Adiciona receita de pudim
@@ -266,8 +263,8 @@ $ git status --short
 A  pudim.txt                                      « tudo preparado, como se nunca tivesse sido commitado
 $ git commit -q -m 'Adiciona receita de pudim'
 $ git log --oneline
-dcdac71 Adiciona receita de pudim
-8bf5d5b Adiciona receita de bolo
+dcdac71 (HEAD -&gt; pudim) Adiciona receita de pudim
+8bf5d5b (main) Adiciona receita de bolo
 </pre>
 <p>Rápido e sem editor, mas sem a lista: junta <strong>todos</strong> os commits depois do <code>main</code>, sem escolher. Repare que o hash final (<code>dcdac71</code>) é o mesmo do <code>fixup</code> da seção 3 e do <code>merge --squash</code>: mesmo conteúdo, mesmo pai, mesma mensagem, autor e data (fixa no laboratório) dão o mesmo commit.</p>
 
@@ -300,7 +297,7 @@ Or you can abort the rebase with 'git rebase --abort'.
 <div class="cenario">
 <strong>Apagou toda a mensagem do squash</strong>
 <pre class="term" data-cwd="~/receitas">$ git rebase -i main
-Rebasing (2/4)Rebasing (3/4)Rebasing (4/4)Aborting commit due to empty commit message.
+Aborting commit due to empty commit message.
 Could not apply 2209ebb... # Corrige a quantidade de leite
 </pre>
 <p>"Cancelando o commit por causa da mensagem vazia." No editor da mensagem combinada, só sobraram linhas com <code>#</code> (ou nada). O rebase fica <strong>parado</strong> no fim da junção, com as mudanças preparadas; o <code>git status</code> diz <code>interactive rebase in progress</code> e a dica <code>execute "git rebase --continue"</code>. <strong>Como resolver:</strong> rode <code>git rebase --continue</code>: o editor abre de novo; escreva a mensagem, salve e feche. No laboratório:</p>

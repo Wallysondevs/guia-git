@@ -101,10 +101,7 @@ Successfully rebased and updated refs/heads/pudim.
 * 934a161 Adiciona receita de bolo
 * f0c33ea Primeiro commit
 $ ls
-README.md
-bolo.txt
-pao.txt
-pudim.txt
+README.md  bolo.txt  pao.txt  pudim.txt
 </pre>
 <ul>
   <li>Uma linha só: o galho sumiu. O <code>pudim</code> agora sai do <code>c07c3d1</code>, o commit mais novo do <code>main</code>.</li>
@@ -117,10 +114,10 @@ pudim.txt
 <p>O hash de um commit é calculado a partir de tudo o que ele guarda: os arquivos, a mensagem, o autor, a data <strong>e o commit pai</strong> (aula <a href="hash.html">O Hash do Commit</a>). O <code>d08fcd4</code> tinha como pai o <code>934a161</code>; o novo commit tem como pai o <code>c07c3d1</code>. Mudou o pai, muda o hash: é outro commit. Os antigos (<code>d08fcd4</code> e <code>d2f91d9</code>) não foram apagados na hora; só ficaram sem branch apontando para eles. O diário do HEAD mostra o rebase passo a passo (aula <a href="git-reflog.html">git reflog</a>):</p>
 
 <pre class="term" data-cwd="~/receitas">$ git reflog -4
-7b4845b HEAD@{0}: rebase (finish): returning to refs/heads/pudim     « 4) volta ao pudim, que agora aponta para cá
-7b4845b HEAD@{1}: rebase (pick): Acrescenta a calda do pudim          « 3) refez o 2º commit
-55ba953 HEAD@{2}: rebase (pick): Adiciona receita de pudim            « 2) refez o 1º commit
-c07c3d1 HEAD@{3}: rebase (start): checkout main                       « 1) começou indo para o main
+7b4845b (HEAD -&gt; pudim) HEAD@{0}: rebase (finish): returning to refs/heads/pudim   « 4) volta ao pudim, que agora aponta para cá
+7b4845b (HEAD -&gt; pudim) HEAD@{1}: rebase (pick): Acrescenta a calda do pudim        « 3) refez o 2º commit
+55ba953 HEAD@{2}: rebase (pick): Adiciona receita de pudim                          « 2) refez o 1º commit
+c07c3d1 (main) HEAD@{3}: rebase (start): checkout main                              « 1) começou indo para o main
 </pre>
 <p>Leia de baixo para cima. Cada <code>pick</code> ("pegar") é um commit refeito. Se você se arrepender do rebase, o <code>d2f91d9</code> ainda está lá no reflog, alguns passos acima.</p>
 
