@@ -1260,10 +1260,11 @@
         var feitos = (repo.arq("rebase-merge/done") || "").split("\n").filter(Boolean), resto = (repo.arq("rebase-merge/git-rebase-todo") || "").split("\n").filter(Boolean);
         var s = "Last command" + (feitos.length > 1 ? "s" : "") + " done (" + feitos.length + " command" + (feitos.length > 1 ? "s" : "") + " done):\n";
         feitos.slice(-2).forEach(function (l) { s += "   " + l + "\n"; });
-        if (resto.length) { s += "Next command" + (resto.length > 1 ? "s" : "") + " to do (" + resto.length + " remaining command" + (resto.length > 1 ? "s" : "") + "):\n"; resto.slice(0, 2).forEach(function (l) { s += "   " + l.replace(/^(\w+) ([0-9a-f]{40})/, function (m, c, h) { return c + " " + repo.abrev(h); }) + "\n"; }); s += "  (use \"git rebase --edit-todo\" to view and edit)\n"; }
+        if (resto.length) { s += "Next command" + (resto.length > 1 ? "s" : "") + " to do (" + resto.length + " remaining command" + (resto.length > 1 ? "s" : "") + "):\n"; resto.slice(0, 2).forEach(function (l) { s += "   " + l.replace(/^(\w+) ([0-9a-f]{40})$/, function (m, c, h) { return c + " " + repo.abrev(h) + " # " + assunto(repo.ler(h).msg); }) + "\n"; }); s += "  (use \"git rebase --edit-todo\" to view and edit)\n"; }
         else s += "No commands remaining.\n";
         var conf = Object.keys(repo.estado().conf).length;
-        s += "You are currently rebasing branch '" + ramo + "' on '" + repo.abrev(onto) + "'.\n" + (conf ? "  (corrija os conflitos e então rode \"git rebase --continue\")\n  (use \"git rebase --skip\" para ignorar este patch)\n  (use \"git rebase --abort\" para verificar o ramo original)\n" : "  (todos os conflitos foram corrigidos: execute \"git rebase --continue\")\n") + "\n";
+        if (!conf && repo.existe("rebase-merge/amend")) s += "You are currently editing a commit while rebasing branch '" + ramo + "' on '" + repo.abrev(onto) + "'.\n  (utilize \"git commit --amend\" para emendar a atual submissão)\n  (use \"git rebase --continue\" assim que você estiver satisfeitos com as mudanças)\n\n";
+        else s += "You are currently rebasing branch '" + ramo + "' on '" + repo.abrev(onto) + "'.\n" + (conf ? "  (corrija os conflitos e então rode \"git rebase --continue\")\n  (use \"git rebase --skip\" para ignorar este patch)\n  (use \"git rebase --abort\" para verificar o ramo original)\n" : "  (todos os conflitos foram corrigidos: execute \"git rebase --continue\")\n") + "\n";
         r.rebase = s;
       }
       return r;
@@ -3130,7 +3131,7 @@
       if (!ff && soFF) { io.err("hint: Diverging branches can't be fast-forwarded, you need to either:\nhint:\nhint: \tgit merge --no-ff\nhint:\nhint: or:\nhint:\nhint: \tgit rebase\nhint:\nhint: Disable this message with \"git config set advice.diverging false\"\nfatal: Not possible to fast-forward, aborting.\n"); return 128; }
       if (!ff && rebase === null) { io.err(hintDivergente()); return 128; }
       var rotulo = (r.url === nomeR || !repo.config("remote." + nomeR + ".url")) ? ramoR : nomeR + "/" + ramoR;
-      if (rebase && !ff) return CMDS.rebase([ht], io, sh);
+      if (rebase && !ff) return CMDS.rebase([ht], io, sh); // gerador: o EXT.git roda
       var msg = "Merge branch '" + ramoR + "' of " + urlExibicao(r.url) + (ramo !== "main" && ramo !== "master" ? " into " + ramo : "");
       var aa = [ht, "-m", msg]; if (g.o["--no-ff"]) aa.push("--no-ff"); if (g.o["-q"]) aa.push("-q");
       return CMDS.merge(aa, io, sh);
@@ -3266,18 +3267,26 @@
       return 2;
     };
 
-    /* ---------- rebase (não interativo) ---------- */
+    /* ---------- rebase (o -i funciona com GIT_SEQUENCE_EDITOR / GIT_EDITOR, como nas missões) ---------- */
     function rbArq(repo, n) { var t = repo.arq("rebase-merge/" + n); return t == null ? null : t.replace(/\n$/, ""); }
     function editorNulo(repo, sh) { var e = sh.valor("GIT_EDITOR") || repo.config("core.editor"); return e === "true" || e === ":"; }
-    function linhaPick(repo, h) { return "pick " + repo.abrev(h) + " # " + assunto(repo.ler(h).msg); }
     function rebaseSujo(repo) { var st = repo.estado(); return st.preparado.length || st.naoPrep.length; }
-    CMDS.rebase = function (args, io, sh) {
-      var g = opcoes(args, { "--continue": true, "--abort": true, "--skip": true, "--quit": true, "--onto": "valor", "-i": true, "--interactive": "-i", "-q": true, "--quiet": "-q", "--autostash": true, "--edit-todo": true, "-m": true, "--merge": "-m", "--root": true });
+    function qsh(s) { return "'" + s.replace(/'/g, "'\\''") + "'"; }
+    // roda um editor (comando do shell) sobre um arquivo; devolve false se não há editor utilizável
+    function* rodarEditor(repo, sh, cmd, arq) {
+      if (!cmd || cmd === "nano" || cmd === "vim" || cmd === "vi" || cmd === "code" || /^nano\b|^vim?\b/.test(cmd)) return false;
+      if (cmd === "true" || cmd === ":") return true;
+      var n = sh.fork();
+      yield* n.rodarFonte(cmd + " " + qsh(arq) + "\n", {});
+      return true;
+    }
+    var AJUDA_TODO = "\n# Rebase {ONTO}\n#\n# Commands:\n# p, pick <commit> = use commit\n# r, reword <commit> = use commit, but edit the commit message\n# e, edit <commit> = use commit, but stop for amending\n# s, squash <commit> = use commit, but meld into previous commit\n# f, fixup [-C | -c] <commit> = like \"squash\" but keep only the previous\n#                    commit's log message, unless -C is used, in which case\n#                    keep only this commit's message; -c is same as -C but\n#                    opens the editor\n# x, exec <command> = run command (the rest of the line) using shell\n# b, break = stop here (continue rebase later with 'git rebase --continue')\n# d, drop <commit> = remove commit\n# l, label <label> = label current HEAD with a name\n# t, reset <label> = reset HEAD to a label\n# m, merge [-C <commit> | -c <commit>] <label> [# <oneline>]\n#         create a merge commit using the original merge commit's\n#         message (or the oneline, if no original merge commit was\n#         specified); use -c <commit> to reword the commit message\n# u, update-ref <ref> = track a placeholder for the <ref> to be updated\n#                       to this position in the new commits. The <ref> is\n#                       updated at the end of the rebase\n#\n# These lines can be re-ordered; they are executed from top to bottom.\n#\n# If you remove a line here THAT COMMIT WILL BE LOST.\n#\n# However, if you remove everything, the rebase will be aborted.\n#\n";
+    CMDS.rebase = function* (args, io, sh) {
+      var g = opcoes(args, { "--continue": true, "--abort": true, "--skip": true, "--quit": true, "--onto": "valor", "-i": true, "--interactive": "-i", "-q": true, "--quiet": "-q", "--autostash": true, "--edit-todo": true, "-m": true, "--merge": "-m", "--root": true, "--autosquash": true });
       if (g.erro) { io.err("error: " + g.erro + "\n"); return 129; }
       var repo = precisaRepo(io); precisaArvore(repo);
       var o = g.o, emRebase = repo.existe("rebase-merge");
-      var interativo = o["-i"] && editorNulo(repo, sh);
-      if ((o["-i"] && !interativo) || o["--edit-todo"]) { io.err("(simulador) o rebase interativo (git rebase -i) abre um editor de texto, que não existe aqui. Experimente no seu computador.\n"); return 1; }
+      if (o["--edit-todo"]) { io.err("(simulador) git rebase --edit-todo abre um editor de texto, que não existe aqui.\n"); return 1; }
       if (o["--abort"] || o["--quit"]) {
         if (!emRebase) { io.err("fatal: no rebase in progress\n"); return 128; }
         var ref = rbArq(repo, "head-name"), orig = rbArq(repo, "orig-head");
@@ -3293,21 +3302,23 @@
       if (o["--continue"] || o["--skip"]) {
         if (!emRebase) { io.err("fatal: no rebase in progress\n"); return 128; }
         var st = repo.estado(), conf = Object.keys(st.conf).sort(cmpCam);
-        if (o["--skip"]) { repo.trocarArvore(repo.arvoreDe(repo.head()), repo.arvoreDe(repo.head()), { forcar: true }); repo.apagarArq("rebase-merge/stopped-sha"); return seguirRebase(repo, io, sh); }
+        if (o["--skip"]) { repo.trocarArvore(repo.arvoreDe(repo.head()), repo.arvoreDe(repo.head()), { forcar: true }); repo.apagarArq("rebase-merge/stopped-sha"); repo.apagarArq("rebase-merge/amend"); return yield* seguirRebase(repo, io, sh); }
         if (conf.length) { io.err(conf.map(function (k) { return k + ": needs merge\n"; }).join("") + "You must edit all merge conflicts and then\nmark them as resolved using git add\n"); return 1; }
-        var parado = rbArq(repo, "stopped-sha");
-        if (parado) {
+        var parado = rbArq(repo, "stopped-sha"), emenda = rbArq(repo, "amend");
+        if (parado && !emenda) {
           var c = repo.ler(parado), head = repo.head(), arv = repo.escreverArvore(repo.lerIndice());
           if (arv !== repo.ler(head).tree) {
-            var novo = { type: "commit", tree: arv, parents: [head], author: c.author, committer: repo.ident("c"), msg: c.msg };
+            var acaoP = rbArq(repo, "stopped-action") || "pick", msgP = c.msg, paisP = [head], baseMsg = null;
+            if (acaoP === "squash" || acaoP === "fixup") { var ant = repo.ler(head); paisP = ant.parents.slice(); msgP = acaoP === "fixup" ? ant.msg : ant.msg.replace(/\n$/, "") + "\n\n" + c.msg; }
+            var novo = { type: "commit", tree: arv, parents: paisP, author: (acaoP === "squash" || acaoP === "fixup") ? repo.ler(head).author : c.author, committer: repo.ident("c"), msg: msgP };
             var hn = repo.escreverObj(novo);
-            repo.gravar("HEAD", hn + "\n"); repo.logar("HEAD", head, hn, "rebase (continue): " + assunto(c.msg));
-            var mud = compararMapas(repo.arvoreDe(head), repo.arvorePlana(arv), function (a, b) { return repo.similaridade(a, b); });
-            io.out("[detached HEAD " + repo.abrev(hn) + "] " + assunto(c.msg) + "\n" + repo.shortstat(mud) + repo.resumoCriacao(mud));
+            repo.gravar("HEAD", hn + "\n"); repo.logar("HEAD", head, hn, "rebase (continue): " + assunto(msgP));
+            var mud = compararMapas(repo.arvoreDe(paisP[0]), repo.arvorePlana(arv), function (a, b) { return repo.similaridade(a, b); });
+            io.out("[detached HEAD " + repo.abrev(hn) + "] " + assunto(msgP) + "\n" + repo.shortstat(mud) + repo.resumoCriacao(mud));
           }
-          repo.apagarArq("rebase-merge/stopped-sha");
-        } else if (rebaseSujo(repo)) { io.err("error: you have staged changes in your working tree\n"); return 1; }
-        return seguirRebase(repo, io, sh);
+        } else if (!emenda && rebaseSujo(repo)) { io.err("error: you have staged changes in your working tree\n"); return 1; }
+        repo.apagarArq("rebase-merge/stopped-sha"); repo.apagarArq("rebase-merge/amend");
+        return yield* seguirRebase(repo, io, sh);
       }
       if (emRebase) { io.err("fatal: It seems that there is already a rebase-merge directory, and\nI wonder if you are in the middle of another rebase.  If that is the\ncase, please try\n\tgit rebase (--continue | --abort | --skip)\nIf that is not the case, please\n\trm -fr \"" + repo.g + "/rebase-merge\"\nand run me again.  I am stopping in case you still have something\nvaluable there.\n\n"); return 128; }
       var ramo = repo.branchAtual(), upNome = g.ops[0];
@@ -3324,48 +3335,103 @@
       var head = repo.head();
       var commits = repo.revList([head], [upH], {}).reverse().filter(function (h) { return repo.ler(h).parents.length < 2; });
       var refNome = ramo ? "refs/heads/" + ramo : "detached HEAD";
-      if (repo.ehAncestral(onto, head) && !o["--onto"] && !interativo) { io.out("Current branch " + (ramo || "HEAD") + " is up to date.\n"); return 0; }
-      if (repo.ehAncestral(onto, head) && repo.mergeBase(head, upH) === onto && !o["--onto"] && false) { io.out("Current branch " + ramo + " is up to date.\n"); return 0; }
-      // começa: HEAD destacado em onto
-      repo.gravar("ORIG_HEAD", head + "\n");
+      if (!o["-i"] && repo.ehAncestral(onto, head) && !o["--onto"]) { io.out("Current branch " + (ramo || "HEAD") + " is up to date.\n"); return 0; }
+      var todo = commits.map(function (h) { return "pick " + repo.abrev(h) + " " + assunto(repo.ler(h).msg); });
       mkdirP(sh, repo.g + "/rebase-merge");
+      if (o["-i"]) {
+        var ed = sh.valor("GIT_SEQUENCE_EDITOR") || repo.config("sequence.editor") || sh.valor("GIT_EDITOR") || repo.config("core.editor");
+        var arqTodo = repo.g + "/rebase-merge/git-rebase-todo";
+        var n0 = commits.length;
+        repo.gravar("rebase-merge/git-rebase-todo", todo.join("\n") + "\n" + AJUDA_TODO.replace("{ONTO}", repo.abrev(upH) + ".." + repo.abrev(head) + " onto " + repo.abrev(onto) + " (" + n0 + " command" + (n0 === 1 ? "" : "s") + ")"));
+        var ok = yield* rodarEditor(repo, sh, ed, arqTodo);
+        if (!ok) { apagar(sh, repo.g + "/rebase-merge"); io.err("(simulador) o rebase interativo (git rebase -i) abre um editor de texto, que não existe aqui. Nas missões, use GIT_SEQUENCE_EDITOR (por exemplo GIT_SEQUENCE_EDITOR='sed -i 2s/^pick/squash/' git rebase -i main).\n"); return 1; }
+        var editado = (repo.arq("rebase-merge/git-rebase-todo") || "").split("\n").filter(function (l) { return l.trim() && l.trim()[0] !== "#"; });
+        if (!editado.length) { apagar(sh, repo.g + "/rebase-merge"); io.out("Nothing to do\n"); return 1; }
+        var ABR = { p: "pick", r: "reword", e: "edit", s: "squash", f: "fixup", d: "drop", x: "exec", b: "break" };
+        todo = [];
+        for (var q = 0; q < editado.length; q++) {
+          var pt = editado[q].trim().split(/\s+/), ac = ABR[pt[0]] || pt[0];
+          if (ac === "fixup" && /^-[cC]$/.test(pt[1])) { ac = "fixupC"; pt.splice(1, 1); }
+          if (["pick", "reword", "edit", "squash", "fixup", "fixupC", "drop", "break", "exec"].indexOf(ac) < 0) { apagar(sh, repo.g + "/rebase-merge"); io.err("error: invalid command '" + pt[0] + "'\nYou can fix this with 'git rebase --edit-todo' and then run 'git rebase --continue'.\nOr you can abort the rebase with 'git rebase --abort'.\n"); return 1; }
+          if (ac === "exec") { todo.push("exec " + editado[q].trim().replace(/^\S+\s+/, "")); continue; }
+          if (ac === "break") { todo.push("break"); continue; }
+          var hc = repo.commitDe(pt[1]);
+          if (!hc) { apagar(sh, repo.g + "/rebase-merge"); io.err("error: invalid line " + (q + 1) + ": " + editado[q] + "\n"); return 1; }
+          todo.push(ac + " " + hc);
+        }
+      } else todo = commits.map(function (h) { return "pick " + h; });
+      repo.gravar("ORIG_HEAD", head + "\n");
       repo.gravar("rebase-merge/head-name", refNome + "\n");
       repo.gravar("rebase-merge/onto", onto + "\n");
       repo.gravar("rebase-merge/orig-head", head + "\n");
       repo.gravar("rebase-merge/done", "");
-      repo.gravar("rebase-merge/git-rebase-todo", commits.map(function (h) { return "pick " + h + " # " + assunto(repo.ler(h).msg) + "\n"; }).join(""));
-      repo.gravar("rebase-merge/end", commits.length + "\n");
+      repo.gravar("rebase-merge/git-rebase-todo", todo.join("\n") + (todo.length ? "\n" : ""));
+      repo.gravar("rebase-merge/end", todo.length + "\n");
+      if (o["-i"]) repo.gravar("rebase-merge/interactive", "");
       repo.trocarArvore(repo.arvoreDe(head), repo.arvoreDe(onto), { forcar: true });
       repo.gravar("HEAD", onto + "\n");
       repo.logar("HEAD", head, onto, "rebase (start): checkout " + ontoNome);
-      return seguirRebase(repo, io, sh);
+      return yield* seguirRebase(repo, io, sh);
     };
-    function seguirRebase(repo, io, sh) {
+    function* seguirRebase(repo, io, sh) {
       var todo = (rbArq(repo, "git-rebase-todo") || "").split("\n").filter(Boolean), feitos = (rbArq(repo, "done") || "").split("\n").filter(Boolean);
-      var total = +(rbArq(repo, "end") || todo.length + feitos.length);
+      var total = +(rbArq(repo, "end") || todo.length + feitos.length), interativo = repo.existe("rebase-merge/interactive");
+      var edMsg = sh.valor("GIT_EDITOR") || repo.config("core.editor");
       while (todo.length) {
-        var linha = todo.shift(), h = linha.split(" ")[1], c = repo.ler(h), head = repo.head();
-        feitos.push("pick " + repo.abrev(h) + " # " + assunto(c.msg));
+        var linha = todo.shift(), pt = linha.split(" "), acao = pt[0], h = pt[1];
+        if (acao === "exec" || acao === "break") {
+          feitos.push(linha); repo.gravar("rebase-merge/done", feitos.join("\n") + "\n"); repo.gravar("rebase-merge/git-rebase-todo", todo.join("\n") + (todo.length ? "\n" : ""));
+          if (acao === "break") { io.err("Stopped at " + repo.abrev(repo.head()) + "...  " + assunto(repo.ler(repo.head()).msg) + "\n"); return 0; }
+          io.out("Executing: " + linha.slice(5) + "\n"); var nx = sh.fork(); var stx = yield* nx.rodarFonte(linha.slice(5) + "\n", {}); if (stx) { io.err("warning: execution failed: " + linha.slice(5) + "\nYou can fix the problem, and then run\n\n  git rebase --continue\n\n\n"); return 1; }
+          continue;
+        }
+        var c = repo.ler(h), head = repo.head();
+        feitos.push((acao === "fixupC" ? "fixup -C" : acao) + " " + repo.abrev(h) + " # " + assunto(c.msg));
         repo.gravar("rebase-merge/done", feitos.join("\n") + "\n");
         repo.gravar("rebase-merge/git-rebase-todo", todo.join("\n") + (todo.length ? "\n" : ""));
-        if (c.parents[0] === head) { repo.trocarArvore(repo.arvoreDe(head), repo.arvoreDe(h), { forcar: true }); repo.gravar("HEAD", h + "\n"); repo.logar("HEAD", head, h, "rebase (pick): " + assunto(c.msg)); continue; } // pick "rápido": reaproveita o commit
+        if (acao === "drop") continue;
+        if ((acao === "pick" || acao === "edit") && c.parents[0] === head) {
+          repo.trocarArvore(repo.arvoreDe(head), repo.arvoreDe(h), { forcar: true }); repo.gravar("HEAD", h + "\n"); repo.logar("HEAD", head, h, "rebase: fast-forward");
+          if (acao === "edit") { io.err("Rebasing (" + feitos.length + "/" + total + ")\r"); repo.gravar("rebase-merge/stopped-sha", h + "\n"); repo.gravar("rebase-merge/amend", h + "\n"); io.err("Stopped at " + repo.abrev(h) + "...  # " + assunto(c.msg) + "\nYou can amend the commit now, with\n\n  git commit --amend \n\nOnce you are satisfied with your changes, run\n\n  git rebase --continue\n"); return 0; }
+          continue;
+        }
         io.err("Rebasing (" + feitos.length + "/" + total + ")\r");
         var pai = c.parents[0] || null;
         var res = repo.mesclarArvores(pai, head, h, "HEAD", repo.abrev(h) + " (" + assunto(c.msg) + ")");
         repo.aplicarMesclagem(head, res);
         if (res.conflitos.length) {
-          repo.gravar("rebase-merge/stopped-sha", h + "\n");
+          repo.gravar("rebase-merge/stopped-sha", h + "\n"); repo.gravar("rebase-merge/stopped-action", acao + "\n");
           io.out(res.msgs.join(""));
           io.err("error: não foi possível aplicar " + repo.abrev(h) + "... " + assunto(c.msg) + "\nhint: Resolve all conflicts manually, mark them as resolved with\nhint: \"git add/rm <conflicted_files>\", then run \"git rebase --continue\".\nhint: You can instead skip this commit: run \"git rebase --skip\".\nhint: To abort and get back to the state before \"git rebase\", run \"git rebase --abort\".\nhint: Disable this message with \"git config set advice.mergeConflict false\"\nCould not apply " + repo.abrev(h) + "... # " + assunto(c.msg) + "\n");
           return 1;
         }
         io.out(res.msgs.join(""));
         var arv = repo.escreverArvore(repo.lerIndice());
-        if (arv === repo.ler(head).tree) continue; // já aplicado: o git descarta
-        var hn = repo.escreverObj({ type: "commit", tree: arv, parents: [head], author: c.author, committer: repo.ident("c"), msg: c.msg });
-        repo.gravar("HEAD", hn + "\n"); repo.logar("HEAD", head, hn, "rebase (pick): " + assunto(c.msg));
+        var msg = c.msg, pais = [head], autor = c.author;
+        if (acao === "squash" || acao === "fixup" || acao === "fixupC") {
+          var ant = repo.ler(head); pais = ant.parents.slice(); autor = acao === "fixupC" ? c.author : ant.author;
+          if (acao === "fixup") msg = ant.msg; else if (acao === "fixupC") msg = c.msg;
+          else {
+            var arqM = repo.g + "/COMMIT_EDITMSG";
+            repo.gravar("COMMIT_EDITMSG", "# This is a combination of 2 commits.\n# This is the 1st commit message:\n\n" + ant.msg + "\n# This is the commit message #2:\n\n" + c.msg + "\n# Please enter the commit message for your changes. Lines starting\n# with '#' will be ignored, and an empty message aborts the commit.\n");
+            var okS = yield* rodarEditor(repo, sh, edMsg, arqM);
+            msg = limparMsg(repo.arq("COMMIT_EDITMSG") || "", "strip");
+          }
+        } else if (acao === "reword") {
+          var arqR = repo.g + "/COMMIT_EDITMSG";
+          repo.gravar("COMMIT_EDITMSG", c.msg + "\n# Please enter the commit message for your changes. Lines starting\n# with '#' will be ignored, and an empty message aborts the commit.\n");
+          yield* rodarEditor(repo, sh, edMsg, arqR);
+          msg = limparMsg(repo.arq("COMMIT_EDITMSG") || "", "strip");
+        } else if (arv === repo.ler(head).tree) continue; // já aplicado: o git descarta
+        var hn = repo.escreverObj({ type: "commit", tree: arv, parents: pais, author: autor, committer: repo.ident("c"), msg: msg });
+        repo.gravar("HEAD", hn + "\n"); repo.logar("HEAD", head, hn, "rebase (" + (acao === "fixupC" ? "fixup" : acao) + "): " + assunto(msg));
+        if (acao === "reword" || acao === "squash") { var mudR = compararMapas(repo.arvoreDe(pais[0]), repo.arvorePlana(arv), function (a, b) { return repo.similaridade(a, b); }); var au = parseIdent(autor); io.out("[detached HEAD " + repo.abrev(hn) + "] " + assunto(msg) + "\n Date: " + dataPadrao(au.ts, au.tz) + "\n" + repo.shortstat(mudR) + repo.resumoCriacao(mudR)); }
+        if (acao === "edit") {
+          repo.gravar("rebase-merge/stopped-sha", hn + "\n"); repo.gravar("rebase-merge/amend", hn + "\n");
+          io.err("Stopped at " + repo.abrev(h) + "...  # " + assunto(c.msg) + "\nYou can amend the commit now, with\n\n  git commit --amend \n\nOnce you are satisfied with your changes, run\n\n  git rebase --continue\n");
+          return 0;
+        }
       }
-      // fim
       var ref = rbArq(repo, "head-name"), onto = rbArq(repo, "onto"), fim = repo.head();
       if (ref && ref !== "detached HEAD") {
         repo.gravarRef(ref, fim, "rebase (finish): " + ref + " onto " + onto, rbArq(repo, "orig-head"));
