@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Hooks — scripts que rodam sozinhos antes do commit | Guia Git</title>
+<meta name="description" content="Git hooks para quem nunca usou: a pasta .git/hooks, um pre-commit de verdade que bloqueia o commit de uma senha, o commit-msg que recusa mensagens curtas, chmod +x, git commit --no-verify, git hook run, core.hooksPath para dividir os hooks com a equipe e os erros reais do Git.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Hooks</span></h1>
+
+<p class="intro">Um <strong>hook</strong> (em inglês, "gancho") é um pequeno programa que o Git roda <strong>sozinho</strong> num momento certo: antes de cada commit, depois de escrever a mensagem, antes de um push. Com ele você ensina o Git a conferir as coisas por você, por exemplo, a <strong>recusar um commit</strong> que tenha uma senha dentro. Nesta aula a Ana cria um hook de verdade e vê o Git bloqueando o commit dela.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é um hook e onde ele mora: a pasta <code>.git/hooks</code>.</li>
+  <li>Como escrever um <code>pre-commit</code> que <strong>cancela</strong> o commit quando acha <code>senha=</code> nos arquivos.</li>
+  <li>Como um <code>commit-msg</code> recusa mensagens curtas demais.</li>
+  <li>Como pular um hook (<code>--no-verify</code>) e quando isso é aceitável.</li>
+  <li>Por que os hooks não vão junto no <code>clone</code>, e como dividir com a equipe usando <code>core.hooksPath</code>.</li>
+</ul>
+</div>
+
+<p>Todas as saídas desta aula vieram do Git real do Ubuntu na máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português. Com o sistema em inglês, as mensagens do Git saem em inglês, mas as do hook são as que <strong>você</strong> escreveu.</p>
+
+<hr>
+
+<h2>A ideia: o porteiro do prédio</h2>
+<p>No prédio da Ana, todo mundo que entra passa pelo porteiro. Ele tem uma lista curta: "entregador sem nome do morador? não entra". Os moradores não precisam lembrar de nada: o porteiro confere <strong>toda vez</strong>, sem esquecer.</p>
+<p>Um hook é esse porteiro, contratado por você:</p>
+<ul>
+  <li><strong>Quando</strong> ele trabalha depende do nome do arquivo: o <code>pre-commit</code> ("antes do commit") trabalha logo depois de você digitar <code>git commit</code> e antes de o commit existir.</li>
+  <li><strong>O que</strong> ele confere é você que escreve: é um script comum (aqui, um script de shell, como os do <a href="terminal-basico.html">terminal</a>).</li>
+  <li><strong>A decisão</strong> vem do código de saída do script: terminou com <code>exit 0</code>, "pode passar"; terminou com qualquer outro número (como <code>exit 1</code>), "não passa", e o Git <strong>cancela</strong> o commit.</li>
+</ul>
+
+<hr>
+
+<h2>1. Onde os hooks moram: <code>.git/hooks</code></h2>
+<p>Todo repositório criado com <a href="git-init.html">git init</a> já vem com uma pasta de exemplos dentro do <code>.git</code>. A Ana criou o repositório do site de receitas e olhou:</p>
+
+<pre class="term">$ mkdir receitas &amp;&amp; cd receitas &amp;&amp; git init -q
+$ echo '# Receitas da Ana' &gt; README.md
+$ git add README.md &amp;&amp; git commit -q -m 'Primeiro commit'
+$ ls .git/hooks
+applypatch-msg.sample
+commit-msg.sample                 « exemplo de commit-msg (seção 4)
+fsmonitor-watchman.sample
+post-update.sample
+pre-applypatch.sample
+pre-commit.sample                 « exemplo de pre-commit (seção 2)
+pre-merge-commit.sample
+pre-push.sample
+pre-rebase.sample
+pre-receive.sample
+prepare-commit-msg.sample
+push-to-checkout.sample
+sendemail-validate.sample
+update.sample
+</pre>
+
+<p>São <strong>exemplos</strong>, todos terminados em <code>.sample</code> ("amostra"). O Git ignora qualquer arquivo com essa terminação: eles estão ali só para você ler e copiar. Para um hook valer de verdade, ele precisa de duas coisas:</p>
+<ol class="passo">
+  <li>o <strong>nome exato</strong>, sem extensão: <code>pre-commit</code>, e não <code>pre-commit.sample</code> nem <code>pre-commit.sh</code>;</li>
+  <li>a <strong>permissão de execução</strong> (o <code>chmod +x</code>), senão o Git não o roda (veja <a href="#errado">Quando dá errado</a>).</li>
+</ol>
+
+<div class="note">
+<strong>Por que fica dentro do <code>.git</code>?</strong>
+<p>Porque é uma configuração <strong>da sua cópia</strong> do repositório, como o <code>.git/config</code>. Nada dentro do <code>.git</code> entra nos commits, então o hook não vai para o GitHub e não chega a quem clona. A seção 6 mostra como dividir hooks com a equipe mesmo assim.</p>
+</div>
+
+<hr>
+
+<h2>2. O primeiro hook: um <code>pre-commit</code> que barra senhas</h2>
+<p>A Ana tem medo de um dia commitar, sem querer, um arquivo com a senha do banco de dados (veja <a href="senha-commitada.html">Commitei uma Senha!</a>: depois de publicada, desfazer dá muito trabalho). Ela decidiu: <strong>nenhum commit passa se algum arquivo preparado tiver <code>senha=</code></strong>. Ela criou o arquivo <code>.git/hooks/pre-commit</code> com o editor:</p>
+
+<pre class="file" data-file=".git/hooks/pre-commit">#!/bin/sh
+# pre-commit: roda antes de cada commit.
+# Se algum arquivo preparado tiver "senha=", o commit é cancelado.
+if git diff --cached | grep -q '^+.*senha='; then
+  echo "pre-commit: encontrei 'senha=' nos arquivos preparados."
+  echo "pre-commit: commit cancelado. Tire a senha e tente de novo."
+  exit 1
+fi
+exit 0
+</pre>
+
+<dl class="anatomy">
+  <dt>#!/bin/sh</dt><dd>A primeira linha (o <em>shebang</em>) diz <strong>qual programa</strong> roda o script: aqui, o shell <code>sh</code>. Hooks podem ser escritos em qualquer linguagem (Python, Node…), basta trocar esta linha.</dd>
+  <dt>git diff --cached</dt><dd>Mostra o que está <strong>na área de preparo</strong>, ou seja, exatamente o que vai entrar no commit (é o mesmo que <a href="git-diff-staged.html">git diff --staged</a>). As linhas acrescentadas começam com <code>+</code>.</dd>
+  <dt>grep -q '^+.*senha='</dt><dd>Procura uma linha que <strong>começa com <code>+</code></strong> (linha nova) e tem <code>senha=</code> em algum lugar. O <code>-q</code> ("quieto") não mostra nada: só responde "achei" ou "não achei".</dd>
+  <dt>if … then … fi</dt><dd>Se achou, mostra duas linhas de aviso (o <code>echo</code>) e termina com <code>exit 1</code>.</dd>
+  <dt>exit 1</dt><dd>"Não passa." Qualquer código diferente de 0 faz o Git <strong>cancelar</strong> o commit.</dd>
+  <dt>exit 0</dt><dd>"Pode passar." O Git segue e cria o commit.</dd>
+</dl>
+
+<p>Depois de salvar, ela deu a permissão de execução e conferiu com o <code>ls -l</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ chmod +x .git/hooks/pre-commit
+$ ls -l .git/hooks/pre-commit
+-rwxrwxr-x 1 ana ana 322 Oct 15 10:29 .git/hooks/pre-commit
+</pre>
+
+<p>Os <code>x</code> em <code>-rwxrwxr-x</code> são o "pode ser executado". Agora o porteiro está trabalhando.</p>
+
+<h3>O hook em ação: o commit bloqueado</h3>
+<p>Para testar, a Ana criou um <code>config.txt</code> com uma senha, preparou e tentou commitar:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'senha=batata123' &gt; config.txt
+$ git add config.txt
+$ git commit -m 'Adiciona configuração'
+pre-commit: encontrei 'senha=' nos arquivos preparados.
+pre-commit: commit cancelado. Tire a senha e tente de novo.
+$ echo $?
+1
+</pre>
+
+<p>Linha por linha:</p>
+<dl class="anatomy">
+  <dt>pre-commit: encontrei 'senha=' …</dt><dd>Não é o Git falando: são os dois <code>echo</code> do hook da Ana. O Git rodou o <code>pre-commit</code> e mostrou o que ele escreveu.</dd>
+  <dt>(nenhuma linha <code>[main …]</code>)</dt><dd>Num commit que dá certo, o Git mostra <code>[main 9183582] Adiciona configuração</code> e um resumo. Aqui não aparece nada disso: como o hook terminou com <code>exit 1</code>, o Git <strong>parou antes</strong> de criar o commit.</dd>
+  <dt>echo $? → 1</dt><dd>O código de saída do <code>git commit</code> foi 1, "deu errado". Um script que chama o Git percebe que o commit não saiu.</dd>
+</dl>
+
+<p>O histórico e a área de preparo continuam como estavam: o commit <strong>não</strong> foi criado, e o arquivo segue preparado, esperando:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+fe996fb Primeiro commit
+$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	new file:   config.txt          « continua preparado
+</pre>
+<p>(Algumas dicas do <code>git status</code> ainda saem em inglês no Git 2.53 do Ubuntu, mesmo com o sistema em português: a tradução do Git não está completa. "<em>to unstage</em>" é "para tirar da área de preparo", e "<em>new file</em>" é "arquivo novo".)</p>
+
+<p>O <code>git log</code> continua com um commit só, e o <code>git status</code> mostra o <code>config.txt</code> em "Mudanças a serem submetidas": nada se perdeu, só não entrou no histórico.</p>
+
+<h3>Consertando e commitando</h3>
+<p>A Ana trocou a senha por uma linha inofensiva, preparou de novo e commitou. Desta vez o hook rodou, não achou nada e terminou com <code>exit 0</code>, sem dizer nada:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'usuario=ana' &gt; config.txt
+$ git add config.txt
+$ git commit -m 'Adiciona configuração'
+[main 9183582] Adiciona configuração
+ 1 file changed, 1 insertion(+)
+ create mode 100644 config.txt
+$ git log --oneline
+9183582 Adiciona configuração
+fe996fb Primeiro commit
+</pre>
+
+<div class="tip">
+<strong>Um bom hook é rápido e quieto</strong>
+<p>O <code>pre-commit</code> roda em <strong>todo</strong> commit. Se ele demorar 30 segundos, você vai odiá-lo (e acabar desligando). Quando tudo está certo, não precisa dizer nada; quando barrar, diga <strong>o quê</strong> e <strong>como resolver</strong>, como o da Ana.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit';;printf '#!/bin/sh\nif git diff --cached | grep -q senha=; then\n  echo pre-commit: commit cancelado\n  exit 1\nfi\nexit 0\n' &gt; .git/hooks/pre-commit" data-goal="exec:.git/hooks/pre-commit" data-solucao="chmod +x .git/hooks/pre-commit">
+<p class="try-task"><strong>Missão:</strong> o repositório <code>receitas</code> já tem o arquivo <code>.git/hooks/pre-commit</code> da Ana, mas ela esqueceu de dar a permissão de execução. Veja o arquivo (<code>cat .git/hooks/pre-commit</code>), confira a permissão com <code>ls -l .git/hooks</code> e deixe o hook executável.</p>
+</div>
+
+<hr>
+
+<h2>3. Pulando o porteiro: <code>--no-verify</code></h2>
+<p>Às vezes você <strong>sabe</strong> que o hook está errado naquele caso (um arquivo de teste com <code>senha=exemplo</code>, por exemplo). Para fazer um commit sem rodar o <code>pre-commit</code> (nem o <code>commit-msg</code>), use <code>--no-verify</code> (a forma curta é <code>-n</code>):</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'senha=batata123' &gt;&gt; config.txt
+$ git add config.txt
+$ git commit --no-verify -m 'Teste sem o porteiro'
+[main 8b62765] Teste sem o porteiro
+ 1 file changed, 1 insertion(+)
+$ git log --oneline
+8b62765 Teste sem o porteiro          « passou, com a senha dentro
+9183582 Adiciona configuração
+fe996fb Primeiro commit
+</pre>
+
+<p>O commit passou, mesmo com <code>senha=</code> no arquivo. Por isso um hook local é uma <strong>ajuda</strong>, não uma garantia: quem quiser, pula. Regras que <strong>não podem</strong> ser puladas ficam no servidor (no GitHub, nas proteções de branch e nas verificações do <a href="github-actions.html">GitHub Actions</a>).</p>
+
+<div class="warning">
+<strong>Use <code>--no-verify</code> com consciência</strong>
+<p>Se você pula o hook toda hora, ou ele está errado (conserte-o), ou você está fazendo algo arriscado. A Ana, no caso acima, estava só testando: na vida real, aquele commit com senha deveria ser desfeito antes de qualquer <a href="git-push.html">push</a> (veja <a href="commit-amend.html">--amend</a> e <a href="git-reset.html">git reset</a>).</p>
+</div>
+
+<h3>Rodando um hook na mão: <code>git hook run</code> <span class="versao">git 2.36+</span></h3>
+<p>Para testar o hook sem tentar um commit, peça ao Git para rodá-lo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git hook run pre-commit
+$ echo $?
+0
+</pre>
+
+<p>O <code>git hook run</code> roda o hook como o <code>git commit</code> rodaria e devolve o código de saída dele. O commit de teste da seção anterior deixou <code>senha=</code> no histórico, mas o hook olha só a <strong>área de preparo</strong>, que está vazia: por isso ele não achou nada e o código de saída foi 0.</p>
+
+<hr>
+
+<h2>4. O <code>commit-msg</code>: conferindo a mensagem</h2>
+<p>O <code>pre-commit</code> olha os arquivos. Para olhar a <strong>mensagem</strong> do commit, existe o <code>commit-msg</code>. O Git escreve a mensagem num arquivo temporário e passa o caminho desse arquivo para o hook, como o primeiro argumento (<code>$1</code>). A Ana quer recusar mensagens preguiçosas como <code>ajuste</code> (veja <a href="mensagens-commit.html">Boas Mensagens de Commit</a>):</p>
+
+<pre class="file" data-file=".git/hooks/commit-msg">#!/bin/sh
+# commit-msg: recebe o caminho do arquivo com a mensagem em $1.
+mensagem=$(head -n 1 "$1")
+if [ ${#mensagem} -lt 10 ]; then
+  echo "commit-msg: a mensagem \"$mensagem\" é curta demais (mínimo 10 letras)."
+  exit 1
+fi
+</pre>
+
+<dl class="anatomy">
+  <dt>$1</dt><dd>O caminho do arquivo com a mensagem (normalmente <code>.git/COMMIT_EDITMSG</code>).</dd>
+  <dt>head -n 1 "$1"</dt><dd>Pega só a primeira linha: o título do commit.</dd>
+  <dt>${#mensagem}</dt><dd>O tamanho do texto, em letras.</dd>
+  <dt>-lt 10</dt><dd>"Menor que 10" (<em>less than</em>). Sem <code>exit</code> no fim, o script termina com o código do último comando, que é 0 quando o <code>if</code> não entra.</dd>
+</dl>
+
+<pre class="term" data-cwd="~/receitas">$ chmod +x .git/hooks/commit-msg
+$ echo 'tempo=40min' &gt;&gt; README.md
+$ git add README.md
+$ git commit -m 'ajuste'
+commit-msg: a mensagem "ajuste" é curta demais (mínimo 10 letras).
+$ git commit -m 'Anota o tempo de preparo no README'
+[main dae2d72] Anota o tempo de preparo no README
+ 1 file changed, 1 insertion(+)
+$ git log --oneline
+dae2d72 Anota o tempo de preparo no README
+8b62765 Teste sem o porteiro
+9183582 Adiciona configuração
+fe996fb Primeiro commit
+</pre>
+
+<p>A mensagem <code>ajuste</code> tem 6 letras: barrada. A segunda, descritiva, passou pelos dois porteiros (o <code>pre-commit</code> e o <code>commit-msg</code>).</p>
+
+<hr>
+
+<h2>5. Os hooks mais usados</h2>
+<p>O nome do arquivo decide o momento. Os do lado do <strong>cliente</strong> (o seu computador) são os que você vai usar:</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Hook</th><th>Quando roda</th><th>Pode cancelar?</th><th>Uso típico</th></tr>
+<tr><td><code>pre-commit</code></td><td>Logo no <code>git commit</code>, antes de pedir a mensagem</td><td>Sim</td><td>Barrar senhas, rodar o formatador, rodar testes rápidos</td></tr>
+<tr><td><code>prepare-commit-msg</code></td><td>Antes de abrir o editor da mensagem</td><td>Sim</td><td>Pré-preencher a mensagem (por exemplo, com o nome do branch)</td></tr>
+<tr><td><code>commit-msg</code></td><td>Depois que a mensagem foi escrita</td><td>Sim</td><td>Conferir o formato da mensagem (<a href="conventional-commits.html">Conventional Commits</a>)</td></tr>
+<tr><td><code>post-commit</code></td><td>Depois que o commit foi criado</td><td>Não</td><td>Avisar, registrar</td></tr>
+<tr><td><code>pre-push</code></td><td>No <code>git push</code>, antes de enviar</td><td>Sim</td><td>Rodar a bateria de testes completa antes de publicar</td></tr>
+<tr><td><code>post-checkout</code> / <code>post-merge</code></td><td>Depois de trocar de branch / depois de um merge (inclusive o do <code>pull</code>)</td><td>Não</td><td>Reinstalar dependências, limpar arquivos gerados</td></tr>
+<tr><td><code>pre-rebase</code></td><td>Antes de um <code>git rebase</code></td><td>Sim</td><td>Impedir rebase de branches publicados</td></tr>
+</table>
+</div>
+
+<p>Existem também hooks do lado do <strong>servidor</strong> (<code>pre-receive</code>, <code>update</code>, <code>post-receive</code>), que rodam no repositório que <strong>recebe</strong> o push. No GitHub você não instala hooks de servidor: o equivalente são as regras de proteção de branch e o GitHub Actions. A lista completa está em <code>git help githooks</code> (veja <a href="git-help.html">git help</a>).</p>
+
+<hr>
+
+<h2>6. Dividindo os hooks com a equipe: <code>core.hooksPath</code></h2>
+<p>Como a pasta <code>.git/hooks</code> não é versionada, o Bruno, que clonou o repositório, <strong>não</strong> tem o porteiro da Ana. A solução comum é guardar os hooks numa pasta <strong>versionada</strong> (por exemplo, <code>.githooks</code>) e dizer ao Git para procurá-los lá, com a configuração <code>core.hooksPath</code> <span class="versao">git 2.9+</span>:</p>
+
+<pre class="term" data-cwd="~/loja">$ mkdir .githooks
+$ cp .git/hooks/pre-commit .githooks/pre-commit
+$ chmod +x .githooks/pre-commit
+$ git config core.hooksPath .githooks
+$ git config core.hooksPath
+.githooks
+$ echo 'tchau' &gt;&gt; a.txt
+$ git add a.txt
+$ git commit -m 'Segundo commit da loja'
+pre-commit: conferindo...
+$ git log --oneline
+0d93a28 Primeiro commit da loja          « o segundo commit foi barrado
+</pre>
+<p>Aqui a Ana usou o repositório da lojinha, cujo <code>pre-commit</code> de teste só escreve <code>pre-commit: conferindo...</code> e termina com <code>exit 1</code>.</p>
+
+<dl class="anatomy">
+  <dt>git config core.hooksPath .githooks</dt><dd>"Procure os hooks na pasta <code>.githooks</code>, e não mais em <code>.git/hooks</code>." Um caminho relativo vale a partir da raiz do repositório.</dd>
+  <dt>pre-commit: conferindo...</dt><dd>O hook da pasta nova rodou (e, como esse exemplo termina com <code>exit 1</code>, barrou o commit).</dd>
+</dl>
+
+<p>A pasta <code>.githooks</code> entra nos commits como qualquer outra. Quem clonar ainda precisa rodar <strong>uma vez</strong> o <code>git config core.hooksPath .githooks</code> (por segurança, o Git nunca liga hooks sozinho num clone: seria um jeito de rodar programas no computador de quem clonou). Costuma-se pôr esse comando no README.</p>
+
+<div class="note">
+<strong>Ferramentas prontas (ilustrativo)</strong>
+<p>Em projetos maiores, as equipes usam programas que instalam e organizam os hooks: o <strong>pre-commit</strong> (pre-commit.com, comum em projetos Python), o <strong>Husky</strong> (comum em projetos JavaScript) e o <strong>Lefthook</strong>. Eles fazem o mesmo que você fez aqui: colocam um script no lugar certo e rodam verificações. Estude a documentação de cada um quando precisar.</p>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer a mesma coisa</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Qual usar</th></tr>
+<tr><td>Um hook só seu, neste repositório</td><td>Arquivo em <code>.git/hooks/NOME</code> + <code>chmod +x</code></td></tr>
+<tr><td>Hooks iguais para toda a equipe</td><td>Pasta versionada (<code>.githooks</code>) + <code>git config core.hooksPath .githooks</code></td></tr>
+<tr><td>Projeto grande, vários verificadores, várias linguagens</td><td>Uma ferramenta (pre-commit, Husky, Lefthook)</td></tr>
+<tr><td>Uma regra que <strong>ninguém</strong> pode pular</td><td>No servidor: proteção de branch e GitHub Actions (hooks locais podem ser pulados com <code>--no-verify</code>)</td></tr>
+<tr><td>Testar o hook sem commitar</td><td><code>git hook run NOME</code>, ou rodar o arquivo direto: <code>.git/hooks/pre-commit</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>O hook "não roda": falta o <code>chmod +x</code></strong>
+<pre class="term" data-cwd="~/tcc">$ printf '#!/bin/sh\necho "pre-commit: commit cancelado"\nexit 1\n' &gt; .git/hooks/pre-commit
+$ echo 'Capítulo 1' &gt; tcc.txt
+$ git add tcc.txt
+$ git commit -m 'Começa o TCC'
+hint: The '.git/hooks/pre-commit' hook was ignored because it's not set as executable.
+hint: You can disable this warning with `git config set advice.ignoredHook false`.
+[main (root-commit) d0d7fc0] Começa o TCC
+ 1 file changed, 1 insertion(+)
+ create mode 100644 tcc.txt
+$ ls -l .git/hooks/pre-commit
+-rw-rw-r-- 1 ana ana 53 Oct 15 10:29 .git/hooks/pre-commit
+</pre>
+<p>As duas linhas <code>hint:</code> ("dica:") ainda não têm tradução no Git do Ubuntu e saem em inglês: "O hook <code>.git/hooks/pre-commit</code> foi ignorado porque não está marcado como executável" e "Você pode desligar este aviso com <code>git config set advice.ignoredHook false</code>".</p>
+<p><strong>O que aconteceu:</strong> o arquivo tem o nome certo, mas não tem permissão de execução (<code>-rw-rw-r--</code>, sem nenhum <code>x</code>), então o Git <strong>ignorou</strong> o hook, avisou com o <code>hint</code> e fez o commit, que o hook deveria ter barrado. <strong>Como resolver:</strong> <code>chmod +x .git/hooks/pre-commit</code>. Não desligue o aviso: ele é o que mostra que o seu porteiro está dormindo.</p>
+</div>
+
+<div class="cenario">
+<strong>O nome está errado: <code>pre-commit.sh</code></strong>
+<p><strong>O que aconteceu:</strong> o Git procura o nome <strong>exato</strong> (<code>pre-commit</code>, sem extensão). Com <code>pre-commit.sh</code>, ou <code>pre-commit.sample</code>, ele não acha nada e não avisa nada: o commit passa em silêncio. <strong>Como resolver:</strong> <code>mv .git/hooks/pre-commit.sh .git/hooks/pre-commit</code> (e o <code>chmod +x</code>).</p>
+</div>
+
+<div class="cenario">
+<strong>O commit "não sai" e você não entende por quê</strong>
+<p>Se um <code>git commit</code> volta para o prompt sem criar nada, procure uma mensagem de hook logo acima, como a <code>pre-commit: …</code> da Ana. <strong>Como confirmar:</strong> <code>ls .git/hooks</code> (procure arquivos sem <code>.sample</code>) e <code>git config core.hooksPath</code> (se responder algo, os hooks estão naquela pasta). <strong>Como resolver:</strong> leia o hook com <code>cat</code>, conserte o que ele aponta e commite de novo.</p>
+</div>
+
+<div class="cenario">
+<strong>"Permission denied" ou "bad interpreter" ao rodar o hook</strong>
+<p>Se o hook foi escrito no Windows, ele pode ter fim de linha <code>CRLF</code>, e a primeira linha vira <code>#!/bin/sh\r</code>, um programa que não existe. <strong>Como resolver:</strong> salve o arquivo com fim de linha <code>LF</code> (veja <a href="gitattributes.html">Fim de Linha e .gitattributes</a>).</p>
+</div>
+
+<hr>
+
+<h2>Referência</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando / arquivo</th><th>O que faz</th></tr>
+<tr><td><code>ls .git/hooks</code></td><td>Lista os hooks (os <code>.sample</code> são só exemplos)</td></tr>
+<tr><td><code>.git/hooks/pre-commit</code></td><td>Roda antes de cada commit; <code>exit</code> diferente de 0 cancela</td></tr>
+<tr><td><code>.git/hooks/commit-msg</code></td><td>Recebe em <code>$1</code> o arquivo com a mensagem; pode recusá-la</td></tr>
+<tr><td><code>chmod +x .git/hooks/NOME</code></td><td>Liga o hook (permissão de execução)</td></tr>
+<tr><td><code>git commit --no-verify</code> (<code>-n</code>)</td><td>Commita sem rodar <code>pre-commit</code> e <code>commit-msg</code></td></tr>
+<tr><td><code>git push --no-verify</code></td><td>Envia sem rodar o <code>pre-push</code></td></tr>
+<tr><td><code>git hook run NOME</code></td><td>Roda um hook na mão (git 2.36+)</td></tr>
+<tr><td><code>git config core.hooksPath PASTA</code></td><td>Procura os hooks em outra pasta (versionável)</td></tr>
+<tr><td><code>git help githooks</code></td><td>A lista completa de hooks</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Ligar o hook</h3>
+<p>Complete para dar permissão de execução ao hook:</p>
+<div class="ex-code"><input data-answer="chmod +x" aria-label="comando"> .git/hooks/pre-commit</div>
+</div>
+
+<div class="exercise">
+<h3>2. Pular o porteiro</h3>
+<p>Complete para commitar sem rodar os hooks:</p>
+<div class="ex-code">git commit <input data-answer="--no-verify" aria-label="opção"> -m 'Teste'</div>
+</div>
+
+<div class="exercise">
+<h3>3. Hooks da equipe</h3>
+<p>Complete para o Git procurar os hooks na pasta versionada <code>.githooks</code>:</p>
+<div class="ex-code">git config <input data-answer="core.hooksPath" aria-label="configuração"> .githooks</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. O <code>pre-commit</code> da Ana termina com <code>exit 1</code>. O que acontece no <code>git commit</code>?</p>
+<label><input type="radio" name="q4"> O commit é criado, mas com um aviso.</label>
+<label><input type="radio" name="q4"> O commit é cancelado e os arquivos continuam na área de preparo.</label>
+<label><input type="radio" name="q4"> O commit é cancelado e as mudanças são apagadas.</label>
+<label><input type="radio" name="q4"> O Git pede a mensagem de novo.</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">5. O Bruno clonou o repositório da Ana. O <code>pre-commit</code> dela, que está em <code>.git/hooks</code>, roda no computador dele?</p>
+<label><input type="radio" name="q5"> Sim, o clone copia tudo.</label>
+<label><input type="radio" name="q5"> Sim, mas só depois do primeiro <code>git pull</code>.</label>
+<label><input type="radio" name="q5"> Não: a pasta <code>.git/hooks</code> não é versionada e não vai no clone.</label>
+<label><input type="radio" name="q5"> Não, porque hooks só rodam no GitHub.</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">6. Qual nome de arquivo o Git roda antes de cada commit?</p>
+<label><input type="radio" name="q6"> <code>.git/hooks/pre-commit</code> (executável)</label>
+<label><input type="radio" name="q6"> <code>.git/hooks/pre-commit.sample</code></label>
+<label><input type="radio" name="q6"> <code>.git/hooks/pre-commit.sh</code></label>
+<label><input type="radio" name="q6"> <code>pre-commit</code>, na raiz do projeto</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Hook = script que o Git roda sozinho num momento certo. Mora em <code>.git/hooks</code>, com o nome exato e <code>chmod +x</code>.</li>
+  <li><code>pre-commit</code> confere os arquivos; <code>commit-msg</code> confere a mensagem (em <code>$1</code>). <code>exit</code> diferente de 0 <strong>cancela</strong>, e nada se perde.</li>
+  <li><code>git commit --no-verify</code> pula os hooks: eles ajudam, mas não garantem. Regras obrigatórias ficam no servidor.</li>
+  <li><code>.git/hooks</code> não vai no clone. Para a equipe: pasta versionada + <code>git config core.hooksPath</code>.</li>
+  <li>Hook sem <code>x</code> é ignorado (com um aviso <code>hint:</code>); hook com o nome errado é ignorado em silêncio.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
