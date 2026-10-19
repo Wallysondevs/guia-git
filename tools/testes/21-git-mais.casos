@@ -1,0 +1,90 @@
+### rebase-hashes
+mkdir receitas && cd receitas && git init -q
+echo '# Receitas' > README.md; git add README.md; git commit -q -m 'Cria o README'
+echo 'Bolo de cenoura' > bolo.txt; git add bolo.txt; git commit -q -m 'Adiciona a receita de bolo'
+git switch -q -c pudim
+echo 'Pudim de leite' > pudim.txt; git add pudim.txt; git commit -q -m 'Adiciona a receita de pudim'
+echo '- 1 lata de leite condensado' >> pudim.txt; git commit -q -am 'Adiciona os ingredientes do pudim'
+git switch -q main
+echo '# Receitas da Ana' > README.md; git commit -q -am 'Corrige o título do README'
+git log --oneline --all
+git switch pudim
+git rebase main
+git log --oneline --all --graph
+git cat-file -p HEAD
+### all-stash-revert-help
+mkdir receitas && cd receitas && git init -q
+echo '# Receitas da Ana' > README.md; git add README.md; git commit -q -m 'Cria o README'
+printf 'Bolo de cenoura\n' > bolo.txt; git add bolo.txt; git commit -q -m 'Adiciona a receita de bolo'
+printf 'Brigadeiro\n' > brigadeiro.txt; git add brigadeiro.txt; git commit -q -m 'Adiciona a receita de brigadeiro'
+git reset --hard HEAD~1
+git switch -qc doces
+echo b > beijinho.txt; git add .; git commit -qm 'Adiciona a receita de beijinho'
+git switch -q main
+echo 40 >> bolo.txt; git commit -qam 'Corrige o tempo de forno do bolo'
+git log --oneline --graph --all
+git log --oneline --all
+git branch brig HEAD@{3}
+git log --oneline --graph --all
+echo x >> bolo.txt; echo novo > novo.txt; git add novo.txt
+git stash
+git stash list
+git log --oneline --graph --all
+git stash pop
+git stash
+git stash pop stash@{0}
+git stash -u
+git stash pop
+git revert --no-edit HEAD
+git switch -qc sq HEAD~1
+echo s > s.txt; git add .; git commit -qm s
+git switch -q main
+git merge --squash sq
+git merge --abort
+git reset -q --hard
+git help
+### stash-objetos
+mkdir r && cd r && git init -q
+echo a > a && git add a && git commit -qm um
+echo b >> a; echo n > novo.txt; git add novo.txt
+git stash
+git cat-file -p stash
+git cat-file -p stash^2
+git ls-tree -r stash
+git ls-tree -r stash^2
+### stash-u
+mkdir r && cd r && git init -q
+echo a > a && git add a && git commit -qm um
+echo b >> a; echo n > novo.txt; git add novo.txt
+git stash -u
+git cat-file -p stash
+git stash pop
+echo u > u.txt
+git stash -u
+git cat-file -p stash
+git cat-file -p stash^3
+git ls-tree -r stash^3
+ls
+git stash pop
+git status -s
+### squash-ff
+mkdir r && cd r && git init -q
+echo a > a && git add a && git commit -qm um
+git switch -qc p
+echo p > p.txt; git add .; git commit -qm p1
+echo q >> p.txt; git commit -qam p2
+git switch -q main
+git merge --squash p
+git status -s
+git commit -qm "Junta p"
+git log --oneline
+### checkout-theirs
+mkdir r && cd r && git init -q
+printf "1\n2\n" > a && git add a && git commit -qm um
+git switch -qc b; sed -i s/2/B/ a; git commit -qam b; git switch -q main; sed -i s/2/M/ a; git commit -qam m
+git merge b
+git checkout --theirs a
+cat a
+git checkout --ours -- a
+cat a
+git add a; git commit --no-edit

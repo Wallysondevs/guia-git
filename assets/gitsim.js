@@ -1000,7 +1000,7 @@
     };
     B.EXT.git.gitsim = true;
     var USO = "usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]\n           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]\n           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--no-lazy-fetch]\n           [--no-optional-locks] [--no-advice] [--bare] [--git-dir=<path>]\n           [--work-tree=<path>] [--namespace=<name>] [--config-env=<name>=<envvar>]\n           <command> [<args>]\n";
-    var AJUDA = "These are common Git commands used in various situations:\n\nstart a working area (see also: git help tutorial)\n   clone      Clone a repository into a new directory\n   init       Create an empty Git repository or reinitialize an existing one\n\nwork on the current change (see also: git help everyday)\n   add        Add file contents to the index\n   mv         Move or rename a file, a directory, or a symlink\n   restore    Restore working tree files\n   rm         Remove files from the working tree and from the index\n\nexamine the history and state (see also: git help revisions)\n   bisect     Use binary search to find the commit that introduced a bug\n   diff       Show changes between commits, commit and working tree, etc\n   grep       Print lines matching a pattern\n   log        Show commit logs\n   show       Show various types of objects\n   status     Show the working tree status\n\ngrow, mark and tweak your common history\n   backfill   Download missing objects in a partial clone\n   branch     List, create, or delete branches\n   commit     Record changes to the repository\n   merge      Join two or more development histories together\n   rebase     Reapply commits on top of another base tip\n   reset      Reset current HEAD to the specified state\n   switch     Switch branches\n   tag        Create, list, delete or verify a tag object signed with GPG\n\ncollaborate (see also: git help workflows)\n   fetch      Download objects and refs from another repository\n   pull       Fetch from and integrate with another repository or a local branch\n   push       Update remote refs along with associated objects\n\n'git help -a' and 'git help -g' list available subcommands and some\nconcept guides. See 'git help <command>' or 'git help <concept>'\nto read about a specific subcommand or concept.\nSee 'git help git' for an overview of the system.\n";
+    var AJUDA = "These are common Git commands used in various situations:\n\nstart a working area (see also: git help tutorial)\n   clone      Clone a repository into a new directory\n   init       Create an empty Git repository or reinitialize an existing one\n\nwork on the current change (see also: git help everyday)\n   add        Add file contents to the index\n   mv         Move or rename a file, a directory, or a symlink\n   restore    Restore working tree files\n   rm         Remove files from the working tree and from the index\n\nexamine the history and state (see also: git help revisions)\n   bisect     Use binary search to find the commit that introduced a bug\n   diff       Show changes between commits, commit and working tree, etc\n   grep       Print lines matching a pattern\n   log        Show commit logs\n   show       Show various types of objects\n   status     Show the working tree status\n\ngrow, mark and tweak your common history\n   backfill   Download missing objects in a partial clone\n   branch     List, create, or delete branches\n   commit     Record changes to the repository\n   merge      Join two or more development histories together\n   rebase     Reapply commits on top of another base tip\n   reset      Set `HEAD` or the index to a known state\n   switch     Switch branches\n   tag        Create, list, delete or verify tags\n\ncollaborate (see also: git help workflows)\n   fetch      Download objects and refs from another repository\n   pull       Fetch from and integrate with another repository or a local branch\n   push       Update remote refs along with associated objects\n\n'git help -a' and 'git help -g' list available subcommands and some\nconcept guides. See 'git help <command>' or 'git help <concept>'\nto read about a specific subcommand or concept.\nSee 'git help git' for an overview of the system.\n";
     var NAO_FEITOS = { "filter-branch": 1, "gc": 1, "fsck": 1, "worktree": 1, "submodule": 1, "send-email": 1, "svn": 1, "p4": 1, "gui": 1, "gitk": 1, "instaweb": 1, "daemon": 1, "bundle": 1, "archive": 1, "notes": 1, "replace": 1, "sparse-checkout": 1, "maintenance": 1, "range-diff": 1, "format-patch": 1, "am": 1, "apply": 1, "request-pull": 1, "difftool": 1, "mergetool": 1, "citool": 1, "prune": 1, "repack": 1, "pack-objects": 1, "count-objects": 1, "describe": 1, "shortlog": 1, "whatchanged": 1, "rerere": 1, "lfs": 1, "credential": 1, "for-each-ref": 1, "update-ref": 1, "symbolic-ref": 1, "ls-remote": 1, "show-ref": 1, "verify-commit": 1, "verify-tag": 1, "backfill": 1, "hook": 1, "range": 1, "scalar": 1, "maint": 1 };
     var TODOS_NOMES = "add am annotate apply archive backfill bisect blame branch bugreport bundle cat-file check-attr check-ignore check-mailmap check-ref-format checkout checkout-index cherry cherry-pick clean clone column commit commit-graph commit-tree config count-objects credential credential-cache credential-store daemon describe diagnose diff diff-files diff-index diff-pairs diff-tree difftool fast-export fast-import fetch fetch-pack filter-branch fmt-merge-msg for-each-ref for-each-repo format-patch fsck fsck-objects gc get-tar-commit-id grep hash-object help hook http-backend http-fetch http-push imap-send index-pack init init-db instaweb interpret-trailers last-modified log ls-files ls-remote ls-tree mailinfo mailsplit maintenance merge merge-base merge-file merge-index merge-octopus merge-one-file merge-ours merge-recursive merge-resolve merge-subtree merge-tree mergetool mktag mktree multi-pack-index mv name-rev notes pack-objects pack-redundant pack-refs patch-id prune prune-packed pull push quiltimport range-diff read-tree rebase receive-pack reflog refs remote remote-ext remote-fd remote-ftp remote-ftps remote-http remote-https repack replace replay repo request-pull rerere reset restore rev-list rev-parse revert rm send-pack sh-i18n sh-prompt sh-setup shell shortlog show show-branch show-index show-ref sparse-checkout stage stash status stripspace submodule subtree switch symbolic-ref tag unpack-file unpack-objects update-index update-ref update-server-info upload-archive upload-pack var verify-commit verify-pack verify-tag version whatchanged worktree write-tree".split(" ");
     var COMUNS = "add backfill bisect branch clone commit diff fetch grep init log merge mv pull push rebase reset restore rm status switch tag".split(" "); // "show" fica de fora: assim sai igual ao lab (git sw → switch, show)
@@ -1390,9 +1390,7 @@
         else if (o["--amend"] && (o["--no-edit"] || true)) { if (!o["--no-edit"] && !o["-m"]) { /* sem editor no simulador: mantém a mensagem */ } msg = antigo.msg; }
         else if (emMerge || emCP || emRev) { msg = repo.arq("MERGE_MSG") || ""; if (!o["--no-edit"]) msg = msg.split("\n").filter(function (l) { return l[0] !== "#"; }).join("\n"); }
         else if (o["--no-edit"]) msg = "";
-        if (msg === null) {
-          io.err("(simulador) aqui não há editor de texto para escrever a mensagem do commit: use git commit -m \"mensagem\".\n"); return 1;
-        }
+        var semMsg = msg === null; if (semMsg) msg = "x"; // sem editor: só reclama depois de conferir se há o que commitar
         if (o["-s"]) msg = limparMsg(msg, "whitespace").replace(/\n$/, "") + "\n\nSigned-off-by: " + comitente.split(">")[0] + ">";
         msg = limparMsg(msg, o["-m"] || o["--no-edit"] ? "whitespace" : "strip");
         if (!msg && !o["--allow-empty-message"]) { io.err("Aborting commit due to empty commit message.\n"); return 1; }
@@ -1423,6 +1421,7 @@
           }
           return 1;
         }
+        if (semMsg) { io.err("(simulador) aqui não há editor de texto para escrever a mensagem do commit: use git commit -m \"mensagem\".\n"); return 1; }
         var c = { type: "commit", tree: arvore, parents: pais, author: autor, committer: comitente, msg: msg };
         var h = repo.escreverObj(c);
         var primeira = msg.split("\n")[0];
@@ -1613,7 +1612,7 @@
         if (r.incl) { var h = repo.commitDe(r.incl); if (!h) { var ob = repo.rev(r.incl); if (ob && !ob.ambiguo && repo.ler(ob) && repo.ler(ob).type !== "commit") { r.soArvore = true; return; } fatal("bad revision '" + r.incl + "'"); } incl.push(h); }
         if (r.excl) { var e = repo.commitDe(r.excl); if (!e) fatal("bad revision '" + r.excl + "'"); excl.push(e); }
       });
-      if (o.all) { repo.listarRefs("refs/").forEach(function (r) { if (r.nome.indexOf("refs/stash") === 0) return; var hh = repo.descascar(r.hash); if (repo.ler(hh) && repo.ler(hh).type === "commit") incl.push(hh); }); if (repo.head()) incl.unshift(repo.head()); }
+      if (o.all) { repo.listarRefs("refs/").forEach(function (r) { var hh = repo.descascar(r.hash); if (repo.ler(hh) && repo.ler(hh).type === "commit") incl.push(hh); }); if (repo.head()) incl.push(repo.head()); }
       if (revs.length && revs.every(function (r) { return r.soArvore; })) return 0; // git log ÁRVORE: não mostra nada
       if (!revs.some(function (r) { return r.incl; }) && !o.all) {
         var hd = repo.head();
@@ -2214,8 +2213,9 @@
       for (var i = 0; i < rl.length; i++) { var m = /^checkout: moving from (.*) to .*$/.exec(rl[i].msg); if (m) return m[1]; }
       return null;
     }
+    function ioQuieto(io, sh) { return { sh: sh, out: function () {}, err: function (t) { if (/^(error|fatal|warning|hint|Please|Aborting|\t)/m.test(t) && !/^(Switched|Already on|HEAD is now|Previous HEAD|Note: switching)/.test(t)) io.err(t); }, tty: function () { return false; } }; }
     CMDS.switch = function (args, io, sh) {
-      if (args.some(function (a) { return a === "-q" || a === "--quiet" || /^-[a-zA-Z]*q[a-zA-Z]*$/.test(a); })) io = { sh: sh, out: function () {}, err: function () {}, tty: function () { return false; } };
+      if (args.some(function (a) { return a === "-q" || a === "--quiet" || /^-[a-zA-Z]*q[a-zA-Z]*$/.test(a); })) io = ioQuieto(io, sh);
       var g = opcoes(args, { "-c": "valor", "--create": "-c", "-C": "valor", "--force-create": "-C", "-d": true, "--detach": "-d", "-f": true, "--force": "-f", "--discard-changes": "-f", "--orphan": "valor", "-t": true, "--track": "-t", "--no-track": true, "-q": true, "--quiet": "-q", "--guess": true });
       if (g.erro) { io.err("error: " + g.erro + "\n"); return 129; }
       var repo = precisaRepo(io); precisaArvore(repo);
@@ -2261,7 +2261,7 @@
       fatal("invalid reference: " + alvo);
     };
     CMDS.checkout = function (args, io, sh) {
-      if (args.some(function (a) { return a === "-q" || a === "--quiet"; })) io = { sh: sh, out: function () {}, err: function () {}, tty: function () { return false; } };
+      if (args.some(function (a) { return a === "-q" || a === "--quiet"; })) io = ioQuieto(io, sh);
       var g = opcoes(args, { "-b": "valor", "-B": "valor", "-f": true, "--force": "-f", "-q": true, "--quiet": "-q", "--detach": true, "-t": true, "--track": "-t", "--ours": true, "--theirs": true, "--orphan": "valor", "-p": true });
       if (g.erro) { io.err("error: " + g.erro + "\n"); return 129; }
       var repo = precisaRepo(io); precisaArvore(repo);
@@ -2271,7 +2271,7 @@
       if (sep !== undefined || o["--ours"] || o["--theirs"]) {
         var rv = sep ? ops.slice(0, sep) : [], cams = sep !== undefined ? ops.slice(sep) : ops;
         if (!cams.length) { io.err("fatal: you must specify path(s) to restore\n"); return 128; }
-        var r = checkoutArquivos(repo, io, sh, rv[0], cams, o, false, true);
+        var r = checkoutArquivos(repo, io, sh, rv[0], cams, o, false, sep !== undefined);
         return r;
       }
       if (!ops.length) { var stt = repo.estado(); var s = ""; stt.naoPrep.forEach(function (m) { s += m.tipo + "\t" + m.para + "\n"; }); io.out(s); var up = repo.branchAtual() && upstream(repo, repo.branchAtual()); if (up && repo.head()) io.out(textoUpstream(repo, repo.head(), up).replace(/\n\n$/, "\n")); return 0; }
@@ -2474,6 +2474,14 @@
         if (!o["-q"]) io.out("Updating " + repo.abrev(head) + ".." + repo.abrev(ht) + "\nFast-forward\n" + repo.diffstat(mud) + repo.resumoCriacao(mud));
         return 0;
       }
+      if (ff && o["--squash"]) {
+        var rq = repo.trocarArvore(repo.arvoreDe(head), repo.arvoreDe(ht), {});
+        if (rq) { io.out("Updating " + repo.abrev(head) + ".." + repo.abrev(ht) + "\n"); io.err(erroTroca(rq, "merge")); return 1; }
+        var mudQ = compararMapas(repo.arvoreDe(head), repo.arvoreDe(ht), function (a, b) { return repo.similaridade(a, b); });
+        repo.gravar("SQUASH_MSG", "Squashed commit of the following:\n\n" + repo.revList([ht], [head], {}).map(function (h) { return formatarCommit(repo, h, {}); }).join("\n"));
+        io.out("Updating " + repo.abrev(head) + ".." + repo.abrev(ht) + "\nFast-forward\nSquash commit -- not updating HEAD\n" + repo.diffstat(mudQ) + repo.resumoCriacao(mudQ));
+        return 0;
+      }
       // mesclagem de 3 vias
       var res = repo.mesclarArvores(base, head, ht, "HEAD", rotuloT);
       // arquivos não rastreados que seriam sobrescritos / mudanças locais em arquivos afetados
@@ -2625,7 +2633,7 @@
       if (ref) repo.gravarRef(ref, hn, logMsg, head); else { repo.gravar("HEAD", hn + "\n"); repo.logar("HEAD", head, hn, logMsg); }
       var mud = compararMapas(repo.arvoreDe(head), repo.arvorePlana(arvore), function (a, b) { return repo.similaridade(a, b); });
       var cab = "[" + (ramo || "HEAD destacada") + " " + repo.abrev(hn) + "] " + msg.split("\n")[0] + "\n";
-      if (modo === "cherry-pick") { var au = parseIdent(c.author); cab += " Date: " + dataPadrao(au.ts, au.tz) + "\n"; }
+      var au = parseIdent(modo === "cherry-pick" ? c.author : novo.author); cab += " Date: " + dataPadrao(au.ts, au.tz) + "\n";
       io.out(res.msgs.join("") + cab + repo.shortstat(mud) + repo.resumoCriacao(mud));
       return 0;
     }
@@ -2709,13 +2717,13 @@
         st.naoPrep.forEach(function (m) { if (m.tipo === "D") delete mapa[m.para]; else { var h = repo.escreverObj({ type: "blob", data: m.b.texto }); mapa[m.para] = { mode: m.b.mode, hash: h, stage: 0, path: m.para }; } });
         var arvW = repo.escreverArvore(Object.keys(mapa).map(function (k) { return mapa[k]; }));
         var pais = [head, cIdx];
-        if (naoR.length) {
+        if (g.o["-u"] || g.o["-a"]) { // com -u o git sempre cria o commit dos não rastreados (mesmo vazio)
           var ents = naoR.map(function (k) { var n = st.W[k]; return { mode: repo.modoNo(n), hash: repo.escreverObj({ type: "blob", data: repo.conteudoNo(n) }), stage: 0, path: k }; });
           var arvU = repo.escreverArvore(ents);
           pais.push(repo.escreverObj({ type: "commit", tree: arvU, parents: [], author: ident, committer: ident, msg: "untracked files on " + ramo + ": " + titulo + "\n" }));
         }
         var msgW = msgU ? "On " + ramo + ": " + msgU : "WIP on " + ramo + ": " + titulo;
-        var cW = repo.escreverObj({ type: "commit", tree: arvW, parents: pais, author: ident, committer: ident, msg: msgW + "\n" });
+        var cW = repo.escreverObj({ type: "commit", tree: arvW, parents: pais, author: ident, committer: ident, msg: msgW });
         var antigo = repo.resolverRef("refs/stash") || ZERO;
         repo.gravar("refs/stash", cW + "\n");
         var t = repo.arq("logs/refs/stash") || "";
@@ -2740,7 +2748,8 @@
           var mud = compararMapas(repo.arvoreDe(cW2.parents[0]), repo.arvorePlana(cW2.tree), false);
           io.out(g2.o["-p"] ? repo.patch(mud) : repo.diffstat(mud)); return 0;
         }
-        if (sub === "drop") { soltarStash(repo, n); io.out("Dropped " + nomeE + " (" + e.neu + ")\n"); return 0; }
+        var nomeDrop = g2.ops[0] ? nomeE : "refs/stash@{" + n + "}";
+        if (sub === "drop") { soltarStash(repo, n); io.out("Dropped " + nomeDrop + " (" + e.neu + ")\n"); return 0; }
         if (sub === "branch") {
           var rr = CMDS.switch(["-c", nomeRamo, cW2.parents[0]], io, sh); if (rr) return rr;
           sub = "pop";
@@ -2782,7 +2791,7 @@
         io.out(res.msgs.join(""));
         // mostra o status
         CMDS.status([], io, sh);
-        if (sub === "pop") { soltarStash(repo, n); io.out("Dropped " + nomeE + " (" + e.neu + ")\n"); }
+        if (sub === "pop") { soltarStash(repo, n); io.out("Dropped " + nomeDrop + " (" + e.neu + ")\n"); }
         return 0;
       }
       if (sub === "clear") { repo.apagarArq("refs/stash"); repo.apagarArq("logs/refs/stash"); return 0; }
