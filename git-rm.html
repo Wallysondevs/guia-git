@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git rm — apagando arquivos do repositório | Guia Git</title>
+<meta name="description" content="O git rm para quem nunca usou Git: apagar um arquivo da pasta e do próximo commit de uma vez, a diferença para o rm comum seguido de git add, git rm -r para pastas, git rm --cached para parar de rastrear sem apagar (a senha no .gitignore), -n para simular, -f e as recusas de segurança, e como desfazer, com as saídas reais do Git em português.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">rm</span></h1>
+
+<p class="intro">A receita de torta da Ana ficou velha e ela quer tirá-la do projeto. Apagar o arquivo da pasta é fácil, mas o Git precisa <strong>registrar</strong> que ele saiu, num commit, como registra qualquer outra mudança. O <code>git rm</code> (de <em>remove</em>, "remover") faz as duas coisas de uma vez: apaga o arquivo da pasta e prepara a remoção para o próximo commit. E, com <code>--cached</code>, ele faz o contrário do que o nome sugere: tira o arquivo do Git <strong>sem</strong> apagá-lo do seu computador.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como apagar um arquivo e registrar a remoção: <code>git rm arquivo</code> e depois <code>git commit</code>.</li>
+  <li>Que <code>rm arquivo</code> + <code>git add arquivo</code> chega no mesmo lugar.</li>
+  <li>A apagar pastas (<code>-r</code>) e vários arquivos com um padrão (<code>'img/*.png'</code>).</li>
+  <li><code>git rm --cached</code>: parar de rastrear um arquivo sem apagá-lo (o caso da senha).</li>
+  <li>As recusas de segurança do Git, o <code>-f</code>, o <code>-n</code>, e como desfazer um <code>git rm</code>.</li>
+</ul>
+</div>
+
+<p>Todas as saídas desta aula saíram do Git do Ubuntu 26.04, na máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português. Algumas mensagens do Git ainda não têm tradução e saem em inglês.</p>
+
+<hr>
+
+<h2>A ideia: tirar um item do inventário</h2>
+<p>Imagine uma loja com um caderno de inventário. Quando um produto sai de linha, não basta tirá-lo da prateleira: é preciso <strong>anotar no caderno</strong> "a partir de hoje, este produto não existe mais". Senão, na próxima conferência, alguém vai perguntar "cadê a torta?".</p>
+<p>No Git, a prateleira é a sua pasta e o caderno é o histórico. O <code>git rm</code> tira o arquivo da prateleira e já deixa a anotação pronta na área de preparo; o <code>git commit</code> grava a anotação. E as versões antigas? Continuam nos commits anteriores: <strong>apagar um arquivo nunca apaga o passado dele</strong>.</p>
+
+<hr>
+
+<h2>1. O primeiro <code>git rm</code></h2>
+<p>O repositório <code>receitas</code> da Ana tem quatro receitas e uma pasta de fotos, tudo commitado:</p>
+
+<pre class="term" data-cwd="~/receitas">$ ls
+bolo.txt  fotos  lasanha.txt  pudim.txt  torta-velha.txt
+$ git rm torta-velha.txt
+rm 'torta-velha.txt'
+$ ls
+bolo.txt  fotos  lasanha.txt  pudim.txt
+</pre>
+
+<dl class="anatomy">
+  <dt>git rm</dt><dd>O comando: "remova do Git".</dd>
+  <dt>torta-velha.txt</dt><dd>O arquivo a remover. Pode ser mais de um (<code>git rm a.txt b.txt</code>).</dd>
+  <dt>rm 'torta-velha.txt'</dt><dd>A resposta do Git: uma linha <code>rm '…'</code> para cada arquivo removido. O <code>ls</code> seguinte confirma: o arquivo <strong>sumiu da pasta</strong>.</dd>
+</dl>
+
+<p>E o <code>git status</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	deleted:    torta-velha.txt
+
+</pre>
+
+<p>A remoção está em <code>Mudanças a serem submetidas</code>, ou seja, <strong>já preparada</strong> (<code>deleted</code> = "apagado"). A dica, ainda em inglês, diz: "use <code>git restore --staged</code> para tirar da área de preparo" (é o caminho de volta; veja a seção 7). Falta só o commit:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git commit -q -m 'Remove receita de torta antiga'
+$ git log --oneline --stat -1
+4ed5d57 Remove receita de torta antiga
+ torta-velha.txt | 1 -
+ 1 file changed, 1 deletion(-)
+</pre>
+
+<p>O <code>--stat</code> do <a href="git-log.html">git log</a> mostra o que o commit mudou: o <code>torta-velha.txt</code> perdeu a sua única linha (<code>1 -</code>), e o arquivo deixou de existir a partir deste commit. No commit anterior, ele continua lá, inteiro.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo 'Bolo de cenoura' &gt; bolo.txt;;echo 'Torta antiga' &gt; torta-velha.txt;;git add .;;git commit -q -m 'Receitas iniciais'" data-goal="absent:~/receitas/torta-velha.txt,commits:2,limpo,ran:^git rm" data-solucao="git rm torta-velha.txt;;git commit -m 'Remove receita de torta antiga'">
+<p class="try-task"><strong>Missão:</strong> apague a receita <code>torta-velha.txt</code> com <code>git rm</code>, confira com <code>git status</code> e faça o commit da remoção.</p>
+</div>
+
+<hr>
+
+<h2>2. Apaguei com o <code>rm</code> comum. E agora?</h2>
+<p>É muito comum apagar o arquivo do jeito de sempre: o <code>rm</code> do terminal, a lixeira do gerenciador de arquivos, o "Excluir" do VS Code. O Git percebe, mas a remoção <strong>não</strong> fica preparada:</p>
+
+<pre class="term" data-cwd="~/receitas">$ rm lasanha.txt
+$ git status
+No ramo main
+Changes not staged for commit:
+  (utilize "git add/rm &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	deleted:    lasanha.txt
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+</pre>
+
+<p>Agora o <code>deleted</code> está em <code>Changes not staged for commit</code> ("mudanças não preparadas"). Repare na dica: <code>utilize "git add/rm &lt;arquivo&gt;..."</code>. Ela diz que tanto <code>git add</code> quanto <code>git rm</code> servem para preparar a remoção. Parece estranho "adicionar" um arquivo que não existe, mas o <code>git add</code> prepara <strong>a mudança</strong>, e aqui a mudança é "o arquivo sumiu":</p>
+
+<pre class="term" data-cwd="~/receitas">$ git add lasanha.txt
+$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	deleted:    lasanha.txt
+
+</pre>
+
+<p>Mesmo resultado do <code>git rm</code>. Ou seja: <strong><code>git rm arquivo</code> = <code>rm arquivo</code> + <code>git add arquivo</code></strong>. A outra dica, <code>git restore &lt;file&gt;</code>, é o caminho de volta: traz o arquivo apagado de volta à pasta (aula <a href="git-restore.html">git restore</a>).</p>
+
+<div class="tip">
+<strong>O <code>git commit -a</code> também pega remoções</strong>
+<p>O <code>-a</code> do <code>git commit</code> prepara sozinho tudo o que mudou em arquivos já rastreados, inclusive os apagados. Num outro repositório da Ana, só com o bolo e o pudim, o <code>git commit</code> sem <code>-q</code> mostra a linha <code>delete mode 100644 pudim.txt</code> ("modo apagar"):</p>
+<pre class="term" data-cwd="~/receitas">$ rm pudim.txt
+$ git commit -a -m 'Remove pudim'
+[main ae22db1] Remove pudim
+ 1 file changed, 1 deletion(-)
+ delete mode 100644 pudim.txt
+</pre>
+</div>
+
+<hr>
+
+<h2>3. Pastas: <code>git rm -r</code></h2>
+<p>A Ana resolveu tirar a pasta de fotos inteira:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git rm fotos
+fatal: not removing 'fotos' recursively without -r
+$ git rm -r fotos
+rm 'fotos/bolo.jpg'
+rm 'fotos/pudim.jpg'
+$ git status --short
+D  fotos/bolo.jpg
+D  fotos/pudim.jpg
+</pre>
+
+<p>Sem o <code>-r</code>, o Git recusa: "não vou remover <code>fotos</code> recursivamente (com tudo o que tem dentro) sem <code>-r</code>". É uma trava contra apagar uma pasta inteira por engano. Com o <code>-r</code> (de <em>recursive</em>), ele apaga cada arquivo de dentro e mostra um <code>rm '…'</code> para cada um. No <code>git status --short</code>, o <code>D</code> na <strong>primeira</strong> coluna quer dizer "apagado e preparado" (o <code> D</code> na segunda coluna, que você vai ver na seção 7, quer dizer "apagado e não preparado").</p>
+
+<h3>Vários arquivos com um padrão</h3>
+<p>Para apagar só os <code>.png</code> da pasta <code>img</code>, use um curinga <strong>entre aspas</strong>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git rm 'img/*.png'
+rm 'img/capa.png'
+rm 'img/logo.png'
+$ git status --short
+D  img/capa.png
+D  img/logo.png
+$ ls img
+leia.txt
+</pre>
+
+<p>Com as aspas, quem expande o <code>*</code> é o próprio Git, olhando os arquivos que ele rastreia (inclusive em subpastas de <code>img</code>). Sem aspas, quem expande é o terminal, com os arquivos que estão na pasta; na maioria das vezes dá no mesmo.</p>
+
+<hr>
+
+<h2>4. Ensaiar antes: <code>-n</code></h2>
+<p>O <code>-n</code> (de <em>dry run</em>, "ensaio") mostra o que <strong>seria</strong> removido, sem remover nada:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git rm -n bolo.txt
+rm 'bolo.txt'
+</pre>
+
+<p>A saída é igual à de verdade, mas o <code>bolo.txt</code> continua lá, e o <code>git status</code> não muda. É útil antes de um <code>git rm -r</code> ou de um padrão com <code>*</code>.</p>
+
+<hr>
+
+<h2>5. <code>git rm --cached</code>: parar de rastrear, sem apagar</h2>
+<p>A Ana cometeu um clássico: commitou um <code>senhas.txt</code>. Ela quer que o Git <strong>pare de rastreá-lo</strong>, mas o arquivo precisa continuar no computador dela. É o <code>--cached</code> (a área de preparo já foi chamada de <em>cache</em>): "remova só da área de preparo, não da pasta".</p>
+
+<pre class="term" data-cwd="~/receitas">$ git rm --cached senhas.txt
+rm 'senhas.txt'
+$ ls
+bolo.txt  pudim.txt  senhas.txt
+$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	deleted:    senhas.txt
+
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	senhas.txt
+
+</pre>
+
+<p>O <code>senhas.txt</code> aparece duas vezes, e as duas fazem sentido:</p>
+<ul>
+  <li>em <code>Mudanças a serem submetidas</code>, como <code>deleted</code>: no próximo commit, ele <strong>sai do repositório</strong>;</li>
+  <li>em <code>Arquivos não monitorados</code>: ele continua <strong>na pasta</strong>, e agora o Git o vê como um arquivo novo, que ele não rastreia.</li>
+</ul>
+<p>Para ele não voltar a aparecer (nem ser adicionado de novo por um <code>git add .</code>), ponha-o no <a href="gitignore.html">.gitignore</a> e commite tudo junto:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'senhas.txt' &gt; .gitignore
+$ git add .gitignore
+$ git status --short
+A  .gitignore
+D  senhas.txt
+$ git commit -q -m 'Para de rastrear senhas.txt'
+</pre>
+
+<div class="warning">
+<strong>O passado continua lá</strong>
+<p>O commit <code>ops</code>, em que a Ana adicionou o <code>senhas.txt</code>, continua no histórico, com a senha dentro. O <code>git rm --cached</code> só evita que ela vá para os <strong>próximos</strong> commits. Se o repositório já foi para o GitHub, considere a senha vazada: troque-a e veja <a href="senha-commitada.html">Commitei uma Senha! E Agora?</a>.</p>
+</div>
+
+<div class="try" data-setup="mkdir site;;cd site;;git init -q;;echo 'oi' &gt; index.html;;echo 'SENHA=abacaxi123' &gt; .env;;git add .;;git commit -q -m 'Site'" data-goal="file:~/site/.env,ignorado:.env,commits:2,limpo" data-solucao="git rm --cached .env;;echo '.env' &gt; .gitignore;;git add .gitignore;;git commit -m 'Para de rastrear o .env'">
+<p class="try-task"><strong>Missão:</strong> o <code>.env</code>, com a senha do site, foi commitado. Faça o Git parar de rastreá-lo <strong>sem apagá-lo da pasta</strong>, ponha-o no <code>.gitignore</code> e faça o commit. No fim, o <code>.env</code> deve continuar existindo e o <code>git status</code> deve estar limpo.</p>
+</div>
+
+<hr>
+
+<h2>6. As recusas de segurança e o <code>-f</code></h2>
+<p>O <code>git rm</code> apaga o arquivo da pasta. Se esse arquivo tem mudanças que <strong>nunca foram commitadas</strong>, elas se perderiam para sempre. Por isso o Git recusa:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'Pudim de leite condensado' &gt; pudim.txt
+$ git rm pudim.txt
+error: the following file has local modifications:
+    pudim.txt
+(use --cached to keep the file, or -f to force removal)
+</pre>
+
+<p>"Erro: o arquivo a seguir tem modificações locais" (mudanças na pasta, não commitadas). A última linha dá as duas saídas: "use <code>--cached</code> para manter o arquivo, ou <code>-f</code> para forçar a remoção". Se as mudanças já estiverem preparadas, a mensagem muda um pouco:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git add pudim.txt
+$ git rm pudim.txt
+error: the following file has changes staged in the index:
+    pudim.txt
+(use --cached to keep the file, or -f to force removal)
+</pre>
+
+<p>"O arquivo tem mudanças preparadas no <em>index</em>" (o <em>index</em> é outro nome da área de preparo). Se você tem certeza de que quer jogar essas mudanças fora, o <code>-f</code> (de <em>force</em>) obedece:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git rm -f pudim.txt
+rm 'pudim.txt'
+$ git status --short
+D  pudim.txt
+</pre>
+
+<div class="warning">
+<strong>O <code>-f</code> não tem volta</strong>
+<p>O que estava commitado volta pelo histórico, mas a linha <code>Pudim de leite condensado</code>, que nunca foi commitada, se perdeu. Antes de um <code>-f</code>, confira o que vai embora com <code>git diff arquivo</code> e <code>git diff --staged arquivo</code> (aulas <a href="git-diff.html">git diff</a> e <a href="git-diff-staged.html">git diff --staged</a>).</p>
+</div>
+
+<hr>
+
+<h2>7. Desfazendo um <code>git rm</code> (antes do commit)</h2>
+<p>A Ana deu <code>git rm bolo.txt</code> por engano. Como ainda não houve commit, tudo volta em dois passos, seguindo as dicas do próprio <code>git status</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git rm bolo.txt
+rm 'bolo.txt'
+$ git restore --staged bolo.txt
+$ git status --short
+ D bolo.txt
+$ git restore bolo.txt
+$ git status --short
+$ cat bolo.txt
+Bolo de cenoura
+</pre>
+
+<ol class="passo">
+  <li><code>git restore --staged bolo.txt</code> tira a remoção da área de preparo. O <code>D</code> pula para a <strong>segunda</strong> coluna (<code> D</code>): o arquivo continua apagado da pasta, mas a remoção não está mais preparada. (Aula <a href="restore-staged.html">Tirando da Área de Preparo</a>.)</li>
+  <li><code>git restore bolo.txt</code> traz o arquivo de volta à pasta, com o conteúdo do último commit. O <code>git status --short</code> vazio quer dizer: tudo como antes. (Aula <a href="git-restore.html">git restore</a>.)</li>
+</ol>
+<p>Os dois passos também podem ser um só: <code>git restore --staged --worktree bolo.txt</code> ("na área de preparo <strong>e</strong> na pasta").</p>
+<p>E se a remoção <strong>já foi commitada</strong>? O arquivo está nos commits anteriores e pode ser trazido de volta: veja <a href="git-restore.html">git restore</a> (opção <code>--source</code>) e <a href="git-revert.html">git revert</a>. O mapa completo está em <a href="desfazer.html">Desfazendo: o Mapa</a>.</p>
+
+<hr>
+
+<h2 id="formas">Formas diferentes, e qual usar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Você quer…</th><th>Use</th></tr>
+<tr><td>Apagar da pasta e preparar a remoção, de uma vez</td><td><code>git rm arquivo</code></td></tr>
+<tr><td>Já apagou com o <code>rm</code> (ou no gerenciador de arquivos)</td><td><code>git add arquivo</code> (ou <code>git rm arquivo</code>; os dois preparam a remoção)</td></tr>
+<tr><td>Preparar todas as remoções e mudanças de uma vez</td><td><code>git add -A</code>, ou <code>git commit -a</code> (só arquivos já rastreados)</td></tr>
+<tr><td>Apagar uma pasta</td><td><code>git rm -r pasta</code></td></tr>
+<tr><td>Parar de rastrear, mas manter o arquivo no computador</td><td><code>git rm --cached arquivo</code> + <code>.gitignore</code></td></tr>
+<tr><td>Ver o que seria apagado</td><td><code>git rm -n …</code></td></tr>
+<tr><td>Apagar um arquivo que tem mudanças não commitadas</td><td><code>git rm -f arquivo</code> (as mudanças se perdem)</td></tr>
+<tr><td>Apagar um arquivo que o Git <strong>não</strong> rastreia</td><td>O <code>rm</code> comum (para vários, <a href="git-clean.html">git clean</a>)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>fatal: pathspec 'nada.txt' não encontrou nenhum arquivo</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git rm nada.txt
+fatal: pathspec 'nada.txt' não encontrou nenhum arquivo
+$ echo 'rascunho' &gt; novo.txt
+$ git rm novo.txt
+fatal: pathspec 'novo.txt' não encontrou nenhum arquivo
+</pre>
+<p><em>Pathspec</em> é como o Git chama o "caminho" que você escreveu. A mensagem diz que nenhum arquivo <strong>rastreado</strong> corresponde a ele. Duas causas: o nome está errado (confira com <code>ls</code> e <code>git ls-files</code>), ou o arquivo existe mas nunca foi commitado nem preparado, como o <code>novo.txt</code>: o <code>git rm</code> só remove o que o Git conhece. <strong>Como resolver:</strong> corrija o nome; para um arquivo não rastreado, use o <code>rm</code> comum.</p>
+</div>
+
+<div class="cenario">
+<strong><code>fatal: not removing 'fotos' recursively without -r</code></strong>
+<p>Você pediu para remover uma pasta. <strong>Como resolver:</strong> <code>git rm -r fotos</code> (de preferência, ensaie antes com <code>git rm -r -n fotos</code>).</p>
+</div>
+
+<div class="cenario">
+<strong><code>error: the following file has local modifications</code></strong>
+<p>O arquivo tem mudanças que nunca foram commitadas (seção 6). <strong>Como resolver:</strong> se você quer manter o arquivo no computador e só tirá-lo do Git, <code>git rm --cached</code>; se quer apagar e jogar as mudanças fora, <code>git rm -f</code>; se não tem certeza, faça o commit das mudanças antes.</p>
+</div>
+
+<div class="cenario">
+<strong>"Usei <code>git rm</code> querendo só parar de rastrear, e o arquivo sumiu!"</strong>
+<p>Faltou o <code>--cached</code>. Se ainda não fez commit, recupere com <code>git restore --staged --worktree arquivo</code> (seção 7) e repita com <code>git rm --cached arquivo</code>. Mudanças que nunca foram commitadas não voltam, mas o Git só deixaria apagá-las com <code>-f</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git rm arquivo</code></td><td>Apaga da pasta e prepara a remoção</td></tr>
+<tr><td><code>git rm -r pasta</code></td><td>O mesmo, para uma pasta e tudo dentro</td></tr>
+<tr><td><code>git rm 'pasta/*.ext'</code></td><td>Remove os arquivos rastreados que casam com o padrão</td></tr>
+<tr><td><code>git rm --cached arquivo</code></td><td>Para de rastrear, mas mantém o arquivo na pasta</td></tr>
+<tr><td><code>git rm -n …</code></td><td>Ensaio: mostra o que seria removido</td></tr>
+<tr><td><code>git rm -f arquivo</code></td><td>Força a remoção, mesmo com mudanças não commitadas</td></tr>
+<tr><td><code>rm arquivo</code> + <code>git add arquivo</code></td><td>O mesmo que <code>git rm arquivo</code></td></tr>
+<tr><td><code>git restore --staged --worktree arquivo</code></td><td>Desfaz um <code>git rm</code> antes do commit</td></tr>
+<tr><td><code>D</code> / <code> D</code> no <code>status --short</code></td><td>Apagado e preparado / apagado e não preparado</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete</h3>
+<p>Complete os comandos:</p>
+<div class="ex-code">Parar de rastrear o <code>.env</code> sem apagá-lo: git rm <input data-answer="--cached" aria-label="opção"> .env<br>Apagar a pasta <code>fotos</code>: git rm <input data-answer="-r" aria-label="opção"> fotos<br>Só ver o que seria apagado: git rm <input data-answer="-n|--dry-run" aria-label="opção"> bolo.txt</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. A Ana apagou o <code>lasanha.txt</code> pelo gerenciador de arquivos. Qual comando prepara essa remoção?</p>
+<label><input type="radio" name="q2"> Nenhum: o Git não percebe arquivos apagados</label>
+<label><input type="radio" name="q2"> <code>git add lasanha.txt</code> (ou <code>git rm lasanha.txt</code>)</label>
+<label><input type="radio" name="q2"> <code>git rm --cached lasanha.txt</code>, obrigatoriamente</label>
+<label><input type="radio" name="q2"> <code>git commit</code> sozinho, sem <code>-a</code></label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. Depois de <code>git rm torta.txt</code> e <code>git commit</code>, o que acontece com as versões antigas da torta?</p>
+<label><input type="radio" name="q3"> Somem do histórico</label>
+<label><input type="radio" name="q3"> Vão para uma lixeira do Git e são apagadas em 30 dias</label>
+<label><input type="radio" name="q3"> Continuam nos commits anteriores; dá para recuperá-las</label>
+<label><input type="radio" name="q3"> Ficam só no GitHub</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. O <code>git rm pudim.txt</code> respondeu <code>error: the following file has local modifications</code>. O que isso quer dizer?</p>
+<label><input type="radio" name="q4"> O arquivo tem mudanças que nunca foram commitadas, e o Git não quer que você as perca sem querer</label>
+<label><input type="radio" name="q4"> O arquivo não existe</label>
+<label><input type="radio" name="q4"> Você não tem permissão para apagar o arquivo</label>
+<label><input type="radio" name="q4"> O arquivo está no <code>.gitignore</code></label>
+</div>
+
+<h3>Missão final: limpando o projeto</h3>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo 'Bolo' &gt; bolo.txt;;mkdir antigas;;echo 'Torta' &gt; antigas/torta.txt;;echo 'Quindim' &gt; antigas/quindim.txt;;echo 'debug=1' &gt; config.local;;git add .;;git commit -q -m 'Receitas'" data-goal="absent:~/receitas/antigas,file:~/receitas/config.local,ignorado:config.local,commits:2,limpo" data-solucao="git rm -r antigas;;git rm --cached config.local;;echo 'config.local' &gt; .gitignore;;git add .gitignore;;git commit -m 'Remove receitas antigas e para de rastrear config.local'">
+<p class="try-task"><strong>Missão:</strong> num só commit, (1) apague a pasta <code>antigas</code> inteira e (2) faça o Git parar de rastrear o <code>config.local</code>, mantendo o arquivo no computador e colocando-o no <code>.gitignore</code>. No fim, o <code>git status</code> deve estar limpo.</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git rm arquivo</code> apaga o arquivo da pasta e prepara a remoção; o <code>git commit</code> a registra. É o mesmo que <code>rm arquivo</code> + <code>git add arquivo</code>.</li>
+  <li>Pastas pedem <code>-r</code>; padrões vão entre aspas (<code>git rm 'img/*.png'</code>); <code>-n</code> ensaia.</li>
+  <li><code>git rm --cached arquivo</code> para de rastrear sem apagar da pasta; combine com o <code>.gitignore</code>.</li>
+  <li>O Git recusa apagar arquivos com mudanças não commitadas; <code>-f</code> força (e as mudanças se perdem).</li>
+  <li>Antes do commit, <code>git restore --staged --worktree arquivo</code> desfaz um <code>git rm</code>. Depois do commit, o arquivo continua nos commits antigos.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
