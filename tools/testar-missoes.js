@@ -29,6 +29,12 @@ var sim = require(path.join(__dirname, "sim.js"));
 var LAB = path.join(process.env.HOME || "/home/wallyson", "guia-git-lab", "lab");
 var GITHUB = path.join(process.env.HOME || "/home/wallyson", "guia-git-lab", "github");
 var CACHE_NATIVO = path.join(__dirname, ".cache-nativo.json");
+// um nome de lab por processo: vários autores podem rodar o --nativo ao mesmo tempo
+var NOME_NATIVO = "testes-nativo-" + process.pid;
+function limparNativo() {
+  var raiz = path.dirname(LAB);
+  ["homes", "servidor-dados"].forEach(function (d) { try { fs.rmSync(path.join(raiz, d, NOME_NATIVO), { recursive: true, force: true }); } catch (e) { /* */ } });
+}
 var CACHE = path.join(__dirname, ".cache-missoes.json");
 
 function decodificar(s) {
@@ -150,7 +156,7 @@ function casoLab(m) {
 // O setup roda no lab (as linhas "github ..." rodam no ~/guia-git-lab/github, fora do lab, como lá);
 // a pasta atual passa de um trecho para o outro. Devolve a transcrição da solução ("$ cmd" + saída).
 function rodarNativo(setup, solucao) {
-  var nome = "testes-nativo", cwd = null, MARCA = "__FIM_DO_SETUP__";
+  var nome = NOME_NATIVO, cwd = null, MARCA = "__FIM_DO_SETUP__";
   function lab(entrada, reset) {
     var r = cp.spawnSync("timeout", ["120", LAB, "-n", nome].concat(reset ? ["-r"] : []).concat(["-i"]), { input: entrada, encoding: "utf8", maxBuffer: 16 * 1024 * 1024 });
     if (r.error) throw r.error;
@@ -285,7 +291,7 @@ function main(argv) {
       c.erros.push("a saída no simulador é diferente da do Bash real:\n" + diffLinhas(real, c.simTexto));
     });
   }
-  if (nativo) try { fs.writeFileSync(CACHE_NATIVO, JSON.stringify(cacheNativo)); } catch (e) { /* */ }
+  if (nativo) { try { fs.writeFileSync(CACHE_NATIVO, JSON.stringify(cacheNativo)); } catch (e) { /* */ } limparNativo(); }
   relatorio.forEach(function (r) {
     if (!r.linhas.length) return;
     console.log(r.pg);
