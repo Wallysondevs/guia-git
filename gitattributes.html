@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Fim de Linha e .gitattributes — LF, CRLF e arquivos binários | Guia Git</title>
+<meta name="description" content="Fim de linha no Git para quem nunca ouviu falar: LF × CRLF, por que um arquivo do Windows aparece inteiro modificado, o .gitattributes com text=auto, eol=lf, eol=crlf e binary, git check-attr, git ls-files --eol, git add --renormalize, core.autocrlf e o erro real /bin/sh^M: interpretador incorreto.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Fim de Linha e .gitattributes</span></h1>
+
+<p class="intro">Todo arquivo de texto tem um caractere invisível no fim de cada linha, que diz "aqui acaba a linha". O problema: o Windows usa um, o Linux e o macOS usam outro. Quando a Ana (no Linux) e o Bruno (no Windows) trabalham no mesmo repositório, isso causa diffs estranhos, com o arquivo "inteiro modificado" sem ninguém ter mudado nada, e scripts que param de funcionar. O arquivo <code>.gitattributes</code> resolve isso de uma vez para a equipe toda, e ainda diz ao Git quais arquivos são binários.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que são <strong>LF</strong> e <strong>CRLF</strong>, e como vê-los com <code>file</code>, <code>cat -A</code> e <code>git ls-files --eol</code>.</li>
+  <li>Por que trocar o fim de linha faz o <code>git diff</code> mostrar o arquivo inteiro mudado.</li>
+  <li>Como escrever um <code>.gitattributes</code>: <code>text=auto</code>, <code>eol=lf</code>, <code>eol=crlf</code> e <code>binary</code>.</li>
+  <li>Como arrumar um repositório que já tem arquivos misturados (<code>git add --renormalize</code>).</li>
+  <li>O <code>core.autocrlf</code>, o jeito antigo, e o erro <code>/bin/sh^M: interpretador incorreto</code>.</li>
+</ul>
+</div>
+
+<p>Todas as saídas desta aula vieram do Git 2.53 do Ubuntu na máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português. Os arquivos "do Windows" foram criados com <code>printf</code>, escrevendo o <code>\r\n</code> de propósito, para imitar o que o Bloco de Notas faz.</p>
+
+<hr>
+
+<h2>A ideia: a máquina de escrever</h2>
+<p>Na máquina de escrever, terminar uma linha eram <strong>dois</strong> movimentos: puxar a alavanca que leva o papel de volta para a esquerda (o <strong>retorno do carro</strong>, em inglês <em>carriage return</em>, <strong>CR</strong>) e girar o rolo para descer uma linha (a <strong>alimentação de linha</strong>, <em>line feed</em>, <strong>LF</strong>).</p>
+<p>Os computadores herdaram isso, cada um do seu jeito:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Sistema</th><th>Fim de linha</th><th>Escrito como</th></tr>
+<tr><td>Linux, macOS</td><td><strong>LF</strong> (só desce a linha)</td><td><code>\n</code></td></tr>
+<tr><td>Windows</td><td><strong>CRLF</strong> (volta e desce)</td><td><code>\r\n</code></td></tr>
+</table>
+</div>
+<p>Para o Git, um arquivo é uma sequência de bytes. Se o Bruno salva <code>Caneca\r\n</code> e a Ana salva <code>Caneca\n</code>, são linhas <strong>diferentes</strong>, mesmo que na tela pareçam iguais.</p>
+
+<hr>
+
+<h2>1. Vendo o fim de linha</h2>
+<p>O Bruno criou a lista de produtos da lojinha no Windows. A Ana olhou o arquivo no Linux:</p>
+
+<pre class="term" data-cwd="~/loja">$ file produtos.txt
+produtos.txt: ASCII text, with CRLF line terminators
+$ cat -A produtos.txt
+Lista de produtos^M$
+Caneca^M$
+Camiseta^M$
+</pre>
+
+<dl class="anatomy">
+  <dt>file produtos.txt</dt><dd>O comando <code>file</code> descobre o tipo do arquivo. "<em>with CRLF line terminators</em>" = "com fins de linha CRLF": foi feito no Windows.</dd>
+  <dt>cat -A</dt><dd>Mostra os caracteres invisíveis. O <code>^M</code> é o <strong>CR</strong> (<code>\r</code>), e o <code>$</code> marca o <strong>LF</strong> (<code>\n</code>). Num arquivo do Linux, cada linha terminaria só com <code>$</code>.</dd>
+</dl>
+
+<p>O próprio Git também mostra, com <code>git ls-files --eol</code> (<em>eol</em> = <em>end of line</em>, "fim de linha"), depois que o arquivo foi commitado:</p>
+
+<pre class="term" data-cwd="~/loja">$ git add produtos.txt
+$ git commit -q -m 'Adiciona produtos (feito no Windows)'
+$ git ls-files --eol
+i/crlf  w/crlf  attr/                 	produtos.txt
+</pre>
+
+<dl class="anatomy">
+  <dt>i/crlf</dt><dd>No <strong>índice</strong> (o que o Git guardou no repositório), o arquivo tem CRLF.</dd>
+  <dt>w/crlf</dt><dd>Na pasta de trabalho (<em>working tree</em>, o arquivo que você abre no editor), também CRLF.</dd>
+  <dt>attr/</dt><dd>Nenhum atributo de <code>.gitattributes</code> vale para ele (ainda).</dd>
+</dl>
+
+<hr>
+
+<h2>2. O problema: "mudou o arquivo inteiro"</h2>
+<p>A Ana abriu o <code>produtos.txt</code> num editor configurado para salvar com LF e salvou sem mudar nenhuma letra. (Aqui, o <code>sed</code> faz o mesmo que o editor dela: tira o <code>\r</code> do fim de cada linha.)</p>
+
+<pre class="term" data-cwd="~/loja">$ sed -i 's/\r$//' produtos.txt
+$ file produtos.txt
+produtos.txt: ASCII text
+$ git status -s
+ M produtos.txt
+$ git diff
+diff --git a/produtos.txt b/produtos.txt
+index 495395c..4d2b0ac 100644
+--- a/produtos.txt
++++ b/produtos.txt
+@@ -1,3 +1,3 @@
+-Lista de produtos               « tinha \r no fim
+-Caneca
+-Camiseta
++Lista de produtos               « agora não tem
++Caneca
++Camiseta
+$ git diff --stat
+ produtos.txt | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+</pre>
+
+<p>O Git diz que <strong>todas</strong> as linhas mudaram, e as linhas apagadas e as novas parecem idênticas: a diferença é o <code>\r</code>, que não aparece na tela. Num arquivo de 500 linhas, um commit desses esconde a mudança de verdade no meio de 500 linhas "mudadas", atrapalha o <a href="git-blame.html">git blame</a> e gera conflitos à toa. Para confirmar que é só fim de linha, peça ao diff para ignorar o <code>\r</code>:</p>
+
+<pre class="term" data-cwd="~/loja">$ git diff --ignore-cr-at-eol
+$ git restore produtos.txt
+</pre>
+
+<p>Nenhuma diferença: era só o fim de linha. A Ana desfez a mudança com <a href="git-restore.html">git restore</a> e foi resolver direito.</p>
+
+<hr>
+
+<h2>3. A solução: o arquivo <code>.gitattributes</code></h2>
+<p>O <code>.gitattributes</code> é um arquivo de texto na raiz do repositório, parecido com o <a href="gitignore.html">.gitignore</a>: cada linha tem um <strong>padrão de nomes</strong> e os <strong>atributos</strong> que valem para esses arquivos. Como ele é commitado, vale para <strong>todo mundo</strong> que clonar, no Linux, no Windows ou no macOS. A Ana criou este:</p>
+
+<pre class="file" data-file=".gitattributes"># Deixe o Git cuidar do fim de linha dos arquivos de texto
+* text=auto
+# Scripts de shell: sempre LF (senão não rodam no Linux)
+*.sh text eol=lf
+# Scripts do Windows: sempre CRLF
+*.bat text eol=crlf
+# Imagens: binário (nunca mexer no conteúdo)
+*.png binary
+</pre>
+
+<dl class="anatomy">
+  <dt>*</dt><dd>O padrão: "todos os arquivos". <code>*.sh</code> é "todos os que terminam em <code>.sh</code>". Quando mais de uma linha vale para um arquivo, a de baixo ganha.</dd>
+  <dt>text=auto</dt><dd>"Git, descubra sozinho se o arquivo é texto. Se for, <strong>guarde no repositório com LF</strong> e, na pasta de trabalho, use o fim de linha do sistema." É a linha mais importante.</dd>
+  <dt>text eol=lf</dt><dd>"É texto, e na pasta de trabalho use <strong>sempre LF</strong>, até no Windows." Para scripts de shell, que não funcionam com CRLF.</dd>
+  <dt>text eol=crlf</dt><dd>"Na pasta de trabalho, <strong>sempre CRLF</strong>, até no Linux." Para arquivos que só programas do Windows leem, como o <code>.bat</code>.</dd>
+  <dt>binary</dt><dd>"Não é texto: nunca mexa no fim de linha, e não tente mostrar o diff linha por linha." É um atalho para <code>-text -diff -merge</code>.</dd>
+</dl>
+
+<h3>Conferindo os atributos: <code>git check-attr</code></h3>
+<p>Antes de commitar, a Ana perguntou ao Git quais atributos valem para cada arquivo. Os arquivos nem precisam existir:</p>
+
+<pre class="term" data-cwd="~/loja">$ git check-attr -a produtos.txt
+produtos.txt: text: auto
+$ git check-attr text eol -- instalar.sh rodar.bat logo.png
+instalar.sh: text: set
+instalar.sh: eol: lf
+rodar.bat: text: set
+rodar.bat: eol: crlf
+logo.png: text: unset              « binary desligou o "text"
+logo.png: eol: unspecified
+</pre>
+
+<p><code>-a</code> pede todos os atributos de um arquivo; <code>text eol</code> pede só esses dois; o <code>--</code> separa os atributos dos nomes de arquivo. <code>set</code> quer dizer "ligado", <code>unset</code>, "desligado", e <code>unspecified</code>, "ninguém disse nada".</p>
+
+<h3>Arrumando o que já foi commitado: <code>--renormalize</code></h3>
+<p>O <code>.gitattributes</code> vale para o que entrar daqui para a frente. O <code>produtos.txt</code> já estava no repositório com CRLF. Para o Git reaplicar as regras em tudo que já é rastreado, use <code>git add --renormalize .</code> <span class="versao">git 2.16+</span>:</p>
+
+<pre class="term" data-cwd="~/loja">$ git add .gitattributes
+$ git add --renormalize .
+$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	new file:   .gitattributes
+	modified:   produtos.txt                 « o Git converteu para LF
+$ git commit -q -m 'Normaliza fins de linha com .gitattributes'
+$ git ls-files --eol
+i/lf    w/lf    attr/text=auto        	.gitattributes
+i/lf    w/crlf  attr/text=auto        	produtos.txt
+</pre>
+
+<p>(Algumas linhas do <code>git status</code> saem em inglês no Git 2.53 do Ubuntu, porque a tradução não está completa: "<em>new file</em>" = "arquivo novo", "<em>modified</em>" = "modificado".)</p>
+
+<p>Repare na última linha: no repositório o <code>produtos.txt</code> agora tem LF (<code>i/lf</code>), mas o arquivo da pasta continua com CRLF (<code>w/crlf</code>): o Git só reescreve o arquivo da pasta quando precisa tirá-lo do repositório de novo. Para ver isso acontecer, a Ana apagou o arquivo e pediu de volta:</p>
+
+<pre class="term" data-cwd="~/loja">$ rm produtos.txt
+$ git restore produtos.txt
+$ git ls-files --eol
+i/lf    w/lf    attr/text=auto        	.gitattributes
+i/lf    w/lf    attr/text=auto        	produtos.txt
+$ file produtos.txt
+produtos.txt: ASCII text
+</pre>
+
+<p>Agora ele está com LF, o fim de linha do Linux. No computador do Bruno, o mesmo <code>text=auto</code> entrega o arquivo com CRLF, o do Windows. No repositório, fica sempre LF, e o diff "do arquivo inteiro" não acontece mais.</p>
+
+<div class="tip">
+<strong>Crie o <code>.gitattributes</code> no primeiro commit</strong>
+<p>Num repositório novo, o <code>.gitattributes</code> com <code>* text=auto</code> deveria entrar junto com o <code>.gitignore</code>, antes de qualquer arquivo do Windows. Assim você nunca precisa do <code>--renormalize</code>, que gera um commit grande mexendo em muitos arquivos.</p>
+</div>
+
+<div class="try" data-setup="mkdir loja;;cd loja;;git init -q;;echo 'Caneca' &gt; produtos.txt;;git add produtos.txt;;git commit -q -m 'Primeiro produto'" data-goal="contains:.gitattributes=*.sh text eol=lf,rastreado:.gitattributes,limpo" data-solucao="echo '*.sh text eol=lf' &gt; .gitattributes;;git add .gitattributes;;git commit -m 'Adiciona .gitattributes'">
+<p class="try-task"><strong>Missão:</strong> na lojinha, crie um <code>.gitattributes</code> com a linha <code>*.sh text eol=lf</code> (scripts de shell sempre com LF) e faça o commit dele.</p>
+</div>
+
+<hr>
+
+<h2>4. Scripts de shell e o <code>^M</code></h2>
+<p>O Bruno escreveu um script de instalação no Windows e mandou para a Ana. No Linux, ele não roda:</p>
+
+<pre class="term" data-cwd="~/loja">$ chmod +x instalar.sh
+$ ./instalar.sh
+bash: ./instalar.sh: /bin/sh^M: interpretador incorreto: Arquivo ou diretório inexistente
+</pre>
+
+<p>"Interpretador incorreto": a primeira linha, <code>#!/bin/sh</code>, terminou com <code>\r</code>, e o Linux procurou um programa chamado <code>/bin/sh</code> + CR (o <code>^M</code>), que não existe. Com o <code>*.sh text eol=lf</code> do <code>.gitattributes</code>, o Git avisa no <code>add</code> e conserta no repositório:</p>
+
+<pre class="term" data-cwd="~/loja">$ git add instalar.sh
+warning: in the working copy of 'instalar.sh', CRLF will be replaced by LF the next time Git touches it
+$ git commit -q -m 'Adiciona instalar.sh'
+$ git ls-files --eol instalar.sh
+i/lf    w/crlf  attr/text eol=lf      	instalar.sh
+$ rm instalar.sh
+$ git restore instalar.sh
+$ ./instalar.sh
+Instalando a loja
+</pre>
+
+<dl class="anatomy">
+  <dt>warning: in the working copy of 'instalar.sh', CRLF will be replaced by LF the next time Git touches it</dt><dd>"Aviso: na cópia de trabalho de <code>instalar.sh</code>, o CRLF será trocado por LF na próxima vez que o Git mexer nele." Não é erro: o Git já guardou com LF no repositório (<code>i/lf</code>) e avisa que o arquivo da pasta (<code>w/crlf</code>) vai mudar quando ele for reescrito.</dd>
+  <dt>rm + git restore</dt><dd>Fizeram o Git reescrever o arquivo, agora com LF. O script rodou.</dd>
+</dl>
+
+<p>No Bruno, que usa Windows, o mesmo <code>eol=lf</code> garante que o script sai do Git com LF, pronto para rodar num servidor Linux. O <code>rodar.bat</code> segue a regra contrária: o Git avisa que vai entregá-lo com CRLF.</p>
+
+<pre class="term" data-cwd="~/loja">$ git add rodar.bat
+warning: in the working copy of 'rodar.bat', LF will be replaced by CRLF the next time Git touches it
+</pre>
+
+<hr>
+
+<h2>5. Arquivos binários</h2>
+<p>Imagens, PDFs e planilhas não têm "linhas". O Git normalmente percebe sozinho (um arquivo com bytes nulos é tratado como binário), e o <code>binary</code> no <code>.gitattributes</code> deixa isso garantido. O diff de um binário não mostra linhas, só avisa que mudou:</p>
+
+<pre class="term" data-cwd="~/loja">$ git diff
+diff --git a/logo.png b/logo.png
+index d9d6533..71b06a2 100644
+Binary files a/logo.png and b/logo.png differ
+</pre>
+
+<p>"Os arquivos binários <code>a/logo.png</code> e <code>b/logo.png</code> são diferentes." Num conflito de merge, o Git também não tenta juntar dois binários: você escolhe uma das versões. Se os binários forem <strong>grandes</strong> (vídeos, modelos 3D), veja <a href="git-lfs.html">Arquivos Grandes (Git LFS)</a>, que também usa o <code>.gitattributes</code>.</p>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer a mesma coisa</h2>
+<p>Antes do <code>.gitattributes</code>, o jeito era a configuração <code>core.autocrlf</code>, que cada pessoa liga <strong>no próprio computador</strong>:</p>
+
+<pre class="term" data-cwd="~/loja">$ git config core.autocrlf true
+$ git add teste.txt
+warning: in the working copy of 'teste.txt', LF will be replaced by CRLF the next time Git touches it
+</pre>
+
+<p>Com <code>true</code> (pensado para o Windows), o Git guarda com LF e entrega com CRLF; com <code>input</code> (pensado para Linux e macOS), guarda com LF e não mexe na entrega. Funciona, mas depende de <strong>cada</strong> pessoa da equipe configurar certo. O <code>.gitattributes</code> vai no repositório e passa na frente do <code>core.autocrlf</code>.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Qual usar</th></tr>
+<tr><td>Qualquer repositório com gente em sistemas diferentes</td><td><code>.gitattributes</code> com <code>* text=auto</code></td></tr>
+<tr><td>Scripts que precisam de LF (<code>.sh</code>, <code>Makefile</code>)</td><td><code>*.sh text eol=lf</code></td></tr>
+<tr><td>Arquivos que precisam de CRLF (<code>.bat</code>, <code>.cmd</code>)</td><td><code>*.bat text eol=crlf</code></td></tr>
+<tr><td>Imagens, PDFs, executáveis</td><td><code>*.png binary</code></td></tr>
+<tr><td>Um repositório que não é seu e não tem <code>.gitattributes</code></td><td><code>git config --global core.autocrlf true</code> no Windows, <code>input</code> no Linux/macOS</td></tr>
+<tr><td>Arrumar arquivos já commitados</td><td><code>git add --renormalize .</code> e um commit só para isso</td></tr>
+<tr><td>Só conferir se a mudança é de fim de linha</td><td><code>git diff --ignore-cr-at-eol</code></td></tr>
+</table>
+</div>
+
+<div class="note">
+<strong>Outros atributos que você vai encontrar</strong>
+<p>O <code>.gitattributes</code> não é só para fim de linha. <code>export-ignore</code> deixa um arquivo fora do <code>git archive</code> (o zip do projeto); <code>filter=lfs</code> é o que o Git LFS escreve; e o GitHub lê atributos próprios, como <code>linguist-generated</code> (esconde arquivos gerados no diff do pull request) e <code>linguist-language</code> (corrige a linguagem detectada). Esses do GitHub são ilustrativos aqui; os detalhes estão na documentação do GitHub, em docs.github.com/pt.</p>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>/bin/sh^M: interpretador incorreto</code></strong>
+<pre class="term" data-cwd="~/loja">$ ./instalar.sh
+bash: ./instalar.sh: /bin/sh^M: interpretador incorreto: Arquivo ou diretório inexistente
+</pre>
+<p><strong>O que aconteceu:</strong> o script tem CRLF. <strong>Como confirmar:</strong> <code>file instalar.sh</code> diz "<em>with CRLF line terminators</em>". <strong>Como resolver:</strong> ponha <code>*.sh text eol=lf</code> no <code>.gitattributes</code>, rode <code>git add --renormalize .</code>, commite e reescreva o arquivo (<code>rm instalar.sh</code> e <code>git restore instalar.sh</code>). Fora do Git, <code>sed -i 's/\r$//' instalar.sh</code> tira o <code>\r</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>O diff mostra o arquivo inteiro mudado</strong>
+<p><strong>O que aconteceu:</strong> alguém salvou com outro fim de linha. <strong>Como confirmar:</strong> <code>git diff --ignore-cr-at-eol</code> não mostra nada (ou mostra só a mudança de verdade). <strong>Como resolver:</strong> se a mudança ainda não foi commitada, <code>git restore arquivo</code>; para o futuro, o <code>.gitattributes</code> com <code>* text=auto</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>"Criei o .gitattributes e nada mudou"</strong>
+<p><strong>O que aconteceu:</strong> o <code>.gitattributes</code> só vale para o que o Git guardar ou reescrever depois dele. <strong>Como confirmar:</strong> <code>git ls-files --eol</code> ainda mostra <code>i/crlf</code>. <strong>Como resolver:</strong> <code>git add --renormalize .</code> e commit. E confira os padrões com <code>git check-attr -a arquivo</code>: um erro de digitação no padrão faz a linha não valer para nada.</p>
+</div>
+
+<div class="cenario">
+<strong>"warning: … LF will be replaced by CRLF"</strong>
+<p>Não é erro. O Git está avisando que, por causa do <code>.gitattributes</code> ou do <code>core.autocrlf</code>, o arquivo da pasta vai mudar de fim de linha na próxima vez que ele for reescrito. O commit foi feito normalmente.</p>
+</div>
+
+<hr>
+
+<h2>Referência</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Linha / comando</th><th>O que faz</th></tr>
+<tr><td><code>* text=auto</code></td><td>Texto detectado sozinho; LF no repositório, fim de linha do sistema na pasta</td></tr>
+<tr><td><code>*.sh text eol=lf</code></td><td>Sempre LF na pasta</td></tr>
+<tr><td><code>*.bat text eol=crlf</code></td><td>Sempre CRLF na pasta</td></tr>
+<tr><td><code>*.png binary</code></td><td>Binário: sem conversão, sem diff de linhas, sem merge</td></tr>
+<tr><td><code>git check-attr -a arquivo</code></td><td>Mostra os atributos que valem para o arquivo</td></tr>
+<tr><td><code>git ls-files --eol</code></td><td>Fim de linha no repositório (<code>i/</code>), na pasta (<code>w/</code>) e o atributo</td></tr>
+<tr><td><code>git add --renormalize .</code></td><td>Reaplica as regras aos arquivos já rastreados</td></tr>
+<tr><td><code>git diff --ignore-cr-at-eol</code></td><td>Diff ignorando o <code>\r</code> do fim da linha</td></tr>
+<tr><td><code>git config core.autocrlf true</code> / <code>input</code></td><td>O jeito antigo, por pessoa</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. A linha principal</h3>
+<p>Complete a linha do <code>.gitattributes</code> que deixa o Git cuidar do fim de linha de todos os arquivos de texto:</p>
+<div class="ex-code">* <input data-answer="text=auto" aria-label="atributo"></div>
+</div>
+
+<div class="exercise">
+<h3>2. Scripts de shell</h3>
+<p>Complete para os scripts <code>.sh</code> saírem sempre com LF:</p>
+<div class="ex-code">*.sh text <input data-answer="eol=lf" aria-label="atributo"></div>
+</div>
+
+<div class="exercise">
+<h3>3. Arrumar o que já existe</h3>
+<p>Complete para o Git reaplicar o <code>.gitattributes</code> aos arquivos já commitados:</p>
+<div class="ex-code">git add <input data-answer="--renormalize" aria-label="opção"> .</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. O <code>cat -A</code> mostra <code>Caneca^M$</code>. O que isso quer dizer?</p>
+<label><input type="radio" name="q4"> A linha tem um erro de digitação.</label>
+<label><input type="radio" name="q4"> A linha termina com CRLF (fim de linha do Windows).</label>
+<label><input type="radio" name="q4"> A linha termina só com LF.</label>
+<label><input type="radio" name="q4"> O arquivo é binário.</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">5. Por que o <code>.gitattributes</code> é melhor que o <code>core.autocrlf</code> numa equipe?</p>
+<label><input type="radio" name="q5"> Porque é mais rápido.</label>
+<label><input type="radio" name="q5"> Porque só funciona no Windows.</label>
+<label><input type="radio" name="q5"> Porque vai no repositório e vale para todos, sem cada pessoa configurar.</label>
+<label><input type="radio" name="q5"> Porque apaga os arquivos binários.</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">6. Depois do <code>git add --renormalize .</code> e do commit, o <code>git ls-files --eol</code> mostra <code>i/lf w/crlf</code>. O que isso quer dizer?</p>
+<label><input type="radio" name="q6"> No repositório já está com LF; o arquivo da pasta ainda tem CRLF até o Git reescrevê-lo.</label>
+<label><input type="radio" name="q6"> O commit falhou.</label>
+<label><input type="radio" name="q6"> O repositório tem CRLF e a pasta tem LF.</label>
+<label><input type="radio" name="q6"> O arquivo foi marcado como binário.</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Linux e macOS terminam as linhas com <strong>LF</strong> (<code>\n</code>); o Windows, com <strong>CRLF</strong> (<code>\r\n</code>). Para o Git, são linhas diferentes.</li>
+  <li>Veja com <code>file</code>, <code>cat -A</code> (o <code>^M</code>) e <code>git ls-files --eol</code>.</li>
+  <li><code>.gitattributes</code> com <code>* text=auto</code>: LF no repositório, o fim de linha de cada sistema na pasta. <code>eol=lf</code> para scripts de shell, <code>eol=crlf</code> para <code>.bat</code>, <code>binary</code> para imagens.</li>
+  <li>Arquivos já commitados: <code>git add --renormalize .</code>.</li>
+  <li><code>core.autocrlf</code> é o jeito antigo, por pessoa; o <code>.gitattributes</code> vale para a equipe toda.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
