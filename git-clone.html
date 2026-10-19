@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git clone — copiando um repositório do GitHub para o seu computador | Guia Git</title>
+<meta name="description" content="O git clone para quem está começando: copiar um repositório do GitHub com a URL, o que cada linha da saída quer dizer, o que o clone cria (a pasta, o origin, o main e os branches remotos), clonar com outro nome, pegar outros branches com git switch, clone raso com --depth e os erros reais: pasta que já existe, repositório que não existe e repositório vazio.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">clone</span></h1>
+
+<p class="intro">O Bruno tem um repositório no GitHub com as sobremesas dele, e a Ana quer uma cópia para estudar as receitas e, quem sabe, ajudar. Ela não precisa baixar arquivo por arquivo nem um <code>.zip</code>: o <code>git clone</code> copia o repositório <strong>inteiro</strong> (todos os arquivos, todos os commits, todos os branches) para uma pasta nova no computador dela, já ligada ao GitHub. É o primeiro comando que você roda quando vai trabalhar num projeto que já existe.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A clonar um repositório com <code>git clone URL</code>, e o que cada linha da saída quer dizer.</li>
+  <li>O que o clone cria: a pasta, o remoto <code>origin</code>, o branch <code>main</code> e os branches remotos.</li>
+  <li>A clonar com outro nome de pasta, e a pegar os outros branches com <code>git switch</code>.</li>
+  <li>O clone "raso" (<code>--depth 1</code>) e o clone de uma pasta local.</li>
+  <li>Os erros mais comuns: pasta que já existe, repositório que não existe, repositório vazio.</li>
+</ul>
+</div>
+
+<p>As saídas desta aula saíram do Git 2.53 do Ubuntu 26.04, num terminal de verdade da máquina da Ana, clonando do "GitHub" do laboratório (uma imitação local, que responde como o de verdade). Os números das linhas <code>remote:</code> e as velocidades mudam de um clone para outro e de um servidor para outro: não se preocupe com eles.</p>
+
+<hr>
+
+<h2>A ideia: xerox do caderno inteiro</h2>
+<p>A Ana pede o caderno de sobremesas do Bruno emprestado e tira uma <strong>cópia completa</strong>: todas as páginas, inclusive as anotações de cada mudança. Na capa da cópia, ela anota: "original: casa do Bruno". A partir daí, ela pode ler, riscar e acrescentar receitas na cópia dela sem estragar o original, e sabe onde buscar as novidades.</p>
+<p>O <code>git clone</code> faz exatamente isso: a cópia completa é o repositório novo na sua pasta, e a anotação na capa é o remoto <code>origin</code>, que guarda o endereço de onde a cópia veio (veja <a href="remotos.html">O que é um Repositório Remoto</a>).</p>
+
+<hr>
+
+<h2>1. O primeiro clone</h2>
+<p>No GitHub, a página do repositório mostra o endereço para clonar (o botão <strong>Code</strong>; descrição ilustrativa, baseada na documentação do GitHub em docs.github.com/pt, "Clonar um repositório"). Com o endereço copiado, a Ana vai para a pasta onde quer a cópia (aqui, a pasta pessoal, <code>~</code>) e roda:</p>
+
+<pre class="term">$ git clone https://github.com/bruno-lima/sobremesas.git
+Cloning into 'sobremesas'...
+remote: Enumerating objects: 12, done.
+remote: Counting objects: 100% (12/12), done.
+remote: Compressing objects: 100% (7/7), done.
+remote: Total 12 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)
+Receiving objects: 100% (12/12), done.
+Resolving deltas: 100% (1/1), done.
+</pre>
+
+<dl class="anatomy">
+  <dt>git clone</dt><dd>"Clone": copie um repositório.</dd>
+  <dt>https://github.com/bruno-lima/sobremesas.git</dt><dd>A URL: o usuário dono (<code>bruno-lima</code>) e o nome do repositório (<code>sobremesas</code>). O <code>.git</code> do fim é opcional no GitHub.</dd>
+</dl>
+
+<p>A saída, linha por linha (quase toda em inglês, porque vem do servidor ou não tem tradução no Ubuntu):</p>
+
+<dl class="anatomy">
+  <dt>Cloning into 'sobremesas'...</dt><dd>"Clonando para a pasta <code>sobremesas</code>". O nome da pasta vem do fim da URL, sem o <code>.git</code>.</dd>
+  <dt>remote: Enumerating / Counting / Compressing objects</dt><dd>As linhas que começam com <code>remote:</code> são o <strong>servidor</strong> falando: ele conta os "objetos" (commits, pastas e arquivos guardados) e os comprime para mandar.</dd>
+  <dt>remote: Total 12 (delta 1) …</dt><dd>O total de objetos enviados. Os detalhes (<code>delta</code>, <code>reused</code>) são técnicos e mudam de servidor para servidor.</dd>
+  <dt>Receiving objects: 100% (12/12), done.</dt><dd>Agora é o <strong>seu</strong> Git recebendo. Num repositório grande, essa linha mostra a porcentagem subindo e a velocidade do download.</dd>
+  <dt>Resolving deltas: 100% (1/1), done.</dt><dd>O Git "descomprime" as partes que vieram como diferença de outra. Terminou: o clone está pronto.</dd>
+</dl>
+
+<h2>2. O que o clone criou</h2>
+
+<pre class="term">$ cd sobremesas
+$ ls
+README.md  mousse.txt  pudim.txt
+$ git log --oneline
+5b926a9 (HEAD -&gt; main, origin/main, origin/HEAD) Adiciona a receita de mousse
+8bf8bfc Adiciona a receita de pudim
+419f86c Cria o README
+</pre>
+
+<p>Uma pasta <code>sobremesas</code> com os arquivos, e o histórico inteiro do Bruno: os 3 commits, com os mesmos hashes do GitHub. A Ana não precisa de <code>git init</code>: a pasta já é um repositório. As etiquetas do primeiro commit mostram que o <code>main</code> dela, o <code>origin/main</code> e o <code>origin/HEAD</code> (o branch principal do remoto) estão no mesmo lugar.</p>
+
+<pre class="term" data-cwd="~/sobremesas">$ git status
+No ramo main
+Your branch is up to date with 'origin/main'.
+
+nothing to commit, working tree clean
+$ git remote -v
+origin  https://github.com/bruno-lima/sobremesas.git (fetch)
+origin  https://github.com/bruno-lima/sobremesas.git (push)
+</pre>
+
+<p>O clone já deixou tudo ligado: o remoto <code>origin</code> aponta para a URL de onde a cópia veio, e o <code>main</code> já acompanha o <code>origin/main</code> ("<em>Your branch is up to date with 'origin/main'</em>", "o seu branch está em dia com o <code>origin/main</code>"). Daqui em diante, <code>git pull</code> traz as novidades do Bruno e <code>git push</code> envia as da Ana (se ela tiver permissão; veja <a href="fork.html">Fork</a>).</p>
+
+<div class="try" data-setup="github novo bruno-lima/sobremesas;;github bruno 'git clone -q https://github.com/bruno-lima/sobremesas.git &amp;&amp; cd sobremesas &amp;&amp; echo &quot;# Sobremesas do Bruno&quot; &gt; README.md &amp;&amp; git add README.md &amp;&amp; git commit -qm &quot;Cria o README&quot; &amp;&amp; printf &quot;Pudim de leite\n&quot; &gt; pudim.txt &amp;&amp; git add pudim.txt &amp;&amp; git commit -qm &quot;Adiciona a receita de pudim&quot; &amp;&amp; printf &quot;Mousse de maracujá\n&quot; &gt; mousse.txt &amp;&amp; git add mousse.txt &amp;&amp; git commit -qm &quot;Adiciona a receita de mousse&quot; &amp;&amp; git push -q -u origin main &amp;&amp; git switch -q -c natal &amp;&amp; printf &quot;Rabanada\n&quot; &gt; rabanada.txt &amp;&amp; git add rabanada.txt &amp;&amp; git commit -qm &quot;Adiciona a receita de rabanada&quot; &amp;&amp; git push -q -u origin natal &amp;&amp; git switch -q main'" data-goal="ran:git clone,file:sobremesas/pudim.txt" data-solucao="git clone https://github.com/bruno-lima/sobremesas.git">
+<p class="try-task"><strong>Missão:</strong> clone o repositório do Bruno, <code>https://github.com/bruno-lima/sobremesas.git</code>, na sua pasta pessoal. Depois entre na pasta e veja o histórico com <code>git log --oneline</code>.</p>
+</div>
+
+<hr>
+
+<h2>3. Os outros branches</h2>
+<p>O repositório do Bruno tem um segundo branch, o <code>natal</code>, com a receita de rabanada. Mas o <code>git branch</code> da Ana só mostra um:</p>
+
+<pre class="term" data-cwd="~/sobremesas">$ git branch
+* main
+$ git branch -a
+* main
+  remotes/origin/HEAD -&gt; origin/main
+  remotes/origin/main
+  remotes/origin/natal
+</pre>
+
+<p>O clone trouxe <strong>todos</strong> os branches, mas como branches remotos (<code>remotes/origin/…</code>, as "fotos" do GitHub). Branch local, para trabalhar, ele cria só um: o principal (<code>main</code>). Para trabalhar no <code>natal</code>, basta ir para ele pelo nome:</p>
+
+<pre class="term" data-cwd="~/sobremesas">$ git switch natal
+branch 'natal' set up to track 'origin/natal'.
+Switched to a new branch 'natal'
+$ git branch
+  main
+* natal
+$ ls
+README.md  mousse.txt  pudim.txt  rabanada.txt
+</pre>
+
+<dl class="anatomy">
+  <dt>branch 'natal' set up to track 'origin/natal'.</dt><dd>Não existia um <code>natal</code> local, mas existia o <code>origin/natal</code>: o Git criou o branch local a partir dele e já o ligou ao remoto ("configurado para acompanhar <code>origin/natal</code>").</dd>
+  <dt>Switched to a new branch 'natal'</dt><dd>"Mudou para um branch novo, o <code>natal</code>". A rabanada apareceu na pasta.</dd>
+</dl>
+
+<div class="try" data-setup="github novo bruno-lima/sobremesas;;github bruno 'git clone -q https://github.com/bruno-lima/sobremesas.git &amp;&amp; cd sobremesas &amp;&amp; echo &quot;# Sobremesas do Bruno&quot; &gt; README.md &amp;&amp; git add README.md &amp;&amp; git commit -qm &quot;Cria o README&quot; &amp;&amp; printf &quot;Pudim de leite\n&quot; &gt; pudim.txt &amp;&amp; git add pudim.txt &amp;&amp; git commit -qm &quot;Adiciona a receita de pudim&quot; &amp;&amp; printf &quot;Mousse de maracujá\n&quot; &gt; mousse.txt &amp;&amp; git add mousse.txt &amp;&amp; git commit -qm &quot;Adiciona a receita de mousse&quot; &amp;&amp; git push -q -u origin main &amp;&amp; git switch -q -c natal &amp;&amp; printf &quot;Rabanada\n&quot; &gt; rabanada.txt &amp;&amp; git add rabanada.txt &amp;&amp; git commit -qm &quot;Adiciona a receita de rabanada&quot; &amp;&amp; git push -q -u origin natal &amp;&amp; git switch -q main'" data-goal="file:sobremesas/rabanada.txt,head:natal" data-solucao="git clone https://github.com/bruno-lima/sobremesas.git;;cd sobremesas;;git switch natal">
+<p class="try-task"><strong>Missão:</strong> clone <code>https://github.com/bruno-lima/sobremesas.git</code>, entre na pasta e vá para o branch <code>natal</code>, até a receita de rabanada aparecer.</p>
+</div>
+
+<hr>
+
+<h2>4. Clonando com outro nome</h2>
+<p>Ponha o nome da pasta depois da URL:</p>
+
+<pre class="term">$ git clone https://github.com/bruno-lima/sobremesas.git doces-do-bruno
+Cloning into 'doces-do-bruno'...
+remote: Enumerating objects: 12, done.
+remote: Counting objects: 100% (12/12), done.
+remote: Compressing objects: 100% (7/7), done.
+remote: Total 12 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)
+Receiving objects: 100% (12/12), done.
+Resolving deltas: 100% (1/1), done.
+$ ls doces-do-bruno
+README.md  mousse.txt  pudim.txt
+</pre>
+
+<p>Mesmo conteúdo, outra pasta. Cada clone é independente: o que você faz em um não aparece no outro (a não ser passando pelo GitHub, com <code>push</code> e <code>pull</code>).</p>
+
+<div class="tip">
+<strong>Onde a pasta é criada?</strong>
+<p>Na pasta em que você está. Se a Ana estiver em <code>~/Documentos</code>, o clone vira <code>~/Documentos/sobremesas</code>:</p>
+<pre class="term" data-cwd="~/Documentos">$ git clone https://github.com/bruno-lima/sobremesas.git
+Cloning into 'sobremesas'...
+remote: Enumerating objects: 12, done.
+remote: Counting objects: 100% (12/12), done.
+remote: Compressing objects: 100% (7/7), done.
+remote: Total 12 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)
+Receiving objects: 100% (12/12), done.
+Resolving deltas: 100% (1/1), done.
+$ pwd
+/home/ana/Documentos
+$ ls
+sobremesas
+</pre>
+<p>Antes de clonar, confira com <code>pwd</code> onde você está. E nunca clone <strong>dentro</strong> de outro repositório: um repositório dentro do outro confunde o Git (para isso existem os <a href="submodulos.html">submódulos</a>).</p>
+</div>
+
+<div class="try" data-setup="github novo bruno-lima/sobremesas;;github bruno 'git clone -q https://github.com/bruno-lima/sobremesas.git &amp;&amp; cd sobremesas &amp;&amp; echo &quot;# Sobremesas do Bruno&quot; &gt; README.md &amp;&amp; git add README.md &amp;&amp; git commit -qm &quot;Cria o README&quot; &amp;&amp; printf &quot;Pudim de leite\n&quot; &gt; pudim.txt &amp;&amp; git add pudim.txt &amp;&amp; git commit -qm &quot;Adiciona a receita de pudim&quot; &amp;&amp; printf &quot;Mousse de maracujá\n&quot; &gt; mousse.txt &amp;&amp; git add mousse.txt &amp;&amp; git commit -qm &quot;Adiciona a receita de mousse&quot; &amp;&amp; git push -q -u origin main &amp;&amp; git switch -q -c natal &amp;&amp; printf &quot;Rabanada\n&quot; &gt; rabanada.txt &amp;&amp; git add rabanada.txt &amp;&amp; git commit -qm &quot;Adiciona a receita de rabanada&quot; &amp;&amp; git push -q -u origin natal &amp;&amp; git switch -q main'" data-goal="file:doces-do-bruno/mousse.txt" data-solucao="git clone https://github.com/bruno-lima/sobremesas.git doces-do-bruno">
+<p class="try-task"><strong>Missão:</strong> clone o repositório do Bruno numa pasta chamada <code>doces-do-bruno</code>.</p>
+</div>
+
+<hr>
+
+<h2>5. Outras formas de clonar</h2>
+
+<h3>Só o último commit: <code>--depth 1</code></h3>
+<p>Num projeto com anos de história, o clone pode demorar. Se você só quer os arquivos de hoje, peça só o último commit (um clone "raso", em inglês <em>shallow</em>):</p>
+
+<pre class="term">$ git clone --depth 1 https://github.com/bruno-lima/sobremesas.git raso
+Cloning into 'raso'...
+remote: Enumerating objects: 5, done.
+remote: Counting objects: 100% (5/5), done.
+remote: Compressing objects: 100% (2/2), done.
+remote: Total 5 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+Receiving objects: 100% (5/5), done.
+$ git -C raso log --oneline
+5b926a9 (grafted, HEAD -&gt; main, origin/main, origin/HEAD) Adiciona a receita de mousse
+</pre>
+
+<p>Vieram 5 objetos em vez de 12, e o histórico tem um commit só. A etiqueta <code>grafted</code> ("enxertado") avisa que a história foi cortada ali. (O <code>git -C raso</code> roda o comando dentro da pasta <code>raso</code> sem precisar de <code>cd</code>.) Para estudar e contribuir, prefira o clone completo.</p>
+
+<h3>De uma pasta do computador</h3>
+<p>A "URL" também pode ser o caminho de outro repositório no mesmo computador:</p>
+
+<pre class="term">$ git clone sobremesas copia-local
+Cloning into 'copia-local'...
+done.
+</pre>
+
+<p>Sem rede, sem linhas <code>remote:</code>: o Git copia direto. O <code>origin</code> da cópia aponta para a pasta <code>sobremesas</code>.</p>
+
+<h3>Com SSH</h3>
+<p>Quem configurou uma chave SSH no GitHub clona com a URL no formato <code>git@github.com:bruno-lima/sobremesas.git</code> (o GitHub mostra as duas formas). A diferença aparece na hora de enviar: com SSH, o <code>push</code> não pede token. Veja <a href="ssh.html">Chaves SSH</a>.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>Quando usar</th></tr>
+<tr><td><code>git clone URL</code></td><td>O normal: pasta com o nome do repositório</td></tr>
+<tr><td><code>git clone URL pasta</code></td><td>Escolher o nome da pasta</td></tr>
+<tr><td><code>git clone URL .</code></td><td>Clonar dentro da pasta atual (ela precisa estar vazia)</td></tr>
+<tr><td><code>git clone -b natal URL</code></td><td>Começar já no branch <code>natal</code></td></tr>
+<tr><td><code>git clone --depth 1 URL</code></td><td>Só o último commit, mais rápido</td></tr>
+<tr><td>Botão <strong>Code</strong> → <strong>Download ZIP</strong>, no GitHub</td><td>Só os arquivos, <strong>sem</strong> o Git: sem histórico e sem <code>origin</code> (não dá para fazer <code>pull</code> nem <code>push</code>)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>fatal: destination path 'sobremesas' already exists</code></strong>
+<pre class="term">$ git clone https://github.com/bruno-lima/sobremesas.git
+fatal: destination path 'sobremesas' already exists and is not an empty directory.
+</pre>
+<p><strong>O que aconteceu:</strong> "a pasta de destino <code>sobremesas</code> já existe e não está vazia". A Ana já tinha clonado antes, e o Git não sobrescreve uma pasta com coisas dentro.</p>
+<p><strong>Como resolver:</strong> se você só quer as novidades, não clone de novo: entre na pasta e rode <code>git pull</code>. Se quer uma segunda cópia, dê outro nome (<code>git clone URL sobremesas2</code>).</p>
+</div>
+
+<div class="cenario">
+<strong><code>remote: Repository not found.</code></strong>
+<pre class="term">$ git clone https://github.com/bruno-lima/sobremesa.git
+Cloning into 'sobremesa'...
+remote: Repository not found.
+fatal: repository 'https://github.com/bruno-lima/sobremesa.git/' not found
+</pre>
+<p><strong>O que aconteceu:</strong> o GitHub respondeu "repositório não encontrado". Aqui, faltou o <code>s</code> de <code>sobremesas</code>. A mesma resposta aparece para um repositório <strong>privado</strong> quando você não tem acesso: o GitHub não conta que ele existe.</p>
+<p><strong>Como resolver:</strong> copie a URL de novo da página do repositório (não digite). Se o repositório é privado, peça acesso ao dono ou configure a autenticação (<a href="https-token.html">HTTPS e Token</a>).</p>
+</div>
+
+<div class="cenario">
+<strong><code>warning: You appear to have cloned an empty repository.</code></strong>
+<pre class="term">$ git clone https://github.com/ana-souza/tcc.git
+Cloning into 'tcc'...
+warning: You appear to have cloned an empty repository.
+$ cd tcc
+$ git status
+No ramo main
+
+No commits yet
+
+nada para enviar (crie/copie arquivos e use "git add" para registrar)
+</pre>
+<p><strong>O que aconteceu:</strong> "parece que você clonou um repositório vazio". É só um aviso: o repositório existe no GitHub, mas ninguém enviou nada ainda. O clone funcionou e já tem o <code>origin</code>.</p>
+<p><strong>Como resolver:</strong> nada a resolver. Crie os arquivos, faça o primeiro commit e envie com <code>git push -u origin main</code>.</p>
+</div>
+
+<div class="cenario">
+<strong><code>fatal: You must specify a repository to clone.</code></strong>
+<pre class="term">$ git clone
+fatal: You must specify a repository to clone.
+
+uso: git clone [&lt;options&gt;] [--] &lt;repo&gt; [&lt;dir&gt;]
+
+    -v, --[no-]verbose    be more verbose
+    -q, --[no-]quiet      be more quiet
+…
+</pre>
+<p><strong>O que aconteceu:</strong> "você precisa dizer qual repositório clonar". Depois vem o resumo do uso (<code>git clone [&lt;opções&gt;] [--] &lt;repositório&gt; [&lt;pasta&gt;]</code>) e uma lista comprida de opções (cortada aqui, no <code>…</code>).</p>
+<p><strong>Como resolver:</strong> <code>git clone URL</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Erro com a URL SSH</strong>
+<p>Clonar com <code>git@github.com:…</code> sem ter uma chave SSH configurada no GitHub falha com <code>Permission denied (publickey)</code> e <code>fatal: Could not read from remote repository.</code> (mensagem ilustrativa: o laboratório da Ana não tem SSH). <strong>Como resolver:</strong> use a URL HTTPS, ou configure a chave (<a href="ssh.html">Chaves SSH</a>).</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git clone URL</code></td><td>Copia o repositório para uma pasta nova com o nome dele</td></tr>
+<tr><td><code>git clone URL pasta</code></td><td>Copia para a pasta escolhida</td></tr>
+<tr><td><code>git clone -b BRANCH URL</code></td><td>Começa no branch escolhido</td></tr>
+<tr><td><code>git clone --depth 1 URL</code></td><td>Clone raso: só o último commit</td></tr>
+<tr><td><code>git branch -a</code></td><td>Mostra os branches remotos que vieram no clone</td></tr>
+<tr><td><code>git switch NOME</code></td><td>Cria o branch local a partir do <code>origin/NOME</code> e vai para ele</td></tr>
+<tr><td><code>git remote -v</code></td><td>Mostra o <code>origin</code> criado pelo clone</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o comando</h3>
+<p>Clone o repositório <code>https://github.com/ana-souza/receitas.git</code> numa pasta chamada <code>site</code>:</p>
+<div class="ex-code">git <input data-answer="clone" aria-label="subcomando"> https://github.com/ana-souza/receitas.git <input data-answer="site" aria-label="nome da pasta"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. Depois de um <code>git clone</code>, o que a pasta nova já tem?</p>
+<label><input type="radio" name="q2"> Só os arquivos do último commit, sem histórico</label>
+<label><input type="radio" name="q2"> Os arquivos, o histórico completo e o remoto <code>origin</code> apontando para a URL</label>
+<label><input type="radio" name="q2"> Nada: é preciso rodar <code>git init</code> e <code>git pull</code></label>
+<label><input type="radio" name="q2"> Só o branch <code>main</code>, sem os outros branches</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. O repositório clonado tem o branch <code>natal</code> no GitHub, mas <code>git branch</code> só mostra <code>main</code>. Como trabalhar no <code>natal</code>?</p>
+<label><input type="radio" name="q3"> Clonar de novo com <code>--all</code></label>
+<label><input type="radio" name="q3"> <code>git branch natal</code> e copiar os arquivos à mão</label>
+<label><input type="radio" name="q3"> <code>git switch natal</code>: o Git cria o branch local a partir do <code>origin/natal</code></label>
+<label><input type="radio" name="q3"> Não dá: o clone só traz o <code>main</code></label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. <code>fatal: destination path 'sobremesas' already exists and is not an empty directory.</code> O que fazer para pegar as novidades do GitHub?</p>
+<label><input type="radio" name="q4"> Apagar a pasta e clonar de novo</label>
+<label><input type="radio" name="q4"> <code>git clone --force</code></label>
+<label><input type="radio" name="q4"> <code>git init</code> dentro da pasta</label>
+<label><input type="radio" name="q4"> Entrar na pasta e rodar <code>git pull</code>; o clone é só para a primeira vez</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git clone URL</code> copia o repositório inteiro (arquivos, histórico e branches) para uma pasta nova, na pasta em que você está.</li>
+  <li>O clone já cria o remoto <code>origin</code> e deixa o <code>main</code> ligado ao <code>origin/main</code>: dá para usar <code>pull</code> e <code>push</code> direto.</li>
+  <li>Os outros branches vêm como <code>origin/NOME</code>; <code>git switch NOME</code> cria o branch local.</li>
+  <li><code>git clone URL pasta</code> escolhe o nome; <code>--depth 1</code> traz só o último commit.</li>
+  <li>O clone é para a primeira vez; depois, as novidades chegam com <code>git pull</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
