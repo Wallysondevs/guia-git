@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Novidades — do Git 2.50 ao 2.56 e o que vem no Git 3.0 | Guia Git</title>
+<meta name="description" content="As novidades recentes do Git que um iniciante percebe: switch e restore estáveis, git config get/set/list, git repo info, git last-modified, o aviso do branch main no Git 3.0, git history, git add --resolved e o fim do git whatchanged, com base nas notas de lançamento oficiais e saídas reais do Git 2.53 do Ubuntu 26.04.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Novidades</span></h1>
+
+<p class="intro">O Git tem mais de 20 anos, mas não parou: sai uma versão nova a cada dois ou três meses, e o próximo grande passo, o <strong>Git 3.0</strong>, já está anunciado. Esta aula mostra as novidades recentes que <strong>você</strong>, como iniciante, vai perceber (comandos novos, avisos novos, comandos que vão sumir) e explica por que um tutorial antigo às vezes mostra coisas diferentes do seu terminal.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como descobrir a sua versão do Git e onde ler as notas de lançamento oficiais.</li>
+  <li>As novidades das versões 2.50 a 2.53 (a do Ubuntu 26.04, usada neste guia), com saídas reais.</li>
+  <li>O que chegou depois, nas versões 2.54, 2.55 e 2.56.</li>
+  <li>O que muda no Git 3.0: <code>main</code>, SHA-256, <i>reftable</i>, Rust e comandos removidos.</li>
+</ul>
+</div>
+
+<div class="note">
+<strong>De onde vêm as informações</strong>
+<p>As novidades foram conferidas nas <strong>notas de lançamento oficiais</strong> (<em>release notes</em>) do projeto Git, na pasta <a href="https://github.com/git/git/tree/master/Documentation/RelNotes">Documentation/RelNotes</a>, e no documento <a href="https://git-scm.com/docs/BreakingChanges">BreakingChanges</a>, em outubro de 2026. As saídas de terminal vêm do laboratório, com o Git 2.53.0 do Ubuntu 26.04. O que é de versões mais novas que a do laboratório não foi rodado e está marcado como <strong>ilustrativo</strong>.</p>
+</div>
+
+<hr>
+
+<h2>A ideia: o Git é como um idioma vivo</h2>
+<p>O português de hoje não é o dos seus avós: palavras novas aparecem ("printar", "dar um <em>commit</em>"), algumas caem em desuso, mas você ainda entende um livro antigo. O Git é parecido. Ele quase nunca quebra o que já funciona: um comando de 2010 ainda roda hoje. Mas ganha palavras novas (<code>git switch</code>, <code>git config get</code>), passa a dar conselhos diferentes e, raramente, aposenta uma palavra velha. As mudanças que <strong>quebram</strong> compatibilidade ficam guardadas para uma versão "redonda": o Git 3.0.</p>
+
+<h2>Qual é a minha versão?</h2>
+<pre class="term">$ git --version
+git version 2.53.0</pre>
+<dl class="anatomy">
+  <dt>2</dt><dd>A versão "grande" (<em>major</em>). Só muda quando há mudanças que quebram compatibilidade; o 2.0 é de 2014.</dd>
+  <dt>53</dt><dd>A versão "média" (<em>minor</em>): cada uma traz recursos novos. Sai uma a cada dois ou três meses.</dd>
+  <dt>0</dt><dd>As correções (<em>patch</em>): 2.53.1, 2.53.2… só consertam problemas. (É o <a href="versionamento-semantico.html">versionamento semântico</a> na prática.)</dd>
+</dl>
+<p>O Ubuntu (como outras distribuições) congela uma versão do Git em cada lançamento e só aplica correções de segurança. Por isso o Ubuntu 26.04 vem com o 2.53, mesmo depois de o projeto Git lançar versões mais novas. Para quem está aprendendo, isso não faz diferença: tudo o que este guia ensina funciona em qualquer Git dos últimos anos.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Versão</th><th>Lançada em</th></tr>
+<tr><td>2.50.0</td><td>junho de 2025</td></tr>
+<tr><td>2.51.0</td><td>agosto de 2025</td></tr>
+<tr><td>2.52.0</td><td>novembro de 2025</td></tr>
+<tr><td><strong>2.53.0</strong></td><td>fevereiro de 2026 (a do Ubuntu 26.04 e do laboratório)</td></tr>
+<tr><td>2.54.0</td><td>abril de 2026</td></tr>
+<tr><td>2.55.0</td><td>junho de 2026</td></tr>
+<tr><td>2.56.0</td><td>setembro de 2026 (a mais nova quando esta aula foi escrita)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Novidades que você já tem (até o Git 2.53)</h2>
+
+<h3><code>git switch</code> e <code>git restore</code> deixaram de ser "experimentais" <span class="versao">git 2.51</span></h3>
+<p>Os dois comandos chegaram no Git 2.23 (2019) para dividir o trabalho do antigo <a href="git-checkout.html">git checkout</a>, que fazia coisas demais: <a href="git-switch.html">git switch</a> troca de branch e <a href="git-restore.html">git restore</a> restaura arquivos. Por anos, a documentação os marcou como "experimentais" (podiam mudar). As notas do 2.51 declaram: <em>"git switch" and "git restore" are declared to be no longer experimental</em>, ou seja, agora são oficiais e estáveis. O <code>git checkout</code> continua existindo e, segundo o documento BreakingChanges, vai continuar.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona bolo';;echo 'linha estragada' &gt;&gt; bolo.txt;;git switch -q -c rascunho" data-goal="limpo,head:main,ran:\bgit restore\b,ran:\bgit switch\b" data-solucao="git restore bolo.txt;;git switch main">
+<p class="try-task"><strong>Missão:</strong> use só os comandos modernos. Descarte a mudança no <code>bolo.txt</code> com <code>git restore</code> e volte para o branch <code>main</code> com <code>git switch</code>. Confira com <code>git status</code>.</p>
+</div>
+
+<h3><code>git config get</code>, <code>set</code> e <code>list</code> <span class="versao">git 2.46</span></h3>
+<p>O <a href="git-config.html">git config</a> ganhou subcomandos com nomes claros, no lugar das opções antigas (<code>--get</code>, <code>--list</code>). As notas do 2.46 dizem que as opções antigas foram "<em>deprecated</em>" (desaconselhadas) e substituídas por subcomandos. As formas antigas ainda funcionam, e você vai vê-las muito em tutoriais:</p>
+<pre class="term" data-cwd="~/receitas">$ git config get user.name                       « forma nova
+Ana Souza
+$ git config --get user.email                    « forma antiga: ainda funciona
+ana@exemplo.com
+$ git config set core.editor nano               « forma nova de gravar
+$ git config get core.editor
+nano
+$ git config list --global                       « forma nova de "--list"
+user.name=Ana Souza
+user.email=ana@exemplo.com
+init.defaultbranch=main
+core.editor=nano</pre>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Forma antiga (ainda funciona)</th><th>Forma nova</th></tr>
+<tr><td><code>git config --get user.name</code></td><td><code>git config get user.name</code></td></tr>
+<tr><td><code>git config user.name "Ana"</code></td><td><code>git config set user.name "Ana"</code></td></tr>
+<tr><td><code>git config --list</code> ou <code>-l</code></td><td><code>git config list</code></td></tr>
+<tr><td><code>git config --unset user.name</code></td><td><code>git config unset user.name</code></td></tr>
+</table>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q" data-goal="ran:\bconfig get\b,out:ana@exemplo.com" data-solucao="git config get user.email">
+<p class="try-task"><strong>Missão:</strong> descubra qual e-mail o Git vai gravar nos commits da Ana usando a forma <strong>nova</strong> do comando (<code>git config get …</code>).</p>
+</div>
+
+<h3>O aviso do <code>main</code> e o Git 3.0 <span class="versao">git 2.52</span></h3>
+<p>Quando ninguém configurou o nome do branch inicial, o <code>git init</code> ainda usa <code>master</code>, mas o aviso agora conta o futuro. Para ver o aviso, a Ana rodou o <code>git init</code> fingindo não ter configuração nenhuma (a variável <code>GIT_CONFIG_GLOBAL=/dev/null</code> faz o Git ignorar o seu <code>~/.gitconfig</code> só nesse comando):</p>
+<pre class="term">$ GIT_CONFIG_GLOBAL=/dev/null git init teste
+hint: Using 'master' as the name for the initial branch. This default branch name
+hint: will change to "main" in Git 3.0. To configure the initial branch name
+hint: to use in all of your new repositories, which will suppress this warning,
+hint: call:
+hint:
+hint: 	git config --global init.defaultBranch &lt;name&gt;
+hint:
+hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+hint: 'development'. The just-created branch can be renamed via this command:
+hint:
+hint: 	git branch -m &lt;name&gt;
+hint:
+hint: Disable this message with "git config set advice.defaultBranchName false"
+Repositório vazio Git inicializado em  /home/ana/teste/.git/</pre>
+<p>A segunda linha é a novidade: <em>"This default branch name will change to "main" in Git 3.0"</em>, "este nome padrão vai mudar para main no Git 3.0". As notas do 2.52 registram a decisão e prometem manter o aviso depois da troca, para quem se surpreender. Repare também que a última dica já usa a forma nova, <code>git config set</code>. Como este guia configura <code>init.defaultBranch=main</code> (veja <a href="git-init.html">git init</a>), você já vive no futuro.</p>
+
+<h3><code>git repo info</code>: o "RG" do repositório <span class="versao">git 2.52</span></h3>
+<p>Um comando novo para perguntar características do repositório. No Git 2.53, ganhou a opção <code>--all</code>:</p>
+<pre class="term" data-cwd="~/receitas">$ git repo info --all
+layout.bare=false                               « não é um repositório "bare" (de servidor)
+layout.shallow=false                            « tem o histórico completo
+object.format=sha1                              « o tipo de hash dos commits
+references.format=files                         « como os branches são guardados</pre>
+<p>Guarde as duas últimas linhas: <code>sha1</code> e <code>files</code> são exatamente os dois padrões que o Git 3.0 vai trocar (mais abaixo).</p>
+
+<h3><code>git last-modified</code>: quem mexeu por último em cada arquivo <span class="versao">git 2.52</span></h3>
+<p>Mostra, para cada arquivo, o último commit que o alterou (parecido com o que o GitHub mostra ao lado de cada arquivo na página do repositório):</p>
+<pre class="term" data-cwd="~/receitas">$ git last-modified
+f342232ba0f60a9ad1c2cdbdc2f1f505f0f075eb	.gitignore
+b32fb652ee9f2bf072c933f4f26d3039b8a7ea7c	bolo.txt
+6cf7a447899a061007b268f513a37191412735db	README.md
+14654f8e6649a27e0b4f0e084a3d1d22eaa66d04	pudim.txt
+$ git log --oneline
+f342232 Ignora logs e o .env
+b32fb65 Adiciona o fermento ao bolo                « o último a mexer no bolo.txt
+6cf7a44 Descreve o site no README
+69e7cac Adiciona a farinha à receita de bolo
+14654f8 Corrige a quantidade de ovos do pudim     « o último a mexer no pudim.txt
+fcea9c3 Adiciona receita de pudim
+44f770a Cria o README e a receita de bolo</pre>
+<p>Para uma linha específica de um arquivo, a ferramenta continua sendo o <a href="git-blame.html">git blame</a>.</p>
+
+<h3>O <code>git whatchanged</code> está de saída <span class="versao">git 2.51</span></h3>
+<p>Se um tutorial antigo mandar usar <code>git whatchanged</code>, veja o que acontece hoje:</p>
+<pre class="term" data-cwd="~/receitas">$ git whatchanged -1
+'git whatchanged' is nominated for removal.
+
+hint: You can replace 'git whatchanged &lt;opts&gt;' with:
+hint:	git log &lt;opts&gt; --raw --no-merges
+hint: Or make an alias:
+hint:	git config set --global alias.whatchanged 'log --raw --no-merges'
+
+If you still use this command, here's what you can do:
+
+- read https://git-scm.com/docs/BreakingChanges.html
+- check if anyone has discussed this on the mailing
+  list and if they came up with something that can
+  help you: https://lore.kernel.org/git/?q=git%20whatchanged
+- send an email to &lt;git@vger.kernel.org&gt; to let us
+  know that you still use this command and were unable
+  to determine a suitable replacement
+
+fatal: refusing to run without --i-still-use-this</pre>
+<p>Em português: "o <code>git whatchanged</code> foi indicado para remoção"; a dica sugere o substituto (<code>git log --raw --no-merges</code>) ou um <a href="alias.html">alias</a>; e o <code>fatal</code> final diz "me recuso a rodar sem <code>--i-still-use-this</code>" ("eu ainda uso isto"), uma opção que existe só para quem precisa de tempo para se adaptar. A mensagem é em inglês porque é nova e ainda não foi traduzida.</p>
+
+<h3>Outras do período (para conhecer)</h3>
+<ul>
+  <li><span class="versao">git 2.51</span> <code>git stash</code> ganhou <code>export</code> e <code>import</code>, para levar stashes de um computador a outro.</li>
+  <li><span class="versao">git 2.51</span> <code>git merge</code> e <code>git pull</code> ganharam <code>--compact-summary</code>, um resumo mais curto do que chegou.</li>
+  <li><span class="versao">git 2.52</span> <code>git refs list</code> e <code>git refs exists</code>: uma "caixa de ferramentas" nova para listar e conferir referências (branches, tags).</li>
+</ul>
+
+<hr>
+
+<h2>Depois do 2.53 (ilustrativo: não está no Ubuntu 26.04)</h2>
+<p>Estas novidades vêm das notas de lançamento oficiais. Se você instalar um Git mais novo (por exemplo, pelo site <a href="https://git-scm.com/">git-scm.com</a>), vai encontrá-las.</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Versão</th><th>Novidade</th><th>O que significa para você</th></tr>
+<tr><td>2.54</td><td><code>git history</code> (experimental), com o subcomando <code>split</code></td><td>Um comando novo para reescrever o histórico, uma alternativa futura para parte do que hoje se faz com o <a href="rebase-interativo.html">rebase interativo</a>.</td></tr>
+<tr><td>2.54</td><td><code>git add -p</code> mostra o estado de cada trecho e permite revisitar um arquivo já tratado</td><td>Menos medo de errar ao escolher pedaço por pedaço.</td></tr>
+<tr><td>2.54</td><td><code>git config list</code> passa a ser "o jeito oficial" de escrever <code>git config -l</code></td><td>A documentação passa a usar a forma nova.</td></tr>
+<tr><td>2.55</td><td><code>git history fixup</code></td><td>Mais um subcomando do <code>git history</code>, para corrigir um commit antigo.</td></tr>
+<tr><td>2.55</td><td><code>git log --graph</code> pode ser limitado a um número de "trilhas"</td><td>Grafos menos largos em projetos com muitos branches.</td></tr>
+<tr><td>2.55</td><td>Rust ativado por padrão na compilação (com opção de desligar)</td><td>Nada muda no uso; é o caminho para o Rust ser obrigatório no 3.0.</td></tr>
+<tr><td>2.56</td><td><code>git add --resolved</code></td><td>Depois de <a href="resolver-conflitos.html">resolver um conflito</a>, prepara só os arquivos resolvidos e <strong>recusa</strong> se ainda houver marcas <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code> esquecidas.</td></tr>
+<tr><td>2.56</td><td><code>git branch --delete-merged</code></td><td>Apaga de uma vez os branches locais já juntados ao branch remoto que eles acompanham.</td></tr>
+<tr><td>2.56</td><td>O <code>git status</code> sugere <code>git pull &lt;remoto&gt; &lt;branch&gt;</code> quando você está atrás ou divergiu</td><td>A dica muda de texto: não estranhe se for diferente da deste guia.</td></tr>
+<tr><td>2.56</td><td><code>git push origin/main</code> é reconhecido como provável erro de digitação</td><td>O Git sugere a correção (<code>origin main</code>, com espaço).</td></tr>
+<tr><td>2.56</td><td><code>-h</code> e <code>--help</code> terminam com código 0 (antes, 129)</td><td>Só importa para quem escreve scripts.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>O Git 3.0: o que vai mudar</h2>
+<p>O documento <a href="https://git-scm.com/docs/BreakingChanges">BreakingChanges</a> lista as mudanças guardadas para o 3.0. Ele diz que <strong>ainda não há data</strong> para o lançamento, e que versões que quebram compatibilidade costumam sair com intervalos de vários anos. As principais:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Mudança</th><th>Hoje (2.53)</th><th>No Git 3.0</th><th>Afeta você?</th></tr>
+<tr><td>Branch inicial do <code>git init</code> sem configuração</td><td><code>master</code> (com aviso)</td><td><code>main</code></td><td>Não, se você já configurou <code>init.defaultBranch</code>.</td></tr>
+<tr><td>Hash dos repositórios novos</td><td><code>sha1</code></td><td><code>sha256</code> (o SHA-1 continua suportado)</td><td>Os <a href="hash.html">hashes</a> ficam mais longos (64 caracteres em vez de 40).</td></tr>
+<tr><td>Formato das referências</td><td><code>files</code> (um arquivo por branch)</td><td><code>reftable</code></td><td>Não no dia a dia: é interno, mais rápido em repositórios enormes.</td></tr>
+<tr><td><code>git whatchanged</code> e <code>git pack-redundant</code></td><td>Recusam rodar sem <code>--i-still-use-this</code></td><td>Removidos</td><td>Use <code>git log --raw</code>.</td></tr>
+<tr><td>Rust na compilação</td><td>Opcional</td><td>Obrigatório</td><td>Só para quem compila o Git.</td></tr>
+<tr><td><code>git checkout</code></td><td>Existe</td><td>Continua existindo</td><td>Não: <code>switch</code>/<code>restore</code> são alternativas, não substitutos forçados.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Formas diferentes de acompanhar as novidades</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Onde</th><th>Para quem</th></tr>
+<tr><td>As notas de lançamento oficiais (<code>Documentation/RelNotes/2.53.0.adoc</code> etc. no repositório do Git)</td><td>A fonte mais completa e exata, mas técnica e em inglês.</td></tr>
+<tr><td>O site <a href="https://git-scm.com/">git-scm.com</a></td><td>Mostra a versão mais recente e a documentação de cada comando.</td></tr>
+<tr><td>O blog do GitHub (resumos de cada versão do Git)</td><td>Resumos com exemplos, mais fáceis de ler.</td></tr>
+<tr><td><code>git help NOME</code> no seu computador</td><td>A documentação da <strong>sua</strong> versão (veja <a href="git-help.html">git help</a>): a melhor fonte para saber o que o seu Git aceita.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Quando dá errado</h2>
+
+<div class="cenario">
+<strong>O tutorial mostra uma mensagem diferente da minha</strong>
+<p><strong>O que aconteceu:</strong> mensagens e dicas do Git mudam de versão para versão (e de idioma para idioma). Um tutorial de 2018 mostra o <code>git status</code> sugerindo <code>git checkout -- arquivo</code>; o Git de hoje sugere <code>git restore</code>.</p>
+<p><strong>Como resolver:</strong> confira a sua versão com <code>git --version</code> e confie na dica do <strong>seu</strong> terminal: ela foi escrita para a sua versão.</p>
+</div>
+
+<div class="cenario">
+<strong><code>git: 'last-modified' não é um comando git</code> (ou <code>repo</code>, <code>history</code>…)</strong>
+<p><strong>O que aconteceu:</strong> o comando é mais novo que o seu Git (por exemplo, <code>git history</code> só existe a partir do 2.54).</p>
+<p><strong>Como resolver:</strong> veja a versão com <code>git --version</code>; use o comando equivalente antigo (o <a href="rebase-interativo.html">rebase interativo</a> no lugar do <code>git history</code>) ou atualize o Git.</p>
+</div>
+
+<div class="cenario">
+<strong><code>fatal: refusing to run without --i-still-use-this</code></strong>
+<p><strong>O que aconteceu:</strong> o comando está marcado para remoção no Git 3.0 (como o <code>git whatchanged</code>, acima).</p>
+<p><strong>Como resolver:</strong> use o substituto que a dica mostra. O <code>--i-still-use-this</code> só adia o problema.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>Desde</th><th>Para quê</th></tr>
+<tr><td><code>git --version</code></td><td>sempre</td><td>Mostra a sua versão.</td></tr>
+<tr><td><code>git switch</code> / <code>git restore</code></td><td>2.23 (estáveis no 2.51)</td><td>Trocar de branch / restaurar arquivos.</td></tr>
+<tr><td><code>git config get</code> / <code>set</code> / <code>list</code> / <code>unset</code></td><td>2.46</td><td>Ler e gravar configurações.</td></tr>
+<tr><td><code>git repo info --all</code></td><td>2.52 (<code>--all</code> no 2.53)</td><td>Características do repositório.</td></tr>
+<tr><td><code>git last-modified</code></td><td>2.52</td><td>Último commit que mexeu em cada arquivo.</td></tr>
+<tr><td><code>git history</code></td><td>2.54 (experimental)</td><td>Reescrever o histórico.</td></tr>
+<tr><td><code>git add --resolved</code></td><td>2.56</td><td>Preparar arquivos com conflito resolvido.</td></tr>
+<tr><td><code>git branch --delete-merged</code></td><td>2.56</td><td>Apagar branches já juntados.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. A sua versão</h3>
+<p>Complete o comando que mostra a versão do Git:</p>
+<div class="ex-code">git <input data-answer="--version" aria-label="opção"></div>
+</div>
+
+<div class="exercise">
+<h3>2. A forma nova</h3>
+<p>Complete com a forma nova de ler uma configuração:</p>
+<div class="ex-code">git config <input data-answer="get" aria-label="subcomando"> user.name</div>
+</div>
+
+<div class="exercise">
+<h3>3. O substituto</h3>
+<p>Complete o comando que substitui o <code>git whatchanged</code>, segundo a dica do próprio Git:</p>
+<div class="ex-code">git log <input data-answer="--raw" aria-label="opção"> --no-merges</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. No Git 3.0, que nome de branch o <code>git init</code> vai usar quando nada estiver configurado?</p>
+<label><input type="radio" name="q4"> <code>master</code></label>
+<label><input type="radio" name="q4"> <code>main</code></label>
+<label><input type="radio" name="q4"> <code>trunk</code></label>
+<label><input type="radio" name="q4"> Vai perguntar toda vez.</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">5. O que aconteceu com o <code>git checkout</code> depois que <code>switch</code> e <code>restore</code> ficaram estáveis?</p>
+<label><input type="radio" name="q5"> Foi removido no Git 2.51.</label>
+<label><input type="radio" name="q5"> Vai ser removido no Git 3.0.</label>
+<label><input type="radio" name="q5"> Continua existindo; os novos são alternativas mais claras.</label>
+<label><input type="radio" name="q5"> Passou a ser experimental.</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">6. O Ubuntu 26.04 traz o Git 2.53, mas o projeto já lançou o 2.56. Por quê?</p>
+<label><input type="radio" name="q6"> A distribuição congela uma versão no lançamento e só aplica correções.</label>
+<label><input type="radio" name="q6"> O 2.56 não funciona no Linux.</label>
+<label><input type="radio" name="q6"> O Ubuntu atualiza o Git só no Git 3.0.</label>
+<label><input type="radio" name="q6"> O 2.53 é mais novo que o 2.56.</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git --version</code> mostra a sua versão; o Ubuntu 26.04 traz o 2.53.0.</li>
+  <li>Até o 2.53: <code>switch</code>/<code>restore</code> estáveis, <code>git config get/set/list</code>, <code>git repo info</code>, <code>git last-modified</code>, aviso do <code>main</code>, <code>whatchanged</code> de saída.</li>
+  <li>Depois (2.54–2.56): <code>git history</code>, <code>git add --resolved</code>, <code>git branch --delete-merged</code>, dicas novas no <code>git status</code>.</li>
+  <li>Git 3.0 (sem data): <code>main</code>, SHA-256, <i>reftable</i>, Rust obrigatório, comandos velhos removidos; o <code>checkout</code> fica.</li>
+  <li>Na dúvida, confie na dica do <strong>seu</strong> terminal e no <code>git help</code> da sua versão.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
