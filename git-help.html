@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git git help — pedindo ajuda ao próprio Git | Guia Git</title>
+<meta name="description" content="Como pedir ajuda ao Git: git help (os comandos mais comuns, traduzidos), o resumo rápido com -h, o manual completo com git help comando e --help, as listas git help -a e -g, como navegar no manual e o que fazer quando o nome está errado.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Pedindo Ajuda (git help)</span></h1>
+
+<p class="intro">O Git tem mais de cem comandos, e cada um tem dezenas de opções. Ninguém decora tudo: quem usa Git no dia a dia sabe <strong>onde perguntar</strong>. O próprio Git traz três níveis de ajuda: a lista dos comandos mais comuns, um resumo rápido de cada comando e o manual completo. Nesta aula você vai usar os três.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Ver os comandos mais comuns com <code>git help</code> (e o que cada um faz, em português).</li>
+  <li>Pedir o resumo de um comando com <code>-h</code>.</li>
+  <li>Abrir o manual completo com <code>git help comando</code> ou <code>git comando --help</code>, e sair dele.</li>
+  <li>Listar todos os comandos e os guias com <code>git help -a</code> e <code>git help -g</code>.</li>
+</ul>
+</div>
+
+<hr>
+
+<h2>A ideia: o cardápio, a etiqueta e o livro de receitas</h2>
+<p>Pense numa cozinha. Para saber o que dá para fazer, você olha o <strong>cardápio</strong> (<code>git help</code>). Para lembrar rapidinho os ingredientes de um prato, lê a <strong>etiqueta</strong> do pote (<code>git comando -h</code>). E para entender tudo sobre um prato, abre o <strong>livro de receitas</strong> na página certa (<code>git help comando</code>).</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Nível</th><th>Comando</th><th>Mostra</th></tr>
+<tr><td>Cardápio</td><td><code>git help</code></td><td>Os comandos mais comuns, agrupados por tarefa.</td></tr>
+<tr><td>Etiqueta</td><td><code>git status -h</code></td><td>O resumo das opções, ali mesmo no terminal.</td></tr>
+<tr><td>Livro</td><td><code>git help status</code></td><td>O manual completo do comando.</td></tr>
+</table>
+</div>
+
+<div class="note">
+<strong>A ajuda do Git está em inglês</strong>
+<p>Ao contrário das mensagens do dia a dia (o <code>git status</code>, os erros), que saem em português, a ajuda do Git quase não tem tradução: a lista de comandos e o manual estão em inglês. Por isso esta aula traduz as partes importantes. Com um tradutor no navegador, a <a href="https://git-scm.com/docs">documentação oficial em git-scm.com/docs</a> também ajuda.</p>
+</div>
+
+<hr>
+
+<h2>O cardápio: <code>git help</code></h2>
+<p>Sem nada depois, <code>git help</code> mostra a forma geral de um comando do Git e os comandos mais usados:</p>
+
+<pre class="term">$ git help
+usage: git [-v | --version] [-h | --help] [-C &lt;path&gt;] [-c &lt;name&gt;=&lt;value&gt;]
+           [--exec-path[=&lt;path&gt;]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--no-lazy-fetch]
+           [--no-optional-locks] [--no-advice] [--bare] [--git-dir=&lt;path&gt;]
+           [--work-tree=&lt;path&gt;] [--namespace=&lt;name&gt;] [--config-env=&lt;name&gt;=&lt;envvar&gt;]
+           &lt;command&gt; [&lt;args&gt;]                                  « git, opções, o comando e os argumentos dele
+
+These are common Git commands used in various situations:
+
+start a working area (see also: git help tutorial)
+   clone      Clone a repository into a new directory
+   init       Create an empty Git repository or reinitialize an existing one
+
+work on the current change (see also: git help everyday)
+   add        Add file contents to the index
+   mv         Move or rename a file, a directory, or a symlink
+   restore    Restore working tree files
+   rm         Remove files from the working tree and from the index
+
+examine the history and state (see also: git help revisions)
+   bisect     Use binary search to find the commit that introduced a bug
+   diff       Show changes between commits, commit and working tree, etc
+   grep       Print lines matching a pattern
+   log        Show commit logs
+   show       Show various types of objects
+   status     Show the working tree status
+
+grow, mark and tweak your common history
+   backfill   Download missing objects in a partial clone
+   branch     List, create, or delete branches
+   commit     Record changes to the repository
+   merge      Join two or more development histories together
+   rebase     Reapply commits on top of another base tip
+   reset      Set `HEAD` or the index to a known state
+   switch     Switch branches
+   tag        Create, list, delete or verify tags
+
+collaborate (see also: git help workflows)
+   fetch      Download objects and refs from another repository
+   pull       Fetch from and integrate with another repository or a local branch
+   push       Update remote refs along with associated objects
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help &lt;command&gt;' or 'git help &lt;concept&gt;'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.</pre>
+
+<h3>Lendo a primeira parte</h3>
+<p>As primeiras linhas, depois de <code>usage:</code> ("uso:"), são a <strong>forma geral</strong> de qualquer comando do Git. Elas usam uma notação que aparece em toda ajuda de terminal:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Notação</th><th>Quer dizer</th><th>Exemplo</th></tr>
+<tr><td><code>[ … ]</code></td><td>Opcional: pode ou não estar.</td><td><code>[-v | --version]</code></td></tr>
+<tr><td><code>&lt; … &gt;</code></td><td>Troque por um valor seu.</td><td><code>&lt;command&gt;</code> = o nome do comando, como <code>status</code></td></tr>
+<tr><td><code>a | b</code></td><td>Um <strong>ou</strong> outro.</td><td><code>-h | --help</code>: as duas formas fazem o mesmo</td></tr>
+<tr><td><code>…</code></td><td>Pode repetir.</td><td><code>&lt;pathspec&gt;...</code> = um ou mais arquivos</td></tr>
+</table>
+</div>
+<p>A última linha da forma geral, <code>&lt;command&gt; [&lt;args&gt;]</code>, é a que importa: todo uso do Git é <code>git</code> + um comando + os argumentos dele.</p>
+
+<h3>O cardápio, traduzido</h3>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Grupo</th><th>Comando</th><th>O que faz</th></tr>
+<tr><td rowspan="2">Começar uma área de trabalho</td><td><code>clone</code></td><td>Copia um repositório para uma pasta nova.</td></tr>
+<tr><td><code>init</code></td><td>Cria um repositório vazio (ou reinicializa um existente).</td></tr>
+<tr><td rowspan="4">Trabalhar na mudança atual</td><td><code>add</code></td><td>Põe o conteúdo dos arquivos na área de preparo (o <em>index</em>).</td></tr>
+<tr><td><code>mv</code></td><td>Move ou renomeia um arquivo ou pasta.</td></tr>
+<tr><td><code>restore</code></td><td>Restaura arquivos da pasta de trabalho.</td></tr>
+<tr><td><code>rm</code></td><td>Apaga arquivos da pasta e da área de preparo.</td></tr>
+<tr><td rowspan="6">Examinar a história e o estado</td><td><code>bisect</code></td><td>Busca binária para achar o commit que trouxe um defeito.</td></tr>
+<tr><td><code>diff</code></td><td>Mostra as diferenças entre versões.</td></tr>
+<tr><td><code>grep</code></td><td>Procura linhas com um texto.</td></tr>
+<tr><td><code>log</code></td><td>Mostra o histórico de commits.</td></tr>
+<tr><td><code>show</code></td><td>Mostra um objeto (por exemplo, um commit).</td></tr>
+<tr><td><code>status</code></td><td>Mostra o estado da pasta de trabalho.</td></tr>
+<tr><td rowspan="8">Fazer crescer, marcar e ajustar a história</td><td><code>backfill</code></td><td>Baixa objetos que faltam num clone parcial (uso avançado).</td></tr>
+<tr><td><code>branch</code></td><td>Lista, cria ou apaga ramos.</td></tr>
+<tr><td><code>commit</code></td><td>Registra as mudanças no repositório.</td></tr>
+<tr><td><code>merge</code></td><td>Junta duas ou mais linhas de desenvolvimento.</td></tr>
+<tr><td><code>rebase</code></td><td>Reaplica commits sobre outra base.</td></tr>
+<tr><td><code>reset</code></td><td>Põe o <code>HEAD</code> ou a área de preparo num estado escolhido.</td></tr>
+<tr><td><code>switch</code></td><td>Troca de ramo.</td></tr>
+<tr><td><code>tag</code></td><td>Cria, lista, apaga ou verifica etiquetas.</td></tr>
+<tr><td rowspan="3">Colaborar</td><td><code>fetch</code></td><td>Baixa commits de outro repositório.</td></tr>
+<tr><td><code>pull</code></td><td>Baixa e junta ao seu ramo.</td></tr>
+<tr><td><code>push</code></td><td>Envia os seus commits para o outro repositório.</td></tr>
+</table>
+</div>
+<p>Quase todos esses comandos têm aula própria neste guia. <code>git --help</code> e <code>git -h</code> mostram a mesma lista.</p>
+
+<div class="try" data-goal="ran:^\s*git (help|--help|-h)\s*$" data-solucao="git help">
+<p class="try-task"><strong>Missão:</strong> veja o "cardápio" dos comandos mais comuns do Git com <code>git help</code>. Procure na lista o comando que "mostra o histórico de commits".</p>
+</div>
+
+<hr>
+
+<h2>A etiqueta: <code>-h</code></h2>
+<p>Quando você já sabe qual comando quer e só não lembra a opção, acrescente <code>-h</code> ao comando. O Git mostra um resumo curto, ali mesmo, sem abrir nada:</p>
+
+<pre class="term">$ git status -h
+uso: git status [&lt;options&gt;] [--] [&lt;pathspec&gt;...]          « a forma do comando
+
+    -v, --[no-]verbose    detalhado
+    -s, --[no-]short      show status concisely             « -s ou --short: mostrar de forma curta
+    -b, --[no-]branch     show branch information
+    --[no-]show-stash     show stash information
+    --[no-]ahead-behind   compute full ahead/behind values
+    --[no-]porcelain[=&lt;version&gt;]
+                          machine-readable output
+    --[no-]long           show status in long format (default)
+    -z, --[no-]null       terminate entries with NUL
+    -u, --[no-]untracked-files[=&lt;mode&gt;]
+                          show untracked files, optional modes: all, normal, no. (Default: all)
+    --[no-]ignored[=&lt;mode&gt;]
+                          show ignored files, optional modes: traditional, matching, no. (Default: traditional)
+    --[no-]ignore-submodules[=&lt;when&gt;]
+                          ignore changes to submodules, optional when: all, dirty, untracked. (Default: all)
+    --[no-]column[=&lt;style&gt;]
+                          list untracked files in columns
+    --no-renames          do not detect renames
+    --renames             opposite of --no-renames
+    -M, --find-renames[=&lt;n&gt;]
+                          detect renames, optionally set similarity index</pre>
+
+<p>Cada linha é uma opção. À esquerda, as formas de escrever: <code>-s</code> (curta, um tracinho, uma letra) e <code>--short</code> (longa, dois tracinhos, uma palavra), que fazem o mesmo. O <code>[no-]</code> diz que existe também a forma "desligada", como <code>--no-short</code>. À direita, a descrição. Repare que o Git traduziu algumas partes ("uso:", "detalhado") e não outras: a tradução da ajuda ainda está pela metade.</p>
+
+<p>Num comando com muitas opções, como o <code>git commit -h</code>, a lista é longa; o começo mostra a forma do comando:</p>
+<pre class="term">$ git log -h | head -5
+uso: git log [&lt;options&gt;] [&lt;revision-range&gt;] [[--] &lt;path&gt;...]
+   ou: git show [&lt;options&gt;] &lt;object&gt;...
+
+    -q, --[no-]quiet      suppress diff output
+    --[no-]source         show source</pre>
+<p>O <code>| head -5</code> mostra só as 5 primeiras linhas. O "ou:" indica outra forma de uso; aqui, o Git juntou na mesma ajuda o <code>git log</code> e o <code>git show</code>, que têm as mesmas opções.</p>
+
+<div class="try" data-goal="ran:^\s*git (status|log|commit|add|config|init) -h" data-solucao="git status -h">
+<p class="try-task"><strong>Missão:</strong> leia a "etiqueta" do <code>git status</code> com <code>git status -h</code> e descubra qual é a forma curta da opção <code>--short</code>. Depois experimente o <code>-h</code> de outro comando, como <code>git log -h</code>.</p>
+</div>
+
+<hr>
+
+<h2>O livro: o manual completo</h2>
+<p>Para entender um comando a fundo, abra o manual dele. Há duas formas, que dão no mesmo:</p>
+<pre class="syntax">git help status
+git status --help</pre>
+<p>No Linux e no macOS, o manual abre no próprio terminal, numa tela de leitura (o <code>man</code>). O começo do manual do <code>git status</code>:</p>
+
+<pre class="term">$ git help status
+GIT-STATUS(1)                      Git Manual                     GIT-STATUS(1)
+
+NAME
+       git-status - Show the working tree status
+
+SYNOPSIS
+       git status [&lt;options&gt;] [--] [&lt;pathspec&gt;...]
+
+DESCRIPTION
+       Displays paths that have differences between the index file and the
+       current HEAD commit, paths that have differences between the working
+       tree and the index file, and paths in the working tree that are not
+       tracked by Git (and are not ignored by gitignore(5)). The first are what
+       you would commit by running git commit; the second and third are what
+       you could commit by running git add before running git commit.
+
+OPTIONS
+       -s, --short
+           Give the output in the short-format.
+…</pre>
+
+<p>Todo manual tem as mesmas seções: <strong>NAME</strong> (o nome e uma linha sobre o que faz), <strong>SYNOPSIS</strong> ("sinopse": a forma do comando), <strong>DESCRIPTION</strong> (a explicação), <strong>OPTIONS</strong> (cada opção em detalhe) e, mais para o fim, muitas vezes <strong>EXAMPLES</strong> (exemplos), a parte mais útil para quem está começando.</p>
+
+<h3>Andando no manual</h3>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Tecla</th><th>O que faz</th></tr>
+<tr><td><kbd>Espaço</kbd> / <kbd>b</kbd></td><td>Desce / sobe uma tela.</td></tr>
+<tr><td><kbd>↓</kbd> <kbd>↑</kbd></td><td>Desce / sobe uma linha.</td></tr>
+<tr><td><kbd>/</kbd> texto <kbd>Enter</kbd></td><td>Procura o texto. <kbd>n</kbd> vai para a próxima ocorrência.</td></tr>
+<tr><td><kbd>g</kbd> / <kbd>G</kbd></td><td>Vai para o começo / para o fim.</td></tr>
+<tr><td><kbd>h</kbd></td><td>Mostra a ajuda das teclas.</td></tr>
+<tr><td><strong><kbd>q</kbd></strong></td><td><strong>Sai do manual</strong> e volta ao terminal.</td></tr>
+</table>
+</div>
+
+<div class="tip">
+<strong>No Windows, o manual abre no navegador</strong>
+<p>No Git for Windows, <code>git help status</code> abre a versão em HTML do mesmo manual no seu navegador. O conteúdo é igual ao das páginas de <a href="https://git-scm.com/docs">git-scm.com/docs</a>. Em qualquer sistema, <code>git help -w status</code> pede a versão web (no Linux, isso só funciona se a documentação em HTML estiver instalada).</p>
+</div>
+
+<div class="note">
+<strong>O terminal do guia não tem o manual</strong>
+<p>Nas missões, use <code>git help</code> e o <code>-h</code>. Para ler o manual completo, use o terminal do seu computador ou o site git-scm.com/docs.</p>
+</div>
+
+<hr>
+
+<h2>Todos os comandos e os guias</h2>
+<p>O <code>git help</code> mostra só os comandos mais comuns. Para a lista completa, use <code>-a</code> (<em>all</em>, "todos"); ela é comprida, por isso aqui vão só as primeiras linhas:</p>
+
+<pre class="term">$ git help -a | head -12
+See 'git help &lt;command&gt;' to read about a specific subcommand
+
+Main Porcelain Commands                                « os comandos "de uso diário"
+   add                     Add file contents to the index
+   am                      Apply a series of patches from a mailbox
+   archive                 Create an archive of files from a named tree
+   backfill                Download missing objects in a partial clone
+   bisect                  Use binary search to find the commit that introduced a bug
+   branch                  List, create, or delete branches
+   bundle                  Move objects and refs by archive
+   checkout                Switch branches or restore working tree files
+   cherry-pick             Apply the changes introduced by some existing commits</pre>
+
+<p>"Porcelain" ("porcelana") é o apelido que o Git dá aos comandos feitos para pessoas, a parte "bonita" do Git, em oposição aos comandos internos, chamados de "encanamento" (<em>plumbing</em>).</p>
+
+<p>Além dos comandos, o Git traz <strong>guias</strong> sobre conceitos. O <code>-g</code> (<em>guides</em>) lista:</p>
+
+<pre class="term">$ git help -g
+The Git concept guides are:
+   core-tutorial    A Git core tutorial for developers
+   credentials      Providing usernames and passwords to Git
+   cvs-migration    Git for CVS users
+   diffcore         Tweaking diff output
+   everyday         A useful minimum set of commands for Everyday Git
+   faq              Frequently asked questions about using Git
+   glossary         A Git Glossary
+   namespaces       Git namespaces
+   remote-helpers   Helper programs to interact with remote repositories
+   submodules       Mounting one repository inside another
+   tutorial         A tutorial introduction to Git
+   tutorial-2       A tutorial introduction to Git: part two
+   workflows        An overview of recommended workflows with Git
+
+'git help -a' and 'git help -g' list available subcommands and some
+concept guides. See 'git help &lt;command&gt;' or 'git help &lt;concept&gt;'
+to read about a specific subcommand or concept.
+See 'git help git' for an overview of the system.</pre>
+
+<p>Para abrir um guia, use o nome dele: <code>git help glossary</code> abre o glossário oficial; <code>git help everyday</code>, o "mínimo do dia a dia". O glossário deste guia, em português, está em <a href="ref-glossario.html">Glossário</a>.</p>
+
+<hr>
+
+<h2>Formas diferentes de pedir ajuda</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Quero…</th><th>Use</th></tr>
+<tr><td>Lembrar uma opção, rápido</td><td><code>git comando -h</code></td></tr>
+<tr><td>Entender um comando a fundo</td><td><code>git help comando</code> ou <code>git comando --help</code></td></tr>
+<tr><td>Ver os comandos mais comuns</td><td><code>git help</code></td></tr>
+<tr><td>Ver todos os comandos / os guias</td><td><code>git help -a</code> / <code>git help -g</code></td></tr>
+<tr><td>Ler no navegador</td><td><a href="https://git-scm.com/docs">git-scm.com/docs</a> ou <code>git help -w comando</code></td></tr>
+<tr><td>Ler um livro inteiro, em português</td><td>O livro <em>Pro Git</em>, gratuito no git-scm.com/book, que tem tradução para o português</td></tr>
+<tr><td>Uma explicação do jeito deste curso</td><td>A aula do comando neste guia, e a <a href="ref-comandos.html">Referência de Comandos</a></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Ajuda de um comando que não existe</strong>
+<pre class="term">$ git help stauts
+Nenhuma entrada de manual para gitstauts</pre>
+<p><strong>O que aconteceu:</strong> não existe manual para <code>stauts</code>, porque o nome está errado. A mensagem é do <code>man</code>, o leitor de manuais do sistema, e não do Git: por isso está em português e com o nome colado (<code>gitstauts</code>).</p>
+<p><strong>Como resolver:</strong> use <code>-h</code> com o nome errado; aí quem responde é o Git, que sugere o nome certo:</p>
+<pre class="term">$ git stauts -h
+git: 'stauts' não é um comando git. Veja 'git --help'.
+
+The most similar command is
+	status</pre>
+</div>
+
+<div class="cenario">
+<strong>Abri o manual e não sei sair</strong>
+<p><strong>O que aconteceu:</strong> o manual abriu numa tela de leitura que ocupa o terminal todo. Nada que você digite vira comando enquanto ela estiver aberta.</p>
+<p><strong>Como resolver:</strong> aperte <kbd>q</kbd>. O mesmo vale para outras telas assim que o Git abre, como um <code>git log</code> comprido.</p>
+</div>
+
+<div class="cenario">
+<strong>O <code>-h</code> "deu erro"?</strong>
+<pre class="term">$ git status -h
+uso: git status [&lt;options&gt;] [--] [&lt;pathspec&gt;...]
+…
+$ echo $?
+129</pre>
+<p><strong>O que aconteceu:</strong> nada de errado. Por tradição, o Git termina o <code>-h</code> com o código de saída 129 (e não 0), como faz quando um comando é usado de um jeito que ele não entende. Para você, que lê a ajuda, isso não muda nada; só importa em scripts.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git help</code></td><td>Lista os comandos mais comuns (igual a <code>git --help</code> e <code>git -h</code>).</td></tr>
+<tr><td><code>git comando -h</code></td><td>Resumo das opções do comando.</td></tr>
+<tr><td><code>git help comando</code></td><td>Manual completo (igual a <code>git comando --help</code>).</td></tr>
+<tr><td><code>git help -a</code></td><td>Lista todos os comandos.</td></tr>
+<tr><td><code>git help -g</code></td><td>Lista os guias de conceitos.</td></tr>
+<tr><td><code>git help -w comando</code></td><td>Abre o manual no navegador.</td></tr>
+<tr><td><kbd>q</kbd></td><td>Sai do manual.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">1. A Ana lembra que o <code>git log</code> tem uma opção para mostrar um commit por linha, mas não lembra o nome. Qual é o jeito mais rápido de conferir?</p>
+<label><input type="radio" name="q1"> <code>git help</code></label>
+<label><input type="radio" name="q1"> <code>git log -h</code></label>
+<label><input type="radio" name="q1"> <code>git help -g</code></label>
+<label><input type="radio" name="q1"> Reinstalar o Git.</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">2. Qual destes comandos abre o mesmo manual que <code>git help commit</code>?</p>
+<label><input type="radio" name="q2"> <code>git commit -h</code></label>
+<label><input type="radio" name="q2"> <code>git help -a</code></label>
+<label><input type="radio" name="q2"> <code>git commit --help</code></label>
+<label><input type="radio" name="q2"> <code>git --version</code></label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">3. Na ajuda, o que significa <code>[--]</code> em <code>git status [&lt;options&gt;] [--] [&lt;pathspec&gt;...]</code>?</p>
+<label><input type="radio" name="q3"> Que é obrigatório digitar <code>--</code>.</label>
+<label><input type="radio" name="q3"> Que o comando está desatualizado.</label>
+<label><input type="radio" name="q3"> Que é preciso trocar por um valor.</label>
+<label><input type="radio" name="q3"> Que o <code>--</code> é opcional.</label>
+</div>
+
+<div class="exercise">
+<h3>4. Sair do manual</h3>
+<p>Que tecla fecha o manual e volta ao terminal?</p>
+<div class="ex-code"><input data-answer="q|Q" aria-label="tecla"></div>
+</div>
+
+<div class="exercise">
+<h3>5. Os guias</h3>
+<p>Complete para listar os guias de conceitos do Git:</p>
+<div class="ex-code">git help <input data-answer="-g|--guides" aria-label="opção"></div>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git help</code> é o cardápio: os comandos mais comuns, agrupados por tarefa.</li>
+  <li><code>git comando -h</code> é a etiqueta: o resumo das opções, no terminal.</li>
+  <li><code>git help comando</code> (ou <code>git comando --help</code>) é o livro: o manual completo; saia com <kbd>q</kbd>.</li>
+  <li><code>git help -a</code> lista todos os comandos, <code>git help -g</code> os guias.</li>
+  <li>A ajuda do Git está quase toda em inglês; git-scm.com/docs tem o mesmo conteúdo no navegador.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
