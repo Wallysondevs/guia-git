@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git renomear e apagar branches — git branch -m, -d e -D | Guia Git</title>
+<meta name="description" content="Renomear e apagar branches no Git para quem nunca usou: git branch -m (inclusive master para main), -M, git branch -d para branches já juntados, a recusa 'not fully merged', -D para apagar à força, como recuperar um branch apagado pelo hash do 'was …' ou pelo git reflog, por que não dá para apagar o branch atual, e apagar o branch no GitHub com git push origin --delete.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git: <span class="hl">Renomeando e Apagando</span> Branches</h1>
+
+<p class="intro">Branches nascem o tempo todo: um para cada ideia, cada receita nova, cada conserto. Por isso é preciso saber <strong>arrumar</strong>: trocar um nome digitado errado e apagar os branches que já cumpriram o seu papel. Tudo isso se faz com opções do <a href="git-branch.html">git branch</a>: <code>-m</code> (de <em>move</em>, "mover", aqui no sentido de renomear) e <code>-d</code> (de <em>delete</em>, "apagar"). E o Git tem uma rede de proteção: ele se recusa a apagar um branch cujo trabalho ainda não foi guardado em outro lugar.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Renomear um branch com <code>git branch -m</code>, inclusive o clássico <code>master</code> → <code>main</code>.</li>
+  <li>Apagar com <code>git branch -d</code> e entender a recusa <code>not fully merged</code>.</li>
+  <li>Apagar à força com <code>-D</code>, e recuperar um branch apagado sem querer.</li>
+  <li>Por que não dá para apagar o branch em que você está.</li>
+  <li>Apagar o branch também no GitHub: <code>git push origin --delete</code>.</li>
+</ul>
+</div>
+
+<p>As saídas vieram do Git 2.53 do Ubuntu 26.04, na máquina da Ana, com o sistema em português. As mensagens desta aula saem em inglês, porque a tradução do Git no Ubuntu ainda não as cobre; cada uma vem traduzida aqui.</p>
+
+<hr>
+
+<h2>A ideia: etiquetas, não gavetas</h2>
+<p>Lembre que um branch é só uma <strong>etiqueta</strong> colada num commit (<a href="branches.html">O que é um Branch</a>). Por isso:</p>
+<ul>
+  <li><strong>renomear</strong> é trocar o que está escrito na etiqueta: os commits não mudam;</li>
+  <li><strong>apagar</strong> é descolar a etiqueta: os commits continuam lá. O problema é quando aquela etiqueta era o <strong>único</strong> caminho até alguns commits; aí eles ficam perdidos, sem nome. É disso que o <code>-d</code> protege você.</li>
+</ul>
+
+<hr>
+
+<h2>1. Renomear: <code>git branch -m</code></h2>
+<p>A Ana criou um branch e digitou o nome no singular. Ela corrige:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git branch sobremesa
+$ git branch
+* main
+  sobremesa
+$ git branch -m sobremesa sobremesas
+$ git branch
+* main
+  sobremesas                      « nome novo
+</pre>
+
+<dl class="anatomy">
+  <dt>git branch -m</dt><dd>"Renomear branch".</dd>
+  <dt>sobremesa</dt><dd>O nome atual.</dd>
+  <dt>sobremesas</dt><dd>O nome novo. Como em todo o Git, sem mensagem quer dizer que deu certo.</dd>
+</dl>
+
+<pre>Antes:   A---B---C   ← main ← HEAD
+                     ← sobremesa
+
+Depois:  A---B---C   ← main ← HEAD
+                     ← sobremesas          (o commit é o mesmo: só a etiqueta mudou)
+</pre>
+
+<h3>Renomear o branch atual: um nome só</h3>
+<p>Com um nome só, o <code>-m</code> renomeia o branch <strong>em que você está</strong>. O uso mais famoso: um repositório criado com <code>master</code> (o nome antigo do primeiro branch; veja <a href="git-init.html">Criando um Repositório</a>), que a Ana quer chamar de <code>main</code>:</p>
+
+<pre class="term" data-cwd="~/tcc">$ git status
+No ramo master
+nothing to commit, working tree clean
+$ git branch -m main
+$ git branch
+* main
+$ git status
+No ramo main
+nothing to commit, working tree clean
+</pre>
+
+<p>O HEAD vai junto: a Ana continua "no mesmo branch", que agora se chama <code>main</code>.</p>
+
+<h3>Quando o nome novo já existe: <code>-M</code></h3>
+
+<pre class="term" data-cwd="~/receitas">$ git branch -m sobremesas main
+fatal: a branch named 'main' already exists
+</pre>
+
+<p>"Um branch chamado 'main' já existe". O <code>-m</code> nunca passa por cima de outro branch. Existe o <code>-M</code> maiúsculo, que <strong>força</strong>: o branch que tinha aquele nome some, e os commits que só ele tinha ficam sem etiqueta. Quase nunca é o que você quer; confira com <code>git log --oneline --graph --all</code> antes.</p>
+
+<hr>
+
+<h2>2. Apagar um branch: <code>git branch -d</code></h2>
+<p>A Ana criou um branch <code>teste</code> e desistiu dele antes de fazer qualquer commit:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git branch teste
+$ git branch -d teste
+Deleted branch teste (was 0244251).
+$ git branch
+* main
+  sobremesas
+</pre>
+
+<dl class="anatomy">
+  <dt>git branch -d teste</dt><dd>Apaga o branch <code>teste</code>, <strong>se for seguro</strong>: se todos os commits dele também estiverem no branch atual (ou no branch que ele acompanha no GitHub).</dd>
+  <dt>Deleted branch teste (was 0244251).</dt><dd>"Branch teste apagado (era 0244251)". O Git informa <strong>para onde a etiqueta apontava</strong>. Guarde esse hash: com ele, dá para desfazer o apagamento (seção 4).</dd>
+</dl>
+
+<hr>
+
+<h2>3. A recusa: <code>not fully merged</code></h2>
+<p>Agora a Ana fez um commit no <code>sobremesas</code> (o pudim), voltou para o <code>main</code> e tentou apagar o <code>sobremesas</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --graph --all
+* d6f2336 (sobremesas) Adiciona receita de pudim     « só o sobremesas tem este commit
+* 0244251 (HEAD -&gt; main) Adiciona receita de pão de queijo
+* 7225e04 Adiciona receita de bolo
+* 700bbd5 Cria o README
+$ git branch -d sobremesas
+error: the branch 'sobremesas' is not fully merged
+hint: If you are sure you want to delete it, run 'git branch -D sobremesas'
+hint: Disable this message with "git config set advice.forceDeleteBranch false"
+</pre>
+
+<p>Linha por linha:</p>
+<dl class="anatomy">
+  <dt>error: the branch 'sobremesas' is not fully merged</dt><dd>"O branch 'sobremesas' não foi totalmente mesclado". Ou seja: ele tem commits (o do pudim) que o <code>main</code> não tem. Se a etiqueta sumisse, ninguém mais levaria até esses commits.</dd>
+  <dt>hint: If you are sure you want to delete it, run 'git branch -D sobremesas'</dt><dd>"Se tem certeza de que quer apagá-lo, rode <code>git branch -D sobremesas</code>". O <code>-D</code> maiúsculo apaga mesmo assim.</dd>
+  <dt>hint: Disable this message …</dt><dd>Como desligar esta dica.</dd>
+</dl>
+
+<p>Nada foi apagado. A Ana tem duas saídas:</p>
+<ol class="passo">
+  <li><strong>Quer o pudim no <code>main</code>?</strong> Junte primeiro (<code>git merge sobremesas</code>, aula <a href="git-merge.html">git merge</a>) e depois apague com <code>-d</code>, que vai aceitar.</li>
+  <li><strong>O pudim não presta?</strong> Apague à força com <code>-D</code>.</li>
+</ol>
+
+
+<hr>
+
+<h2>4. Apagar à força: <code>-D</code>, e como desfazer</h2>
+<p>A Ana decidiu que não quer mais o pudim:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git branch -D sobremesas
+Deleted branch sobremesas (was d6f2336).
+$ git log --oneline --graph --all
+* 0244251 (HEAD -&gt; main) Adiciona receita de pão de queijo
+* 7225e04 Adiciona receita de bolo
+* 700bbd5 Cria o README
+</pre>
+
+<pre>Antes:   A---B---C   ← main ← HEAD
+                  \
+                   D   ← sobremesas     (D = d6f2336, o pudim)
+
+Depois:  A---B---C   ← main ← HEAD
+                  \
+                   D       (sem etiqueta: some do git log --all)
+</pre>
+
+<p>O <code>-D</code> é o mesmo que <code>--delete --force</code> ("apagar, forçando"). O commit do pudim continua dentro do <code>.git</code> por um tempo, mas nada mais leva até ele.</p>
+
+<h3>Arrependeu? Cole a etiqueta de novo</h3>
+<p>Lembra do <code>(was d6f2336)</code>? É só criar um branch com o mesmo nome naquele commit:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git branch sobremesas d6f2336
+$ git log --oneline --graph --all
+* d6f2336 (sobremesas) Adiciona receita de pudim     « voltou!
+* 0244251 (HEAD -&gt; main) Adiciona receita de pão de queijo
+* 7225e04 Adiciona receita de bolo
+* 700bbd5 Cria o README
+</pre>
+
+<p>Perdeu o hash? O <a href="git-reflog.html">git reflog</a> lembra por onde o HEAD passou, inclusive o commit do pudim:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git reflog -4
+0244251 (HEAD -&gt; main) HEAD@{0}: checkout: moving from sobremesas to main
+d6f2336 (sobremesas) HEAD@{1}: commit: Adiciona receita de pudim      « o hash está aqui
+0244251 (HEAD -&gt; main) HEAD@{2}: checkout: moving from main to sobremesas
+0244251 (HEAD -&gt; main) HEAD@{3}: checkout: moving from sobremesas to main
+</pre>
+
+<div class="warning">
+<strong>Não confie para sempre</strong>
+<p>Commits sem etiqueta são apagados de vez pela limpeza automática do Git (o <code>git gc</code>), depois de algumas semanas. Recupere logo, e use o <code>-D</code> só quando tiver certeza.</p>
+</div>
+
+<hr>
+
+<h2>5. Não dá para apagar o branch onde você está</h2>
+
+<pre class="term" data-cwd="~/receitas">$ git switch -c ideia
+Switched to a new branch 'ideia'
+$ git branch -d ideia
+error: cannot delete branch 'ideia' used by worktree at '/home/ana/receitas'
+$ git switch -q main
+$ git branch -d ideia
+Deleted branch ideia (was 0244251).
+</pre>
+
+<p>"Não é possível apagar o branch 'ideia', usado pela pasta de trabalho em '/home/ana/receitas'". O HEAD está apontando para ele; sem ele, o HEAD ficaria apontando para o nada. (<em>Worktree</em> é a pasta de trabalho; um repositório pode ter várias, assunto de <a href="git-worktree.html">git worktree</a>.) <strong>Solução:</strong> mude para outro branch e apague de lá. Vale até com <code>-D</code>.</p>
+
+<hr>
+
+<h2>6. O caminho normal: juntar e depois apagar</h2>
+<p>Este é o fim de vida de quase todo branch: o trabalho dele entra no <code>main</code> e a etiqueta é jogada fora. A Ana fez isso com um branch <code>lanches</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch -c lanches
+Switched to a new branch 'lanches'
+$ echo 'Coxinha' &gt; coxinha.txt
+$ git add coxinha.txt &amp;&amp; git commit -q -m 'Adiciona coxinha'
+$ git switch -q main
+$ git merge -q lanches
+$ git branch -d lanches
+Deleted branch lanches (was ccf325f).
+</pre>
+
+<p>Depois do <code>git merge</code>, o commit da coxinha está no <code>main</code>, então o <code>-d</code> apagou sem reclamar:</p>
+
+<pre>Depois do commit:   A---B---C   ← main
+                             \
+                              E   ← lanches ← HEAD       (E = ccf325f, a coxinha)
+
+Depois do merge:    A---B---C---E   ← main ← HEAD
+                                    ← lanches
+
+Depois do -d:       A---B---C---E   ← main ← HEAD        (nada se perdeu)
+</pre>
+<p>(O <code>sobremesas</code>, recriado na seção 4, continua de lado, no commit do pudim; ficou fora do desenho para simplificar. E repare que aqui o merge só empurrou a etiqueta <code>main</code> para frente: é o <a href="fast-forward.html">merge fast-forward</a>.)</p>
+
+<hr>
+
+<h2>7. Apagar o branch no GitHub</h2>
+<p>Se o branch também foi enviado para o GitHub (<a href="git-push.html">git push</a>), apagar a etiqueta no seu computador <strong>não</strong> apaga a do GitHub, e vice-versa. A Ana enviou o <code>main</code> e o <code>sobremesas</code> para o repositório <code>ana-souza/receitas</code> (o GitHub de mentira do laboratório):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git branch -a
+* main
+  sobremesas
+  remotes/origin/main
+  remotes/origin/sobremesas          « a cópia do branch que está no GitHub
+$ git push origin --delete sobremesas
+To https://github.com/ana-souza/receitas.git
+ - [deleted]         sobremesas       « apagado no GitHub
+$ git branch -a
+* main
+  sobremesas                         « o local continua
+  remotes/origin/main
+</pre>
+
+<dl class="anatomy">
+  <dt>git push origin --delete sobremesas</dt><dd>"Envie para o <code>origin</code> (o GitHub): apague o branch <code>sobremesas</code>". O branch local continua; para apagá-lo também, <code>git branch -d sobremesas</code>.</dd>
+  <dt>- [deleted] sobremesas</dt><dd>"[apagado]": o GitHub confirmou.</dd>
+</dl>
+
+<p>No site do GitHub também dá para apagar um branch, na página de branches do repositório, e o GitHub oferece apagar o branch quando um pull request é mesclado (ilustrativo; veja <a href="pull-request.html">Pull Request</a> e a documentação em docs.github.com/pt). Renomear no GitHub é outra história: lá, um branch renomeado é um branch novo; o jeito mais simples é enviar o nome novo (<code>git push -u origin NOVO</code>) e apagar o antigo com <code>--delete</code>.</p>
+
+<hr>
+
+<h2>Experimente</h2>
+<p>O terminal está na pasta <code>receitas</code>. Use <code>git branch -v</code> e <code>git log --oneline --graph --all</code> antes e depois.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;git branch sobremessas;;git branch teste" data-goal="branch:sobremesas,semBranch:sobremessas,semBranch:teste,head:main" data-solucao="git branch -m sobremessas sobremesas;;git branch -d teste">
+<p class="try-task"><strong>Missão:</strong> a Ana criou o branch <code>sobremessas</code> (com dois "s" no meio, errado) e um <code>teste</code> que não serve para nada. Corrija o nome para <code>sobremesas</code> e apague o <code>teste</code>.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;git switch -q -c lanches;;echo 'Coxinha' &gt; coxinha.txt;;git add coxinha.txt;;git commit -q -m 'Adiciona coxinha';;git switch -q -c rascunho;;echo 'Sanduíche de jiló' &gt; jilo.txt;;git add jilo.txt;;git commit -q -m 'Testa sanduíche de jiló';;git switch -q main" data-goal="semBranch:lanches,semBranch:rascunho,contem:main:coxinha.txt=Coxinha,head:main" data-solucao="git merge lanches;;git branch -d lanches;;git branch -D rascunho">
+<p class="try-task"><strong>Missão:</strong> o branch <code>lanches</code> tem uma coxinha que deve ir para o <code>main</code>; o <code>rascunho</code> tem um sanduíche de jiló que ninguém quer. Junte o <code>lanches</code> no <code>main</code> (<code>git merge lanches</code>) e apague os dois branches. Repare qual deles precisa de <code>-D</code>, e por quê.</p>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Para</th><th>Seguro</th><th>À força</th></tr>
+<tr><td>Renomear</td><td><code>git branch -m VELHO NOVO</code> (ou <code>-m NOVO</code> no atual)</td><td><code>git branch -M VELHO NOVO</code> (passa por cima de NOVO)</td></tr>
+<tr><td>Apagar</td><td><code>git branch -d NOME</code> (<code>--delete</code>)</td><td><code>git branch -D NOME</code> (<code>--delete --force</code>)</td></tr>
+<tr><td>Apagar vários</td><td colspan="2"><code>git branch -d teste ideia rascunho</code></td></tr>
+<tr><td>Apagar no GitHub</td><td colspan="2"><code>git push origin --delete NOME</code> (forma antiga: <code>git push origin :NOME</code>)</td></tr>
+</table>
+</div>
+<p><strong>Qual usar?</strong> Sempre o <code>-d</code> primeiro. Se ele recusar, pare e pense: o <code>not fully merged</code> quer dizer que há trabalho que só existe ali. Junte ou confira com <code>git log --oneline --graph --all</code>; só depois use <code>-D</code>.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>error: the branch 'sobremesas' is not fully merged</code></strong>
+<p>A seção 3. <strong>O que aconteceu:</strong> o branch tem commits que o atual não tem. <strong>Como confirmar:</strong> <code>git log --oneline main..sobremesas</code> lista esses commits (<a href="log-filtros.html">git log: Filtros</a>), ou <code>git branch --no-merged</code>. <strong>Como resolver:</strong> junte com <code>git merge</code> e apague com <code>-d</code>; ou, se não quer o trabalho, <code>-D</code>.</p>
+</div>
+
+<div class="cenario">
+<strong><code>error: cannot delete branch 'ideia' used by worktree at '…'</code></strong>
+<p>Você está no branch que quer apagar (seção 5). <strong>Como resolver:</strong> <code>git switch main</code> e apague de novo.</p>
+</div>
+
+<div class="cenario">
+<strong><code>error: branch 'naoexiste' not found</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git branch -d naoexiste
+error: branch 'naoexiste' not found
+</pre>
+<p>"Branch 'naoexiste' não encontrado". Erro de digitação, ou ele já foi apagado. <strong>Como confirmar:</strong> <code>git branch</code>.</p>
+</div>
+
+<div class="cenario">
+<strong><code>fatal: a branch named 'main' already exists</code> ao renomear</strong>
+<p>O nome novo já está em uso (seção 1). <strong>Como resolver:</strong> escolha outro nome, ou apague/renomeie o outro branch antes.</p>
+</div>
+
+<div class="cenario">
+<strong>Apaguei com <code>-D</code> e me arrependi</strong>
+<p><strong>Como resolver:</strong> <code>git branch NOME HASH</code>, com o hash do <code>Deleted branch NOME (was HASH)</code>. Sem o hash, procure no <code>git reflog</code> (seção 4).</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git branch -m NOVO</code></td><td>Renomeia o branch atual</td></tr>
+<tr><td><code>git branch -m VELHO NOVO</code></td><td>Renomeia outro branch</td></tr>
+<tr><td><code>git branch -M VELHO NOVO</code></td><td>Renomeia mesmo que NOVO exista (o antigo NOVO some)</td></tr>
+<tr><td><code>git branch -d NOME</code></td><td>Apaga, se o trabalho dele já estiver no branch atual</td></tr>
+<tr><td><code>git branch -D NOME</code></td><td>Apaga mesmo com trabalho não juntado</td></tr>
+<tr><td><code>git branch NOME HASH</code></td><td>Recria um branch apagado (hash do <code>was …</code>)</td></tr>
+<tr><td><code>git branch --merged</code></td><td>Lista os que o <code>-d</code> aceita apagar</td></tr>
+<tr><td><code>git push origin --delete NOME</code></td><td>Apaga o branch no GitHub</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete os comandos</h3>
+<div class="ex-code">Renomear o branch atual para main: git branch <input data-answer="-m" aria-label="opção"> main<br>Apagar o branch teste, com segurança: git branch <input data-answer="-d" aria-label="opção"> teste<br>Apagar o branch rascunho, à força: git branch <input data-answer="-D" aria-label="opção"> rascunho</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">2. O <code>git branch -d sobremesas</code> respondeu <code>not fully merged</code>. O que isso quer dizer?</p>
+<label><input type="radio" name="q2"> Que o branch tem mudanças não commitadas</label>
+<label><input type="radio" name="q2"> Que o branch não existe</label>
+<label><input type="radio" name="q2"> Que o branch tem commits que o branch atual não tem</label>
+<label><input type="radio" name="q2"> Que o branch foi apagado só pela metade</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">3. O Git mostrou <code>Deleted branch bebidas (was a1b2c3d).</code> e a Ana se arrependeu. Como ela recupera?</p>
+<label><input type="radio" name="q3"> <code>git branch bebidas a1b2c3d</code></label>
+<label><input type="radio" name="q3"> <code>git branch -m bebidas</code></label>
+<label><input type="radio" name="q3"> <code>git restore bebidas</code></label>
+<label><input type="radio" name="q3"> Não tem como: branch apagado se perde</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. A Ana apagou o branch <code>sobremesas</code> no computador com <code>git branch -d</code>. E no GitHub?</p>
+<label><input type="radio" name="q4"> Foi apagado junto</label>
+<label><input type="radio" name="q4"> Foi renomeado</label>
+<label><input type="radio" name="q4"> Foi apagado no próximo <code>git commit</code></label>
+<label><input type="radio" name="q4"> Continua lá; para apagar, <code>git push origin --delete sobremesas</code></label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git branch -m NOVO</code> renomeia o branch atual (o clássico <code>master</code> → <code>main</code>); <code>-m VELHO NOVO</code> renomeia outro. Os commits não mudam.</li>
+  <li><code>git branch -d NOME</code> apaga com segurança: recusa com <code>not fully merged</code> se houver trabalho que só existe ali.</li>
+  <li><code>-D</code> apaga mesmo assim. O <code>Deleted branch NOME (was HASH)</code> dá o hash para desfazer: <code>git branch NOME HASH</code>.</li>
+  <li>Não dá para apagar o branch atual: mude de branch antes.</li>
+  <li>O branch no GitHub é separado: <code>git push origin --delete NOME</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
