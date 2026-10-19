@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Terminal do Guia — como usar o terminal com Git simulado | Guia Git</title>
+<meta name="description" content="Como usar o terminal do Guia Git: o Git imitado dentro da página, a máquina fictícia da Ana, as missões, os botões Reiniciar e Ver solução, o GitHub de mentira, o que funciona igual ao Git real e o que não funciona.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Terminal do Guia</span></h1>
+
+<p class="intro">Este guia tem um terminal que roda dentro da própria página, com um <strong>Git</strong> de verdade imitado em JavaScript. Ele cria repositórios, commits, branches, conflitos e até um "GitHub" de mentira para você praticar <code>push</code> e <code>pull</code>. Nada do que você digita sai do navegador: pode errar à vontade, e um clique em <strong>Reiniciar</strong> volta tudo ao começo.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como usar as caixas "Experimente": digitar, teclas, missões e botões.</li>
+  <li>Como é a máquina fictícia da Ana e o Git dela, já configurado.</li>
+  <li>O que o Git do simulador faz igual ao Git real e o que ele não faz.</li>
+  <li>Como funcionam as missões com o GitHub de mentira.</li>
+</ul>
+</div>
+
+<hr>
+
+<h2>Por que um terminal simulado?</h2>
+<p>Quem está começando no Git costuma ter medo de "estragar o repositório": apagar um commit, perder um arquivo, fazer um merge errado. No terminal do guia esse medo não existe. Ele é um programa da página, não o seu computador. Você pode fazer <code>git reset --hard</code>, apagar a pasta <code>.git</code> ou criar mil branches: ao clicar em <strong>Reiniciar</strong>, a máquina volta ao estado inicial.</p>
+<p>Pense numa <strong>maquete</strong>: ela não é o prédio, mas tem as mesmas paredes e portas, no mesmo lugar. O Git do simulador guarda os arquivos do mesmo jeito que o Git de verdade (o <a href="como-git-guarda.html">Como o Git Guarda as Coisas</a> explica), calcula os mesmos códigos de commit (o <a href="hash.html">hash</a>) e responde com as mesmas mensagens, comparadas automaticamente com o Git 2.53 real do laboratório do guia.</p>
+
+<hr>
+
+<h2>O terminal: caixas "Experimente você mesmo"</h2>
+<ol class="passo">
+  <li>Clique dentro da janela escura do terminal.</li>
+  <li>Digite um comando, por exemplo <code>git --version</code>, e aperte <kbd>Enter</kbd>.</li>
+  <li>Leia a resposta. Um prompt novo (<code>ana@notebook:~$</code>) aparece quando o comando termina.</li>
+  <li>Se a caixa tiver uma <strong>missão</strong>, um aviso de missão cumprida aparece embaixo da janela quando você chegar ao objetivo.</li>
+</ol>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Tecla</th><th>No simulador</th></tr>
+<tr><td><kbd>Enter</kbd></td><td>Executa a linha. Se o comando estiver incompleto (uma aspa aberta, por exemplo), aparece o <code>&gt; </code> de continuação, como no terminal de verdade.</td></tr>
+<tr><td><kbd>↑</kbd> / <kbd>↓</kbd></td><td>Navega pelos comandos já digitados naquela caixa. Ótimo para repetir um <code>git status</code>.</td></tr>
+<tr><td><kbd>←</kbd> / <kbd>→</kbd></td><td>Move o cursor dentro da linha.</td></tr>
+<tr><td><kbd>Tab</kbd></td><td>Completa nomes de comandos, pastas e arquivos.</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>L</kbd></td><td>Limpa a tela (o comando <code>clear</code> também).</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>C</kbd></td><td>Desiste da linha atual.</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>R</kbd></td><td>Busca no histórico daquela caixa.</td></tr>
+</table>
+</div>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Botão</th><th>Faz</th></tr>
+<tr><td><strong>Reiniciar</strong></td><td>Volta a máquina daquela caixa ao estado inicial: arquivos, repositórios, pasta atual e histórico.</td></tr>
+<tr><td><strong>Ver solução</strong></td><td>Mostra uma forma de cumprir a missão (e um botão para rodá-la). Tente antes de abrir.</td></tr>
+</table>
+</div>
+
+<p>Cada caixa é uma máquina independente: o repositório que você cria numa não aparece nas outras, nem em outra página. Muitas missões começam com um repositório já preparado pela aula (com commits, branches ou até um conflito): é só digitar <code>git status</code> e <code>git log --oneline</code> para descobrir onde você está.</p>
+
+<div class="try" data-goal="ran:git --version,ran:git config --list" data-solucao="git --version;;git config --list">
+<p class="try-task"><strong>Missão:</strong> explore à vontade. Veja a versão do Git com <code>git --version</code> e a configuração da Ana com <code>git config --list</code>. Experimente também <code>ls</code> e <code>git status</code> (fora de um repositório ele reclama: leia a mensagem).</p>
+</div>
+
+<hr>
+
+<h2>A máquina fictícia</h2>
+<p>Todos os exemplos do guia, no texto e nos simuladores, acontecem na mesma máquina, a da Ana. Ela também existe de verdade, como um laboratório isolado onde cada saída do guia foi conferida.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Item</th><th>Valor</th></tr>
+<tr><td>Usuária</td><td><code>ana</code>, no computador <code>notebook</code>, pasta pessoal <code>/home/ana</code> (<code>~</code>)</td></tr>
+<tr><td>Sistema</td><td>Ubuntu 26.04, com o Git do Ubuntu: <code>git version 2.53.0</code></td></tr>
+<tr><td>Idioma</td><td>Português do Brasil: as mensagens do Git saem em português, <strong>misturadas com inglês</strong> (veja abaixo)</td></tr>
+<tr><td>Data e hora</td><td>Sempre quinta-feira, 15 de outubro de 2026, 10:30 (fuso −03:00)</td></tr>
+<tr><td>Git configurado</td><td>Nome <code>Ana Souza</code>, e-mail <code>ana@exemplo.com</code>, branch inicial <code>main</code> (a aula <a href="git-config.html">git config</a> mostra como se faz)</td></tr>
+</table>
+</div>
+
+<p>A pasta pessoal tem só as pastas comuns de um desktop em português, vazias, e os arquivos escondidos de configuração:</p>
+<pre class="term">$ ls -a
+.
+..
+.bash_history
+.bash_logout
+.bashrc
+.config
+.gitconfig                         « a configuração do Git da Ana
+.profile
+Documentos
+Downloads
+Imagens
+Modelos
+Música
+Público
+Vídeos
+Área de trabalho
+$ cat ~/.gitconfig
+[user]
+	name = Ana Souza
+	email = ana@exemplo.com
+[init]
+	defaultBranch = main
+[core]
+	editor = nano
+$ git status
+fatal: not a git repository (or any of the parent directories): .git   « a pasta pessoal não é um repositório</pre>
+
+<h3>Por que os hashes saem iguais aos do guia</h3>
+<p>Um commit guarda o nome, o e-mail, a data e o conteúdo; o hash é calculado a partir disso tudo. Como a máquina da Ana tem sempre o mesmo nome, o mesmo e-mail e o relógio parado, <strong>o mesmo commit tem o mesmo hash</strong> no texto da aula e no simulador:</p>
+<pre class="term">$ mkdir receitas
+$ cd receitas
+$ git init
+Repositório vazio Git inicializado em  /home/ana/receitas/.git/
+$ echo "# Receitas da Ana" &gt; README.md
+$ git add README.md
+$ git commit -m "Cria o README"
+[main (root-commit) 700bbd5] Cria o README          « 700bbd5: o mesmo no seu simulador
+ 1 file changed, 1 insertion(+)
+ create mode 100644 README.md</pre>
+<p>No seu computador o hash será outro, porque o seu nome, o seu e-mail e a hora são outros. Isso é normal.</p>
+
+<div class="try" data-goal="commits:1,limpo,msg:Cria o README" data-solucao="mkdir receitas;;cd receitas;;git init;;echo &quot;# Receitas da Ana&quot; &gt; README.md;;git add README.md;;git commit -m &quot;Cria o README&quot;">
+<p class="try-task"><strong>Missão:</strong> repita os comandos acima, um por linha, e confira que o commit sai com o hash <code>700bbd5</code>. Depois rode <code>git log --oneline</code>.</p>
+</div>
+
+<hr>
+
+<h2>As mensagens: português misturado com inglês</h2>
+<p>O Git do Ubuntu em português é traduzido só em parte. Por isso uma mesma tela mistura as duas línguas, e o simulador imita essa mistura <strong>do jeito que ela é</strong>:</p>
+<pre class="term">$ git status
+No ramo main                                   « português
+nothing to commit, working tree clean          « inglês, na mesma tela</pre>
+<p>As aulas explicam as duas formas sempre que aparecem. Num computador com o sistema em inglês, tudo sai em inglês; no Windows e no macOS as frases podem ser diferentes.</p>
+
+<hr>
+
+<h2>O que funciona e o que não funciona</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Funciona</th><th>Exemplos</th></tr>
+<tr><td>O básico</td><td><code>git init</code>, <code>config</code>, <code>status</code>, <code>add</code>, <code>commit</code> (<code>-m</code>, <code>-a</code>, <code>--amend</code>), <code>rm</code>, <code>mv</code>, <code>restore</code>, <code>.gitignore</code></td></tr>
+<tr><td>O histórico</td><td><code>git log</code> (<code>--oneline</code>, <code>--graph</code>, <code>--all</code>, <code>-p</code>, <code>--stat</code>, filtros), <code>show</code>, <code>diff</code>, <code>blame</code>, <code>grep</code>, <code>reflog</code></td></tr>
+<tr><td>Branches e merge</td><td><code>git branch</code>, <code>switch</code>, <code>checkout</code>, <code>merge</code> (com conflitos de verdade), <code>rebase</code>, <code>cherry-pick</code>, <code>revert</code>, <code>reset</code>, <code>stash</code>, <code>tag</code>, <code>bisect</code>, <code>clean</code></td></tr>
+<tr><td>Remotos</td><td><code>git remote</code>, <code>clone</code>, <code>fetch</code>, <code>pull</code>, <code>push</code> com o GitHub de mentira (abaixo)</td></tr>
+<tr><td>O terminal</td><td>Os comandos de terminal que as aulas usam: <code>ls</code>, <code>cd</code>, <code>mkdir</code>, <code>cat</code>, <code>echo … &gt; arquivo</code>, <code>rm</code>, <code>mv</code> (a aula <a href="terminal-basico.html">O Mínimo de Terminal para o Git</a> ensina)</td></tr>
+</table>
+</div>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Não funciona</th><th>Por quê</th></tr>
+<tr><td>Editores de tela cheia: <code>nano</code>, <code>vim</code></td><td>O <code>git commit</code> sem <code>-m</code> e o <code>git rebase -i</code> abrem um editor. No simulador, use sempre <code>git commit -m "mensagem"</code>; quando uma missão precisar de <code>rebase -i</code>, ela mostra como fazer sem editor.</td></tr>
+<tr><td>Cores e pager (<code>less</code>)</td><td>As saídas aparecem sem cor e de uma vez, como nos exemplos do guia.</td></tr>
+<tr><td>O site do GitHub, SSH, senha e token</td><td>Não há internet nem site: o "GitHub" do simulador só guarda repositórios.</td></tr>
+<tr><td><code>git add -p</code>, <code>git clean -i</code>, hooks, submódulos</td><td>São interativos ou avançados demais para a maquete.</td></tr>
+</table>
+</div>
+
+<p>Quando você tenta algo que o simulador não sabe fazer, ele avisa com uma linha que começa com <code>(simulador)</code>: é uma limitação dele, e não um erro do Git. Já um comando que não existe no Git responde como o Git real:</p>
+<pre class="term">$ git comit -m teste
+git: 'comit' não é um comando git. Veja 'git --help'.
+
+The most similar command is
+	commit                             « o Git sugere o comando parecido</pre>
+
+<hr>
+
+<h2>O GitHub de mentira</h2>
+<p>Nas aulas de remotos, endereços como <code>https://github.com/ana-souza/receitas.git</code> funcionam dentro do simulador: o repositório "do GitHub" já foi criado pela missão, e às vezes o colega da Ana, o <strong>Bruno</strong>, também já mandou commits para lá. Você pode fazer <code>git clone</code>, <code>git push</code>, <code>git fetch</code> e <code>git pull</code> como faria com o GitHub de verdade. As mensagens que começam com <code>remote:</code> vêm "do servidor" e ficam em inglês, como no GitHub real.</p>
+<p>Uma diferença: no seu computador, o <code>push</code> e o <code>clone</code> mostram linhas de progresso (<code>Enumerating objects…</code>, <code>Writing objects…</code>). O terminal do guia mostra só o resultado:</p>
+<pre class="term">$ git push -u origin main
+To https://github.com/ana-souza/receitas.git
+ * [new branch]      main -&gt; main               « o branch main foi criado no GitHub
+branch 'main' set up to track 'origin/main'.</pre>
+
+<div class="try" data-setup="github novo ana-souza/receitas;;mkdir receitas;;cd receitas;;git init -q;;echo &quot;# Receitas da Ana&quot; &gt; README.md;;git add README.md;;git commit -qm &quot;Cria o README&quot;;;git remote add origin https://github.com/ana-souza/receitas.git" data-goal="contem:origin/main:README.md=Receitas,err:[new branch]" data-solucao="git push -u origin main">
+<p class="try-task"><strong>Missão:</strong> o repositório <code>receitas</code> já tem um commit e já conhece o GitHub (o remoto <code>origin</code>). Envie o branch <code>main</code> com <code>git push -u origin main</code>. Depois rode <code>git status</code> e veja a linha nova sobre <code>origin/main</code>.</p>
+</div>
+
+<hr>
+
+<h2>Quando não funciona</h2>
+
+<div class="cenario">
+<strong>Digito e nada aparece</strong>
+<p><strong>O que aconteceu:</strong> o terminal não está selecionado.</p>
+<p><strong>Como resolver:</strong> clique dentro da janela escura antes de digitar.</p>
+</div>
+
+<div class="cenario">
+<strong><code>fatal: not a git repository</code></strong>
+<p><strong>O que aconteceu:</strong> você está numa pasta que não é um repositório, por exemplo a pasta pessoal logo depois de Reiniciar.</p>
+<p><strong>Como resolver:</strong> confira com <code>pwd</code> e <code>ls</code> e entre na pasta do repositório (<code>cd receitas</code>). A aula <a href="git-init.html">git init</a> explica.</p>
+</div>
+
+<div class="cenario">
+<strong><code>(simulador) aqui não há editor de texto…</code></strong>
+<p><strong>O que aconteceu:</strong> você rodou <code>git commit</code> sem <code>-m</code>. No seu computador, o Git abriria o editor <code>nano</code> para você escrever a mensagem.</p>
+<p><strong>Como resolver:</strong> escreva a mensagem no próprio comando: <code>git commit -m "Adiciona receita de bolo"</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>O hash do meu computador é diferente do guia</strong>
+<p><strong>O que aconteceu:</strong> o seu nome, o seu e-mail e a hora entram no cálculo do hash.</p>
+<p><strong>Como resolver:</strong> nada: é assim mesmo. Compare a forma da resposta, não os códigos.</p>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">1. Você rodou <code>git reset --hard</code> e perdeu um commit numa caixa de missão. O que acontece com o seu computador?</p>
+<label><input type="radio" name="q1"> Os seus repositórios de verdade perdem o commit também.</label>
+<label><input type="radio" name="q1"> O navegador fecha.</label>
+<label><input type="radio" name="q1"> Nada: o simulador só existe dentro da página; Reiniciar traz tudo de volta.</label>
+<label><input type="radio" name="q1"> O commit some de todas as caixas do guia.</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. Por que o commit "Cria o README" tem o hash <code>700bbd5</code> no guia e no simulador?</p>
+<label><input type="radio" name="q2"> Porque o simulador copia o hash do texto da aula.</label>
+<label><input type="radio" name="q2"> Porque o nome, o e-mail, a data e o conteúdo são sempre os mesmos na máquina da Ana.</label>
+<label><input type="radio" name="q2"> Porque todo commit do mundo começa com <code>700bbd5</code>.</label>
+<label><input type="radio" name="q2"> Porque o hash é sorteado.</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">3. No simulador, qual destes comandos responde com uma linha <code>(simulador)</code>?</p>
+<label><input type="radio" name="q3"> <code>git commit -m "Primeiro commit"</code></label>
+<label><input type="radio" name="q3"> <code>git log --oneline --graph</code></label>
+<label><input type="radio" name="q3"> <code>git push -u origin main</code></label>
+<label><input type="radio" name="q3"> <code>git add -p</code></label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O terminal do guia roda na página, com um Git imitado em JavaScript; nada afeta o seu computador, e <strong>Reiniciar</strong> volta ao começo.</li>
+  <li>A máquina é sempre a mesma: <code>ana@notebook</code>, Git 2.53 já configurado, 15/10/2026 10:30. Por isso os hashes saem iguais aos do guia.</li>
+  <li>As mensagens misturam português e inglês, como no Git do Ubuntu.</li>
+  <li>Sem editor de tela cheia: use <code>git commit -m</code>. Sem site do GitHub, mas com um GitHub de mentira para <code>push</code>, <code>pull</code> e <code>clone</code>.</li>
+  <li>Quando algo não existe no simulador, a resposta começa com <code>(simulador)</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
