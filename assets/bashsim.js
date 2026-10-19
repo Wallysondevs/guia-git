@@ -10251,7 +10251,7 @@
     return e;
   }
   function decodificarAttr(s) { return (s || "").replace(/\\n/g, "\n"); }
-  var MSG_INICIAL = "Terminal simulado · máquina fictícia \"notebook\" · usuária \"ana\" · Git 2.53 (simulado) · Bash 5.3. Comece por git status.";
+  var MSG_INICIAL = "Terminal simulado · máquina fictícia \"notebook\" · usuária \"ana\" · Git 2.53 (simulado) · Bash 5.3. Digite help para ver os comandos.";
 
   // completar com Tab: devolve {linha, lista}
   function completar(sh, linha) {
