@@ -170,6 +170,11 @@ fe996fb Primeiro commit
 <p class="try-task"><strong>Missão:</strong> o repositório <code>receitas</code> já tem o arquivo <code>.git/hooks/pre-commit</code> da Ana, mas ela esqueceu de dar a permissão de execução. Veja o arquivo (<code>cat .git/hooks/pre-commit</code>), confira a permissão com <code>ls -l .git/hooks</code> e deixe o hook executável.</p>
 </div>
 
+<div class="note">
+<strong>Limite do terminal do guia</strong>
+<p>O Git do terminal do guia é uma imitação em JavaScript e <strong>não roda hooks</strong>: lá, depois do <code>chmod +x</code>, um commit com <code>senha=</code> ainda passa (e o <code>git hook run</code> não existe). A missão confere só a permissão. Para ver o porteiro barrando o commit, como nas saídas desta aula, repita os passos num Git de verdade, no seu computador.</p>
+</div>
+
 <hr>
 
 <h2>3. Pulando o porteiro: <code>--no-verify</code></h2>
