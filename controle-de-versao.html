@@ -115,7 +115,7 @@ Date:   Thu Oct 15 10:30:00 2026 -0300
   <dt>-1</dt><dd>Mostra só 1 commit, o mais recente. (<code>-3</code> mostraria os três últimos.)</dd>
 </dl>
 
-<div class="try" data-setup="mkdir tcc;;cd tcc;;git init -q;;printf '# TCC\n\n## Introdução\n' &gt; tcc.md;;git add tcc.md;;git commit -q -m 'Começa o TCC com o título e a introdução';;printf '\n## Metodologia\n' &gt;&gt; tcc.md;;git commit -q -am 'Acrescenta a metodologia';;printf '\n## Conclusão\n' &gt;&gt; tcc.md;;git commit -q -am 'Acrescenta a conclusão pedida pelo orientador'" data-goal="ran:^\s*git log" data-solucao="git log">
+<div class="try" data-setup="mkdir tcc;;cd tcc;;git init -q;;printf '# TCC\n\n## Introdução\n' &gt; tcc.md;;git add tcc.md;;git commit -q -m 'Começa o TCC com o título e a introdução';;printf '\n## Metodologia\n' &gt;&gt; tcc.md;;git commit -q -am 'Acrescenta a metodologia';;printf '\n## Conclusão\n' &gt;&gt; tcc.md;;git commit -q -am 'Acrescenta a conclusão pedida pelo orientador'" data-goal="ran:^\s*git log,out:Começa o TCC" data-solucao="git log">
 <p class="try-task"><strong>Missão:</strong> o terminal está na pasta <code>tcc</code>, já com três commits. Rode <code>git log</code> e responda para você mesma: qual foi o primeiro commit, e por que o último foi feito? Depois experimente <code>git log --stat</code> e <code>git log --oneline</code>.</p>
 </div>
 

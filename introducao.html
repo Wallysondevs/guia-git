@@ -88,7 +88,7 @@ git version 2.53.0                 « o Git 2.53, o que vem no Ubuntu 26.04</pre
 </ul>
 <p>Na primeira linha aparece <code>(HEAD -&gt; main)</code>: é o Git dizendo "você está aqui, no último commit do ramo <code>main</code>". Você vai entender isso em <a href="head.html">O que é HEAD</a>.</p>
 
-<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;echo 'Lasanha' &gt; lasanha.txt;;git add lasanha.txt;;git commit -q -m 'Adiciona a receita de lasanha';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona a receita de bolo de cenoura'" data-goal="ran:^\s*git log" data-solucao="git log --oneline">
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;echo 'Lasanha' &gt; lasanha.txt;;git add lasanha.txt;;git commit -q -m 'Adiciona a receita de lasanha';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona a receita de bolo de cenoura'" data-goal="ran:^\s*git log,out:Adiciona a receita de lasanha" data-solucao="git log --oneline">
 <p class="try-task"><strong>Missão:</strong> o terminal já está dentro da pasta <code>receitas</code> da Ana. Veja o histórico com <code>git log --oneline</code>. Depois, se quiser, tente <code>git log</code> sem opção: cada commit ocupa várias linhas, com autor e data.</p>
 </div>
 
