@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git no VS Code e em Outros Programas — o Git com botões | Guia Git</title>
+<meta name="description" content="Git com interface gráfica para quem aprendeu no terminal: o painel Source Control do VS Code (preparar, commitar, Sync Changes, conflitos com Accept Current Change e o merge editor), o GitHub Desktop, gitk e outras ferramentas, VS Code como editor do Git (code --wait) e ferramenta de merge, e o que fazer quando o botão e o terminal parecem discordar.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git no <span class="hl">VS Code e em Outros Programas</span></h1>
+
+<p class="intro">Você aprendeu o Git pelo terminal, e isso foi de propósito: no terminal você vê cada passo e cada mensagem. Mas no dia a dia muita gente usa o Git por <strong>botões</strong>, dentro do editor de código (o VS Code) ou num programa próprio (o GitHub Desktop). A boa notícia: por baixo dos botões é <strong>o mesmo Git</strong>, com o mesmo <code>.git</code>, a mesma área de preparo e os mesmos commits. Esta aula mostra onde fica cada coisa que você já conhece.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Que os programas gráficos são "controles remotos" do mesmo Git: dá para misturar botão e terminal.</li>
+  <li>O painel de controle de versão do VS Code: preparar, commitar, enviar e resolver conflitos.</li>
+  <li>O GitHub Desktop: as mesmas ideias, num programa separado.</li>
+  <li>Como fazer o Git do terminal usar o VS Code como editor e como ferramenta de merge.</li>
+  <li>O que fazer quando o programa e o terminal parecem discordar.</li>
+</ul>
+</div>
+
+<div class="warning">
+<strong>O que nesta aula é real e o que é ilustrativo</strong>
+<p>A máquina da Ana usada no guia é um terminal, sem tela gráfica. As saídas de terminal (seções 4 e "Quando dá errado") são <strong>reais</strong>, do Git 2.53 do Ubuntu. As descrições das telas do VS Code e do GitHub Desktop são <strong>ilustrativas</strong>, baseadas na documentação oficial (code.visualstudio.com/docs e docs.github.com/pt). Os nomes de botões aparecem como nos programas, em inglês, que é como eles vêm por padrão; os menus e botões mudam um pouco de uma versão para outra.</p>
+</div>
+
+<hr>
+
+<h2>A ideia: o controle remoto e os botões da TV</h2>
+<p>A TV da Ana tem botões no próprio aparelho e um controle remoto. Os dois mudam de canal na <strong>mesma</strong> TV: se ela troca de canal no controle, o botão da TV não fica "desatualizado". E se o controle quebrar, ela continua conseguindo usar a TV pelos botões.</p>
+<p>Com o Git é igual:</p>
+<ul>
+  <li>a "TV" é o repositório, a pasta <code>.git</code>;</li>
+  <li>o terminal (<code>git add</code>, <code>git commit</code>…) e os programas gráficos são formas diferentes de mandar nela;</li>
+  <li>o que você faz num aparece no outro: um commit feito no VS Code aparece no <code>git log</code> do terminal, e um <code>git add</code> no terminal aparece como "preparado" no VS Code.</li>
+</ul>
+<p>Por isso quem sabe o terminal entende qualquer programa gráfico: cada botão é um comando que você já conhece. E quando o botão fizer algo estranho, o terminal (<code>git status</code>, <code>git log</code>) conta a verdade.</p>
+
+<hr>
+
+<h2>1. O VS Code: o painel Source Control (ilustrativo)</h2>
+<p>O VS Code (Visual Studio Code, gratuito, para Windows, macOS e Linux) já vem com o Git embutido: ele usa o Git instalado no computador. Abra a pasta do projeto (um repositório) e procure o painel <strong>Source Control</strong> ("controle de versão") na barra da esquerda, ou aperte <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd> (no macOS, <kbd>⌃</kbd>+<kbd>⇧</kbd>+<kbd>G</kbd>).</p>
+
+<h3>Do terminal para os botões</h3>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>No terminal</th><th>No VS Code (Source Control)</th></tr>
+<tr><td><code>git status</code></td><td>A lista de arquivos mudados no painel. Na barra de baixo (a <em>Status Bar</em>), o nome do branch atual</td></tr>
+<tr><td><code>git diff arquivo</code></td><td>Clicar no arquivo da lista abre o diff lado a lado</td></tr>
+<tr><td><code>git add arquivo</code></td><td>O ícone <strong>+</strong> ao passar o mouse sobre o arquivo, ou clique direito → <strong>Stage Changes</strong></td></tr>
+<tr><td><code>git add -p</code> (só algumas linhas)</td><td>No diff, selecionar as linhas e preparar só elas</td></tr>
+<tr><td><code>git commit -m "…"</code></td><td>Escrever a mensagem na caixa de mensagem do commit e clicar em <strong>Commit</strong></td></tr>
+<tr><td><code>git switch</code> / <code>git switch -c</code></td><td>Clicar no nome do branch na barra de baixo</td></tr>
+<tr><td><code>git pull</code> e depois <code>git push</code></td><td>O botão <strong>Sync Changes</strong>; na barra de baixo, um indicador mostra quantos commits há para baixar e para enviar</td></tr>
+<tr><td><code>git push -u origin branch-novo</code></td><td><strong>Publish Branch</strong> (aparece quando o branch ainda não tem upstream)</td></tr>
+<tr><td><code>git clone URL</code></td><td><strong>Clone Repository</strong> no painel, ou o comando <strong>Git: Clone</strong> da paleta de comandos (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>)</td></tr>
+<tr><td><code>git log -- arquivo</code></td><td>A seção <strong>Timeline</strong> do Explorer, com os commits daquele arquivo</td></tr>
+</table>
+</div>
+
+<p>Dentro do editor, o VS Code também marca na margem esquerda (a "calha") as linhas que você mudou desde o último commit: <strong>verde</strong> para linhas novas, <strong>azul</strong> para linhas modificadas e um <strong>triângulo vermelho</strong> onde linhas foram apagadas. É um <code>git diff</code> sempre ligado.</p>
+
+<div class="tip">
+<strong>Sync Changes = pull + push</strong>
+<p>O <strong>Sync Changes</strong> primeiro baixa (pull) e depois envia (push). É prático, mas, se o pull trouxer um conflito, você precisa resolvê-lo antes de o push acontecer. Quando estiver em dúvida, faça os dois passos separados no terminal e leia as mensagens (veja <a href="git-pull.html">git pull</a> e <a href="push-rejeitado.html">Push Rejeitado</a>).</p>
+</div>
+
+<h3>Conflitos no VS Code</h3>
+<p>Quando um merge dá conflito (veja <a href="conflitos.html">Conflitos de Merge</a>), o arquivo abre com os mesmos marcadores <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>, <code>=======</code> e <code>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code> do terminal, só que coloridos, e com ações clicáveis em cima de cada conflito:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Ação</th><th>O que faz</th></tr>
+<tr><td><strong>Accept Current Change</strong></td><td>Fica com a versão "atual" (a do branch onde você está, o <code>HEAD</code>)</td></tr>
+<tr><td><strong>Accept Incoming Change</strong></td><td>Fica com a versão "que está chegando" (a do outro branch)</td></tr>
+<tr><td><strong>Accept Both Changes</strong></td><td>Fica com as duas, uma depois da outra</td></tr>
+<tr><td><strong>Compare Changes</strong></td><td>Mostra as duas versões lado a lado</td></tr>
+</table>
+</div>
+<p>Para conflitos mais difíceis, o botão <strong>Resolve in Merge Editor</strong> abre o editor de merge de três vias: as duas versões em cima e o resultado embaixo. O <strong>Complete Merge</strong> prepara aquele arquivo (como um <code>git add</code>); depois de resolver todos, ainda falta o commit do merge. Nenhum botão resolve por você: "aceitar as duas" pode deixar a receita com duas quantidades de açúcar. Leia o resultado antes de commitar, como em <a href="resolver-conflitos.html">Resolvendo Conflitos</a>.</p>
+
+<hr>
+
+<h2>2. O GitHub Desktop (ilustrativo)</h2>
+<p>O GitHub Desktop é um programa gratuito do GitHub, para Windows e macOS (baixado em desktop.github.com), feito para quem quer usar Git e GitHub sem terminal. Pela documentação (docs.github.com/pt):</p>
+<ul>
+  <li><strong>Entrar na conta:</strong> nas configurações do programa (no Windows, menu <strong>File</strong> → <strong>Options</strong>; no macOS, <strong>GitHub Desktop</strong> → <strong>Settings</strong>), seção <strong>Accounts</strong>.</li>
+  <li><strong>Repositórios:</strong> no menu <strong>File</strong> ficam <strong>New repository…</strong> (o <code>git init</code>), <strong>Add local repository…</strong> (abrir uma pasta que já é repositório) e <strong>Clone repository…</strong> (o <code>git clone</code>).</li>
+  <li><strong>A aba Changes:</strong> a lista de arquivos mudados, cada um com uma caixinha de marcar. Marcado = vai entrar no commit (é a área de preparo).</li>
+  <li><strong>O commit:</strong> embaixo da lista, o campo <strong>Summary</strong> (o título da mensagem), o campo <strong>Description</strong> (o corpo, opcional) e o botão <strong>Commit to main</strong> (com o nome do branch atual).</li>
+  <li><strong>Enviar:</strong> o botão <strong>Push origin</strong>, na barra de cima.</li>
+</ul>
+<p>Os nomes acima estão em inglês, como no programa; a documentação em português do GitHub traduz alguns deles (por exemplo, "Clonar Repositório…"). O GitHub Desktop é ótimo para tarefas do dia a dia; para as coisas mais avançadas (rebase interativo, reflog, bisect), ele manda você para o terminal.</p>
+
+<hr>
+
+<h2>3. Outros programas</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Programa</th><th>O que é</th></tr>
+<tr><td><strong>gitk</strong> e <strong>git gui</strong></td><td>Os visualizadores simples que vêm do próprio projeto Git. No Ubuntu, são pacotes à parte (<code>gitk</code> e <code>git-gui</code>)</td></tr>
+<tr><td>Os editores da JetBrains (IntelliJ, PyCharm…)</td><td>Têm um painel de Git embutido, parecido com o do VS Code</td></tr>
+<tr><td>Sublime Merge, GitKraken, Fork, SourceTree, TortoiseGit</td><td>Programas só para Git, com o desenho dos branches. Alguns são pagos</td></tr>
+<tr><td><strong>lazygit</strong> e <strong>tig</strong></td><td>"Gráficos" dentro do terminal: menus e atalhos de teclado em vez de comandos</td></tr>
+<tr><td>O site do GitHub</td><td>Editar e commitar um arquivo direto no navegador; bom para corrigir uma letra no README</td></tr>
+</table>
+</div>
+
+<p>Na máquina da Ana (Ubuntu, só terminal), nenhum deles está instalado. O Ubuntu até diz como instalar o <code>gitk</code>:</p>
+
+<pre class="term">$ gitk
+Comando 'gitk' não encontrado, mas poder ser instalado com:
+sudo apt install gitk
+</pre>
+
+<p>(O "poder ser instalado" com erro de digitação é da própria mensagem do Ubuntu.)</p>
+
+<hr>
+
+<h2>4. O VS Code trabalhando para o Git do terminal</h2>
+<p>O caminho contrário também existe: o Git do terminal pode <strong>chamar</strong> o VS Code. Isso é útil para escrever mensagens longas de commit (veja <a href="config-util.html">Configurações Úteis</a>) e para resolver conflitos.</p>
+
+<h3>Como editor das mensagens</h3>
+<pre class="term">$ git config --global core.editor "code --wait"
+$ git config --global core.editor
+code --wait
+</pre>
+<p>Agora um <code>git commit</code> sem <code>-m</code> abre uma aba no VS Code; você escreve a mensagem, salva e <strong>fecha a aba</strong>, e o commit acontece. O <code>--wait</code> ("espere") faz o Git esperar a aba fechar.</p>
+
+<h3>Como ferramenta de merge</h3>
+<p>O Git sabe chamar várias ferramentas de merge; o <code>git mergetool --tool-help</code> lista as que ele conhece. A lista é longa; a linha do VS Code é esta:</p>
+
+<pre class="term">$ git mergetool --tool-help
+No suitable tool for 'git mergetool --tool=&lt;tool&gt;' found.
+
+The following tools are valid, but not currently available:
+		araxis           Use Araxis Merge (requires a graphical session)
+		…                « (a Ana cortou aqui 30 linhas da lista)
+		vscode           Use Visual Studio Code (requires a graphical session)
+		winmerge         Use WinMerge (requires a graphical session)
+		xxdiff           Use xxdiff (requires a graphical session)
+
+Some of the tools listed above only work in a windowed
+environment. If run in a terminal-only session, they will fail.
+</pre>
+
+<p>"Nenhuma ferramenta adequada encontrada. As seguintes são válidas, mas não estão disponíveis agora" (na máquina da Ana não há tela gráfica nem VS Code). "<em>Requires a graphical session</em>" = "precisa de uma sessão gráfica". Num computador com o VS Code, basta escolher:</p>
+
+<pre class="term">$ git config --global merge.tool vscode
+</pre>
+
+<p>e, num conflito, rodar <code>git mergetool</code>: o Git abre cada arquivo em conflito no VS Code, um de cada vez.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit'" data-goal="ran:git config --global core\.editor .code --wait,ran:git config --global merge\.tool vscode" data-solucao="git config --global core.editor &quot;code --wait&quot;;;git config --global merge.tool vscode;;git config --global --list">
+<p class="try-task"><strong>Missão:</strong> configure o Git para usar o VS Code como editor das mensagens (<code>"code --wait"</code>, com as aspas) e como ferramenta de merge (<code>vscode</code>). Confira com <code>git config --global --list</code>.</p>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer a mesma coisa</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Qual usar</th></tr>
+<tr><td>Aprender, entender o que está acontecendo, ler as mensagens</td><td>O terminal</td></tr>
+<tr><td>Preparar só algumas linhas, revisar o diff antes do commit</td><td>VS Code (ou <code>git add -p</code> no terminal)</td></tr>
+<tr><td>Commits do dia a dia, sem sair do editor</td><td>O painel Source Control do VS Code</td></tr>
+<tr><td>Quem não programa e só mexe em textos e imagens</td><td>GitHub Desktop</td></tr>
+<tr><td>Conflito com muitas partes</td><td>O merge editor do VS Code, ou <code>git mergetool</code></td></tr>
+<tr><td>Rebase interativo, reflog, bisect, recuperar algo</td><td>O terminal</td></tr>
+<tr><td>Ver o desenho dos branches</td><td><code>git log --oneline --graph --all</code>, ou o gráfico de qualquer um desses programas</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>"code: not found" no <code>git commit</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git config --global core.editor "code --wait"
+$ git add a.txt
+$ git commit
+code --wait: 1: code: not found
+error: there was a problem with the editor 'code --wait'
+Please supply the message using either -m or -F option.
+$ git status -s
+A  a.txt
+</pre>
+<p><strong>O que aconteceu:</strong> o Git tentou abrir o VS Code para você escrever a mensagem, mas o comando <code>code</code> não existe neste computador ("<em>not found</em>"). "Houve um problema com o editor <code>code --wait</code>. Informe a mensagem com a opção <code>-m</code> ou <code>-F</code>." O commit não foi feito, mas o arquivo continua preparado (<code>A</code>). <strong>Como resolver:</strong> instale o VS Code (no Windows e no macOS, confira se o comando <code>code</code> funciona num terminal novo; no macOS, a paleta do VS Code tem um comando para instalá-lo no PATH) ou volte para um editor que existe: <code>git config --global core.editor nano</code>. Para não travar agora, use <code>git commit -m "mensagem"</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>O programa mostra uma coisa e o terminal outra</strong>
+<p><strong>O que aconteceu:</strong> quase sempre, a tela do programa ainda não se atualizou, ou você abriu outra pasta (outro repositório) nele. <strong>Como confirmar:</strong> no terminal, dentro da pasta, rode <code>git status</code> e <code>git log --oneline -3</code>: essa é a verdade. Confira também se o programa e o terminal estão no mesmo branch. <strong>Como resolver:</strong> atualize a tela do programa (no VS Code, o painel Source Control tem um botão de atualizar) ou abra a pasta certa.</p>
+</div>
+
+<div class="cenario">
+<strong>Cliquei num botão e não sei o que ele fez</strong>
+<p><strong>Como confirmar:</strong> o <a href="git-reflog.html">git reflog</a> mostra os últimos movimentos do <code>HEAD</code>, feitos pelo terminal ou por qualquer programa. No VS Code, a aba <strong>Output</strong>, escolhendo "Git" na lista, mostra os comandos <code>git …</code> que o editor rodou por você. <strong>Como resolver:</strong> com o comando em mãos, use o <a href="desfazer.html">mapa do desfazer</a>.</p>
+</div>
+
+<hr>
+
+<h2>Referência</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando / lugar</th><th>O que faz</th></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd> (VS Code)</td><td>Abre o painel Source Control</td></tr>
+<tr><td><strong>+</strong> / <strong>Stage Changes</strong></td><td><code>git add</code></td></tr>
+<tr><td><strong>Commit</strong></td><td><code>git commit</code></td></tr>
+<tr><td><strong>Sync Changes</strong></td><td><code>git pull</code> + <code>git push</code></td></tr>
+<tr><td><strong>Publish Branch</strong></td><td><code>git push -u origin branch</code></td></tr>
+<tr><td><code>git config --global core.editor "code --wait"</code></td><td>VS Code como editor das mensagens</td></tr>
+<tr><td><code>git config --global merge.tool vscode</code></td><td>VS Code como ferramenta do <code>git mergetool</code></td></tr>
+<tr><td><code>git mergetool --tool-help</code></td><td>Lista as ferramentas de merge que o Git conhece</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Editor que espera</h3>
+<p>Complete para o Git esperar você fechar a aba do VS Code:</p>
+<div class="ex-code">git config --global core.editor "code <input data-answer="--wait" aria-label="opção">"</div>
+</div>
+
+<div class="exercise">
+<h3>2. Ferramenta de merge</h3>
+<p>Complete para o <code>git mergetool</code> usar o VS Code:</p>
+<div class="ex-code">git config --global merge.tool <input data-answer="vscode" aria-label="ferramenta"></div>
+</div>
+
+<div class="exercise">
+<h3>3. A verdade do terminal</h3>
+<p>Complete o comando que mostra quais arquivos estão mudados ou preparados, para conferir o que o programa gráfico mostra:</p>
+<div class="ex-code">git <input data-answer="status" aria-label="subcomando"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. A Ana fez um commit pelo VS Code. O que aparece no <code>git log</code> do terminal, na mesma pasta?</p>
+<label><input type="radio" name="q4"> Nada: commits do VS Code ficam num histórico separado.</label>
+<label><input type="radio" name="q4"> O commit, normalmente: é o mesmo repositório.</label>
+<label><input type="radio" name="q4"> O commit, mas só depois de um <code>git pull</code>.</label>
+<label><input type="radio" name="q4"> Um erro, porque o repositório foi aberto em dois programas.</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">5. No conflito, o VS Code mostra "Accept Incoming Change". Qual versão fica?</p>
+<label><input type="radio" name="q5"> A do branch onde você está (<code>HEAD</code>).</label>
+<label><input type="radio" name="q5"> As duas.</label>
+<label><input type="radio" name="q5"> A do outro branch, a que está chegando.</label>
+<label><input type="radio" name="q5"> A versão de antes dos dois mexerem.</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">6. Na aba Changes do GitHub Desktop, o que a caixinha marcada ao lado de um arquivo quer dizer?</p>
+<label><input type="radio" name="q6"> Que o arquivo vai entrar no próximo commit (está na área de preparo).</label>
+<label><input type="radio" name="q6"> Que o arquivo já foi enviado ao GitHub.</label>
+<label><input type="radio" name="q6"> Que o arquivo está no <code>.gitignore</code>.</label>
+<label><input type="radio" name="q6"> Que o arquivo tem um conflito.</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Programas gráficos são outra forma de mandar no <strong>mesmo</strong> repositório: botão e terminal se misturam sem problema.</li>
+  <li>VS Code: painel Source Control (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd>), <strong>+</strong> para preparar, <strong>Commit</strong>, <strong>Sync Changes</strong> (pull + push), ações de conflito e o merge editor.</li>
+  <li>GitHub Desktop: aba Changes com caixinhas (a área de preparo), Summary/Description, <strong>Commit to main</strong>, <strong>Push origin</strong>.</li>
+  <li><code>core.editor "code --wait"</code> e <code>merge.tool vscode</code> fazem o Git do terminal usar o VS Code.</li>
+  <li>Na dúvida, o terminal conta a verdade: <code>git status</code>, <code>git log</code>, <code>git reflog</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
