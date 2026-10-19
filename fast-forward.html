@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git merge fast-forward — quando o merge só anda com a etiqueta | Guia Git</title>
+<meta name="description" content="O merge fast-forward do Git para quem nunca usou: quando o branch atual não andou, o merge só empurra a etiqueta para frente, sem commit novo. O antes e depois no arquivo do branch e no git log --graph, o reflog 'merge: Fast-forward', --no-ff para guardar o desenho do branch, --ff-only para recusar merges de verdade, o erro real 'Not possible to fast-forward, aborting', a configuração merge.ff e qual usar.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git Merge <span class="hl">Fast-forward</span></h1>
+
+<p class="intro">Na aula <a href="git-merge.html">git merge</a>, o primeiro merge da Ana respondeu com uma palavra curiosa: <code>Fast-forward</code> ("avanço rápido", como o botão ⏩ de um player). É o merge mais simples que existe: o Git não junta nada, não cria commit, só <strong>empurra a etiqueta do branch para frente</strong>. Esta aula mostra quando isso acontece, por que é seguro, e as duas opções que controlam esse comportamento: <code>--no-ff</code> e <code>--ff-only</code>.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Quando um merge pode ser fast-forward: o branch atual não andou desde que o outro nasceu.</li>
+  <li>O que muda por dentro: só o arquivo do branch, que passa a ter outro hash.</li>
+  <li><code>--no-ff</code>: criar um commit de merge mesmo assim, para o desenho guardar "aqui entrou um branch".</li>
+  <li><code>--ff-only</code>: aceitar só fast-forward, e o erro real <code>Not possible to fast-forward, aborting</code>.</li>
+  <li>A configuração <code>merge.ff</code> e qual estilo escolher.</li>
+</ul>
+</div>
+
+<p>As saídas vieram do Git 2.53 do Ubuntu 26.04, na máquina da Ana, com o sistema em português. As mensagens desta aula saem em inglês (a tradução do Git no Ubuntu ainda não as cobre); cada uma vem traduzida aqui.</p>
+
+<hr>
+
+<h2>A ideia: a fila que só cresceu de um lado</h2>
+<p>Imagine o <code>main</code> como um marcador numa fila de commits. A Ana criou o branch <code>sobremesas</code> no fim da fila e continuou a fila por ele: mais dois commits. Enquanto isso, o <code>main</code> ficou parado. Na hora de juntar, não há nada para "misturar": tudo o que o <code>main</code> tem, o <code>sobremesas</code> também tem, e mais um pouco. Basta <strong>arrastar o marcador do <code>main</code></strong> até o fim da fila.</p>
+
+<pre>Antes:   A---B---C   ← main
+                  \
+                   D---E   ← sobremesas
+
+Depois:  A---B---C---D---E   ← main
+                             ← sobremesas
+</pre>
+
+<p>A regra: <strong>o merge é fast-forward quando o commit do branch atual é um antepassado do commit do outro branch</strong>. Em outras palavras: quando dá para chegar de um ao outro só andando para frente pela história.</p>
+
+<hr>
+
+<h2>1. Um fast-forward, visto por dentro</h2>
+<p>O repositório da Ana: três commits no <code>main</code> e dois no <code>sobremesas</code>, que nasceu no fim do <code>main</code>. Ela está no <code>main</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --graph --all
+* ae456dd (sobremesas) Adiciona receita de brigadeiro
+* d6f2336 Adiciona receita de pudim
+* 0244251 (HEAD -&gt; main) Adiciona receita de pão de queijo
+* 7225e04 Adiciona receita de bolo
+* 700bbd5 Cria o README
+$ cat .git/refs/heads/main
+0244251e6b6cd5cbf4b8c82f8ba2557b6cf3878b         « o main aponta para C
+</pre>
+
+<p>O desenho do <code>git log --graph</code> é uma linha reta: o <code>main</code> está no meio da fila do <code>sobremesas</code>. Isso já anuncia o fast-forward. Agora o merge:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git merge sobremesas
+Updating 0244251..ae456dd
+Fast-forward
+ brigadeiro.txt | 1 +
+ pudim.txt      | 1 +
+ 2 files changed, 2 insertions(+)
+ create mode 100644 brigadeiro.txt
+ create mode 100644 pudim.txt
+$ cat .git/refs/heads/main
+ae456dd1e4da87e84d6eeb2c13cd07b4037c70b9         « agora aponta para E
+$ cat .git/refs/heads/sobremesas
+ae456dd1e4da87e84d6eeb2c13cd07b4037c70b9         « o mesmo hash
+$ git log --oneline --graph --all
+* ae456dd (HEAD -&gt; main, sobremesas) Adiciona receita de brigadeiro
+* d6f2336 Adiciona receita de pudim
+* 0244251 Adiciona receita de pão de queijo
+* 7225e04 Adiciona receita de bolo
+* 700bbd5 Cria o README
+</pre>
+
+<dl class="anatomy">
+  <dt>Updating 0244251..ae456dd</dt><dd>"Atualizando de <code>0244251</code> para <code>ae456dd</code>": de onde a etiqueta sai e para onde ela vai.</dd>
+  <dt>Fast-forward</dt><dd>"Avanço rápido": nenhum commit novo; só a etiqueta andou.</dd>
+  <dt>cat .git/refs/heads/main</dt><dd>A prova: o arquivo do branch <code>main</code> trocou de hash, e agora é igual ao do <code>sobremesas</code>. O fast-forward inteiro foi isso: reescrever uma linha num arquivinho (e atualizar a pasta com os arquivos novos).</dd>
+</dl>
+
+<p>Repare que nenhum hash novo apareceu no <code>git log</code>: os commits são os mesmos de antes. O diário do HEAD (<a href="git-reflog.html">git reflog</a>) registra o que aconteceu com todas as letras:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git reflog -3
+ae456dd (HEAD -&gt; main, sobremesas) HEAD@{0}: merge sobremesas: Fast-forward
+0244251 HEAD@{1}: checkout: moving from sobremesas to main
+ae456dd (HEAD -&gt; main, sobremesas) HEAD@{2}: commit: Adiciona receita de brigadeiro
+</pre>
+
+<div class="tip">
+<strong>Por que o fast-forward é tão seguro?</strong>
+<p>Porque ele não inventa nada: não há commit novo, não há combinação de arquivos, não pode haver conflito. A pasta fica exatamente igual à do último commit do outro branch, que você já tinha testado lá. É também o que acontece num <a href="git-pull.html">git pull</a> quando só o colega mexeu: <code>Updating … Fast-forward</code>.</p>
+</div>
+
+<hr>
+
+<h2>2. <code>--no-ff</code>: quero um commit de merge mesmo assim</h2>
+<p>O fast-forward tem um efeito colateral: depois dele, o desenho da história é uma linha reta, e ninguém sabe mais que o pudim e o brigadeiro foram feitos num branch separado. Algumas equipes querem guardar essa informação: "aqui entrou a funcionalidade X, inteira". Para isso existe o <code>--no-ff</code> ("sem fast-forward"), que <strong>sempre</strong> cria um commit de merge.</p>
+<p>A Ana fez um branch <code>bebidas</code> com um suco. O <code>main</code> não andou, então daria fast-forward, mas ela pede <code>--no-ff</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch -q -c bebidas
+$ echo 'Suco de laranja' &gt; suco.txt
+$ git add suco.txt &amp;&amp; git commit -q -m 'Adiciona suco'
+$ git switch -q main
+$ git merge --no-ff bebidas -m 'Junta o ramo bebidas'
+Merge made by the 'ort' strategy.
+ suco.txt | 1 +
+ 1 file changed, 1 insertion(+)
+ create mode 100644 suco.txt
+$ git log --oneline --graph --all
+*   33670d7 (HEAD -&gt; main) Junta o ramo bebidas      « commit de merge, com dois pais
+|\
+| * f23e6d2 (bebidas) Adiciona suco
+|/
+* ae456dd (sobremesas) Adiciona receita de brigadeiro
+* d6f2336 Adiciona receita de pudim
+* 0244251 Adiciona receita de pão de queijo
+* 7225e04 Adiciona receita de bolo
+* 700bbd5 Cria o README
+</pre>
+
+<pre>Antes:   A---B---C---D---E   ← main ← HEAD
+                          \
+                           S   ← bebidas            (S = f23e6d2, o suco)
+
+Depois:  A---B---C---D---E-------M   ← main ← HEAD  (M = 33670d7, o commit de merge)
+                          \     /
+                           S----   ← bebidas
+</pre>
+
+<p>Em vez de <code>Fast-forward</code>, a saída diz <code>Merge made by the 'ort' strategy.</code> ("merge feito pela estratégia 'ort'"), e o desenho ganhou uma "bolha": o galho do suco entra e sai, e o commit de merge marca onde o branch foi juntado. Sem o <code>-m</code>, o Git abriria o editor com a mensagem <code>Merge branch 'bebidas'</code>, como na aula <a href="git-merge.html">git merge</a>.</p>
+
+<p>Com esses commits de merge, o <code>git log --first-parent</code> ("só o primeiro pai") mostra a história do <code>main</code> como uma lista de "o que entrou", pulando os commits de dentro dos branches. Você vai ver no fim da seção 4.</p>
+
+<hr>
+
+<h2>3. <code>--ff-only</code>: só se for fast-forward</h2>
+<p>O contrário: aceitar o merge <strong>somente</strong> se ele for fast-forward. Se precisar de um commit de merge, o Git recusa e não muda nada. Com um branch <code>lanches</code> que nasceu no fim do <code>main</code>, passa:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch -q -c lanches
+$ echo 'Coxinha' &gt; coxinha.txt
+$ git add coxinha.txt &amp;&amp; git commit -q -m 'Adiciona coxinha'
+$ git switch -q main
+$ git merge --ff-only lanches
+Updating 33670d7..515a758
+Fast-forward
+ coxinha.txt | 1 +
+ 1 file changed, 1 insertion(+)
+ create mode 100644 coxinha.txt
+</pre>
+
+<p>Agora um caso em que os dois andaram: a Ana criou o branch <code>chas</code> com um chá e, no <code>main</code>, commitou uma feijoada:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch -q -c chas
+$ echo 'Chá de hortelã' &gt; cha.txt
+$ git add cha.txt &amp;&amp; git commit -q -m 'Adiciona chá'
+$ git switch -q main
+$ echo 'Feijoada' &gt; feijoada.txt
+$ git add feijoada.txt &amp;&amp; git commit -q -m 'Adiciona receita de feijoada'
+$ git log --oneline --graph --all -5
+* 10b309b (chas) Adiciona chá
+| * 13932f0 (HEAD -&gt; main) Adiciona receita de feijoada
+|/
+* 515a758 (lanches) Adiciona coxinha
+*   33670d7 Junta o ramo bebidas
+|\
+| * f23e6d2 (bebidas) Adiciona suco
+|/
+$ git merge --ff-only chas
+hint: Diverging branches can't be fast-forwarded, you need to either:
+hint:
+hint:   git merge --no-ff
+hint:
+hint: or:
+hint:
+hint:   git rebase
+hint:
+hint: Disable this message with "git config set advice.diverging false"
+fatal: Not possible to fast-forward, aborting.
+</pre>
+
+<pre>       ...---L---F   ← main ← HEAD     (L = 515a758, a coxinha; F = 13932f0, a feijoada)
+              \
+               T   ← chas              (T = 10b309b, o chá)
+
+O main não está no caminho do chas: não dá para "só andar para frente".
+</pre>
+
+<p>Linha por linha:</p>
+<dl class="anatomy">
+  <dt>hint: Diverging branches can't be fast-forwarded, you need to either:</dt><dd>"Branches que divergiram não podem ser avançados rapidamente; você precisa ou:"</dd>
+  <dt>hint: git merge --no-ff</dt><dd>"…fazer um merge com commit de merge…" (um <code>git merge chas</code> normal, sem o <code>--ff-only</code>, também faz isso).</dd>
+  <dt>hint: or: git rebase</dt><dd>"…ou reorganizar os seus commits por cima do outro branch" (<a href="git-rebase.html">git rebase</a>, nível avançado).</dd>
+  <dt>fatal: Not possible to fast-forward, aborting.</dt><dd>"Não é possível avançar rapidamente; abortando". Nada mudou.</dd>
+</dl>
+
+<p>Para que serve então? Para ter certeza de que um merge <strong>não</strong> vai criar commit nem conflito. Por exemplo, para atualizar o seu <code>main</code> com o do GitHub só quando você não tem nada local no meio (<code>git pull --ff-only</code>, veja <a href="git-pull.html">git pull</a>).</p>
+
+<hr>
+
+<h2>4. Deixando a escolha configurada: <code>merge.ff</code></h2>
+<p>Se você sempre quer um dos dois comportamentos, configure o repositório (ou todos, com <code>--global</code>; veja <a href="git-config.html">git config</a>):</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Configuração</th><th>Efeito no <code>git merge</code></th></tr>
+<tr><td>(nenhuma, o padrão)</td><td>Fast-forward quando dá; commit de merge quando precisa</td></tr>
+<tr><td><code>git config merge.ff false</code></td><td>Sempre commit de merge (como <code>--no-ff</code>)</td></tr>
+<tr><td><code>git config merge.ff only</code></td><td>Só fast-forward (como <code>--ff-only</code>)</td></tr>
+<tr><td><code>git config --unset merge.ff</code></td><td>Volta ao padrão</td></tr>
+</table>
+</div>
+
+<p>Com <code>merge.ff only</code>, um merge comum do <code>chas</code> dá o mesmo erro da seção 3:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git config merge.ff only
+$ git merge chas
+hint: Diverging branches can't be fast-forwarded, you need to either:
+hint:
+hint:   git merge --no-ff
+hint:
+hint: or:
+hint:
+hint:   git rebase
+hint:
+hint: Disable this message with "git config set advice.diverging false"
+fatal: Not possible to fast-forward, aborting.
+$ git config --unset merge.ff
+</pre>
+
+<p>E com <code>merge.ff false</code>, um branch <code>sucos</code> que daria fast-forward ganha um commit de merge, sem precisar escrever <code>--no-ff</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git config merge.ff false
+$ git switch -q -c sucos HEAD
+$ echo 'Suco de uva' &gt; uva.txt
+$ git add uva.txt &amp;&amp; git commit -q -m 'Adiciona suco de uva'
+$ git switch -q main
+$ git merge sucos -m 'Junta o ramo sucos'
+Merge made by the 'ort' strategy.
+ uva.txt | 1 +
+ 1 file changed, 1 insertion(+)
+ create mode 100644 uva.txt
+$ git config --unset merge.ff
+$ git log --oneline --graph --all -8
+* 10b309b (chas) Adiciona chá
+| *   cdadcee (HEAD -&gt; main) Junta o ramo sucos
+| |\
+| | * fb5a342 (sucos) Adiciona suco de uva
+| |/
+| * 13932f0 Adiciona receita de feijoada
+|/
+* 515a758 (lanches) Adiciona coxinha
+*   33670d7 Junta o ramo bebidas
+|\
+| * f23e6d2 (bebidas) Adiciona suco
+|/
+* ae456dd (sobremesas) Adiciona receita de brigadeiro
+</pre>
+
+<p>Agora compare a história do <code>main</code> com <code>--first-parent</code>, que segue só o primeiro pai de cada commit de merge (o lado do <code>main</code>):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --graph --first-parent -6
+* cdadcee (HEAD -&gt; main) Junta o ramo sucos
+* 13932f0 Adiciona receita de feijoada
+* 515a758 (lanches) Adiciona coxinha
+* 33670d7 Junta o ramo bebidas
+* ae456dd (sobremesas) Adiciona receita de brigadeiro
+* d6f2336 Adiciona receita de pudim
+</pre>
+
+<p>Os commits do suco de laranja e do suco de uva sumiram dessa visão: aparecem só os commits de merge que os trouxeram (<code>Junta o ramo …</code>). Já a coxinha, o pudim e o brigadeiro, que entraram por fast-forward, aparecem como se tivessem sido feitos direto no <code>main</code>. Essa é a diferença prática entre os dois estilos.</p>
+
+<hr>
+
+<h2>Experimente</h2>
+<p>O terminal está na pasta <code>receitas</code>. Use <code>git log --oneline --graph --all</code> antes e depois de cada merge, e compare o desenho.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;git switch -q -c sobremesas;;echo 'Pudim de leite' &gt; pudim.txt;;git add pudim.txt;;git commit -q -m 'Adiciona receita de pudim';;git switch -q main" data-goal="head:main,commits:2,contem:main:pudim.txt=Pudim,ran:--ff-only" data-solucao="git merge --ff-only sobremesas">
+<p class="try-task"><strong>Missão:</strong> junte o <code>sobremesas</code> no <code>main</code> exigindo que seja fast-forward. Depois, confira com <code>git log --oneline --graph --all</code> que as duas etiquetas estão no mesmo commit e que nenhum commit novo apareceu.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;git switch -q -c bebidas;;echo 'Suco de laranja' &gt; suco.txt;;git add suco.txt;;git commit -q -m 'Adiciona suco';;git switch -q main" data-goal="head:main,commits:3,contem:main:suco.txt=Suco,msg:bebidas" data-solucao="git merge --no-ff bebidas -m 'Junta o ramo bebidas'">
+<p class="try-task"><strong>Missão:</strong> agora o contrário: junte o <code>bebidas</code> no <code>main</code> <strong>criando um commit de merge</strong>, mesmo que desse fast-forward, com a mensagem <code>Junta o ramo bebidas</code>. Veja a "bolha" no <code>git log --oneline --graph --all</code>.</p>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes: qual estilo usar?</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>Se dá fast-forward</th><th>Se os dois andaram</th></tr>
+<tr><td><code>git merge NOME</code></td><td>Fast-forward</td><td>Commit de merge</td></tr>
+<tr><td><code>git merge --no-ff NOME</code></td><td>Commit de merge</td><td>Commit de merge</td></tr>
+<tr><td><code>git merge --ff-only NOME</code></td><td>Fast-forward</td><td>Recusa (<code>Not possible to fast-forward</code>)</td></tr>
+</table>
+</div>
+<ul>
+  <li><strong>Projeto pessoal, branches curtos:</strong> o padrão (<code>git merge NOME</code>) está ótimo. A história fica simples.</li>
+  <li><strong>Equipe que quer ver cada funcionalidade como um bloco:</strong> <code>--no-ff</code> (ou <code>merge.ff false</code>). É o que muitos fluxos de trabalho pedem (<a href="fluxos.html">Fluxos de Trabalho</a>); o botão de merge de pull request do GitHub também cria commit de merge por padrão (ilustrativo; <a href="pull-request.html">Pull Request</a>).</li>
+  <li><strong>Quando um merge "de verdade" seria uma surpresa:</strong> <code>--ff-only</code>, como no <code>git pull --ff-only</code> para atualizar o <code>main</code>.</li>
+</ul>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>fatal: Not possible to fast-forward, aborting.</code></strong>
+<p>Você usou <code>--ff-only</code> (ou tem <code>merge.ff only</code> configurado) e os dois branches andaram. <strong>Como confirmar:</strong> <code>git log --oneline --graph --all</code> mostra os dois galhos depois do ponto de separação; <code>git config merge.ff</code> mostra se a configuração está ligada. <strong>Como resolver:</strong> se um commit de merge serve, rode o merge sem <code>--ff-only</code> (com a configuração ligada, <code>git merge --no-ff NOME</code>). A outra saída da dica, o <code>git rebase</code>, fica para o nível avançado.</p>
+</div>
+
+<div class="cenario">
+<strong>"Fiz o merge e o histórico não mostra que existiu um branch"</strong>
+<p>Foi um fast-forward: os commits do branch agora estão em linha reta no <code>main</code>. Não é erro, e nada se perdeu. <strong>Para a próxima:</strong> use <code>--no-ff</code>. (Dá para refazer um merge já feito, mas mexer em história que já foi para o GitHub é perigoso: veja <a href="regra-de-ouro.html">a regra de ouro</a>.)</p>
+</div>
+
+<div class="cenario">
+<strong>"Esperava fast-forward e abriu o editor"</strong>
+<p>O Git abriu o editor com <code>Merge branch '…'</code>, então ele vai criar um commit de merge: o branch atual tinha commits que o outro não tinha. <strong>Como confirmar:</strong> saia sem gravar nada diferente e veja o <code>git log --oneline --graph --all</code>; ou, antes do merge, rode <code>git log --oneline main..NOME</code> e <code>git log --oneline NOME..main</code> (se o segundo mostrar commits, não dá fast-forward). Também pode ser a configuração <code>merge.ff false</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando / saída</th><th>O que quer dizer</th></tr>
+<tr><td><code>Updating X..Y</code> + <code>Fast-forward</code></td><td>A etiqueta andou de X para Y, sem commit novo</td></tr>
+<tr><td><code>Merge made by the 'ort' strategy.</code></td><td>Foi criado um commit de merge</td></tr>
+<tr><td><code>git merge --no-ff NOME</code></td><td>Sempre cria commit de merge</td></tr>
+<tr><td><code>git merge --ff-only NOME</code></td><td>Só aceita fast-forward</td></tr>
+<tr><td><code>fatal: Not possible to fast-forward, aborting.</code></td><td>Os branches divergiram e o fast-forward foi exigido</td></tr>
+<tr><td><code>git config merge.ff false</code> / <code>only</code></td><td>Deixa o <code>--no-ff</code> / <code>--ff-only</code> como padrão</td></tr>
+<tr><td><code>git log --first-parent</code></td><td>Só a linha principal, um item por merge</td></tr>
+<tr><td><code>merge NOME: Fast-forward</code> (<code>git reflog</code>)</td><td>Registro do avanço rápido no diário do HEAD</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">1. Quando um merge pode ser fast-forward?</p>
+<label><input type="radio" name="q1"> Quando os dois branches têm commits novos</label>
+<label><input type="radio" name="q1"> Quando o branch atual não ganhou commits desde que o outro branch nasceu</label>
+<label><input type="radio" name="q1"> Quando não há arquivos novos</label>
+<label><input type="radio" name="q1"> Sempre</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">2. Depois de um fast-forward, quantos commits novos existem no repositório?</p>
+<label><input type="radio" name="q2"> Um, o commit de merge</label>
+<label><input type="radio" name="q2"> Dois, um em cada branch</label>
+<label><input type="radio" name="q2"> Depende do número de arquivos</label>
+<label><input type="radio" name="q2"> Nenhum: só a etiqueta do branch andou</label>
+</div>
+
+<div class="exercise">
+<h3>3. Complete</h3>
+<div class="ex-code">Criar commit de merge mesmo podendo avançar: git merge --<input data-answer="no-ff" aria-label="opção"> bebidas<br>Só juntar se for avanço rápido: git merge --<input data-answer="ff-only" aria-label="opção"> bebidas</div>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. O Git respondeu <code>fatal: Not possible to fast-forward, aborting.</code>. O que aconteceu com o branch atual?</p>
+<label><input type="radio" name="q4"> Nada: o merge foi cancelado antes de mudar qualquer coisa</label>
+<label><input type="radio" name="q4"> Ficou com um conflito</label>
+<label><input type="radio" name="q4"> Foi apagado</label>
+<label><input type="radio" name="q4"> Recebeu metade dos commits</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">5. A equipe da Ana quer que o histórico do <code>main</code> mostre um commit "Junta o ramo X" para cada funcionalidade. O que configurar?</p>
+<label><input type="radio" name="q5"> <code>git config merge.ff only</code></label>
+<label><input type="radio" name="q5"> Nada: o padrão já faz isso</label>
+<label><input type="radio" name="q5"> <code>git config merge.ff false</code> (ou usar sempre <code>--no-ff</code>)</label>
+<label><input type="radio" name="q5"> <code>git config --unset merge.ff</code></label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><strong>Fast-forward</strong> é o merge em que o branch atual não andou: o Git só empurra a etiqueta para frente (<code>Updating X..Y</code>, <code>Fast-forward</code>). Sem commit novo, sem conflito possível.</li>
+  <li>Por dentro, muda só o arquivo <code>.git/refs/heads/NOME</code>, que passa a ter o hash do último commit do outro branch.</li>
+  <li><code>--no-ff</code> cria um commit de merge mesmo assim, para o desenho mostrar que existiu um branch.</li>
+  <li><code>--ff-only</code> só aceita fast-forward; se os branches divergiram: <code>fatal: Not possible to fast-forward, aborting.</code>, sem mudar nada.</li>
+  <li><code>git config merge.ff false</code> ou <code>only</code> deixa uma dessas opções como padrão; <code>--unset</code> volta ao normal.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>

@@ -297,7 +297,7 @@ nothing to commit, working tree clean
 <h2>Experimente</h2>
 <p>O terminal está na pasta <code>receitas</code>, com três commits no <code>main</code>. Olhe o <code>git status</code> e o <code>git log --oneline --graph --all</code> a cada passo.</p>
 
-<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;echo 'Pão de queijo' &gt; pao.txt;;git add pao.txt;;git commit -q -m 'Adiciona receita de pão de queijo'" data-goal="head:destacado,absent:pao.txt" data-solucao="git switch --detach HEAD~1">
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;echo 'Pão de queijo' &gt; pao.txt;;git add pao.txt;;git commit -q -m 'Adiciona receita de pão de queijo'" data-goal="head:destacado,absent:receitas/pao.txt" data-solucao="git switch --detach HEAD~1">
 <p class="try-task"><strong>Missão:</strong> visite o commit da receita de bolo (um antes do atual), destacando o HEAD. Confira com <code>ls</code> que o <code>pao.txt</code> ainda não existia ali, e com <code>git status</code> que o HEAD está destacado.</p>
 </div>
 

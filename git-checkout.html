@@ -234,7 +234,7 @@ nothing to commit, working tree clean
 <p class="try-task"><strong>Missão:</strong> com o <code>git checkout</code>, crie o branch <code>salgados</code> e vá para ele com um comando só. Depois, volte para o <code>main</code> (dica: <code>git checkout -</code> também serve).</p>
 </div>
 
-<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;echo 'Bolo queimado' &gt; bolo.txt" data-goal="limpo,contains:~/receitas/bolo.txt=Bolo de cenoura,head:main" data-solucao="git checkout -- bolo.txt">
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;echo 'Bolo queimado' &gt; bolo.txt" data-goal="limpo,contains:receitas/bolo.txt=Bolo de cenoura,head:main" data-solucao="git checkout -- bolo.txt">
 <p class="try-task"><strong>Missão:</strong> o <code>bolo.txt</code> está estragado ("Bolo queimado") e ainda não foi commitado. Descarte a mudança com o <code>git checkout</code>, do jeito seguro (com o <code>--</code>). Confira com <code>cat bolo.txt</code> e <code>git status</code>. Depois, para comparar, faça o mesmo com o comando novo: estrague de novo (<code>echo 'Bolo queimado' &gt; bolo.txt</code>) e use <code>git restore bolo.txt</code>.</p>
 </div>
 
