@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git GitHub Actions — um robô que confere cada push | Guia Git</title>
+<meta name="description" content="Uma primeira olhada no GitHub Actions: o que é um fluxo de trabalho (workflow), evento, trabalho, etapa e executor, como escrever o arquivo .github/workflows/verificar.yml, commitar, enviar com git push e ver o resultado na aba Ações, com saídas reais e missões no terminal do guia.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">GitHub Actions</span></h1>
+
+<p class="intro">Toda vez que a Ana faz <code>git push</code> do site de receitas, ela abre o site para ver se nada quebrou. Um dia ela esquece, e o site fica uma semana sem a página inicial. O <strong>GitHub Actions</strong> resolve isso: é um "robô" do GitHub que roda os comandos que você mandar <strong>a cada push</strong>, num computador do próprio GitHub, e avisa se algo falhar. Nesta aula você vai escrever o seu primeiro robô, commitá-lo como qualquer outro arquivo e entender onde ver o resultado.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é o GitHub Actions e o vocabulário dele: <strong>fluxo de trabalho</strong>, <strong>evento</strong>, <strong>trabalho</strong>, <strong>etapa</strong>, <strong>executor</strong> e <strong>ação</strong>.</li>
+  <li>Onde mora o arquivo do robô (<code>.github/workflows/</code>) e como ler cada linha dele.</li>
+  <li>Que o robô é só um arquivo do repositório: você o cria, faz <code>git add</code>, <code>git commit</code> e <code>git push</code>.</li>
+  <li>Onde ver o resultado no site (a aba <strong>Ações</strong>) e como reproduzir uma falha no seu próprio terminal.</li>
+  <li>Os erros mais comuns: pasta com nome errado, recuo errado no YAML e o token sem a permissão <code>workflow</code>.</li>
+</ul>
+</div>
+
+<div class="warning">
+<strong>O que roda e o que não roda aqui</strong>
+<p>O GitHub Actions roda <strong>nos computadores do GitHub</strong>, não no seu. Os comandos de Git desta aula (criar a pasta, <code>git add</code>, <code>git commit</code>, <code>git push</code>) saíram do laboratório, com as mensagens reais em português. Já as telas do site (a aba <strong>Ações</strong>, os logs da execução) são descritas com base na documentação oficial, <a href="https://docs.github.com/pt/actions">docs.github.com/pt/actions</a>, e são <strong>ilustrativas</strong>: o GitHub muda o visual de vez em quando.</p>
+</div>
+
+<hr>
+
+<h2>A ideia: um provador na cozinha</h2>
+<p>Imagine que a Ana tem um restaurante. Cada prato que sai da cozinha passa por um <strong>provador</strong>, que segue uma lista fixa: "está quente? tem sal? está no prato certo?". Se algo falhar, o prato volta e a Ana é avisada. O provador não cozinha nada: só <strong>confere</strong>, sempre do mesmo jeito, sem esquecer.</p>
+<p>O GitHub Actions é esse provador. A "lista" é um arquivo de texto que fica dentro do seu repositório. O "prato saindo da cozinha" é um <strong>evento</strong>, como um <code>git push</code>. Quando o evento acontece, o GitHub liga um computador temporário, baixa o seu repositório nele, segue a lista e mostra se cada passo deu certo (✓) ou errado (✗).</p>
+<p>Esse tipo de conferência automática tem um nome que você vai ver muito por aí: <strong>CI</strong>, de <em>Continuous Integration</em> ("integração contínua"): integrar o trabalho de todo mundo várias vezes ao dia, com uma verificação automática a cada envio.</p>
+
+<h3>O vocabulário (como na documentação em português)</h3>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Em inglês</th><th>Na documentação em português</th><th>O que é</th><th>No restaurante</th></tr>
+<tr><td><em>workflow</em></td><td>fluxo de trabalho</td><td>O processo automático inteiro, descrito num arquivo <code>.yml</code>.</td><td>A lista do provador.</td></tr>
+<tr><td><em>event</em></td><td>evento</td><td>O que dispara o fluxo: um push, um pull request, um horário…</td><td>Um prato saindo da cozinha.</td></tr>
+<tr><td><em>job</em></td><td>trabalho</td><td>Um conjunto de etapas que rodam na mesma máquina.</td><td>"Conferir a sobremesa".</td></tr>
+<tr><td><em>step</em></td><td>etapa</td><td>Um comando de shell ou uma ação pronta.</td><td>"Ver se está gelada".</td></tr>
+<tr><td><em>runner</em></td><td>executor</td><td>O computador (servidor) que roda o trabalho.</td><td>O provador em pessoa.</td></tr>
+<tr><td><em>action</em></td><td>ação</td><td>Um pedaço pronto e reutilizável, feito por alguém, que você usa numa etapa.</td><td>Um termômetro comprado pronto.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>O arquivo do robô</h2>
+<p>Um fluxo de trabalho é um arquivo em formato <strong>YAML</strong> (extensão <code>.yml</code> ou <code>.yaml</code>) guardado numa pasta com nome exato: <code>.github/workflows/</code> na raiz do repositório. O ponto no começo de <code>.github</code> faz dela uma pasta "escondida" (o <code>ls</code> comum não mostra; o <code>ls -a</code> mostra).</p>
+<p>Este é o robô da Ana. Ele confere duas coisas simples a cada push: que a página inicial <code>index.html</code> existe e que ela tem um título (<code>&lt;title&gt;</code>):</p>
+
+<pre class="file" data-name=".github/workflows/verificar.yml">name: Verificar site
+on: [push]
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: ls -l
+      - run: test -f index.html
+      - run: grep -q "&lt;title&gt;" index.html</pre>
+
+<dl class="anatomy">
+  <dt>name: Verificar site</dt><dd>O nome do fluxo. É o que aparece na lista da aba <strong>Ações</strong> do site.</dd>
+  <dt>on: [push]</dt><dd>O <strong>evento</strong>: "rode quando alguém fizer push". Outros comuns: <code>pull_request</code> (quando abrirem um pull request) e <code>workflow_dispatch</code> (um botão para rodar à mão).</dd>
+  <dt>jobs:</dt><dd>A lista de <strong>trabalhos</strong>. Aqui só há um, chamado <code>verificar</code> (o nome é escolha sua).</dd>
+  <dt>runs-on: ubuntu-latest</dt><dd>O <strong>executor</strong>: uma máquina Ubuntu nova, emprestada pelo GitHub, que é apagada no fim.</dd>
+  <dt>steps:</dt><dd>As <strong>etapas</strong>, em ordem. Cada uma começa com <code>- </code> (um item de lista no YAML).</dd>
+  <dt>- uses: actions/checkout@v6</dt><dd>Usa uma <strong>ação</strong> pronta, a <code>checkout</code>, que baixa o seu repositório para dentro da máquina. Sem ela, a máquina começa vazia! O <code>@v6</code> é a versão da ação (a usada no exemplo da documentação oficial).</dd>
+  <dt>- run: ls -l</dt><dd>Roda um comando de shell. Aqui só lista os arquivos, para aparecer no registro (log).</dd>
+  <dt>- run: test -f index.html</dt><dd>O <code>test -f</code> termina com código <strong>0</strong> se o arquivo existe e <strong>1</strong> se não existe. No Actions, uma etapa que termina com código diferente de 0 <strong>falha</strong>, e o trabalho para ali.</dd>
+  <dt>- run: grep -q "&lt;title&gt;" index.html</dt><dd>O <code>grep -q</code> procura o texto em silêncio: código 0 se achou, 1 se não achou.</dd>
+</dl>
+
+<div class="warning">
+<strong>No YAML, o recuo (espaços) faz parte da gramática</strong>
+<p>Os espaços no começo das linhas dizem "isto está dentro daquilo". Use <strong>espaços</strong>, nunca Tab, e mantenha o mesmo recuo para itens do mesmo nível. Um espaço a mais ou a menos muda o sentido do arquivo, e o GitHub recusa o fluxo.</p>
+</div>
+
+<hr>
+
+<h2>Passo 1: criar a pasta e o arquivo</h2>
+<p>No repositório da Ana (que já tem o <code>index.html</code> commitado e um remoto <code>origin</code> no GitHub), ela cria a pasta com <code>mkdir -p</code> (o <code>-p</code> cria as duas, <code>.github</code> e <code>workflows</code>, de uma vez) e escreve o arquivo no editor:</p>
+
+<pre class="term" data-cwd="~/receitas">$ mkdir -p .github/workflows
+$ nano .github/workflows/verificar.yml          « escreve o arquivo acima e salva
+$ ls
+index.html                                      « o ls comum não mostra pastas com ponto
+$ ls -a
+.  ..  .git  .github  index.html                « com -a, a .github aparece
+$ ls .github/workflows
+verificar.yml
+$ git status
+No ramo main
+Your branch is up to date with 'origin/main'.
+
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+        .github/                                « a pasta nova inteira
+
+nada adicionado ao envio mas arquivos não registrados estão presentes (use "git add" to registrar)</pre>
+
+<p>Repare na linha do <code>git status</code>: o Git mostra só a pasta <code>.github/</code>, e não o arquivo lá dentro. Quando uma pasta inteira é nova, o Git resume assim. Para ele, o robô é <strong>um arquivo qualquer</strong>: ainda não rastreado, igual a uma receita nova.</p>
+
+<h2>Passo 2: commitar e enviar</h2>
+<p>O robô só passa a existir para o GitHub depois que o arquivo chega lá. Então o caminho é o de sempre: <a href="git-add.html">git add</a>, <a href="git-commit.html">git commit</a> e <a href="git-push.html">git push</a>.</p>
+
+<pre class="term" data-cwd="~/receitas">$ git add .github
+$ git status
+No ramo main
+Your branch is up to date with 'origin/main'.
+
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+        new file:   .github/workflows/verificar.yml      « agora o Git mostra o arquivo
+
+$ git commit -m 'Adiciona verificação automática do site'
+[main e7e122e] Adiciona verificação automática do site
+ 1 file changed, 10 insertions(+)
+ create mode 100644 .github/workflows/verificar.yml
+$ git push
+Enumerating objects: 6, done.
+Counting objects: 100% (6/6), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (3/3), done.
+Writing objects: 100% (5/5), 538 bytes | 538.00 KiB/s, done.
+Total 5 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/receitas.git
+   0b71801..e7e122e  main -&gt; main                « o robô chegou ao GitHub</pre>
+<p>Linha por linha do que importa:</p>
+<ul>
+  <li><code>new file:   .github/workflows/verificar.yml</code>: depois do <code>git add .github</code>, o Git lista cada arquivo da pasta. (Algumas frases do Git do Ubuntu ainda saem metade em inglês, como <code>new file</code>, "arquivo novo", e <code>to unstage</code>, "para tirar da área de preparo": é a tradução que vem com o Git, não um erro seu.)</li>
+  <li><code>create mode 100644 .github/workflows/verificar.yml</code>: o commit criou o arquivo, com permissão de arquivo comum (100644).</li>
+  <li><code>0b71801..e7e122e  main -&gt; main</code>: o <code>main</code> do GitHub andou do commit antigo para o novo. A partir deste momento o GitHub "vê" a pasta <code>.github/workflows</code> e dispara o fluxo.</li>
+</ul>
+
+<p>Daqui em diante, cada push para o GitHub dispara o fluxo, inclusive este push que acabou de levar o arquivo.</p>
+
+<h2>Passo 3: ver o resultado no site (ilustrativo)</h2>
+<p>Segundo a documentação oficial, para ver as execuções:</p>
+<ol class="passo">
+  <li>Abra a página principal do repositório no GitHub.</li>
+  <li>Clique na aba <strong>Ações</strong> (em inglês, <em>Actions</em>).</li>
+  <li>Na barra lateral esquerda, clique no nome do fluxo, <strong>Verificar site</strong>.</li>
+  <li>Na lista de execuções, clique na execução que você quer ver (o título é a mensagem do commit).</li>
+  <li>Em <strong>Jobs</strong>, clique no trabalho <strong>verificar</strong> e expanda as etapas para ver a saída de cada comando, como se fosse um terminal.</li>
+</ol>
+<p>Ao lado de cada execução aparece um símbolo: ✓ verde (deu tudo certo), ✗ vermelho (alguma etapa falhou) ou um círculo amarelo (ainda rodando). O mesmo símbolo aparece ao lado do commit na página do repositório e nos <a href="pull-request.html">pull requests</a>, e o GitHub pode mandar um e-mail quando uma execução falha.</p>
+
+<div class="note">
+<strong>Custa alguma coisa?</strong>
+<p>Segundo a documentação de cobrança do GitHub, o uso do GitHub Actions é <strong>grátis em repositórios públicos</strong> (com os executores padrão do GitHub). Em repositórios <strong>privados</strong>, a conta gratuita (GitHub Free) inclui uma cota de minutos por mês (2.000 minutos, na tabela da documentação quando esta aula foi escrita). Confira os valores atuais em <a href="https://docs.github.com/pt/billing">docs.github.com/pt/billing</a>.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;printf '&lt;title&gt;Receitas da Ana&lt;/title&gt;\n&lt;h1&gt;Receitas&lt;/h1&gt;\n' &gt; index.html;;git add index.html;;git commit -q -m 'Cria a página inicial';;printf 'name: Verificar site\non: [push]\njobs:\n  verificar:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n      - run: test -f index.html\n' &gt; verificar.yml" data-goal="rastreado:.github/workflows/verificar.yml,limpo,commits:2" data-solucao="mkdir -p .github/workflows;;mv verificar.yml .github/workflows/;;git add .github;;git commit -m 'Adiciona verificação automática do site'">
+<p class="try-task"><strong>Missão:</strong> a Ana baixou o arquivo <code>verificar.yml</code>, mas ele está solto na raiz do repositório, onde o GitHub não procura. Crie a pasta <code>.github/workflows</code>, mova o arquivo para lá (<code>mv</code>) e commite. Confira com <code>git status</code> e <code>cat .github/workflows/verificar.yml</code>.</p>
+</div>
+
+<hr>
+
+<h2>Quando o robô reclama: reproduza no seu terminal</h2>
+<p>A melhor coisa sobre etapas com <code>run:</code> é que elas são <strong>comandos comuns</strong>. Se o GitHub disser que a etapa <code>test -f index.html</code> falhou, você pode rodar o mesmo comando no seu computador e ver o mesmo resultado. Foi o que a Ana fez quando o Bruno renomeou a página inicial para <code>inicio.html</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ ls
+inicio.html                                     « não existe mais index.html
+$ test -f index.html
+$ echo $?
+1                                               « 1 = falhou, igual à etapa do robô
+$ git mv inicio.html index.html
+$ git commit -m 'Volta o nome index.html para o robô passar'
+[main c540300] Volta o nome index.html para o robô passar
+ 1 file changed, 0 insertions(+), 0 deletions(-)
+ rename inicio.html =&gt; index.html (100%)
+$ test -f index.html
+$ echo $?
+0                                               « 0 = passou
+$ grep -q "&lt;title&gt;" index.html
+$ echo $?
+0                                               « a última etapa também passa</pre>
+
+<p>O <code>$?</code> mostra o código de saída do último comando: <code>1</code> é exatamente o que fez a etapa falhar no GitHub. A correção é desfazer o nome com <a href="git-mv.html">git mv</a>, commitar e enviar de novo. O próximo push dispara o fluxo outra vez, e o ✗ vira ✓.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;mkdir -p .github/workflows;;printf 'name: Verificar site\non: [push]\njobs:\n  verificar:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v6\n      - run: test -f index.html\n' &gt; .github/workflows/verificar.yml;;printf '&lt;title&gt;Receitas da Ana&lt;/title&gt;\n' &gt; index.html;;git add .;;git commit -q -m 'Cria o site e a verificação';;git mv index.html inicio.html;;git commit -q -m 'Renomeia a página inicial'" data-goal="rastreado:index.html,limpo,commits:3" data-solucao="test -f index.html;;echo $?;;git mv inicio.html index.html;;git commit -m 'Volta o nome index.html para o robô passar'">
+<p class="try-task"><strong>Missão:</strong> o robô da Ana está vermelho. Rode a mesma etapa dele, <code>test -f index.html</code>, e veja o código com <code>echo $?</code>. Depois, devolva o nome <code>index.html</code> à página com <code>git mv</code> e commite, para o próximo push passar.</p>
+</div>
+
+<hr>
+
+<h2>Formas diferentes de criar o fluxo</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Forma</th><th>Como</th><th>Quando usar</th></tr>
+<tr><td>No seu computador</td><td><code>mkdir -p .github/workflows</code>, escrever o <code>.yml</code> no editor, <code>add</code>, <code>commit</code>, <code>push</code> (esta aula).</td><td>O jeito do dia a dia: você testa os comandos antes e o arquivo entra no histórico como qualquer outro.</td></tr>
+<tr><td>Pelo site, arquivo novo (ilustrativo)</td><td>Segundo a documentação, na página do repositório use <strong>Adicionar arquivo</strong> › <strong>Criar novo arquivo</strong> e digite o nome <code>.github/workflows/verificar.yml</code> (as barras criam as pastas). Depois, <strong>Confirmar alterações</strong>.</td><td>Para experimentar sem terminal. O commit é feito no GitHub: depois rode <a href="git-pull.html">git pull</a> para trazê-lo para o seu computador.</td></tr>
+<tr><td>Pelo site, a partir de um modelo (ilustrativo)</td><td>Na aba <strong>Ações</strong>, o GitHub sugere fluxos prontos para a linguagem do repositório; você escolhe um, ajusta e commita.</td><td>Para projetos em Node, Python, Java…: o modelo já instala a linguagem e roda os testes.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Fiz push, mas nada aparece na aba Ações</strong>
+<pre class="term" data-cwd="~/receitas">$ git ls-files .github
+.github/workflow/verificar.yml                  « workflow, sem o "s"!
+$ git mv .github/workflow .github/workflows
+$ git commit -m 'Corrige o nome da pasta dos fluxos'
+[main 19b135e] Corrige o nome da pasta dos fluxos
+ 1 file changed, 0 insertions(+), 0 deletions(-)
+ rename .github/{workflow =&gt; workflows}/verificar.yml (100%)
+$ git ls-files .github
+.github/workflows/verificar.yml</pre>
+<p><strong>O que aconteceu:</strong> a pasta se chama <code>.github/workflow</code> (sem o <strong>s</strong>). O GitHub só procura fluxos em <code>.github/workflows</code>, com esse nome exato; em qualquer outro lugar, o arquivo é só um arquivo.</p>
+<p><strong>Como confirmar:</strong> <code>git ls-files .github</code> mostra o caminho exato que está no repositório.</p>
+<p><strong>Como resolver:</strong> renomeie com <code>git mv .github/workflow .github/workflows</code>, commite e faça push. Outros motivos possíveis, segundo a documentação: o Actions desativado nas configurações do repositório, ou um evento <code>on:</code> que não combina com o que você fez (por exemplo, <code>on: [pull_request]</code> e você só fez push).</p>
+</div>
+
+<div class="cenario">
+<strong>O fluxo aparece com erro antes de rodar qualquer etapa (ilustrativo)</strong>
+<pre class="file" data-name=".github/workflows/verificar.yml (errado)">name: Verificar site
+on: [push]
+jobs:
+  verificar:
+  runs-on: ubuntu-latest
+    steps:
+      - run: test -f index.html</pre>
+<p><strong>O que aconteceu:</strong> o <code>runs-on</code> ficou com o mesmo recuo de <code>verificar:</code>, então deixou de estar "dentro" do trabalho. O arquivo não é mais um fluxo válido, e o GitHub mostra a execução como falha com um aviso sobre o arquivo de fluxo de trabalho, em vez de rodar as etapas.</p>
+<p><strong>Como resolver:</strong> confira o recuo linha por linha (dois espaços a cada nível), sem Tab. Editores como o VS Code destacam erros de YAML; muita gente compara com o exemplo da documentação.</p>
+</div>
+
+<div class="cenario">
+<strong>O push foi recusado por falta da permissão <code>workflow</code> (ilustrativo)</strong>
+<pre class="term">$ git push
+…
+ ! [remote rejected] main -&gt; main (refusing to allow a Personal Access Token to create or update workflow `.github/workflows/verificar.yml` without `workflow` scope)</pre>
+<p><strong>O que aconteceu:</strong> você envia por HTTPS com um <a href="https-token.html">token de acesso pessoal</a> que não tem a permissão (<em>scope</em>) <code>workflow</code>. O GitHub protege os fluxos de propósito: um token vazado não pode criar um robô que roda comandos na sua conta. Esta mensagem vem do servidor do GitHub (por isso está em inglês) e não roda no laboratório.</p>
+<p><strong>Como resolver:</strong> gere um token novo marcando a permissão <code>workflow</code> (nos tokens clássicos) ou use <a href="ssh.html">SSH</a>, que não tem essa restrição por token.</p>
+</div>
+
+<div class="cenario">
+<strong>Uma etapa falhou (✗ vermelho)</strong>
+<p><strong>O que aconteceu:</strong> um comando terminou com código diferente de 0. O registro da etapa, na aba <strong>Ações</strong>, mostra a saída do comando e a linha <code>Error: Process completed with exit code 1.</code> (ilustrativo).</p>
+<p><strong>Como resolver:</strong> rode o mesmo comando no seu terminal, como na seção acima, corrija, commite e faça push. Não há botão mágico: o robô roda de novo a cada push.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Item</th><th>O que é</th><th>Exemplo</th></tr>
+<tr><td><code>.github/workflows/</code></td><td>Pasta obrigatória dos fluxos</td><td><code>.github/workflows/verificar.yml</code></td></tr>
+<tr><td><code>name:</code></td><td>Nome do fluxo na aba Ações</td><td><code>name: Verificar site</code></td></tr>
+<tr><td><code>on:</code></td><td>Evento(s) que disparam o fluxo</td><td><code>on: [push, pull_request]</code></td></tr>
+<tr><td><code>jobs:</code></td><td>Lista de trabalhos</td><td><code>verificar:</code></td></tr>
+<tr><td><code>runs-on:</code></td><td>Máquina (executor)</td><td><code>ubuntu-latest</code></td></tr>
+<tr><td><code>steps:</code></td><td>Etapas, em ordem</td><td><code>- run: ls -l</code></td></tr>
+<tr><td><code>uses:</code></td><td>Usa uma ação pronta</td><td><code>actions/checkout@v6</code></td></tr>
+<tr><td><code>run:</code></td><td>Roda um comando de shell</td><td><code>run: test -f index.html</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. A pasta certa</h3>
+<p>Complete o caminho onde o GitHub procura os fluxos de trabalho:</p>
+<div class="ex-code">.github/<input data-answer="workflows" aria-label="nome da pasta">/verificar.yml</div>
+</div>
+
+<div class="exercise">
+<h3>2. Quando rodar</h3>
+<p>Complete para o fluxo rodar a cada push:</p>
+<div class="ex-code"><input data-answer="on" aria-label="chave">: [push]</div>
+</div>
+
+<div class="exercise">
+<h3>3. Baixar o repositório na máquina</h3>
+<p>Complete a etapa que baixa o repositório para dentro do executor:</p>
+<div class="ex-code">- uses: actions/<input data-answer="checkout" aria-label="nome da ação">@v6</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. Onde os comandos de um fluxo do GitHub Actions rodam?</p>
+<label><input type="radio" name="q4"> No computador de quem fez o push.</label>
+<label><input type="radio" name="q4"> No navegador, enquanto a aba Ações está aberta.</label>
+<label><input type="radio" name="q4"> Numa máquina do GitHub (o executor), criada para a execução.</label>
+<label><input type="radio" name="q4"> Dentro da pasta <code>.git</code>.</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">5. Você criou o arquivo do fluxo, mas ainda não fez nada com o Git. O que falta para ele rodar no GitHub?</p>
+<label><input type="radio" name="q5"> Nada: o GitHub lê a pasta do seu computador.</label>
+<label><input type="radio" name="q5"> <code>git add</code>, <code>git commit</code> e <code>git push</code>.</label>
+<label><input type="radio" name="q5"> Só <code>git commit</code>.</label>
+<label><input type="radio" name="q5"> Instalar o GitHub Actions no computador.</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">6. A etapa <code>run: test -f index.html</code> ficou vermelha. O que isso quer dizer?</p>
+<label><input type="radio" name="q6"> O comando terminou com código diferente de 0: o arquivo não existe no commit enviado.</label>
+<label><input type="radio" name="q6"> O GitHub está fora do ar.</label>
+<label><input type="radio" name="q6"> O <code>git push</code> foi recusado.</label>
+<label><input type="radio" name="q6"> O arquivo YAML tem um Tab.</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O GitHub Actions roda comandos automaticamente em máquinas do GitHub quando um <strong>evento</strong> acontece (por exemplo, um push).</li>
+  <li>Um <strong>fluxo de trabalho</strong> é um arquivo YAML em <code>.github/workflows/</code>, com <code>name</code>, <code>on</code>, <code>jobs</code>, <code>runs-on</code> e <code>steps</code>.</li>
+  <li>Para o Git, o fluxo é um arquivo comum: <code>git add</code>, <code>git commit</code>, <code>git push</code>.</li>
+  <li>O resultado aparece na aba <strong>Ações</strong>: ✓ deu certo, ✗ alguma etapa terminou com código diferente de 0.</li>
+  <li>Etapas <code>run:</code> são comandos comuns: rode-os no seu terminal para entender uma falha.</li>
+  <li>Recuo com espaços no YAML; pasta com o nome exato; token HTTPS precisa da permissão <code>workflow</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
