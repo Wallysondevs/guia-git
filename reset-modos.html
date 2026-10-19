@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git reset --soft, --mixed e --hard — os três modos | Guia Git</title>
+<meta name="description" content="Os três modos do git reset lado a lado: o que --soft, --mixed (o padrão) e --hard fazem com o HEAD, a área de preparo (índice) e a pasta de trabalho, com o estado real de cada um conferido com git show HEAD:arquivo, git show :arquivo e cat. O perigo do --hard, como voltar com ORIG_HEAD e os erros 'Cannot do soft reset with paths'.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">reset --soft, --mixed e --hard</span></h1>
+
+<p class="intro">Na aula <a href="git-reset.html">git reset</a>, você viu que o <code>git reset HEAD~1</code> desfaz o último commit e deixa as mudanças na pasta. Esse é só um dos três jeitos de dar reset. A diferença entre eles é <strong>até onde</strong> o reset volta: só o histórico (<code>--soft</code>), o histórico e a área de preparo (<code>--mixed</code>, o padrão), ou tudo, inclusive os arquivos da pasta (<code>--hard</code>). Nesta aula você vê os três lado a lado, com o estado real de cada lugar depois de cada um.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Os <strong>três lugares</strong> onde o Git guarda uma versão de cada arquivo: o commit (<code>HEAD</code>), a área de preparo e a pasta.</li>
+  <li>Como espiar cada um deles com <code>git show HEAD:arquivo</code>, <code>git show :arquivo</code> e <code>cat</code>.</li>
+  <li>O que <code>--soft</code>, <code>--mixed</code> e <code>--hard</code> fazem com cada lugar, na tabela clássica e no laboratório.</li>
+  <li>Por que o <code>--hard</code> é o único perigoso, e o que ele apaga para sempre.</li>
+  <li>Qual modo usar em cada situação.</li>
+</ul>
+</div>
+
+<p>Todas as saídas desta aula vieram do Git real da máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português.</p>
+
+<hr>
+
+<h2>A ideia: três gavetas</h2>
+<p>Para cada arquivo, o Git tem <strong>três versões</strong> guardadas em três lugares diferentes. Pense em três gavetas:</p>
+<ol class="passo">
+  <li><strong>A pasta de trabalho</strong> (<em>working tree</em>): os arquivos que você vê e edita. É a gaveta da mesa, a do rascunho.</li>
+  <li><strong>A área de preparo</strong> (<em>staging area</em>, também chamada de <strong>índice</strong>, <em>index</em>): o que vai entrar no próximo commit. É a caixa "para enviar" (veja <a href="area-de-preparo.html">A Área de Preparo</a>).</li>
+  <li><strong>O commit atual</strong> (<code>HEAD</code>): a versão guardada no último commit do branch. É o arquivo morto, passado a limpo (veja <a href="head.html">O que é HEAD</a>).</li>
+</ol>
+<p>Quando tudo está commitado e o <code>git status</code> diz <code>working tree clean</code>, as três gavetas têm o <strong>mesmo</strong> conteúdo. O <code>git add</code> copia da pasta para a área de preparo; o <code>git commit</code> copia da área de preparo para um commit novo. O <code>git reset</code> faz o caminho inverso, e o modo diz <strong>quantas gavetas</strong> ele arruma:</p>
+
+<pre>                 HEAD (o branch)   área de preparo   pasta de trabalho
+git reset --soft      volta           não mexe          não mexe
+git reset --mixed     volta           volta             não mexe
+git reset --hard      volta           volta             volta</pre>
+
+<p>Os três sempre fazem a primeira coisa: levar o branch (e, com ele, o <code>HEAD</code>) para o commit indicado. A diferença está no que vem depois.</p>
+
+<hr>
+
+<h2>1. Espiando as três gavetas</h2>
+<p>Para ver o efeito de cada modo, a Ana precisa olhar as três versões do arquivo. Três comandos fazem isso:</p>
+
+<dl class="anatomy">
+  <dt>git show HEAD:bolo.txt</dt><dd>Mostra o <code>bolo.txt</code> <strong>como ele está no commit</strong> <code>HEAD</code>. O formato é <code>commit:caminho</code>; funciona com qualquer commit (<code>git show HEAD~1:bolo.txt</code>, <code>git show 62fc1c8:bolo.txt</code>).</dd>
+  <dt>git show :bolo.txt</dt><dd>Com os dois-pontos e nada antes, mostra o <code>bolo.txt</code> <strong>como ele está na área de preparo</strong>.</dd>
+  <dt>cat bolo.txt</dt><dd>O comando do terminal que mostra o arquivo <strong>da pasta</strong> (veja <a href="terminal-basico.html">O Mínimo de Terminal</a>).</dd>
+</dl>
+
+<p>O repositório da Ana tem três commits. No último, ela aumentou o tempo do bolo de 40 para 45 minutos. Com tudo commitado, as três gavetas concordam:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+2b77e82 Aumenta tempo do bolo para 45 minutos
+62fc1c8 Adiciona receita de bolo
+fe996fb Primeiro commit
+$ git show HEAD:bolo.txt
+Bolo de cenoura
+Tempo: 45 minutos
+$ git show :bolo.txt
+Bolo de cenoura
+Tempo: 45 minutos
+$ cat bolo.txt
+Bolo de cenoura
+Tempo: 45 minutos
+</pre>
+
+<p>Agora a Ana vai desfazer o último commit três vezes, uma com cada modo, e olhar as gavetas depois de cada uma. Entre uma e outra, ela volta tudo ao normal com o <code>ORIG_HEAD</code> (o apelido de "onde o branch estava antes do reset"; veja <a href="git-reset.html">git reset</a>).</p>
+
+<hr>
+
+<h2>2. <code>--soft</code>: só o histórico volta</h2>
+
+<pre class="term" data-cwd="~/receitas">$ git reset --soft HEAD~1
+$ git log --oneline
+62fc1c8 Adiciona receita de bolo
+fe996fb Primeiro commit
+$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	modified:   bolo.txt   « a mudança está PREPARADA
+
+$ git show HEAD:bolo.txt
+Bolo de cenoura
+Tempo: 40 minutos   « o commit: voltou
+$ git show :bolo.txt
+Bolo de cenoura
+Tempo: 45 minutos   « a área de preparo: não mexeu
+$ cat bolo.txt
+Bolo de cenoura
+Tempo: 45 minutos   « a pasta: não mexeu
+</pre>
+
+<dl class="anatomy">
+  <dt>--soft</dt><dd>"Suave": só move o branch. A área de preparo e a pasta ficam como estavam.</dd>
+</dl>
+
+<p>O commit sumiu do histórico, mas a mudança dele está <strong>inteirinha na área de preparo</strong>, como se a Ana tivesse acabado de dar <code>git add</code> e ainda não tivesse commitado. Um <code>git commit</code> agora recria o commit (com a mensagem que ela quiser). É o modo para <strong>refazer</strong> um commit: trocar a mensagem, juntar com outra mudança, ou juntar vários commits em um (<code>git reset --soft HEAD~3</code> e um <code>git commit</code> só).</p>
+
+<p>De volta ao normal:</p>
+<pre class="term" data-cwd="~/receitas">$ git reset --soft ORIG_HEAD
+$ git log --oneline
+2b77e82 Aumenta tempo do bolo para 45 minutos
+62fc1c8 Adiciona receita de bolo
+fe996fb Primeiro commit
+</pre>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit';;echo 'Tempo: 40 minutos' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;echo 'Tempo: 45 minutos' &gt; bolo.txt;;git commit -q -am 'Aumenta tempo do bolo para 45 minutos'" data-goal="commits:2,preparado:bolo.txt,contains:bolo.txt=45 minutos" data-solucao="git reset --soft HEAD~1">
+<p class="try-task"><strong>Missão:</strong> desfaça o último commit da Ana com o modo que deixa a mudança <strong>na área de preparo</strong>. Confira com <code>git status</code> (o <code>bolo.txt</code> deve aparecer em "Mudanças a serem submetidas") e com <code>git show HEAD:bolo.txt</code>.</p>
+</div>
+
+<hr>
+
+<h2>3. <code>--mixed</code>: o histórico e a área de preparo voltam</h2>
+<p>Este é o modo <strong>padrão</strong>: <code>git reset HEAD~1</code>, sem opção, é a mesma coisa que <code>git reset --mixed HEAD~1</code>.</p>
+
+<pre class="term" data-cwd="~/receitas">$ git reset --mixed HEAD~1
+Unstaged changes after reset:
+M	bolo.txt
+$ git log --oneline
+62fc1c8 Adiciona receita de bolo
+fe996fb Primeiro commit
+$ git status
+No ramo main
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   bolo.txt   « a mudança NÃO está preparada
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+$ git show HEAD:bolo.txt
+Bolo de cenoura
+Tempo: 40 minutos   « o commit: voltou
+$ git show :bolo.txt
+Bolo de cenoura
+Tempo: 40 minutos   « a área de preparo: voltou
+$ cat bolo.txt
+Bolo de cenoura
+Tempo: 45 minutos   « a pasta: não mexeu
+</pre>
+
+<dl class="anatomy">
+  <dt>--mixed</dt><dd>"Misto": move o branch e copia o commit para a área de preparo. A pasta fica como estava.</dd>
+  <dt>Unstaged changes after reset: / M bolo.txt</dt><dd>"Mudanças não preparadas depois do reset": o Git lista os arquivos em que a pasta ficou diferente da área de preparo. O <code>M</code> é de <em>modified</em>, "modificado".</dd>
+</dl>
+
+<p>A mudança dos 45 minutos continua no arquivo, mas <strong>fora</strong> da área de preparo, como se a Ana tivesse editado o arquivo e ainda não tivesse dado <code>git add</code>. É o modo para <strong>"descommitar"</strong> e repensar: escolher de novo o que vai em cada commit, dividir um commit grande em dois, ou simplesmente continuar trabalhando antes de commitar.</p>
+
+<p>De volta ao normal (o <code>git reset ORIG_HEAD</code>, sem opção, é um <code>--mixed</code>: o branch e a área de preparo voltam para o commit dos 45 minutos, e a pasta, que já dizia 45, fica igual):</p>
+<pre class="term" data-cwd="~/receitas">$ git reset ORIG_HEAD
+$ git status
+No ramo main
+nothing to commit, working tree clean
+</pre>
+
+<hr>
+
+<h2>4. <code>--hard</code>: tudo volta, inclusive a pasta</h2>
+
+<pre class="term" data-cwd="~/receitas">$ git reset --hard HEAD~1
+HEAD is now at 62fc1c8 Adiciona receita de bolo
+$ git log --oneline
+62fc1c8 Adiciona receita de bolo
+fe996fb Primeiro commit
+$ git status
+No ramo main
+nothing to commit, working tree clean   « nenhuma mudança em lugar nenhum
+$ git show HEAD:bolo.txt
+Bolo de cenoura
+Tempo: 40 minutos   « o commit: voltou
+$ git show :bolo.txt
+Bolo de cenoura
+Tempo: 40 minutos   « a área de preparo: voltou
+$ cat bolo.txt
+Bolo de cenoura
+Tempo: 40 minutos   « a pasta: voltou também
+</pre>
+
+<dl class="anatomy">
+  <dt>--hard</dt><dd>"Duro": move o branch, copia o commit para a área de preparo <strong>e</strong> para a pasta. As três gavetas ficam iguais ao commit indicado.</dd>
+  <dt>HEAD is now at 62fc1c8 Adiciona receita de bolo</dt><dd>"O HEAD agora está em 62fc1c8", com a mensagem desse commit. É o único dos três modos que avisa alguma coisa.</dd>
+</dl>
+
+<p>O <code>git status</code> diz que está tudo limpo, e o arquivo da pasta voltou a dizer 40 minutos. A mudança dos 45 minutos <strong>não está em gaveta nenhuma</strong>. É o modo para <strong>jogar fora</strong> um trabalho: "aqueles commits foram um experimento que não deu certo; quero o projeto exatamente como estava naquele commit".</p>
+
+<p>Aqui, o commit dos 45 minutos ainda existe dentro do <code>.git</code>, então o <code>ORIG_HEAD</code> o traz de volta, com pasta e tudo:</p>
+<pre class="term" data-cwd="~/receitas">$ git reset --hard ORIG_HEAD
+HEAD is now at 2b77e82 Aumenta tempo do bolo para 45 minutos
+$ git log --oneline
+2b77e82 Aumenta tempo do bolo para 45 minutos
+62fc1c8 Adiciona receita de bolo
+fe996fb Primeiro commit
+$ cat bolo.txt
+Bolo de cenoura
+Tempo: 45 minutos
+</pre>
+
+<div class="warning">
+<strong>O que o <code>--hard</code> apaga para sempre</strong>
+<p>Commits desfeitos com <code>--hard</code> têm volta (pelo <code>ORIG_HEAD</code> ou pelo <a href="git-reflog.html">git reflog</a>), porque estão guardados no <code>.git</code>. Já as mudanças que <strong>nunca foram commitadas</strong> não têm: o <code>--hard</code> sobrescreve os arquivos da pasta, e o Git não guardou cópia nenhuma delas. Olhe:</p>
+<pre class="term" data-cwd="~/receitas">$ echo 'Cobertura: chocolate' &gt;&gt; bolo.txt
+$ git status --short
+ M bolo.txt
+$ git reset --hard
+HEAD is now at 2b77e82 Aumenta tempo do bolo para 45 minutos
+$ git status
+No ramo main
+nothing to commit, working tree clean
+$ cat bolo.txt
+Bolo de cenoura
+Tempo: 45 minutos   « a cobertura sumiu, e não há reflog que a traga
+</pre>
+<p>O <code>git reset --hard</code> sem commit (o mesmo que <code>git reset --hard HEAD</code>) não muda o histórico: só joga fora todas as mudanças não commitadas, de todos os arquivos rastreados, sem perguntar. Antes de um <code>--hard</code>, rode <code>git status</code> e pergunte-se se há algo ali que você quer guardar (um <a href="git-stash.html">git stash</a> resolve). Arquivos <strong>não rastreados</strong> (novos, nunca adicionados) o <code>--hard</code> não apaga; para eles existe o <a href="git-clean.html">git clean</a>.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit';;echo 'Tempo: 40 minutos' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;echo 'Tempo: 5 minutos no micro-ondas' &gt; bolo.txt;;git commit -q -am 'Testa bolo de micro-ondas';;echo 'Potência: máxima' &gt;&gt; bolo.txt;;git commit -q -am 'Usa potência máxima'" data-goal="commits:2,limpo,contains:bolo.txt=40 minutos" data-solucao="git reset --hard HEAD~2">
+<p class="try-task"><strong>Missão:</strong> a Ana testou um bolo de micro-ondas em dois commits, e ficou horrível. Jogue fora os dois commits <strong>e</strong> as mudanças deles, deixando o projeto exatamente como estava no commit "Adiciona receita de bolo". No fim, <code>cat bolo.txt</code> deve mostrar 40 minutos e o <code>git status</code>, nada a fazer.</p>
+</div>
+
+<hr>
+
+<h2>5. A tabela, com o estado real</h2>
+<p>A tabela clássica do <code>reset</code>, para o comando <code>git reset &lt;modo&gt; HEAD~1</code>:</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Modo</th><th>Branch / <code>HEAD</code></th><th>Área de preparo (índice)</th><th>Pasta de trabalho</th><th>O <code>git status</code> mostra</th><th>Perde algo?</th></tr>
+<tr><td><code>--soft</code></td><td>volta</td><td>não mexe</td><td>não mexe</td><td>a mudança em "Mudanças a serem submetidas"</td><td>Não</td></tr>
+<tr><td><code>--mixed</code> (padrão)</td><td>volta</td><td>volta</td><td>não mexe</td><td>a mudança em "Changes not staged for commit"</td><td>Não</td></tr>
+<tr><td><code>--hard</code></td><td>volta</td><td>volta</td><td>volta</td><td>nada (<code>working tree clean</code>)</td><td><strong>Sim</strong>: tudo o que não estava commitado</td></tr>
+</table>
+</div>
+
+<p>E o que a Ana viu em cada gaveta, no laboratório, depois de cada modo (o commit desfeito mudava 40 para 45 minutos):</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Depois de…</th><th><code>git show HEAD:bolo.txt</code></th><th><code>git show :bolo.txt</code></th><th><code>cat bolo.txt</code></th></tr>
+<tr><td>(antes do reset)</td><td>45 minutos</td><td>45 minutos</td><td>45 minutos</td></tr>
+<tr><td><code>git reset --soft HEAD~1</code></td><td><strong>40</strong> minutos</td><td>45 minutos</td><td>45 minutos</td></tr>
+<tr><td><code>git reset --mixed HEAD~1</code></td><td><strong>40</strong> minutos</td><td><strong>40</strong> minutos</td><td>45 minutos</td></tr>
+<tr><td><code>git reset --hard HEAD~1</code></td><td><strong>40</strong> minutos</td><td><strong>40</strong> minutos</td><td><strong>40</strong> minutos</td></tr>
+</table>
+</div>
+
+<p>Repare na "escada": cada modo arruma uma gaveta a mais, sempre na mesma ordem (commit → preparo → pasta).</p>
+
+<hr>
+
+<h2 id="formas">Qual modo usar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Você quer…</th><th>Use</th></tr>
+<tr><td>Refazer o último commit (outra mensagem, mais um arquivo) ou juntar vários commits em um</td><td><code>git reset --soft HEAD~N</code> e <code>git commit</code></td></tr>
+<tr><td>"Descommitar" e escolher de novo o que vai em cada commit</td><td><code>git reset HEAD~N</code> (<code>--mixed</code>)</td></tr>
+<tr><td>Jogar fora commits e mudanças, voltando o projeto a um commit</td><td><code>git reset --hard &lt;commit&gt;</code> (confira o <code>git status</code> antes!)</td></tr>
+<tr><td>Jogar fora só as mudanças não commitadas de todos os arquivos</td><td><code>git reset --hard</code>, ou o mais moderno e seletivo <code>git restore arquivo</code> (veja <a href="git-restore.html">git restore</a>)</td></tr>
+<tr><td>Tirar um arquivo da área de preparo</td><td><code>git restore --staged arquivo</code> (ou o antigo <code>git reset arquivo</code>)</td></tr>
+<tr><td>Só trocar a mensagem do último commit</td><td><code>git commit --amend</code> (veja <a href="commit-amend.html">--amend</a>): é um <code>reset --soft HEAD~1</code> + <code>commit</code> num comando só</td></tr>
+<tr><td>Desfazer commits que já foram enviados ao GitHub</td><td>Nenhum dos três: use <a href="git-revert.html">git revert</a></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>--soft</code> ou <code>--hard</code> com nome de arquivo</strong>
+<pre class="term" data-cwd="~/receitas">$ git reset --soft bolo.txt
+fatal: Cannot do soft reset with paths.
+$ git reset --hard bolo.txt
+fatal: Cannot do hard reset with paths.
+</pre>
+<p>"Não é possível fazer um reset suave/duro com caminhos." Os modos <code>--soft</code> e <code>--hard</code> movem o branch inteiro; eles não funcionam para um arquivo só. <strong>Como resolver:</strong> para tirar um arquivo da área de preparo, <code>git restore --staged bolo.txt</code>; para descartar as mudanças de um arquivo da pasta, <code>git restore bolo.txt</code>.</p>
+</div>
+
+<div class="cenario">
+<strong><code>--mixed</code> com nome de arquivo</strong>
+<pre class="term" data-cwd="~/receitas">$ git reset --mixed -- bolo.txt
+warning: --mixed with paths is deprecated; use 'git reset -- &lt;paths&gt;' instead.
+</pre>
+<p>"Aviso: <code>--mixed</code> com caminhos está obsoleto; use <code>git reset -- &lt;caminhos&gt;</code>." Funcionou (é só um aviso), mas o jeito certo é sem o <code>--mixed</code>: <code>git reset bolo.txt</code>, ou melhor ainda, <code>git restore --staged bolo.txt</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Dei <code>--hard</code> e perdi commits</strong>
+<p>Se foram <strong>commits</strong>, eles ainda estão no <code>.git</code>. O <code>git reset --hard ORIG_HEAD</code> desfaz o último reset (como na seção 4). Se você já fez outras coisas depois, procure o commit no <a href="git-reflog.html">git reflog</a>, que registra cada movimento do <code>HEAD</code>:</p>
+<pre class="term" data-cwd="~/receitas">$ git reflog -5
+2b77e82 HEAD@{0}: reset: moving to HEAD
+2b77e82 HEAD@{1}: reset: moving to HEAD
+2b77e82 HEAD@{2}: reset: moving to ORIG_HEAD
+62fc1c8 HEAD@{3}: reset: moving to HEAD~1
+2b77e82 HEAD@{4}: reset: moving to ORIG_HEAD
+</pre>
+<p>Cada linha é um reset desta aula (<code>moving to …</code> = "indo para …"). Ache o hash de antes do desastre e volte com <code>git reset --hard &lt;hash&gt;</code>. O passo a passo completo está em <a href="recuperar-commit.html">Recuperando Commits Perdidos</a>.</p>
+</div>
+
+<div class="cenario">
+<strong>Dei <code>--hard</code> e perdi mudanças que não tinham sido commitadas</strong>
+<p>Estas, infelizmente, não voltam pelo Git: ele nunca guardou uma cópia delas (veja o aviso da seção 4). Se o arquivo ainda está aberto no editor de texto, o "desfazer" do editor (<kbd>Ctrl</kbd>+<kbd>Z</kbd>) pode salvar o dia. Se você tinha dado <code>git add</code> nelas antes, o conteúdo pode estar perdido dentro do <code>.git</code> (o comando avançado <code>git fsck --lost-found</code> procura). A lição: <strong><code>git status</code> antes de todo <code>--hard</code></strong>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git reset --soft &lt;commit&gt;</code></td><td>Move o branch; área de preparo e pasta ficam como estão</td></tr>
+<tr><td><code>git reset &lt;commit&gt;</code> = <code>git reset --mixed &lt;commit&gt;</code></td><td>Move o branch e arruma a área de preparo; a pasta fica</td></tr>
+<tr><td><code>git reset --hard &lt;commit&gt;</code></td><td>Move o branch e arruma a área de preparo <strong>e</strong> a pasta</td></tr>
+<tr><td><code>git reset --hard</code></td><td>Descarta todas as mudanças não commitadas de arquivos rastreados</td></tr>
+<tr><td><code>git reset --hard ORIG_HEAD</code></td><td>Desfaz o último reset (com pasta e tudo)</td></tr>
+<tr><td><code>git show HEAD:arquivo</code></td><td>O arquivo como está no commit atual</td></tr>
+<tr><td><code>git show :arquivo</code></td><td>O arquivo como está na área de preparo</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o comando</h3>
+<p>Complete para desfazer o último commit deixando a mudança <strong>na área de preparo</strong>:</p>
+<div class="ex-code">git reset <input data-answer="--soft" aria-label="modo"> HEAD~1</div>
+</div>
+
+<div class="exercise">
+<h3>2. O modo padrão</h3>
+<p>Qual é o modo usado quando você digita só <code>git reset HEAD~1</code>? (escreva com os dois tracinhos)</p>
+<div class="ex-code"><input data-answer="--mixed" aria-label="modo padrão"></div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. Depois de <code>git reset --mixed HEAD~1</code>, onde está a mudança do commit desfeito?</p>
+<label><input type="radio" name="q3"> Na área de preparo</label>
+<label><input type="radio" name="q3"> Em lugar nenhum: foi apagada</label>
+<label><input type="radio" name="q3"> Só na pasta de trabalho, fora da área de preparo</label>
+<label><input type="radio" name="q3"> Num commit novo</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. A Ana tem mudanças não commitadas no <code>bolo.txt</code> e roda <code>git reset --hard</code>. O que acontece com elas?</p>
+<label><input type="radio" name="q4"> Vão para a área de preparo</label>
+<label><input type="radio" name="q4"> São perdidas, e o reflog não as traz de volta</label>
+<label><input type="radio" name="q4"> Vão para o stash automaticamente</label>
+<label><input type="radio" name="q4"> Nada: o <code>--hard</code> só mexe nos commits</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">5. Depois de <code>git reset --soft HEAD~1</code>, qual comando mostra a versão do <code>bolo.txt</code> que está na área de preparo?</p>
+<label><input type="radio" name="q5"> <code>git show HEAD:bolo.txt</code></label>
+<label><input type="radio" name="q5"> <code>cat bolo.txt</code></label>
+<label><input type="radio" name="q5"> <code>git show HEAD~1:bolo.txt</code></label>
+<label><input type="radio" name="q5"> <code>git show :bolo.txt</code></label>
+</div>
+
+<h3>Missão final: três commits viram um</h3>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit';;echo 'Ingredientes: leite, ovos' &gt; pudim.txt;;git add pudim.txt;;git commit -q -m 'pudim 1';;echo 'Modo de fazer: bater tudo' &gt;&gt; pudim.txt;;git commit -q -am 'pudim 2';;echo 'Forno: 1 hora' &gt;&gt; pudim.txt;;git commit -q -am 'pudim 3'" data-goal="commits:2,limpo,msg:Adiciona receita de pudim,contem:HEAD:pudim.txt=1 hora" data-solucao="git reset --soft HEAD~3;;git commit -m 'Adiciona receita de pudim'">
+<p class="try-task"><strong>Missão:</strong> a Ana escreveu a receita de pudim em três commits com mensagens ruins ("pudim 1", "pudim 2", "pudim 3"). Use o modo de reset que deixa tudo <strong>já preparado</strong> e faça um commit só, com a mensagem "Adiciona receita de pudim". No fim, o histórico deve ter 2 commits, e o último deve ter a receita completa.</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O Git guarda três versões de cada arquivo: no commit (<code>HEAD</code>), na área de preparo e na pasta. Espie com <code>git show HEAD:arquivo</code>, <code>git show :arquivo</code> e <code>cat arquivo</code>.</li>
+  <li><code>--soft</code> só move o branch: a mudança fica <strong>preparada</strong>. Bom para refazer ou juntar commits.</li>
+  <li><code>--mixed</code> (o padrão) move o branch e arruma a área de preparo: a mudança fica <strong>na pasta</strong>, não preparada.</li>
+  <li><code>--hard</code> arruma as três gavetas: a mudança <strong>some</strong>. Commits desfeitos voltam com <code>ORIG_HEAD</code> ou <code>git reflog</code>; mudanças nunca commitadas, não.</li>
+  <li>Nenhum dos três é para commits já enviados ao GitHub: para esses, <code>git revert</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
