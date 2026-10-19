@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git clean — limpando arquivos novos | Guia Git</title>
+<meta name="description" content="Como apagar os arquivos não rastreados com git clean: por que ele recusa sem -f (clean.requireForce), o ensaio com -n, pastas com -d, arquivos ignorados com -x e -X, exceções com -e, o modo interativo -i, e por que um arquivo apagado pelo git clean não volta. Saídas reais do Git em português.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">clean</span></h1>
+
+<p class="intro">Depois de uma tarde de testes, a pasta do site de receitas da Ana está cheia de arquivos que ela nunca quis guardar: rascunhos, testes, uma pasta de fotos que não deu certo. Nenhum deles foi commitado. O <code>git restore</code> e o <code>git reset --hard</code> não mexem neles, porque o Git não conhece esses arquivos. Para apagar os arquivos <strong>não rastreados</strong> de uma vez, existe o <code>git clean</code> (em inglês, <em>clean</em> = "limpar"). É um comando útil e perigoso: o que ele apaga <strong>não volta</strong>. Por isso o Git o protege com uma trava, e esta aula ensina a usá-lo sempre com um ensaio antes.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que são arquivos <strong>não rastreados</strong>, e por que só o <code>git clean</code> os apaga.</li>
+  <li>Por que o <code>git clean</code> sozinho se recusa a trabalhar, e o que é o <code>-f</code>.</li>
+  <li>Como fazer um <strong>ensaio</strong> com <code>-n</code> antes de apagar de verdade.</li>
+  <li>Como incluir pastas (<code>-d</code>) e arquivos ignorados (<code>-x</code>, <code>-X</code>), e como poupar um arquivo (<code>-e</code>).</li>
+  <li>Como escolher um por um, no modo interativo (<code>-i</code>).</li>
+</ul>
+</div>
+
+<p>Todas as saídas desta aula vieram do Git real da máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português.</p>
+
+<hr>
+
+<h2>A ideia: tirar da mesa o que nunca foi arquivado</h2>
+<p>Imagine a mesa de trabalho da Ana com uma pasta-arquivo de documentos oficiais (os arquivos rastreados, que o Git conhece) e, espalhados em volta, post-its, rascunhos e papéis soltos (os arquivos não rastreados). Os outros comandos de "desfazer" trabalham com a pasta-arquivo: o <a href="git-restore.html">git restore</a> devolve um documento oficial à última versão arquivada. O <code>git clean</code> faz o contrário: <strong>joga no lixo os papéis soltos</strong>, os que nunca entraram na pasta-arquivo, e não toca nos documentos oficiais.</p>
+<p>E aqui está o perigo: como esses papéis nunca foram arquivados, <strong>não existe cópia nenhuma deles</strong>. O Git não guardou versão, não há commit, não há reflog. Apagou, acabou (e eles não vão para a lixeira do sistema).</p>
+
+<hr>
+
+<h2>1. A pasta bagunçada</h2>
+<p>O repositório <code>receitas</code> tem dois arquivos commitados: o <code>README.md</code> e um <code>.gitignore</code> que ignora arquivos <code>*.log</code> (veja <a href="gitignore.html">.gitignore</a>). Depois da tarde de testes, o <code>git status</code> mostra:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   README.md   « rastreado e modificado: o clean não mexe
+
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	fotos/           « uma pasta inteira, não rastreada
+	rascunho.txt     « arquivos não rastreados
+	teste-bolo.txt
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+</pre>
+
+<p>Há ainda um <code>forno.log</code> na pasta, que o <code>git status</code> nem mostra, porque é ignorado pelo <code>.gitignore</code>. São quatro tipos de arquivo, e o <code>git clean</code> trata cada um de um jeito:</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Arquivo</th><th>Tipo</th><th>Quem apaga</th></tr>
+<tr><td><code>README.md</code> (modificado)</td><td>rastreado</td><td>ninguém: o <code>git clean</code> nunca mexe em arquivo rastreado (para descartar a mudança, <code>git restore</code>)</td></tr>
+<tr><td><code>rascunho.txt</code>, <code>teste-bolo.txt</code></td><td>não rastreados</td><td><code>git clean -f</code></td></tr>
+<tr><td><code>fotos/</code></td><td>pasta não rastreada</td><td><code>git clean -f -d</code></td></tr>
+<tr><td><code>forno.log</code></td><td>ignorado</td><td><code>git clean -f -x</code> (ou <code>-X</code>)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>2. A trava: <code>git clean</code> sozinho não apaga nada</h2>
+
+<pre class="term" data-cwd="~/receitas">$ git clean
+fatal: clean.requireForce is true and -f not given: refusing to clean
+</pre>
+
+<p>"A configuração <code>clean.requireForce</code> é verdadeira e o <code>-f</code> não foi dado: recusando-me a limpar." É uma trava de segurança, ligada de fábrica: o Git exige que você diga <code>-f</code> (de <em>force</em>, "forçar") para provar que quer mesmo apagar. Antes de forçar, porém, vem o ensaio.</p>
+
+<hr>
+
+<h2>3. O ensaio: <code>-n</code></h2>
+<p>A opção <code>-n</code> (ou <code>--dry-run</code>, "ensaio a seco") mostra o que <strong>seria</strong> apagado, sem apagar nada. Faça <strong>sempre</strong> o ensaio antes:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git clean -n
+Would remove rascunho.txt
+Would remove teste-bolo.txt
+</pre>
+
+<p><code>Would remove</code> = "removeria". Só os dois arquivos soltos: a pasta <code>fotos/</code> e o <code>forno.log</code> não entram sem as opções certas. Acrescentando <code>-d</code> (de <em>directories</em>, "pastas") e <code>-x</code> (inclui os ignorados):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git clean -n -d
+Would remove fotos/
+Would remove rascunho.txt
+Would remove teste-bolo.txt
+$ git clean -n -d -x
+Would remove forno.log
+Would remove fotos/
+Would remove rascunho.txt
+Would remove teste-bolo.txt
+</pre>
+
+<dl class="anatomy">
+  <dt>git clean</dt><dd>"Apague os arquivos não rastreados…".</dd>
+  <dt>-n</dt><dd>"…de mentira: só mostre a lista". Troque por <code>-f</code> para apagar de verdade.</dd>
+  <dt>-d</dt><dd>"…incluindo pastas não rastreadas inteiras" (com tudo o que está dentro delas).</dd>
+  <dt>-x</dt><dd>"…incluindo os arquivos que o <code>.gitignore</code> manda ignorar".</dd>
+</dl>
+
+<div class="tip">
+<strong>O hábito que salva</strong>
+<p>Primeiro <code>git clean -n</code> com as opções que você quer; leia a lista inteira; depois repita o <strong>mesmo</strong> comando trocando o <code>-n</code> por <code>-f</code>. Assim, o que vai ser apagado é exatamente o que você leu.</p>
+</div>
+
+<hr>
+
+<h2>4. Apagando de verdade: <code>-f</code>, <code>-fd</code>, <code>-fdx</code></h2>
+
+<pre class="term" data-cwd="~/receitas">$ git clean -f
+Removing rascunho.txt
+Removing teste-bolo.txt
+$ git status
+No ramo main
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   README.md
+
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	fotos/   « a pasta ficou: faltou o -d
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+</pre>
+
+<p><code>Removing</code> = "removendo": agora foi de verdade. O <code>README.md</code> modificado continua modificado (o clean não mexe em arquivos rastreados), e a pasta <code>fotos/</code> ficou. As opções curtas podem ser juntadas: <code>-fd</code> é o mesmo que <code>-f -d</code>.</p>
+
+<pre class="term" data-cwd="~/receitas">$ git clean -fd
+Removing fotos/
+$ ls
+README.md
+forno.log
+$ ls -A
+.git
+.gitignore
+README.md
+forno.log
+</pre>
+
+<p>Sobrou o <code>forno.log</code>, que é ignorado. O <code>ls -A</code> mostra também os arquivos que começam com ponto: o <code>.gitignore</code> é rastreado (foi commitado), e a pasta <code>.git</code> é o próprio repositório, que o <code>git clean</code> nunca apaga. Para levar o <code>.log</code> junto:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git clean -fdx
+Removing forno.log
+$ ls -A
+.git
+.gitignore
+README.md
+</pre>
+
+<div class="warning">
+<strong>Cuidado com o <code>-x</code></strong>
+<p>Os arquivos ignorados costumam ser coisas que <strong>dá para recriar</strong> (logs, programas compilados, a pasta <code>node_modules</code>), mas nem sempre: muita gente guarda no <code>.gitignore</code> o arquivo <code>.env</code>, com senhas e configurações que só existem naquele computador. Um <code>git clean -fdx</code> apaga esse arquivo também, e ele não está no Git para voltar. Só use <code>-x</code> depois de ler a lista do <code>-n</code>.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit';;echo 'rascunho' &gt; rascunho.txt;;echo 'teste' &gt; teste-bolo.txt;;mkdir fotos;;echo 'img' &gt; fotos/bolo.jpg" data-goal="limpo,absent:rascunho.txt,absent:fotos,file:README.md" data-solucao="git clean -n -d;;git clean -f -d">
+<p class="try-task"><strong>Missão:</strong> limpe a pasta da Ana: apague os arquivos não rastreados <strong>e</strong> a pasta <code>fotos</code>. Faça o ensaio com <code>-n</code> antes. No fim, o <code>git status</code> deve dizer que não há nada a fazer.</p>
+</div>
+
+<hr>
+
+<h2>5. Escolhendo o que apagar</h2>
+
+<h3>Só um arquivo (ou uma pasta)</h3>
+<p>Com um caminho no fim, o <code>git clean</code> só olha para ele:</p>
+<pre class="term" data-cwd="~/receitas">$ git clean -n teste-bolo.txt
+Would remove teste-bolo.txt
+$ git clean -f teste-bolo.txt
+Removing teste-bolo.txt
+</pre>
+
+<h3>Tudo, menos um: <code>-e</code></h3>
+<p>A opção <code>-e</code> (de <em>exclude</em>, "excluir") poupa os arquivos que casam com o padrão. Aqui só sobrava o <code>rascunho.txt</code>, e ele foi poupado, então o ensaio não mostrou nada:</p>
+<pre class="term" data-cwd="~/receitas">$ git clean -n -e rascunho.txt
+</pre>
+
+<h3>Só os ignorados: <code>-X</code></h3>
+<p>O <code>-X</code> maiúsculo é o contrário do <code>-x</code>: apaga <strong>só</strong> os arquivos ignorados, e poupa os não rastreados comuns. Bom para "limpar os restos de compilação, mas não o rascunho que ainda vou commitar":</p>
+<pre class="term" data-cwd="~/receitas">$ git clean -n -X
+$ echo 'erro' &gt; forno.log
+$ git clean -n -X
+Would remove forno.log
+</pre>
+<p>No primeiro ensaio não havia nenhum arquivo ignorado; depois que a Ana criou o <code>forno.log</code>, ele apareceu, e o <code>rascunho.txt</code> (não rastreado, mas não ignorado) ficou de fora.</p>
+
+<h3>Um por um: o modo interativo <code>-i</code></h3>
+<p>A Ana criou de novo uns arquivos de teste (<code>anotacoes.txt</code>, <code>rascunho.txt</code> e <code>teste-bolo.txt</code>). Com <code>-i</code>, o Git mostra a lista e um pequeno menu (em inglês). A opção <code>4: ask each</code> ("perguntar para cada um") pergunta arquivo por arquivo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git clean -i
+Would remove the following items:
+  anotacoes.txt   rascunho.txt    teste-bolo.txt
+*** Commands ***
+    1: clean                2: filter by pattern    3: select by numbers
+    4: ask each             5: quit                 6: help
+What now&gt; 4
+Remove anotacoes.txt [y/N]? y
+Remove rascunho.txt [y/N]? n
+Remove teste-bolo.txt [y/N]? y
+Removing anotacoes.txt
+Removing teste-bolo.txt
+$ ls
+README.md  forno.log  rascunho.txt
+</pre>
+
+<dl class="anatomy">
+  <dt>Would remove the following items</dt><dd>"Removeria os seguintes itens": a lista, como no <code>-n</code>.</dd>
+  <dt>1: clean</dt><dd>Apagar todos os da lista.</dd>
+  <dt>2: filter by pattern</dt><dd>"Filtrar por padrão": tirar da lista os que casam com um padrão (como o <code>-e</code>).</dd>
+  <dt>3: select by numbers</dt><dd>"Escolher pelos números" dos itens.</dd>
+  <dt>4: ask each</dt><dd>"Perguntar para cada um". Responda <kbd>y</kbd> (<em>yes</em>, sim) ou <kbd>n</kbd> (<em>no</em>, não). O <code>[y/N]</code> com o <code>N</code> maiúsculo quer dizer que só apertar <kbd>Enter</kbd> vale como "não".</dd>
+  <dt>5: quit</dt><dd>Sair sem apagar nada.</dd>
+  <dt>What now&gt;</dt><dd>"E agora?": o Git espera você digitar o número.</dd>
+</dl>
+
+<p>O modo interativo não precisa do <code>-f</code>: as perguntas já são a confirmação. O <code>rascunho.txt</code>, que a Ana respondeu <kbd>n</kbd>, ficou; o <code>forno.log</code>, ignorado, nem entrou na lista (faltou o <code>-x</code>).</p>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de limpar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Você quer apagar…</th><th>Use</th></tr>
+<tr><td>Um arquivo não rastreado</td><td><code>rm arquivo</code> (o comando do terminal) ou <code>git clean -f arquivo</code></td></tr>
+<tr><td>Todos os arquivos não rastreados</td><td><code>git clean -n</code>, depois <code>git clean -f</code></td></tr>
+<tr><td>…e as pastas não rastreadas</td><td><code>git clean -n -d</code>, depois <code>git clean -fd</code></td></tr>
+<tr><td>…e os ignorados também (deixar a pasta "como recém-clonada")</td><td><code>git clean -n -d -x</code>, depois <code>git clean -fdx</code></td></tr>
+<tr><td>Só os ignorados</td><td><code>git clean -fX</code></td></tr>
+<tr><td>Escolhendo um por um</td><td><code>git clean -i</code></td></tr>
+<tr><td>As <strong>mudanças</strong> em arquivos rastreados</td><td>Não é com o clean: <code>git restore arquivo</code> ou <code>git reset --hard</code> (veja <a href="reset-modos.html">os modos do reset</a>)</td></tr>
+<tr><td>Guardar os não rastreados em vez de apagar</td><td><code>git stash -u</code> (veja <a href="git-stash.html">git stash</a>)</td></tr>
+</table>
+</div>
+<p><strong>Para deixar tudo exatamente como no último commit</strong>, a dupla clássica é <code>git reset --hard</code> (desfaz as mudanças nos rastreados) seguido de <code>git clean -fd</code> (apaga os não rastreados). É o "botão de pânico" do Git, e por isso mesmo merece um <code>git status</code> e um <code>git clean -n</code> antes.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>refusing to clean</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git clean
+fatal: clean.requireForce is true and -f not given: refusing to clean
+</pre>
+<p>Não é erro de verdade: é a trava. <strong>Como resolver:</strong> rode <code>git clean -n</code> para ver a lista, e depois <code>git clean -f</code>. (Dá para desligar a trava com <code>git config clean.requireForce false</code>, mas não faça isso: ela existe justamente porque o clean não tem volta.)</p>
+</div>
+
+<div class="cenario">
+<strong>A pasta não foi apagada</strong>
+<p>Você rodou <code>git clean -f</code> e o <code>git status</code> ainda mostra <code>fotos/</code>. <strong>Por quê:</strong> sem <code>-d</code>, o clean não entra em pastas não rastreadas. <strong>Como resolver:</strong> <code>git clean -n -d</code> e depois <code>git clean -fd</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>O arquivo <code>.log</code> (ou <code>.env</code>) não foi apagado</strong>
+<p>Arquivos ignorados pelo <code>.gitignore</code> ficam de fora, a menos que você peça com <code>-x</code> (todos) ou <code>-X</code> (só os ignorados). Na maioria das vezes, isso é bom.</p>
+</div>
+
+<div class="cenario">
+<strong>Apaguei um arquivo que eu queria</strong>
+<p>O <code>git clean</code> apaga direto do disco, sem passar pela lixeira, e o Git nunca teve cópia de um arquivo não rastreado. <strong>Não há comando do Git que o traga de volta.</strong> As únicas esperanças estão fora do Git: o editor de texto ainda aberto, um backup, a sincronização na nuvem. Para não acontecer de novo: <code>-n</code> antes de todo <code>-f</code>, e commite (ou guarde com <code>git stash -u</code>) o que tem valor.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Opção</th><th>O que faz</th></tr>
+<tr><td><code>-n</code>, <code>--dry-run</code></td><td>Ensaio: só mostra o que seria apagado (<code>Would remove</code>)</td></tr>
+<tr><td><code>-f</code>, <code>--force</code></td><td>Apaga de verdade (<code>Removing</code>); obrigatório por causa do <code>clean.requireForce</code></td></tr>
+<tr><td><code>-d</code></td><td>Inclui pastas não rastreadas</td></tr>
+<tr><td><code>-x</code></td><td>Inclui os arquivos ignorados</td></tr>
+<tr><td><code>-X</code></td><td>Apaga <strong>só</strong> os arquivos ignorados</td></tr>
+<tr><td><code>-e PADRÃO</code></td><td>Poupa os arquivos que casam com o padrão</td></tr>
+<tr><td><code>-i</code></td><td>Modo interativo (menu e perguntas)</td></tr>
+<tr><td><code>git clean -f caminho</code></td><td>Limpa só aquele arquivo ou pasta</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. O ensaio</h3>
+<p>Complete para ver o que seria apagado, <strong>incluindo pastas</strong>, sem apagar nada:</p>
+<div class="ex-code">git clean <input data-answer="-n" aria-label="opção do ensaio"> <input data-answer="-d" aria-label="opção das pastas"></div>
+</div>
+
+<div class="exercise">
+<h3>2. A trava</h3>
+<p>Que letra o <code>git clean</code> exige para apagar de verdade? (com o tracinho)</p>
+<div class="ex-code"><input data-answer="-f" aria-label="opção"></div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. A Ana modificou o <code>README.md</code> (que é rastreado) e rodou <code>git clean -fd</code>. O que acontece com a mudança?</p>
+<label><input type="radio" name="q3"> É desfeita</label>
+<label><input type="radio" name="q3"> O <code>README.md</code> é apagado</label>
+<label><input type="radio" name="q3"> Nada: o <code>git clean</code> não mexe em arquivos rastreados</label>
+<label><input type="radio" name="q3"> Vai para a área de preparo</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. Qual comando apaga <strong>só</strong> os arquivos ignorados pelo <code>.gitignore</code>?</p>
+<label><input type="radio" name="q4"> <code>git clean -fX</code></label>
+<label><input type="radio" name="q4"> <code>git clean -fx</code></label>
+<label><input type="radio" name="q4"> <code>git clean -fd</code></label>
+<label><input type="radio" name="q4"> <code>git clean -n</code></label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">5. Um arquivo apagado com <code>git clean -f</code> pode ser recuperado com <code>git reflog</code>?</p>
+<label><input type="radio" name="q5"> Sim, como os commits</label>
+<label><input type="radio" name="q5"> Não: o Git nunca guardou cópia de um arquivo não rastreado</label>
+<label><input type="radio" name="q5"> Sim, ele vai para a lixeira</label>
+<label><input type="radio" name="q5"> Só se tiver sido apagado com <code>-d</code></label>
+</div>
+
+<h3>Missão final: limpar sem perder o que importa</h3>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;echo '*.log' &gt; .gitignore;;git add README.md .gitignore;;git commit -q -m 'Primeiro commit';;echo 'teste' &gt; teste1.txt;;echo 'teste' &gt; teste2.txt;;echo 'erro' &gt; forno.log;;echo 'Torta de limão' &gt; torta.txt" data-goal="absent:teste1.txt,absent:teste2.txt,absent:forno.log,file:torta.txt,contains:torta.txt=limão" data-solucao="git clean -n -x -e torta.txt;;git clean -f -x -e torta.txt">
+<p class="try-task"><strong>Missão:</strong> apague os testes (<code>teste1.txt</code>, <code>teste2.txt</code>) e o <code>forno.log</code> (que é ignorado), mas <strong>não</strong> a <code>torta.txt</code>, uma receita nova que a Ana ainda vai commitar. Dica: <code>-x</code> para os ignorados e <code>-e</code> para poupar um arquivo; ensaie com <code>-n</code> primeiro.</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git clean</code> apaga arquivos <strong>não rastreados</strong>; nunca mexe em arquivos rastreados nem na pasta <code>.git</code>.</li>
+  <li>Sem <code>-f</code>, ele se recusa (<code>clean.requireForce</code>). Antes do <code>-f</code>, sempre o ensaio com <code>-n</code>.</li>
+  <li><code>-d</code> inclui pastas; <code>-x</code> inclui os ignorados; <code>-X</code> apaga só os ignorados; <code>-e</code> poupa um padrão; <code>-i</code> pergunta um por um.</li>
+  <li>O que o <code>git clean</code> apaga <strong>não volta</strong>: nem pelo Git, nem pela lixeira.</li>
+  <li><code>git reset --hard</code> + <code>git clean -fd</code> deixam a pasta igual ao último commit.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
