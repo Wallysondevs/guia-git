@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git commit — registrando uma versão no histórico | Guia Git</title>
+<meta name="description" content="O git commit para quem nunca usou Git: -m, mensagem com título e corpo (dois -m), o commit pelo editor nano, -a para preparar os rastreados, commit de um arquivo só, -q, --allow-empty, a saída explicada linha por linha e os erros reais (switch m requires a value, pathspec did not match, nothing to commit, mensagem vazia, comit).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">commit</span></h1>
+
+<p class="intro">O <code>git commit</code> é o comando que <strong>guarda uma versão</strong> do projeto no histórico. Cada commit (em português, "registro"; aqui no guia, uma <strong>fotografia</strong>) leva tudo o que está na área de preparo, com o nome de quem fez, a data e uma mensagem explicando o que mudou. Você já fez commits em <a href="primeiro-commit.html">Seu Primeiro Commit</a>; nesta aula você vai ver todas as formas de usar o comando, a saída dele linha por linha e o que fazer quando ele recusa.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A anatomia do <code>git commit -m "mensagem"</code> e cada linha da resposta.</li>
+  <li>Uma mensagem com <strong>título e corpo</strong>: com dois <code>-m</code> ou pelo editor de texto.</li>
+  <li>O <code>-a</code>, que prepara e commita os arquivos rastreados de uma vez, e o commit de um arquivo só.</li>
+  <li>As opções <code>-q</code> e <code>--allow-empty</code>.</li>
+  <li>Os erros reais: o <code>-m</code> sem mensagem, a mensagem sem aspas, nada para commitar, a mensagem vazia e o <code>git comit</code>.</li>
+</ul>
+</div>
+
+<p>As saídas são <strong>reais</strong>, do Git 2.53 da máquina da Ana (Ubuntu 26.04 em português; parte das mensagens do Git sai em inglês, porque a tradução do Ubuntu está incompleta). O nome e o e-mail da Ana já estão configurados (aula <a href="git-config.html">git config</a>).</p>
+
+<hr>
+
+<h2>A ideia: a foto com legenda</h2>
+<p>Uma foto no álbum de família tem três coisas além da imagem: <strong>quem tirou</strong>, <strong>quando</strong> e uma <strong>legenda</strong> ("Natal na casa da vó, 2025"). Daqui a dez anos, é a legenda que vai fazer você achar a foto certa. Um commit é igual: o Git guarda o conteúdo dos arquivos, o autor, a data e a mensagem que você escreveu. O <code>git commit</code> é o botão da câmera: ele fotografa a <strong>área de preparo</strong> (o que você escolheu com <code>git add</code>, aula <a href="git-add.html">git add</a>) e cola a foto no álbum.</p>
+
+<p>Uma vez feito, o commit fica guardado: você pode voltar a ele, comparar com ele, desfazê-lo. Por isso o Git é tão seguro: <strong>o que foi commitado, quase nunca se perde</strong> (a aula <a href="recuperar-commit.html">Recuperando Commits Perdidos</a> mostra até como achar um commit "apagado").</p>
+
+<hr>
+
+<h2>1. A forma mais usada: <code>git commit -m</code></h2>
+
+<pre class="term" data-cwd="~/receitas">$ git add README.md
+$ git commit -m "Adiciona o README"
+[main (root-commit) d84dc97] Adiciona o README
+ 1 file changed, 1 insertion(+)
+ create mode 100644 README.md
+</pre>
+
+<dl class="anatomy">
+  <dt>git commit</dt><dd>"Registre": cria um commit com o que está na área de preparo.</dd>
+  <dt>-m</dt><dd>De <em>message</em>: a mensagem vem logo em seguida. Também se escreve <code>--message</code>.</dd>
+  <dt>"Adiciona o README"</dt><dd>A mensagem. As <strong>aspas</strong> são obrigatórias quando ela tem espaços (seção <a href="#errado">Quando dá errado</a>). Aspas simples também servem: <code>'Adiciona o README'</code>.</dd>
+</dl>
+
+<p>A resposta:</p>
+<dl class="anatomy">
+  <dt>[main (root-commit) d84dc97]</dt><dd>O ramo onde o commit foi feito (<code>main</code>); <code>root-commit</code> aparece só no <strong>primeiro</strong> commit do repositório (a raiz do histórico); <code>d84dc97</code> é o começo do código do commit, o <em>hash</em> (aula <a href="hash.html">O Hash do Commit</a>).</dd>
+  <dt>Adiciona o README</dt><dd>A primeira linha da mensagem.</dd>
+  <dt>1 file changed, 1 insertion(+)</dt><dd>"1 arquivo alterado, 1 inserção": quantos arquivos o commit mudou e quantas linhas entraram. Quando há linhas removidas, aparece também <code>1 deletion(-)</code> ("1 remoção").</dd>
+  <dt>create mode 100644 README.md</dt><dd>O arquivo é novo no histórico (<code>create</code>), e <code>100644</code> quer dizer "arquivo comum". Para arquivos que só mudaram, esta linha não aparece; para um arquivo apagado, aparece <code>delete mode</code>.</dd>
+</dl>
+
+<p>Do segundo commit em diante, o <code>(root-commit)</code> some:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'Pudim de leite' &gt; pudim.txt
+$ git add pudim.txt
+$ git commit -m "Adiciona o pudim"
+[main 98ae2a6] Adiciona o pudim
+ 1 file changed, 1 insertion(+)
+ create mode 100644 pudim.txt
+</pre>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Adiciona o README';;echo 'Pudim de leite' &gt; pudim.txt;;git add pudim.txt" data-goal="commits:2,limpo,msg:pudim" data-solucao="git commit -m 'Adiciona a receita de pudim'">
+<p class="try-task"><strong>Missão:</strong> o <code>pudim.txt</code> já está na área de preparo (confira com <code>git status</code>). Faça o commit com uma mensagem que tenha a palavra <code>pudim</code>, por exemplo <code>"Adiciona a receita de pudim"</code>. Repare na resposta: tem <code>(root-commit)</code>?</p>
+</div>
+
+<hr>
+
+<h2>2. Título e corpo: dois <code>-m</code></h2>
+<p>Uma mensagem de commit pode ter duas partes: um <strong>título</strong> curto (a primeira linha) e um <strong>corpo</strong>, separado por uma linha em branco, com os detalhes: o porquê da mudança. Com dois <code>-m</code>, o primeiro vira o título e o segundo, o corpo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git commit -m "Adiciona a receita de bolo" -m "A receita é da minha avó. Ainda faltam os ingredientes."
+[main d71d267] Adiciona a receita de bolo
+ 1 file changed, 1 insertion(+)
+ create mode 100644 bolo.txt
+$ git log -1
+commit d71d2670b7a02ec5fa25e8dc14a56961aa231da8 (HEAD -&gt; main)
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Adiciona a receita de bolo                                « o título
+
+    A receita é da minha avó. Ainda faltam os ingredientes.   « o corpo
+</pre>
+
+<p>A resposta do <code>git commit</code> mostra só o título; o <code>git log -1</code> (o último commit; aula <a href="git-log.html">git log</a>) mostra a mensagem inteira. O Git pôs a linha em branco entre os dois <code>-m</code> sozinho. Como escrever um bom título e um bom corpo é assunto da aula <a href="mensagens-commit.html">Boas Mensagens de Commit</a>.</p>
+
+<p>Se você abrir aspas e apertar <kbd>Enter</kbd> antes de fechá-las, o terminal mostra <code>&gt;</code> e continua esperando: a quebra de linha vira parte da mensagem.</p>
+
+<pre class="term" data-cwd="~/receitas">$ git commit -m "Acrescenta canela
+&gt; no bolo"
+[main b1e64ff] Acrescenta canela no bolo
+ 1 file changed, 1 insertion(+)
+$ git log -1
+commit b1e64ff9132f9d39d78df31ab978ab46b16c2e17 (HEAD -&gt; main)
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Acrescenta canela
+    no bolo
+</pre>
+
+<p>Na resposta do commit, o título aparece numa linha só (<code>Acrescenta canela no bolo</code>), mas no histórico ficaram <strong>duas linhas sem a linha em branco</strong>, e ferramentas que leem só o título vão se confundir. Para título e corpo, prefira os dois <code>-m</code> ou o editor.</p>
+
+<hr>
+
+<h2>3. Sem <code>-m</code>: a mensagem no editor</h2>
+<p>Sem o <code>-m</code>, o Git abre um <strong>editor de texto</strong> dentro do terminal para você escrever a mensagem com calma. Na máquina da Ana o editor é o <code>nano</code> (é o que ela configurou; sem configuração, o Git do Ubuntu abre o editor padrão do sistema, que no Ubuntu também é o <code>nano</code>; em outros sistemas pode ser o <code>vim</code>). Com o <code>pudim.txt</code> preparado, ela rodou <code>git commit</code> e a tela ficou assim:</p>
+
+<pre class="term">  GNU nano 8.7.1        /home/ana/receitas/.git/COMMIT_EDITMSG
+
+# Please enter the commit message for your changes. Lines starting
+# with '#' will be ignored, and an empty message aborts the commit.
+#
+# No ramo main
+# Mudanças a serem submetidas:
+#       new file:   pudim.txt
+#
+
+                               [ 8 linhas lidas ]
+^G Ajuda     ^O Gravar    ^F Onde está?^K Recortar  ^T Executar  ^C Local
+^X Sair      ^R Ler o arq ^\ Substituir^U Colar     ^J Justificar^/ Ir p/ linha
+</pre>
+
+<dl class="anatomy">
+  <dt>.git/COMMIT_EDITMSG</dt><dd>O arquivo que você está editando: um arquivo temporário do Git, dentro da pasta <code>.git</code>. Quando você fecha o editor, o Git lê a mensagem dele.</dd>
+  <dt>a primeira linha, vazia</dt><dd>É onde o cursor está, e onde você escreve o título. Para um corpo, deixe uma linha em branco depois do título e escreva embaixo.</dd>
+  <dt>as linhas com <code>#</code></dt><dd>Um lembrete que <strong>não</strong> entra na mensagem: "escreva a mensagem do commit; linhas começando com <code>#</code> serão ignoradas, e uma mensagem vazia cancela o commit". Embaixo, o mesmo resumo do <code>git status</code>, para você lembrar o que está commitando.</dd>
+  <dt>^X Sair, ^O Gravar…</dt><dd>Os atalhos do <code>nano</code>: o <code>^</code> é a tecla <kbd>Ctrl</kbd>. <kbd>Ctrl</kbd>+<kbd>X</kbd> sai.</dd>
+</dl>
+
+<p>A Ana escreveu <code>Acrescenta cravo no bolo</code> na primeira linha, apertou <kbd>Ctrl</kbd>+<kbd>X</kbd>, respondeu <kbd>S</kbd> ("Sim") à pergunta <code>Salvar o buffer modificado?</code> (<em>buffer</em> é o texto que está no editor) e apertou <kbd>Enter</kbd> para confirmar o nome do arquivo. O <code>nano</code> fechou e o commit aconteceu:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git commit
+[main 00de704] Acrescenta cravo no bolo
+ 1 file changed, 1 insertion(+)
+</pre>
+
+<p>Se ela tivesse saído sem escrever nada, o Git cancelaria: <code>Aborting commit due to empty commit message.</code> (veja <a href="#errado">Quando dá errado</a>). Para usar outro editor (o do VS Code, por exemplo), configure o <code>core.editor</code> (aula <a href="config-util.html">Configurações Úteis</a>).</p>
+
+<div class="warning">
+<strong>Caiu no <code>vim</code> e não sabe sair?</strong>
+<p>Em sistemas onde o editor padrão é o <code>vim</code>, a tela é parecida, mas os atalhos não aparecem embaixo. Para sair: aperte <kbd>Esc</kbd>, digite <code>:q!</code> e <kbd>Enter</kbd> (sai sem salvar e o commit é cancelado). Para escrever: aperte <kbd>i</kbd>, digite a mensagem, depois <kbd>Esc</kbd>, <code>:wq</code> e <kbd>Enter</kbd> (salva e sai).</p>
+</div>
+
+<hr>
+
+<h2>4. Preparar e commitar de uma vez: <code>-a</code></h2>
+<p>O <code>-a</code> (de <em>all</em>, "todos") faz o <code>git add</code> de todos os arquivos <strong>rastreados</strong> que mudaram (inclusive os apagados) e já faz o commit:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo '3 ovos' &gt;&gt; bolo.txt
+$ echo 'Calda de caramelo' &gt;&gt; pudim.txt
+$ git status -s
+ M bolo.txt
+ M pudim.txt
+$ git commit -a -m "Completa o bolo e o pudim"
+[main 00e4be2] Completa o bolo e o pudim
+ 2 files changed, 2 insertions(+)
+</pre>
+
+<p>Os dois arquivos estavam modificados e não preparados (<code>&nbsp;M</code>), e o commit levou os dois. As opções de uma letra podem ser juntadas: <code>git commit -am "mensagem"</code> é o mesmo que <code>git commit -a -m "mensagem"</code>. Mas atenção: o <code>-a</code> <strong>não pega arquivos novos</strong> (os <code>??</code>). Arquivo novo precisa de <code>git add</code> na primeira vez (veja <a href="area-de-preparo.html">A Área de Preparo</a>).</p>
+
+<hr>
+
+<h2>5. Commitar um arquivo só</h2>
+<p>Dá para dar nomes de arquivos ao <code>git commit</code>: ele commita só esses arquivos, na versão da pasta, sem precisar de <code>git add</code> (desde que sejam rastreados), e deixa o resto como está:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo '1 xícara de óleo' &gt;&gt; bolo.txt
+$ echo 'Leite condensado' &gt;&gt; pudim.txt
+$ git commit bolo.txt -m "Acrescenta o óleo no bolo"
+[main 216814d] Acrescenta o óleo no bolo
+ 1 file changed, 1 insertion(+)
+$ git status -s
+ M pudim.txt                « o pudim ficou para outro commit
+</pre>
+
+<hr>
+
+<h2>6. Outras opções úteis</h2>
+
+<h3><code>-q</code>: sem a resposta</h3>
+<p>O <code>-q</code> (de <em>quiet</em>, "quieto") faz o commit sem mostrar nada quando dá certo. É útil em scripts:</p>
+<pre class="term" data-cwd="~/receitas">$ echo 'Pudim de leite' &gt; pudim.txt
+$ git add pudim.txt
+$ git commit -q -m "Adiciona o pudim"
+</pre>
+
+<h3><code>--allow-empty</code>: um commit sem mudanças</h3>
+<p>Normalmente o Git recusa um commit sem nada novo. Com <code>--allow-empty</code> ("permitir vazio"), ele aceita. É raro, mas aparece em tutoriais de automação (para "disparar" um serviço do GitHub, por exemplo):</p>
+<pre class="term" data-cwd="~/receitas">$ git commit --allow-empty -m "Commit vazio de teste"
+[main 2ad784c] Commit vazio de teste
+</pre>
+<p>Repare que não há a linha <code>files changed</code>: nada mudou.</p>
+
+<hr>
+
+<h2 id="formas">Formas diferentes</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Forma</th><th>Quando usar</th></tr>
+<tr><td><code>git add …</code> + <code>git commit -m "…"</code></td><td>O padrão: você escolhe o que entra, e a mensagem cabe numa linha.</td></tr>
+<tr><td><code>git commit -m "título" -m "corpo"</code></td><td>Quando a mudança precisa de uma explicação.</td></tr>
+<tr><td><code>git commit</code> (editor)</td><td>Mensagens longas, com várias linhas, escritas com calma.</td></tr>
+<tr><td><code>git commit -am "…"</code></td><td>Tudo o que mudou é de um assunto só e não há arquivos novos.</td></tr>
+<tr><td><code>git commit arquivo -m "…"</code></td><td>Commitar só um arquivo rastreado, sem mexer na área de preparo dos outros.</td></tr>
+<tr><td><code>git commit --amend</code></td><td>Corrigir o último commit (mensagem ou arquivo esquecido): aula <a href="commit-amend.html">--amend</a>.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>"switch `m' requires a value"</strong>
+<pre class="term" data-cwd="~/receitas">$ git commit -m
+error: switch `m' requires a value
+</pre>
+<p>"A opção <code>m</code> precisa de um valor": você escreveu o <code>-m</code> e esqueceu a mensagem. Nenhum commit foi feito. <strong>Como resolver:</strong> <code>git commit -m "sua mensagem"</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Mensagem sem aspas: "pathspec … did not match any file(s)"</strong>
+<pre class="term" data-cwd="~/receitas">$ git commit -m Adiciona o leite condensado
+error: pathspec 'o' did not match any file(s) known to git
+error: pathspec 'leite' did not match any file(s) known to git
+error: pathspec 'condensado' did not match any file(s) known to git
+</pre>
+<p>Sem aspas, o terminal separa as palavras: o <code>-m</code> ficou só com <code>Adiciona</code>, e o Git achou que <code>o</code>, <code>leite</code> e <code>condensado</code> eram nomes de <strong>arquivos</strong> para commitar (como na seção 5). Como não existem arquivos com esses nomes, ele reclamou de cada um ("o caminho não corresponde a nenhum arquivo que o Git conhece") e não fez o commit. <strong>Como resolver:</strong> ponha a mensagem entre aspas.</p>
+</div>
+
+<div class="cenario">
+<strong>"nothing to commit, working tree clean"</strong>
+<pre class="term" data-cwd="~/receitas">$ git commit -m "Nada"
+No ramo main
+nothing to commit, working tree clean
+</pre>
+<p>"Nada a commitar, pasta de trabalho limpa". Não há nenhuma mudança desde o último commit. Talvez você já tenha commitado (confira com <code>git log --oneline</code>), ou esqueceu de salvar o arquivo no editor. Se há mudanças mas nada preparado, a resposta é outra: o Git mostra o <code>git status</code> com <code>nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")</code>, e a solução é <code>git add</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>"Aborting commit due to empty commit message."</strong>
+<pre class="term" data-cwd="~/receitas">$ git commit
+Aborting commit due to empty commit message.
+</pre>
+<p>"Cancelando o commit porque a mensagem está vazia". O editor abriu e você fechou sem escrever nada (ou só deixou as linhas com <code>#</code>). Nada se perdeu: o que estava preparado continua preparado. <strong>Como resolver:</strong> rode de novo e escreva a mensagem, ou use <code>-m</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>"'comit' não é um comando git"</strong>
+<pre class="term" data-cwd="~/receitas">$ git comit -m "Teste"
+git: 'comit' não é um comando git. Veja 'git --help'.
+
+The most similar command is
+	commit
+</pre>
+<p>Erro de digitação. O Git avisa que <code>comit</code> não existe e sugere o comando mais parecido ("o comando mais parecido é <code>commit</code>"). <strong>Como resolver:</strong> digite de novo, com dois <code>m</code>. (A seta <kbd>↑</kbd> traz o comando anterior para você corrigir.)</p>
+</div>
+
+<div class="cenario">
+<strong>"Please tell me who you are"</strong>
+<p>O Git não sabe o seu nome e e-mail, e não faz o commit sem eles. A mensagem completa e a solução estão em <a href="primeiro-commit.html#errado">Seu Primeiro Commit</a> e em <a href="git-config.html">git config</a>.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;echo 'Bolo de cenoura' &gt; bolo.txt;;git add .;;git commit -q -m 'Primeira versão';;echo '3 ovos' &gt;&gt; bolo.txt" data-goal="commits:2,limpo,msg:ovos no bolo" data-solucao="git commit -am 'Acrescenta os ovos no bolo'">
+<p class="try-task"><strong>Missão:</strong> o <code>bolo.txt</code> foi modificado e <strong>não</strong> está preparado. Faça o commit com <strong>um comando só</strong>, com a mensagem <code>Acrescenta os ovos no bolo</code>. Se errar as aspas, leia a resposta do Git e tente de novo.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git commit -m "msg"</code></td><td>Commita o que está na área de preparo, com a mensagem.</td></tr>
+<tr><td><code>git commit -m "título" -m "corpo"</code></td><td>Mensagem com título e corpo (o Git põe a linha em branco).</td></tr>
+<tr><td><code>git commit</code></td><td>Abre o editor para escrever a mensagem.</td></tr>
+<tr><td><code>git commit -a -m "msg"</code> / <code>-am</code></td><td>Prepara todos os rastreados que mudaram e commita. Não pega arquivos novos.</td></tr>
+<tr><td><code>git commit arquivo -m "msg"</code></td><td>Commita só esse arquivo (rastreado), na versão da pasta.</td></tr>
+<tr><td><code>git commit -q …</code></td><td>Sem mostrar a resposta.</td></tr>
+<tr><td><code>git commit --allow-empty -m "msg"</code></td><td>Commit sem nenhuma mudança.</td></tr>
+<tr><td><code>git commit --amend</code></td><td>Refaz o último commit (aula <a href="commit-amend.html">--amend</a>).</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete</h3>
+<p>Complete o comando que prepara os rastreados e commita, com a mensagem "Corrige o bolo":</p>
+<div class="ex-code">git commit <input data-answer="-am" aria-label="opções juntas"> "Corrige o bolo"</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">2. A resposta de um commit foi <code>[main (root-commit) 7a1b2c3] Primeira versão</code>. O que dá para saber?</p>
+<label><input type="radio" name="q2"> Que o commit deu erro</label>
+<label><input type="radio" name="q2"> Que o commit foi feito pelo usuário root</label>
+<label><input type="radio" name="q2"> Que é o primeiro commit do repositório, no ramo main</label>
+<label><input type="radio" name="q2"> Que o commit foi enviado ao GitHub</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">3. A Ana digitou <code>git commit -m Adiciona o pudim</code>, sem aspas. O que acontece?</p>
+<label><input type="radio" name="q3"> Erro: o Git acha que <code>o</code> e <code>pudim</code> são nomes de arquivos</label>
+<label><input type="radio" name="q3"> O commit é feito com a mensagem "Adiciona o pudim"</label>
+<label><input type="radio" name="q3"> O commit é feito com a mensagem "Adiciona"</label>
+<label><input type="radio" name="q3"> O editor abre</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. No editor da mensagem, o que acontece com as linhas que começam com <code>#</code>?</p>
+<label><input type="radio" name="q4"> Viram o título do commit</label>
+<label><input type="radio" name="q4"> São ignoradas: não entram na mensagem</label>
+<label><input type="radio" name="q4"> Cancelam o commit</label>
+<label><input type="radio" name="q4"> Viram comentários no código</label>
+</div>
+
+<h3>Missão final: título e corpo</h3>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add .;;git commit -q -m 'Adiciona o README';;echo 'Brigadeiro' &gt; brigadeiro.txt" data-goal="commits:2,limpo,msg:brigadeiro,msg:festa" data-solucao="git add brigadeiro.txt;;git commit -m 'Adiciona a receita de brigadeiro' -m 'Pedido da Carla para a festa de sábado.'">
+<p class="try-task"><strong>Missão:</strong> prepare o <code>brigadeiro.txt</code> e faça um commit com <strong>título e corpo</strong>: o título deve falar do brigadeiro e o corpo deve explicar que é para a festa (por exemplo, "Pedido da Carla para a festa de sábado."). Confira com <code>git log -1</code>.</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git commit -m "mensagem"</code> registra no histórico tudo o que está na área de preparo, com autor, data e mensagem.</li>
+  <li>A resposta mostra o ramo, o começo do hash, o título, quantos arquivos e linhas mudaram e os arquivos criados (<code>create mode</code>). <code>(root-commit)</code> = primeiro commit.</li>
+  <li>Dois <code>-m</code> = título e corpo. Sem <code>-m</code>, o Git abre o editor (<code>nano</code> no Ubuntu); linhas com <code>#</code> são ignoradas e mensagem vazia cancela.</li>
+  <li><code>-a</code> prepara e commita os rastreados (não os novos); <code>git commit arquivo</code> commita só aquele arquivo.</li>
+  <li>Mensagem com espaços vai entre aspas. Sem mudanças, o Git responde <code>nothing to commit</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
