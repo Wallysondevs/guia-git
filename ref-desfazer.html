@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Como Desfazer Qualquer Coisa — tabela de situações e comandos | Guia Git</title>
+<meta name="description" content="Referência para desfazer no Git: descartar mudanças, tirar da área de preparo, corrigir o último commit, desfazer commits enviados ou não, recuperar branches e commits perdidos, desistir de merge e rebase. Cada situação com o comando moderno, o antigo e o risco.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Como Desfazer Qualquer Coisa</span></h1>
+
+<p class="intro">"Fiz besteira, e agora?" Esta página é para esse momento. Encontre a sua situação na tabela, copie o comando e siga o link para a aula, se quiser entender o porquê. Quase tudo no Git tem volta: o que já entrou num commit fica guardado por semanas, mesmo depois de um <code>reset</code>. O que <strong>não</strong> tem volta é o que nunca foi commitado nem preparado: por isso os comandos marcados com <strong>⚠ perde</strong> pedem calma.</p>
+
+<div class="note">
+<strong>Antes de desfazer qualquer coisa</strong>
+<ol>
+  <li>Rode <code>git status</code>. Ele diz em que situação você está e, quase sempre, já mostra o comando para desfazer (as linhas <code>(use "git …")</code>).</li>
+  <li>Responda: a mudança está só na pasta, na área de preparo, num commit só seu, ou num commit que <strong>já foi enviado</strong> (push)? Cada caso tem uma linha abaixo.</li>
+  <li>Na dúvida, faça uma cópia de segurança barata: <code>git branch backup</code> guarda o ponto atual com um nome.</li>
+</ol>
+<p>O mapa completo, com desenhos, está em <a href="desfazer.html">Desfazendo: o Mapa</a>.</p>
+</div>
+
+<p class="indice-letras"><a href="#status">O que o git status já diz</a> · <a href="#pasta">Na pasta</a> · <a href="#preparo">Na área de preparo</a> · <a href="#commit">No último commit</a> · <a href="#antigos">Commits antigos</a> · <a href="#enviados">Já enviados</a> · <a href="#perdidos">Recuperar o que sumiu</a> · <a href="#andamento">Merge e rebase pela metade</a> · <a href="#antigo">Comandos antigos</a></p>
+
+<hr>
+
+<h2 id="status">O que o git status já diz</h2>
+<p>Antes da tabela, olhe o professor que vem de graça. A Ana mudou o <code>bolo.txt</code> e preparou, mudou o <code>README.md</code> sem preparar e criou um <code>rascunho.txt</code>. Saída real:</p>
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main
+Mudanças a serem submetidas:                                 « 1) na área de preparo
+  (use "git restore --staged &lt;file&gt;..." to unstage)          « como tirar daqui (sem perder nada)
+	modified:   bolo.txt
+
+Changes not staged for commit:                               « 2) mudado na pasta, fora do preparo
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)   « como jogar fora (perde!)
+	modified:   README.md
+
+Arquivos não monitorados:                                    « 3) arquivos novos, que o Git não conhece
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	rascunho.txt
+
+</pre>
+<p>Nesta versão do Git, parte das mensagens em português ainda sai em inglês (é a tradução que vem no Ubuntu). As dicas dizem: <em>to unstage</em> = "para tirar da área de preparo"; <em>to discard changes in working directory</em> = "para descartar as mudanças na pasta de trabalho". Para os arquivos novos não há dica de desfazer: o <code>git restore</code> não sabe nada deles (veja o primeiro erro no fim da página); quem os apaga é o <code>git clean</code>.</p>
+
+<h2 id="pasta">Mudanças só na pasta (ainda não preparadas)</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Comando</th><th>Risco</th><th>Aula</th></tr>
+<tr><td>Quero jogar fora o que mudei num arquivo (voltar ao último commit)</td><td><code>git restore bolo.txt</code></td><td>⚠ perde a mudança</td><td><a href="git-restore.html">git restore</a></td></tr>
+<tr><td>Quero jogar fora tudo o que mudei, em todos os arquivos rastreados</td><td><code>git restore .</code></td><td>⚠ perde as mudanças</td><td><a href="git-restore.html">git restore</a></td></tr>
+<tr><td>Quero o arquivo como estava num commit antigo</td><td><code>git restore --source=HEAD~2 bolo.txt</code></td><td>⚠ perde a versão atual da pasta</td><td><a href="git-restore.html">git restore</a></td></tr>
+<tr><td>Apaguei um arquivo rastreado sem querer (<code>rm</code>)</td><td><code>git restore bolo.txt</code></td><td>nenhum</td><td><a href="git-restore.html">git restore</a></td></tr>
+<tr><td>Quero guardar as mudanças para depois, sem commit</td><td><code>git stash</code> (devolve com <code>git stash pop</code>)</td><td>nenhum</td><td><a href="git-stash.html">git stash</a></td></tr>
+<tr><td>Quero apagar arquivos <strong>novos</strong> (não rastreados)</td><td><code>git clean -n</code> (mostra) e depois <code>git clean -f</code></td><td>⚠ apaga de verdade, sem lixeira</td><td><a href="git-clean.html">git clean</a></td></tr>
+<tr><td>Quero apagar também pastas novas</td><td><code>git clean -fd</code></td><td>⚠ apaga</td><td><a href="git-clean.html">git clean</a></td></tr>
+</table>
+</div>
+
+<h2 id="preparo">Na área de preparo (depois do git add)</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Comando</th><th>Risco</th><th>Aula</th></tr>
+<tr><td>Dei <code>git add</code> num arquivo que não devia: quero tirar da área de preparo, <strong>mantendo</strong> a mudança na pasta</td><td><code>git restore --staged bolo.txt</code></td><td>nenhum</td><td><a href="restore-staged.html">Tirando da Área de Preparo</a></td></tr>
+<tr><td>Tirar tudo da área de preparo</td><td><code>git restore --staged .</code></td><td>nenhum</td><td><a href="restore-staged.html">Tirando da Área de Preparo</a></td></tr>
+<tr><td>Tirar da área de preparo <strong>e</strong> jogar a mudança fora</td><td><code>git restore --staged --worktree bolo.txt</code></td><td>⚠ perde a mudança</td><td><a href="git-restore.html">git restore</a></td></tr>
+<tr><td>Dei <code>git add</code> num arquivo novo que devia ser ignorado</td><td><code>git rm --cached senha.txt</code> e depois ponha o nome no <code>.gitignore</code></td><td>nenhum (o arquivo fica na pasta)</td><td><a href="gitignore.html">.gitignore</a></td></tr>
+</table>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona bolo';;echo '3 ovos' &gt;&gt; bolo.txt;;git add bolo.txt" data-goal="naopreparado:bolo.txt,contains:bolo.txt=3 ovos" data-solucao="git restore --staged bolo.txt">
+<p class="try-task"><strong>Missão:</strong> a Ana deu <code>git add</code> no <code>bolo.txt</code> cedo demais. Tire o arquivo da área de preparo <strong>sem</strong> perder a linha "3 ovos" que ela acabou de escrever. Confira com <code>git status</code>.</p>
+</div>
+
+<h2 id="commit">No último commit (ainda não enviado)</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Comando</th><th>Risco</th><th>Aula</th></tr>
+<tr><td>Errei a mensagem do último commit</td><td><code>git commit --amend -m "Mensagem certa"</code></td><td>troca o hash do commit</td><td><a href="commit-amend.html">--amend</a></td></tr>
+<tr><td>Esqueci um arquivo no último commit</td><td><code>git add esquecido.txt</code> e <code>git commit --amend --no-edit</code></td><td>troca o hash</td><td><a href="commit-amend.html">--amend</a></td></tr>
+<tr><td>Quero desfazer o commit e deixar as mudanças <strong>preparadas</strong> (para refazer)</td><td><code>git reset --soft HEAD~1</code></td><td>nenhum</td><td><a href="reset-modos.html">reset --soft</a></td></tr>
+<tr><td>Quero desfazer o commit e deixar as mudanças <strong>na pasta</strong>, fora do preparo</td><td><code>git reset HEAD~1</code> (o mesmo que <code>--mixed</code>)</td><td>nenhum</td><td><a href="reset-modos.html">reset --mixed</a></td></tr>
+<tr><td>Quero apagar o commit <strong>e</strong> as mudanças, como se nunca tivessem existido</td><td><code>git reset --hard HEAD~1</code></td><td>⚠ perde o que não estava commitado; o commit ainda volta pelo <code>reflog</code></td><td><a href="reset-modos.html">reset --hard</a></td></tr>
+<tr><td>Commitei no branch errado (era para ser num branch novo)</td><td><code>git branch novo</code>, depois <code>git reset --hard HEAD~1</code> e <code>git switch novo</code></td><td>⚠ o <code>--hard</code> perde o que não estava commitado</td><td><a href="git-branch.html">git branch</a></td></tr>
+</table>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona bolo';;echo 'Pudim' &gt; pudim.txt;;git add pudim.txt;;git commit -q -m 'Adiciona pudm'" data-goal="commits:1,preparado:pudim.txt" data-solucao="git reset --soft HEAD~1">
+<p class="try-task"><strong>Missão:</strong> o último commit saiu com a mensagem errada ("pudm") e a Ana quer refazê-lo do zero. Desfaça o commit deixando o <code>pudim.txt</code> <strong>preparado</strong>, pronto para um novo <code>git commit</code>.</p>
+</div>
+
+<h2 id="antigos">Commits mais antigos (ainda não enviados)</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Comando</th><th>Risco</th><th>Aula</th></tr>
+<tr><td>Voltar o branch inteiro para um commit antigo, jogando fora os de depois</td><td><code>git reset --hard a1b2c3d</code></td><td>⚠ perde mudanças não commitadas</td><td><a href="git-reset.html">git reset</a></td></tr>
+<tr><td>Juntar os últimos commits num só</td><td><code>git reset --soft HEAD~3</code> e <code>git commit</code>, ou <code>git rebase -i HEAD~3</code></td><td>troca hashes</td><td><a href="squash.html">squash</a></td></tr>
+<tr><td>Corrigir a mensagem de um commit antigo</td><td><code>git rebase -i HEAD~3</code> e troque <code>pick</code> por <code>reword</code></td><td>troca hashes</td><td><a href="rebase-interativo.html">Rebase Interativo</a></td></tr>
+<tr><td>Tirar um commit do meio</td><td><code>git rebase -i HEAD~3</code> e troque <code>pick</code> por <code>drop</code></td><td>troca hashes; pode dar conflito</td><td><a href="rebase-interativo.html">Rebase Interativo</a></td></tr>
+<tr><td>Só olhar como o projeto era num commit antigo</td><td><code>git switch --detach a1b2c3d</code> (volte com <code>git switch main</code>)</td><td>nenhum</td><td><a href="head-destacado.html">HEAD Destacado</a></td></tr>
+</table>
+</div>
+
+<h2 id="enviados">Commits que já foram enviados (push)</h2>
+<p>O que está no GitHub, os colegas já podem ter baixado. Reescrever esse histórico (com <code>reset</code>, <code>--amend</code> ou <code>rebase</code>) obriga um <code>push --force</code> e bagunça o repositório deles. Por isso, aqui o caminho seguro é <strong>acrescentar</strong> um commit que desfaz. Veja <a href="regra-de-ouro.html">A Regra de Ouro</a>.</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Comando</th><th>Risco</th><th>Aula</th></tr>
+<tr><td>Desfazer um commit que já está no GitHub</td><td><code>git revert a1b2c3d</code> e <code>git push</code></td><td>nenhum: cria um commit novo, o contrário do antigo</td><td><a href="git-revert.html">git revert</a></td></tr>
+<tr><td>Desfazer o último commit enviado</td><td><code>git revert HEAD</code></td><td>nenhum</td><td><a href="git-revert.html">git revert</a></td></tr>
+<tr><td>Desfazer um merge enviado</td><td><code>git revert -m 1 HASH-DO-MERGE</code></td><td>pode complicar um novo merge do mesmo branch</td><td><a href="git-revert.html">git revert</a></td></tr>
+<tr><td>Preciso mesmo reescrever (branch só meu, ninguém baixou)</td><td><code>git push --force-with-lease</code></td><td>⚠ apaga commits no servidor</td><td><a href="push-force.html">push --force-with-lease</a></td></tr>
+<tr><td>Enviei uma senha</td><td>Troque a senha <strong>primeiro</strong>; depois limpe o histórico</td><td>a senha já vazou</td><td><a href="senha-commitada.html">Commitei uma Senha!</a></td></tr>
+</table>
+</div>
+
+<h2 id="perdidos">Recuperar o que sumiu</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Comando</th><th>Aula</th></tr>
+<tr><td>Dei <code>reset --hard</code> e quero o commit de volta</td><td><code>git reflog</code>, ache o hash e <code>git reset --hard HEAD@{1}</code></td><td><a href="git-reflog.html">git reflog</a></td></tr>
+<tr><td>Apaguei um branch com commits</td><td><code>git branch nome HASH</code> (o hash aparece na mensagem do <code>git branch -D</code> e no <code>git reflog</code>)</td><td><a href="recuperar-commit.html">Recuperando Commits Perdidos</a></td></tr>
+<tr><td>Fiz <code>stash drop</code> sem querer</td><td><code>git fsck --lost-found</code> e procure o commit do stash</td><td><a href="recuperar-commit.html">Recuperando Commits Perdidos</a></td></tr>
+<tr><td>Saí de um HEAD destacado e "perdi" os commits feitos lá</td><td><code>git reflog</code> e <code>git branch resgate HASH</code></td><td><a href="head-destacado.html">HEAD Destacado</a></td></tr>
+</table>
+</div>
+<p>O resgate clássico, com saída real: a Ana apagou o último commit com <code>reset --hard</code> e o trouxe de volta pelo <code>reflog</code>, o diário de tudo por onde o <code>HEAD</code> passou.</p>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+ae22181 Adiciona bolo
+f0c33ea Primeiro commit
+$ git reset --hard HEAD~1
+HEAD is now at f0c33ea Primeiro commit             « "o HEAD agora está em f0c33ea"
+$ git log --oneline
+f0c33ea Primeiro commit                            « o commit do bolo sumiu do log…
+$ git reflog
+f0c33ea HEAD@{0}: reset: moving to HEAD~1          « o que acabou de acontecer
+ae22181 HEAD@{1}: commit: Adiciona bolo            « …mas está aqui: um passo antes
+f0c33ea HEAD@{2}: commit (initial): Primeiro commit
+$ git reset --hard HEAD@{1}                        « volta para onde o HEAD estava 1 passo atrás
+HEAD is now at ae22181 Adiciona bolo
+$ git log --oneline
+ae22181 Adiciona bolo                              « de volta
+f0c33ea Primeiro commit
+</pre>
+<p>E um branch apagado: a mensagem do <code>git branch -D</code> já diz o hash onde ele estava, e é com ele que se recria o branch.</p>
+<pre class="term" data-cwd="~/receitas">$ git branch -D teste
+Deleted branch teste (was c793dec).                « "apagado o branch teste (estava em c793dec)"
+$ git branch teste c793dec                         « recria o branch no mesmo commit
+</pre>
+
+<h2 id="andamento">Merge, rebase e outros pela metade</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Comando</th><th>Aula</th></tr>
+<tr><td>Um merge deu conflito e quero desistir</td><td><code>git merge --abort</code></td><td><a href="abortar-merge.html">Desistindo de um Merge</a></td></tr>
+<tr><td>Um rebase deu conflito e quero desistir</td><td><code>git rebase --abort</code></td><td><a href="rebase-conflitos.html">Conflitos no Rebase</a></td></tr>
+<tr><td>Um cherry-pick deu conflito e quero desistir</td><td><code>git cherry-pick --abort</code></td><td><a href="cherry-pick.html">cherry-pick</a></td></tr>
+<tr><td>Um revert deu conflito e quero desistir</td><td><code>git revert --abort</code></td><td><a href="git-revert.html">git revert</a></td></tr>
+<tr><td>Fiz o merge (sem conflito) e me arrependi</td><td>Não enviado: <code>git reset --hard ORIG_HEAD</code>. Enviado: <code>git revert -m 1 HEAD</code></td><td><a href="abortar-merge.html">Desistindo de um Merge</a></td></tr>
+<tr><td>Resolvi um arquivo errado no meio do conflito</td><td><code>git checkout --merge bolo.txt</code> (põe as marcas de conflito de volta)</td><td><a href="resolver-conflitos.html">Resolvendo Conflitos</a></td></tr>
+</table>
+</div>
+
+<h2 id="antigo">Comandos antigos que você vai ver em tutoriais</h2>
+<p>Antes do Git 2.23 (2019), tudo isso era feito com <code>checkout</code> e <code>reset</code>. Eles ainda funcionam; os novos só deixam a intenção mais clara.</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Antigo</th><th>Moderno <span class="versao">git 2.23+</span></th><th>Faz</th></tr>
+<tr><td><code>git checkout -- bolo.txt</code></td><td><code>git restore bolo.txt</code></td><td>Descarta mudanças na pasta.</td></tr>
+<tr><td><code>git reset HEAD bolo.txt</code></td><td><code>git restore --staged bolo.txt</code></td><td>Tira da área de preparo.</td></tr>
+<tr><td><code>git checkout a1b2c3d -- bolo.txt</code></td><td><code>git restore --source=a1b2c3d --staged --worktree bolo.txt</code></td><td>Traz o arquivo de um commit antigo.</td></tr>
+<tr><td><code>git checkout a1b2c3d</code></td><td><code>git switch --detach a1b2c3d</code></td><td>Visita um commit antigo.</td></tr>
+<tr><td><code>git checkout -b novo</code></td><td><code>git switch -c novo</code></td><td>Cria um branch e vai para ele.</td></tr>
+</table>
+</div>
+
+<h2>Quando dá errado</h2>
+<div class="cenario">
+<h3>error: pathspec … did not match any file(s) known to git</h3>
+<pre class="term" data-cwd="~/receitas">$ git restore rascunho.txt
+error: pathspec 'rascunho.txt' did not match any file(s) known to git
+</pre>
+<p><strong>O que aconteceu:</strong> o <code>rascunho.txt</code> é um arquivo novo, nunca adicionado: o Git não tem nenhuma versão dele para restaurar ("o caminho não casou com nenhum arquivo conhecido pelo git"). Também aparece com nome digitado errado.</p>
+<p><strong>Como resolver:</strong> confira o nome com <code>git status</code>. Se é mesmo um arquivo novo que você quer jogar fora, use o <code>git clean</code> (abaixo) ou apague com <code>rm</code>.</p>
+</div>
+
+<div class="cenario">
+<h3>fatal: clean.requireForce is true and -f not given</h3>
+<pre class="term" data-cwd="~/receitas">$ git clean
+fatal: clean.requireForce is true and -f not given: refusing to clean
+$ git clean -n
+Would remove rascunho.txt                          « "apagaria rascunho.txt": só mostra
+$ git clean -f
+Removing rascunho.txt                              « agora apagou de verdade
+</pre>
+<p><strong>O que aconteceu:</strong> por segurança, o <code>git clean</code> se recusa a apagar sem o <code>-f</code> ("force", forçar). <strong>Como resolver:</strong> veja antes com <code>-n</code> e depois rode com <code>-f</code>.</p>
+</div>
+
+<div class="cenario">
+<h3>fatal: ambiguous argument 'HEAD~1'</h3>
+<pre class="term" data-cwd="~/receitas">$ git reset --soft HEAD~1
+fatal: ambiguous argument 'HEAD~1': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git &lt;command&gt; [&lt;revision&gt;...] -- [&lt;file&gt;...]'
+</pre>
+<p><strong>O que aconteceu:</strong> não existe "um commit antes" deste: o repositório tem um commit só (ou nenhum). <code>HEAD~1</code> = o pai do commit atual, e o primeiro commit não tem pai.</p>
+<p><strong>Como resolver:</strong> para refazer o único commit, use <code>git commit --amend</code>. Para desfazê-lo de vez, mantendo os arquivos: <code>git update-ref -d HEAD</code> (o branch volta a "não ter commits"; os arquivos continuam preparados).</p>
+</div>
+
+<div class="cenario">
+<h3>Nada para abortar</h3>
+<pre class="term" data-cwd="~/receitas">$ git merge --abort
+fatal: There is no merge to abort (MERGE_HEAD missing).
+$ git rebase --abort
+fatal: no rebase in progress
+$ git revert --abort
+error: Nenhum cherry-pick ou revert em progresso
+fatal: revert failed
+</pre>
+<p><strong>O que aconteceu:</strong> não há merge, rebase ou revert pela metade ("não há merge para abortar"; "nenhum rebase em andamento"). Talvez ele já tenha terminado, ou seja outra operação.</p>
+<p><strong>Como resolver:</strong> rode <code>git status</code>: ele diz qual operação está em andamento (por exemplo, "You have unmerged paths" num merge) e o comando para continuar ou abortar.</p>
+</div>
+
+<div class="cenario">
+<h3>error: the branch 'teste' is not fully merged</h3>
+<pre class="term" data-cwd="~/receitas">$ git branch -d teste
+error: the branch 'teste' is not fully merged
+hint: If you are sure you want to delete it, run 'git branch -D teste'
+hint: Disable this message with "git config set advice.forceDeleteBranch false"
+</pre>
+<p><strong>O que aconteceu:</strong> o branch tem commits que não estão em nenhum outro lugar; apagar faria você "perder" esses commits ("o branch não foi totalmente juntado"). O Git protege você.</p>
+<p><strong>Como resolver:</strong> junte antes (<a href="git-merge.html">git merge</a>) ou, se tem certeza, use <code>-D</code>, como a dica (<em>hint</em>) diz. Se se arrepender, o hash está na mensagem do <code>-D</code> (veja acima).</p>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">1. A Ana deu <code>git add senha.txt</code>, mas ainda não commitou. Ela quer tirar o arquivo da área de preparo e manter o arquivo na pasta. Qual comando?</p>
+<label><input type="radio" name="q1"> <code>git restore senha.txt</code></label>
+<label><input type="radio" name="q1"> <code>git restore --staged senha.txt</code></label>
+<label><input type="radio" name="q1"> <code>git reset --hard</code></label>
+<label><input type="radio" name="q1"> <code>git revert senha.txt</code></label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">2. Um commit errado já está no GitHub e o Bruno já baixou. Qual é o jeito seguro de desfazer?</p>
+<label><input type="radio" name="q2"> <code>git reset --hard HEAD~1</code> e <code>git push --force</code></label>
+<label><input type="radio" name="q2"> <code>git commit --amend</code></label>
+<label><input type="radio" name="q2"> Apagar o repositório e criar outro.</label>
+<label><input type="radio" name="q2"> <code>git revert</code> no commit e <code>git push</code></label>
+</div>
+
+<div class="exercise">
+<h3>3. Desfazer o commit, manter tudo preparado</h3>
+<p>Complete para desfazer o último commit, deixando as mudanças na área de preparo:</p>
+<div class="ex-code">git reset <input data-answer="--soft" aria-label="modo"> HEAD~1</div>
+</div>
+
+<div class="exercise">
+<h3>4. Esqueci um arquivo</h3>
+<p>Depois de <code>git add esquecido.txt</code>, complete para pôr o arquivo no último commit sem mudar a mensagem:</p>
+<div class="ex-code">git commit --amend <input data-answer="--no-edit" aria-label="opção"></div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">5. Qual destas situações <strong>não</strong> tem volta pelo Git?</p>
+<label><input type="radio" name="q5"> Um <code>git reset --hard</code> que apagou dois commits.</label>
+<label><input type="radio" name="q5"> Um branch apagado com <code>git branch -D</code>.</label>
+<label><input type="radio" name="q5"> Uma mudança nunca preparada nem commitada, descartada com <code>git restore</code>.</label>
+<label><input type="radio" name="q5"> Um commit com a mensagem errada.</label>
+</div>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
