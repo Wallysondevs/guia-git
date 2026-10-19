@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Folha de Consulta — os comandos do dia a dia numa página | Guia Git</title>
+<meta name="description" content="Folha de consulta do Git: configurar, criar e clonar, o ciclo add/commit, ver o histórico, branches, merge, remotos e GitHub, guardar para depois e desfazer, numa página só, com links para as aulas do Guia Git.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Folha de Consulta</span></h1>
+
+<p class="intro">Os comandos que você usa toda semana, numa página só, agrupados pelo que você quer fazer. Cada linha leva à aula que explica o comando. Deixe esta página aberta numa aba enquanto trabalha; para a lista completa de opções, veja <a href="ref-comandos.html">Comandos</a>.</p>
+
+<div class="note">
+<strong>Convenções</strong>
+<ul>
+  <li><code>arquivo</code>, <code>branch</code>, <code>URL</code>, <code>HASH</code>: troque pelo nome de verdade. <code>HASH</code> = os 7 primeiros caracteres do commit, que o <code>git log --oneline</code> mostra.</li>
+  <li>⚠ = pode perder trabalho não commitado. Leia a aula antes da primeira vez.</li>
+  <li>Na dúvida, rode <code>git status</code>: ele diz onde você está e sugere o próximo comando.</li>
+</ul>
+</div>
+
+<p class="indice-letras"><a href="#ciclo">O ciclo</a> · <a href="#config">Configurar</a> · <a href="#comecar">Começar</a> · <a href="#dia">Dia a dia</a> · <a href="#ver">Ver o histórico</a> · <a href="#branches">Branches</a> · <a href="#remotos">GitHub</a> · <a href="#guardar">Guardar e marcar</a> · <a href="#desfazer">Desfazer</a> · <a href="#avancado">Avançado</a></p>
+
+<hr>
+
+<h2 id="ciclo">O ciclo, em uma sessão</h2>
+<p>Do zero ao GitHub, com a saída real do Git da Ana. As três áreas: a <strong>pasta</strong> (onde você edita) → <code>git add</code> → a <strong>área de preparo</strong> → <code>git commit</code> → o <strong>histórico</strong> → <code>git push</code> → o <strong>GitHub</strong>.</p>
+<pre class="term">$ mkdir receitas
+$ cd receitas
+$ git init
+Repositório vazio Git inicializado em  /home/ana/receitas/.git/
+$ echo '# Receitas da Ana' &gt; README.md
+$ git status --short
+?? README.md                                    « ?? = novo, o Git ainda não conhece
+$ git add README.md
+$ git status --short
+A  README.md                                    « A = adicionado à área de preparo
+$ git commit -m 'Primeiro commit'
+[main (root-commit) fe996fb] Primeiro commit    « branch, hash e mensagem do commit
+ 1 file changed, 1 insertion(+)
+ create mode 100644 README.md
+$ git remote add origin https://github.com/ana-souza/receitas.git
+$ git push -u origin main
+To https://github.com/ana-souza/receitas.git
+ * [new branch]      main -&gt; main                « o main foi criado no GitHub
+branch 'main' set up to track 'origin/main'.    « dali em diante, basta "git push"
+</pre>
+
+<h2 id="config">Configurar (uma vez por computador)</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Para</th><th>Comando</th><th>Aula</th></tr>
+<tr><td>Dizer seu nome</td><td><code>git config --global user.name "Ana Souza"</code></td><td><a href="git-config.html">git config</a></td></tr>
+<tr><td>Dizer seu e-mail</td><td><code>git config --global user.email "ana@exemplo.com"</code></td><td><a href="git-config.html">git config</a></td></tr>
+<tr><td>Branch padrão <code>main</code></td><td><code>git config --global init.defaultBranch main</code></td><td><a href="git-init.html">git init</a></td></tr>
+<tr><td>Editor</td><td><code>git config --global core.editor nano</code></td><td><a href="ref-config.html">Configurações</a></td></tr>
+<tr><td>Ver as configurações</td><td><code>git config --list --show-origin</code></td><td><a href="ref-config.html">Configurações</a></td></tr>
+<tr><td>Ajuda de um comando</td><td><code>git help commit</code> ou <code>git commit -h</code> (resumo)</td><td><a href="git-help.html">git help</a></td></tr>
+</table>
+</div>
+
+<h2 id="comecar">Começar um projeto</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Para</th><th>Comando</th><th>Aula</th></tr>
+<tr><td>Versionar uma pasta</td><td><code>git init</code> (dentro da pasta)</td><td><a href="git-init.html">git init</a></td></tr>
+<tr><td>Baixar um projeto do GitHub</td><td><code>git clone URL</code> (ou <code>git clone URL pasta</code>)</td><td><a href="git-clone.html">git clone</a></td></tr>
+<tr><td>Ignorar arquivos</td><td>Crie um <code>.gitignore</code> com os padrões</td><td><a href="gitignore.html">.gitignore</a> · <a href="ref-gitignore.html">Modelos</a></td></tr>
+</table>
+</div>
+
+<h2 id="dia">Dia a dia: mudar, preparar, commitar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Para</th><th>Comando</th><th>Aula</th></tr>
+<tr><td>Ver o estado</td><td><code>git status</code> (curto: <code>git status -s</code>)</td><td><a href="git-status.html">git status</a></td></tr>
+<tr><td>Ver o que mudou (ainda não preparado)</td><td><code>git diff</code></td><td><a href="git-diff.html">git diff</a></td></tr>
+<tr><td>Ver o que vai entrar no commit</td><td><code>git diff --staged</code></td><td><a href="git-diff-staged.html">git diff --staged</a></td></tr>
+<tr><td>Preparar um arquivo</td><td><code>git add arquivo</code></td><td><a href="git-add.html">git add</a></td></tr>
+<tr><td>Preparar tudo da pasta atual</td><td><code>git add .</code></td><td><a href="git-add.html">git add</a></td></tr>
+<tr><td>Preparar só partes de um arquivo</td><td><code>git add -p arquivo</code></td><td><a href="area-de-preparo.html">Área de Preparo</a></td></tr>
+<tr><td>Commitar</td><td><code>git commit -m "Adiciona receita de bolo"</code></td><td><a href="git-commit.html">git commit</a></td></tr>
+<tr><td>Preparar o que já era rastreado e commitar</td><td><code>git commit -am "mensagem"</code> (não pega arquivos novos)</td><td><a href="git-commit.html">git commit</a></td></tr>
+<tr><td>Apagar um arquivo</td><td><code>git rm arquivo</code></td><td><a href="git-rm.html">git rm</a></td></tr>
+<tr><td>Renomear ou mover</td><td><code>git mv antigo novo</code></td><td><a href="git-mv.html">git mv</a></td></tr>
+</table>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit';;echo 'Bolo de cenoura' &gt; bolo.txt" data-goal="commits:2,limpo,msg:bolo" data-solucao="git add bolo.txt;;git commit -m 'Adiciona receita de bolo'">
+<p class="try-task"><strong>Missão:</strong> faça o ciclo: veja o estado com <code>git status</code>, prepare o <code>bolo.txt</code> e commite com uma mensagem que fale em "bolo". No fim, o <code>git status</code> deve dizer que não há nada a commitar.</p>
+</div>
+
+<h2 id="ver">Ver o histórico</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Para</th><th>Comando</th><th>Aula</th></tr>
+<tr><td>Lista resumida</td><td><code>git log --oneline</code></td><td><a href="git-log.html">git log</a></td></tr>
+<tr><td>Todos os branches desenhados</td><td><code>git log --oneline --graph --all</code></td><td><a href="log-graph.html">log --graph</a></td></tr>
+<tr><td>Um commit por dentro</td><td><code>git show HASH</code></td><td><a href="git-show.html">git show</a></td></tr>
+<tr><td>História de um arquivo</td><td><code>git log -p -- arquivo</code></td><td><a href="log-filtros.html">Filtros e Formatos</a></td></tr>
+<tr><td>Quem mudou cada linha</td><td><code>git blame arquivo</code></td><td><a href="git-blame.html">git blame</a></td></tr>
+<tr><td>Procurar um texto no histórico</td><td><code>git log -S"texto" --oneline</code></td><td><a href="buscar-historico.html">Procurando no Histórico</a></td></tr>
+<tr><td>Tudo por onde o HEAD passou</td><td><code>git reflog</code></td><td><a href="git-reflog.html">git reflog</a></td></tr>
+<tr><td>Mais formatos</td><td colspan="2"><a href="ref-log.html">Formatos do git log</a></td></tr>
+</table>
+</div>
+
+<h2 id="branches">Branches e merge</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Para</th><th>Comando</th><th>Aula</th></tr>
+<tr><td>Listar branches</td><td><code>git branch</code> (com os remotos: <code>git branch -a</code>)</td><td><a href="git-branch.html">git branch</a></td></tr>
+<tr><td>Criar um branch e ir para ele</td><td><code>git switch -c nome</code></td><td><a href="git-switch.html">git switch</a></td></tr>
+<tr><td>Trocar de branch</td><td><code>git switch nome</code> (voltar ao anterior: <code>git switch -</code>)</td><td><a href="git-switch.html">git switch</a></td></tr>
+<tr><td>Juntar outro branch no atual</td><td><code>git merge nome</code></td><td><a href="git-merge.html">git merge</a></td></tr>
+<tr><td>Desistir de um merge com conflito</td><td><code>git merge --abort</code></td><td><a href="abortar-merge.html">Desistindo de um Merge</a></td></tr>
+<tr><td>Marcar um conflito como resolvido</td><td>Edite o arquivo, <code>git add arquivo</code> e <code>git commit</code></td><td><a href="resolver-conflitos.html">Resolvendo Conflitos</a></td></tr>
+<tr><td>Renomear o branch atual</td><td><code>git branch -m novo-nome</code></td><td><a href="apagar-branch.html">Renomeando e Apagando</a></td></tr>
+<tr><td>Apagar um branch já juntado</td><td><code>git branch -d nome</code> (forçar: <code>-D</code> ⚠)</td><td><a href="apagar-branch.html">Renomeando e Apagando</a></td></tr>
+</table>
+</div>
+
+<h2 id="remotos">Remotos e GitHub</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Para</th><th>Comando</th><th>Aula</th></tr>
+<tr><td>Ver os remotos</td><td><code>git remote -v</code></td><td><a href="git-remote.html">git remote</a></td></tr>
+<tr><td>Ligar a pasta a um repositório do GitHub</td><td><code>git remote add origin URL</code></td><td><a href="git-remote.html">git remote</a></td></tr>
+<tr><td>Primeiro envio de um branch</td><td><code>git push -u origin nome</code></td><td><a href="git-push.html">git push</a></td></tr>
+<tr><td>Enviar</td><td><code>git push</code></td><td><a href="git-push.html">git push</a></td></tr>
+<tr><td>Baixar novidades sem juntar</td><td><code>git fetch</code></td><td><a href="git-fetch.html">git fetch</a></td></tr>
+<tr><td>Baixar e juntar</td><td><code>git pull</code></td><td><a href="git-pull.html">git pull</a></td></tr>
+<tr><td>Push recusado (o servidor tem commits novos)</td><td><code>git pull</code> e depois <code>git push</code></td><td><a href="push-rejeitado.html">Push Rejeitado</a></td></tr>
+<tr><td>Enviar depois de reescrever um branch só seu</td><td><code>git push --force-with-lease</code> ⚠</td><td><a href="push-force.html">--force-with-lease</a></td></tr>
+<tr><td>Contribuir com o projeto de outra pessoa</td><td>Fork → clone → branch → push → pull request</td><td><a href="fork.html">Fork</a> · <a href="pull-request.html">Pull Request</a></td></tr>
+</table>
+</div>
+
+<h2 id="guardar">Guardar para depois e marcar versões</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Para</th><th>Comando</th><th>Aula</th></tr>
+<tr><td>Guardar mudanças sem commitar</td><td><code>git stash</code> (com arquivos novos: <code>git stash -u</code>)</td><td><a href="git-stash.html">git stash</a></td></tr>
+<tr><td>Trazer de volta</td><td><code>git stash pop</code></td><td><a href="stash-lista.html">Vários Stashes</a></td></tr>
+<tr><td>Ver o que está guardado</td><td><code>git stash list</code></td><td><a href="stash-lista.html">Vários Stashes</a></td></tr>
+<tr><td>Marcar uma versão</td><td><code>git tag -a v1.0 -m "Versão 1.0"</code></td><td><a href="git-tag.html">git tag</a></td></tr>
+<tr><td>Enviar as tags</td><td><code>git push --tags</code> (ou <code>git push origin v1.0</code>)</td><td><a href="git-tag.html">git tag</a></td></tr>
+</table>
+</div>
+
+<h2 id="desfazer">Desfazer</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Para</th><th>Comando</th><th>Aula</th></tr>
+<tr><td>Jogar fora a mudança de um arquivo ⚠</td><td><code>git restore arquivo</code></td><td><a href="git-restore.html">git restore</a></td></tr>
+<tr><td>Tirar da área de preparo</td><td><code>git restore --staged arquivo</code></td><td><a href="restore-staged.html">Tirando da Área de Preparo</a></td></tr>
+<tr><td>Corrigir o último commit (não enviado)</td><td><code>git commit --amend</code></td><td><a href="commit-amend.html">--amend</a></td></tr>
+<tr><td>Desfazer o último commit, mantendo as mudanças</td><td><code>git reset --soft HEAD~1</code></td><td><a href="reset-modos.html">Modos do reset</a></td></tr>
+<tr><td>Desfazer um commit já enviado</td><td><code>git revert HASH</code></td><td><a href="git-revert.html">git revert</a></td></tr>
+<tr><td>Apagar arquivos novos ⚠</td><td><code>git clean -n</code> (mostra), <code>git clean -f</code></td><td><a href="git-clean.html">git clean</a></td></tr>
+<tr><td>Recuperar um commit "perdido"</td><td><code>git reflog</code> e <code>git branch resgate HASH</code></td><td><a href="recuperar-commit.html">Recuperando Commits</a></td></tr>
+<tr><td>Todas as situações</td><td colspan="2"><a href="ref-desfazer.html">Como Desfazer Qualquer Coisa</a></td></tr>
+</table>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona bolo';;echo 'Bolo de cenoura com 3 kg de sal' &gt; bolo.txt" data-goal="limpo,commits:1" data-solucao="git restore bolo.txt">
+<p class="try-task"><strong>Missão:</strong> a Ana estragou o <code>bolo.txt</code> (olhe com <code>git diff</code>). Descarte a mudança e deixe o arquivo como estava no último commit.</p>
+</div>
+
+<h2 id="avancado">Avançado</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Para</th><th>Comando</th><th>Aula</th></tr>
+<tr><td>Pôr o seu branch em cima do <code>main</code> atualizado</td><td><code>git rebase main</code></td><td><a href="git-rebase.html">git rebase</a></td></tr>
+<tr><td>Arrumar os últimos commits (juntar, renomear, apagar)</td><td><code>git rebase -i HEAD~3</code></td><td><a href="rebase-interativo.html">Rebase Interativo</a></td></tr>
+<tr><td>Copiar um commit de outro branch</td><td><code>git cherry-pick HASH</code></td><td><a href="cherry-pick.html">cherry-pick</a></td></tr>
+<tr><td>Achar o commit que criou um bug</td><td><code>git bisect start</code>, <code>bad</code>, <code>good HASH</code></td><td><a href="git-bisect.html">git bisect</a></td></tr>
+<tr><td>Criar um atalho</td><td><code>git config --global alias.st status</code></td><td><a href="alias.html">Atalhos</a></td></tr>
+</table>
+</div>
+
+<div class="tip">
+<strong>Se algo deu errado</strong>
+<p>Copie a primeira linha da mensagem (<code>fatal: …</code> ou <code>error: …</code>) e procure em <a href="ref-erros.html">Mensagens de Erro Comuns</a>. Os nomes que você não reconhecer estão no <a href="ref-glossario.html">Glossário</a>.</p>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">1. Qual a ordem do ciclo básico?</p>
+<label><input type="radio" name="q1"> <code>git commit</code> → <code>git add</code> → <code>git push</code></label>
+<label><input type="radio" name="q1"> <code>git add</code> → <code>git commit</code> → <code>git push</code></label>
+<label><input type="radio" name="q1"> <code>git push</code> → <code>git add</code> → <code>git commit</code></label>
+<label><input type="radio" name="q1"> <code>git init</code> → <code>git push</code> → <code>git add</code></label>
+</div>
+
+<div class="exercise">
+<h3>2. Criar e trocar</h3>
+<p>Complete para criar o branch <code>pudim</code> e já ir para ele:</p>
+<div class="ex-code">git switch <input data-answer="-c|--create" aria-label="opção"> pudim</div>
+</div>
+
+<div class="exercise">
+<h3>3. O que vai entrar no commit</h3>
+<p>Complete para ver o diff do que já está na área de preparo:</p>
+<div class="ex-code">git diff <input data-answer="--staged|--cached" aria-label="opção"></div>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. Qual comando baixa as novidades do GitHub <strong>sem</strong> mexer nos seus branches?</p>
+<label><input type="radio" name="q4"> <code>git pull</code></label>
+<label><input type="radio" name="q4"> <code>git push</code></label>
+<label><input type="radio" name="q4"> <code>git clone</code></label>
+<label><input type="radio" name="q4"> <code>git fetch</code></label>
+</div>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
