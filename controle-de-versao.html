@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Controle de Versão — por que guardar a história do projeto | Guia Git</title>
+<meta name="description" content="Por que usar controle de versão: o problema do arquivo final_v2_agora_vai, o que um sistema de controle de versão guarda (o quê, quem, quando e por quê), os tipos local, centralizado e distribuído, e onde o Git entra.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Por que Controle de Versão</span></h1>
+
+<p class="intro">Todo mundo que já escreveu um trabalho grande conhece a pasta cheia de <code>final.docx</code>, <code>final2.docx</code> e <code>final-agora-vai.docx</code>. Um <strong>sistema de controle de versão</strong> é a solução organizada para esse problema: ele guarda cada versão, diz o que mudou, quem mudou, quando e por quê. Nesta aula você vai ver o problema, a solução e onde o Git se encaixa.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Os problemas de guardar versões "na mão", com cópias de arquivos.</li>
+  <li>As quatro perguntas que um controle de versão responde: <strong>o quê, quem, quando e por quê</strong>.</li>
+  <li>Os três tipos de controle de versão: local, centralizado e distribuído.</li>
+  <li>Por que o Git, um sistema distribuído, virou o padrão.</li>
+</ul>
+</div>
+
+<hr>
+
+<h2>O problema: a pasta do "final de verdade"</h2>
+<p>A Ana está escrevendo o TCC. Com medo de estragar o texto, ela faz uma cópia a cada mudança grande. Depois de um mês, a pasta está assim (o <code>-1</code> do <code>ls</code> pede um nome por linha):</p>
+
+<pre class="term" data-cwd="~/tcc-sem-git">$ ls -1
+tcc-final-2.docx
+tcc-final-agora-vai.docx
+tcc-final-de-verdade.docx
+tcc-final.docx
+tcc-revisado-bruno.docx
+tcc-v2.docx
+tcc-v3-depois-da-reuniao.docx
+tcc.docx
+</pre>
+
+<p>Repare nas perguntas que essa pasta não responde:</p>
+<ul>
+  <li><strong>Qual é a versão certa?</strong> <code>final-de-verdade</code> é mais nova que <code>agora-vai</code>? Só olhando a data de cada arquivo, e torcendo para nenhuma cópia ter sido aberta e salva de novo.</li>
+  <li><strong>O que mudou de uma para outra?</strong> Seria preciso abrir as duas lado a lado e procurar as diferenças no olho.</li>
+  <li><strong>Por que mudou?</strong> O nome do arquivo não diz que a <code>v3</code> foi "a versão depois da reunião com o orientador".</li>
+  <li><strong>E quando o Bruno ajudar?</strong> Ele manda <code>tcc-revisado-bruno</code> por e-mail, a Ana continuou mexendo na dela… e agora alguém tem de juntar as duas à mão.</li>
+</ul>
+<p>Além disso, cada cópia ocupa espaço inteiro, mesmo quando só uma vírgula mudou.</p>
+
+<hr>
+
+<h2>A solução: um sistema que guarda a história</h2>
+<p>Um <strong>sistema de controle de versão</strong> (em inglês, <em>version control system</em>, ou <strong>VCS</strong>) é um programa que fica de olho numa pasta e, quando você pede, registra como ela está. Em vez de dez cópias, existe <strong>uma pasta só</strong>, com o arquivo atual, e um "cofre" escondido com todas as versões anteriores.</p>
+<p>Pense no caderno de um laboratório de ciências: cada experimento é anotado com data, nome de quem fez e o que observou. Ninguém arranca páginas; para corrigir, escreve-se uma anotação nova. O controle de versão é esse caderno, só que preenchido automaticamente para os seus arquivos.</p>
+
+<p>Esta é a mesma história do TCC, guardada pelo Git. O comando <code>git log</code> mostra os registros do mais novo para o mais antigo:</p>
+
+<pre class="term" data-cwd="~/tcc">$ ls
+tcc.md
+$ git log
+commit 892a4d1065f3139eabb59162b1d124940102da90      « o registro mais novo
+Author: Ana Souza &lt;ana@exemplo.com&gt;                 « quem
+Date:   Thu Oct 15 10:30:00 2026 -0300                « quando
+
+    Acrescenta a conclusão pedida pelo orientador     « por quê
+
+commit 68319cf9b38aa303504ef8453cb8d9a6f79e30f2
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Acrescenta a metodologia
+
+commit a65079a47fe7e5727e5276a4914f18eee2557865      « o primeiro registro
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Começa o TCC com o título e a introdução
+</pre>
+
+<p>Cada registro (cada <strong>commit</strong>) responde às quatro perguntas:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Pergunta</th><th>Onde está a resposta</th></tr>
+<tr><td><strong>Quem</strong> mudou?</td><td>Na linha <code>Author:</code> ("autor"): nome e e-mail de quem fez o commit.</td></tr>
+<tr><td><strong>Quando</strong>?</td><td>Na linha <code>Date:</code> ("data"), com dia, hora e fuso horário.</td></tr>
+<tr><td><strong>Por quê</strong>?</td><td>Na mensagem, escrita por quem fez o commit, logo abaixo da data.</td></tr>
+<tr><td><strong>O quê</strong>?</td><td>O Git sabe exatamente que linhas entraram e saíram. O <code>git log --stat</code> (abaixo) resume; o <a href="git-diff.html">git diff</a> e o <a href="git-show.html">git show</a> mostram linha por linha.</td></tr>
+</table>
+</div>
+
+<p>Todas as datas são iguais porque o relógio da máquina da Ana, no laboratório deste guia, está parado em 15/10/2026 10:30; num computador de verdade, cada commit tem a hora em que foi feito. O número comprido depois de <code>commit</code> é o <strong>hash</strong>, a identidade do registro (aula <a href="hash.html">O Hash do Commit</a>). E a pasta tem <strong>um arquivo só</strong>, o <code>tcc.md</code>: as versões antigas estão guardadas pelo Git, não espalhadas em cópias.</p>
+
+<h3>"O quê": o resumo do que mudou</h3>
+<p>Com a opção <code>--stat</code> ("estatística"), o <code>git log</code> diz também que arquivos cada commit mudou e quantas linhas entraram (<code>+</code>) e saíram (<code>-</code>):</p>
+
+<pre class="term" data-cwd="~/tcc">$ git log --stat -1
+commit 892a4d1065f3139eabb59162b1d124940102da90
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Acrescenta a conclusão pedida pelo orientador
+
+ tcc.md | 2 ++                                        « o arquivo tcc.md ganhou 2 linhas
+ 1 file changed, 2 insertions(+)                      « "1 arquivo mudou, 2 linhas inseridas"
+</pre>
+
+<dl class="anatomy">
+  <dt>git log</dt><dd>Mostra o histórico.</dd>
+  <dt>--stat</dt><dd>Acrescenta, a cada commit, a lista de arquivos alterados e a contagem de linhas.</dd>
+  <dt>-1</dt><dd>Mostra só 1 commit, o mais recente. (<code>-3</code> mostraria os três últimos.)</dd>
+</dl>
+
+<div class="try" data-setup="mkdir tcc;;cd tcc;;git init -q;;printf '# TCC\n\n## Introdução\n' &gt; tcc.md;;git add tcc.md;;git commit -q -m 'Começa o TCC com o título e a introdução';;printf '\n## Metodologia\n' &gt;&gt; tcc.md;;git commit -q -am 'Acrescenta a metodologia';;printf '\n## Conclusão\n' &gt;&gt; tcc.md;;git commit -q -am 'Acrescenta a conclusão pedida pelo orientador'" data-goal="ran:^\s*git log" data-solucao="git log">
+<p class="try-task"><strong>Missão:</strong> o terminal está na pasta <code>tcc</code>, já com três commits. Rode <code>git log</code> e responda para você mesma: qual foi o primeiro commit, e por que o último foi feito? Depois experimente <code>git log --stat</code> e <code>git log --oneline</code>.</p>
+</div>
+
+<hr>
+
+<h2>O que você ganha com controle de versão</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Ganho</th><th>Na prática</th></tr>
+<tr><td><strong>Desfazer sem medo</strong></td><td>Apagou algo que não devia? Volte o arquivo para como estava no último commit, ou em qualquer commit antigo.</td></tr>
+<tr><td><strong>Ver o que mudou</strong></td><td>Antes de registrar, veja exatamente as linhas novas e as apagadas.</td></tr>
+<tr><td><strong>Entender o passado</strong></td><td>"Por que esta linha está aqui?" A mensagem do commit que a criou responde (<a href="git-blame.html">git blame</a>).</td></tr>
+<tr><td><strong>Testar ideias</strong></td><td>Abra um ramo separado (<a href="branches.html">branch</a>), teste à vontade e só junte ao principal se der certo.</td></tr>
+<tr><td><strong>Trabalhar em equipe</strong></td><td>Cada pessoa trabalha na sua cópia; o sistema junta as mudanças e avisa quando duas pessoas mexeram na mesma linha.</td></tr>
+<tr><td><strong>Ter backup</strong></td><td>Com um sistema distribuído como o Git, cada cópia do repositório (a sua, a do GitHub, a do Bruno) é um backup completo.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Os três tipos de controle de versão</h2>
+<p>Os sistemas de controle de versão evoluíram em três "gerações". Saber a diferença ajuda a entender por que o Git funciona do jeito que funciona.</p>
+
+<h3>1. Local: tudo no seu computador</h3>
+<p>Os primeiros sistemas, como o RCS (de 1982), guardavam as versões de cada arquivo numa pasta do próprio computador. Resolviam o "final_v2", mas não ajudavam a trabalhar em equipe.</p>
+<pre class="syntax">  seu computador
+  ┌──────────────────────────┐
+  │ arquivo  ◄──  versões    │
+  └──────────────────────────┘</pre>
+
+<h3>2. Centralizado: um servidor guarda a história</h3>
+<p>Sistemas como o CVS (anos 1990) e o Subversion, ou SVN (2000), guardam a história num <strong>servidor central</strong>. Cada pessoa tem só a versão atual dos arquivos e pede ao servidor para registrar cada mudança. É simples de entender, mas: sem conexão com o servidor, não dá para registrar nada nem ver o histórico; e, se o servidor perde os dados, a história toda vai junto.</p>
+<pre class="syntax">        ┌──────────────┐
+        │   servidor   │  ◄── a história fica só aqui
+        │  (história)  │
+        └──────┬───────┘
+     ┌─────────┼─────────┐
+   Ana       Bruno     Carla     ◄── cada um tem só os arquivos atuais</pre>
+
+<h3>3. Distribuído: cada um tem a história inteira</h3>
+<p>No Git (e no Mercurial, que nasceu na mesma época), cada pessoa tem uma <strong>cópia completa</strong> do repositório, com toda a história. Commits, histórico, branches: tudo funciona sem internet, e rápido, porque é tudo local. Para trocar trabalho, as cópias conversam entre si; na prática, quase todo mundo combina um ponto de encontro, como o GitHub.</p>
+<pre class="syntax">            ┌──────────────┐
+            │    GitHub    │
+            │  (história)  │
+            └──────┬───────┘
+       ┌───────────┼───────────┐
+  Ana (história)  Bruno (história)  Carla (história)</pre>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th></th><th>Local (RCS)</th><th>Centralizado (SVN)</th><th>Distribuído (Git)</th></tr>
+<tr><td>Onde fica a história</td><td>No seu computador</td><td>Só no servidor</td><td>Em todas as cópias</td></tr>
+<tr><td>Funciona sem internet?</td><td>Sim</td><td>Só para editar arquivos</td><td>Sim, para quase tudo</td></tr>
+<tr><td>Trabalho em equipe</td><td>Não</td><td>Sim</td><td>Sim</td></tr>
+<tr><td>Se um computador quebra</td><td>Perde tudo</td><td>Se for o servidor, perde tudo</td><td>Qualquer outra cópia tem tudo</td></tr>
+<tr><td>Criar e juntar ramos</td><td>—</td><td>Possível, mas trabalhoso</td><td>Rápido e do dia a dia</td></tr>
+</table>
+</div>
+
+<div class="tip">
+<strong>Controle de versão não é só para programadores</strong>
+<p>Ele serve para qualquer coisa feita de arquivos de texto: o TCC escrito em Markdown ou LaTeX, a documentação de uma empresa, as receitas da Ana, as configurações de um servidor, até livros. Este guia mesmo é guardado num repositório Git.</p>
+</div>
+
+<hr>
+
+<h2>Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Rodei <code>git log</code> numa pasta que não é um repositório</strong>
+<pre class="term" data-cwd="~/tcc-sem-git">$ git log
+fatal: not a git repository (or any of the parent directories): .git
+</pre>
+<p><strong>O que aconteceu:</strong> o controle de versão não "liga sozinho" em todas as pastas. A pasta <code>tcc-sem-git</code> nunca foi transformada em repositório, então o Git não tem história nenhuma para mostrar. A mensagem saiu em inglês (o Git 2.53 ainda não traduz esta) e quer dizer: "fatal: não é um repositório git (nem nenhuma das pastas acima dela): .git". O <code>.git</code> é a pasta escondida onde o Git guarda a história; ele procurou nela e nas pastas acima e não achou.</p>
+<p><strong>Como resolver:</strong> entre na pasta certa (<code>cd ~/tcc</code>) ou, se é um projeto novo, crie o repositório com <code>git init</code> (aula <a href="git-init.html">Criando um Repositório</a>).</p>
+</div>
+
+<div class="cenario">
+<strong>"Usei controle de versão e mesmo assim perdi o trabalho"</strong>
+<p><strong>O que aconteceu:</strong> o Git só guarda o que você <strong>registra</strong>. Mudanças que nunca entraram num commit não estão na história. Se a Ana escreveu o capítulo inteiro durante uma semana sem fazer nenhum commit e apagou o arquivo, o Git não tem como devolver.</p>
+<p><strong>Como evitar:</strong> faça commits pequenos e frequentes, sempre que terminar uma parte que faz sentido sozinha. A aula <a href="boas-praticas.html">Boas Práticas</a> volta a esse assunto.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Termo</th><th>Significado</th></tr>
+<tr><td>Controle de versão (VCS)</td><td>Sistema que guarda as versões de uma pasta: o quê, quem, quando e por quê.</td></tr>
+<tr><td>Centralizado</td><td>A história fica num servidor (CVS, SVN).</td></tr>
+<tr><td>Distribuído</td><td>Cada cópia tem a história inteira (Git, Mercurial).</td></tr>
+<tr><td><code>git log</code></td><td>Mostra os commits, do mais novo para o mais antigo, com autor, data e mensagem.</td></tr>
+<tr><td><code>git log --stat</code></td><td>Acrescenta os arquivos alterados e a contagem de linhas.</td></tr>
+<tr><td><code>git log -1</code></td><td>Mostra só o último commit.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">1. Qual destas perguntas o nome de arquivo <code>tcc-final-v2.md</code> <strong>não</strong> consegue responder, mas um commit responde?</p>
+<label><input type="radio" name="q1"> Qual é o assunto do arquivo.</label>
+<label><input type="radio" name="q1"> Que o arquivo é de texto.</label>
+<label><input type="radio" name="q1"> Por que a mudança foi feita e quem a fez.</label>
+<label><input type="radio" name="q1"> Que existe uma versão 2.</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. Num sistema <strong>centralizado</strong>, como o SVN, o que acontece se o servidor ficar fora do ar?</p>
+<label><input type="radio" name="q2"> Nada muda: cada um tem a história completa.</label>
+<label><input type="radio" name="q2"> Ninguém consegue registrar mudanças nem ver o histórico até ele voltar.</label>
+<label><input type="radio" name="q2"> Os arquivos de todo mundo são apagados.</label>
+<label><input type="radio" name="q2"> O Git assume no lugar dele.</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">3. A Ana passou uma semana escrevendo sem fazer nenhum commit e apagou o arquivo sem querer. O Git consegue devolver esse texto?</p>
+<label><input type="radio" name="q3"> Sim, com <code>git log</code>.</label>
+<label><input type="radio" name="q3"> Sim, porque o Git salva tudo automaticamente a cada minuto.</label>
+<label><input type="radio" name="q3"> Sim, se ela tiver internet.</label>
+<label><input type="radio" name="q3"> Não: o Git só guarda o que entrou em algum commit.</label>
+</div>
+
+<div class="exercise">
+<h3>4. Só o último</h3>
+<p>Complete para ver só o commit mais recente, com a lista de arquivos alterados:</p>
+<div class="ex-code">git log --stat <input data-answer="-1|-n 1|-n1|--max-count=1" aria-label="opção"></div>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Guardar versões com cópias (<code>final</code>, <code>final2</code>…) não diz o que mudou, por que, nem quem mudou, e complica o trabalho em equipe.</li>
+  <li>Um <strong>sistema de controle de versão</strong> guarda cada registro com o quê, quem, quando e por quê, numa pasta só.</li>
+  <li>Há três tipos: <strong>local</strong>, <strong>centralizado</strong> (a história num servidor) e <strong>distribuído</strong> (a história em todas as cópias).</li>
+  <li>O Git é distribuído: funciona sem internet e cada cópia é um backup completo.</li>
+  <li>O Git só guarda o que você registra: faça commits pequenos e frequentes.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
