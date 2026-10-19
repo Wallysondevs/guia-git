@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Submódulos — um repositório dentro do outro (git submodule) | Guia Git</title>
+<meta name="description" content="Submódulos do Git para iniciantes: git submodule add, o arquivo .gitmodules, o commit que guarda só o ponteiro (Subproject commit), clonar com --recurse-submodules ou submodule update --init, atualizar com update --remote, submodule.recurse, remover com git rm, e os erros reais (pasta vazia, HEAD destacado, novas submissões, transport 'file' not allowed).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Submódulos</span></h1>
+
+<p class="intro">A Ana criou um repositório só com o visual dos sites dela, o <code>estilos</code> (fontes, cores, o arquivo <code>estilo.css</code>). Agora ela quer usar esse visual no site de receitas e, depois, no portfólio, sem copiar e colar o arquivo em cada projeto (e sem ter de atualizar cada cópia à mão). O Git tem um jeito de colocar <strong>um repositório dentro de outro</strong>, guardando exatamente qual versão está sendo usada: o <strong>submódulo</strong> (<code>git submodule</code>).</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é um submódulo e o que o repositório "de fora" guarda dele: só um <strong>ponteiro</strong> para um commit.</li>
+  <li>Como acrescentar um com <code>git submodule add</code>, e o que são o <code>.gitmodules</code> e o <code>Subproject commit</code>.</li>
+  <li>Como clonar um projeto com submódulos (a pasta vazia, <code>--recurse-submodules</code>, <code>git submodule update --init</code>).</li>
+  <li>Como atualizar o submódulo (<code>update --remote</code>) e trazer a atualização de outra pessoa.</li>
+  <li>Como remover um submódulo, e os erros reais mais comuns.</li>
+</ul>
+</div>
+
+<p>Os comandos desta aula rodaram no Git 2.53 do Ubuntu da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o "GitHub de mentira" do laboratório (o Git conversa com ele como conversaria com o de verdade). As mensagens do <code>git submodule</code> ainda não têm tradução em português nessa versão e saem em inglês; a aula traduz cada uma.</p>
+
+<hr>
+
+<h2>A ideia: a receita que diz "use o molho da página 12"</h2>
+<p>Num livro de receitas, a lasanha não copia a receita do molho de tomate: ela diz <strong>"use o molho da página 12"</strong>. Se o molho melhorar, quem atualiza é a página 12. O submódulo é essa referência, com um detalhe a mais: a lasanha diz <strong>qual edição</strong> do molho usar ("o molho da página 12, edição de março"). Mesmo que o molho ganhe uma edição nova, a lasanha continua usando a de março até alguém decidir trocar.</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>No livro</th><th>No Git</th></tr>
+<tr><td>A receita da lasanha</td><td>O repositório principal (<code>receitas</code>), o <strong>superprojeto</strong></td></tr>
+<tr><td>A receita do molho, em outra página</td><td>O submódulo (<code>estilos</code>), um repositório completo com o seu próprio histórico</td></tr>
+<tr><td>"página 12, edição de março"</td><td>O endereço do submódulo (no <code>.gitmodules</code>) e o <strong>commit exato</strong> usado</td></tr>
+<tr><td>Trocar para a edição nova</td><td>Atualizar o submódulo e fazer um commit no superprojeto</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>1. Acrescentar um submódulo: <code>git submodule add</code></h2>
+<p>O repositório <code>estilos</code> já está no GitHub da Ana. Na pasta do site de receitas:</p>
+<pre class="term" data-cwd="~/receitas">$ git submodule add https://github.com/ana-souza/estilos.git estilos
+Cloning into '/home/ana/receitas/estilos'...
+</pre>
+<dl class="anatomy">
+  <dt>git submodule add</dt><dd>"Acrescente um submódulo."</dd>
+  <dt>https://github.com/ana-souza/estilos.git</dt><dd>O endereço do repositório que vai entrar, o mesmo que você usaria no <a href="git-clone.html">git clone</a>.</dd>
+  <dt>estilos</dt><dd>A pasta onde ele vai ficar, dentro do <code>receitas</code>. Sem esse argumento, o Git usa o nome do repositório.</dd>
+  <dt>Cloning into '/home/ana/receitas/estilos'...</dt><dd>"Clonando em …": o Git fez um clone completo do <code>estilos</code> dentro da pasta.</dd>
+</dl>
+
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main
+Your branch is up to date with 'origin/main'.
+
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	new file:   .gitmodules                  « arquivo novo: a lista de submódulos
+	new file:   estilos                      « a pasta aparece como UM item, não como arquivos
+
+$ cat .gitmodules
+[submodule "estilos"]
+	path = estilos
+	url = https://github.com/ana-souza/estilos.git
+$ ls estilos
+README.md
+estilo.css
+</pre>
+<p>O <code>git submodule add</code> já deixou duas coisas na área de preparo (<em>Mudanças a serem submetidas</em>):</p>
+<ul>
+  <li>o <code>.gitmodules</code>, um arquivo de texto comum, que diz <strong>onde</strong> fica cada submódulo (<code>path</code>, a pasta) e <strong>de onde</strong> ele vem (<code>url</code>). Ele vai junto no commit, para quem clonar saber de onde baixar;</li>
+  <li>a pasta <code>estilos</code>, que o Git trata como <strong>um item só</strong>. Os arquivos dela (<code>estilo.css</code>, <code>README.md</code>) <strong>não</strong> entram no histórico do <code>receitas</code>: eles pertencem ao histórico do <code>estilos</code>.</li>
+</ul>
+
+<h3>O que o superprojeto guarda: o ponteiro</h3>
+<pre class="term" data-cwd="~/receitas">$ git diff --cached estilos
+diff --git a/estilos b/estilos
+new file mode 160000
+index 0000000..05a34b8
+--- /dev/null
++++ b/estilos
+@@ -0,0 +1 @@
++Subproject commit 05a34b807cfbac6a88c8e4e8d986086f3bc0f4ef
+</pre>
+<p>Esta é a parte mais importante da aula. Para o <code>receitas</code>, a pasta <code>estilos</code> é <strong>uma linha só</strong>: <code>Subproject commit 05a34b8…</code> ("commit do subprojeto"). É a "edição de março" da receita do molho: o hash do commit do <code>estilos</code> que este site usa. O <code>mode 160000</code> é o jeito do Git marcar "isto é um submódulo, não um arquivo nem uma pasta comum".</p>
+
+<pre class="term" data-cwd="~/receitas">$ git commit -m "Adiciona os estilos como submódulo"
+[main b5287c9] Adiciona os estilos como submódulo
+ 2 files changed, 4 insertions(+)
+ create mode 100644 .gitmodules
+ create mode 160000 estilos                    « 160000 = submódulo
+$ git submodule status
+ 05a34b807cfbac6a88c8e4e8d986086f3bc0f4ef estilos (heads/main)
+$ git push
+To https://github.com/ana-souza/receitas.git
+   2cbd07a..b5287c9  main -&gt; main
+</pre>
+<p>O <code>git submodule status</code> lista cada submódulo: o commit em uso, a pasta e, entre parênteses, um nome para aquele commit (aqui, o branch <code>main</code> do <code>estilos</code>). No GitHub (ilustrativo), a pasta <code>estilos</code> aparece com um ícone diferente e o nome seguido de <code>@</code> e do começo do hash, e funciona como um link para o repositório <code>estilos</code> naquele commit.</p>
+
+<div class="try" data-setup="git config --global protocol.file.allow always;;mkdir estilos;;cd estilos;;git init -q;;echo 'body { font-family: sans-serif; }' &gt; estilo.css;;git add estilo.css;;git commit -q -m 'Cria o estilo base';;git init -q --bare ../estilos.git;;git push -q ../estilos.git main;;cd ..;;rm -rf estilos;;mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o site de receitas'" data-goal="rastreado:.gitmodules,contains:receitas/.gitmodules=estilos,file:receitas/estilos/estilo.css,commits:2,limpo" data-solucao="git submodule add ../estilos.git estilos;;git commit -m 'Adiciona os estilos como submódulo'">
+<p class="try-task"><strong>Missão:</strong> você está no repositório <code>receitas</code>. Ao lado dele há um repositório <code>../estilos.git</code> (o papel do GitHub, nesta missão). Acrescente-o como submódulo na pasta <code>estilos</code> (<code>git submodule add ../estilos.git estilos</code>), olhe o <code>git status</code> e o <code>cat .gitmodules</code>, e faça o commit. (A missão já liberou o uso de pastas locais como submódulo, que o Git bloqueia por padrão: veja <a href="#errado">Quando dá errado</a>.)</p>
+</div>
+
+<hr>
+
+<h2>2. Clonar um projeto que tem submódulos</h2>
+<p>Aqui está a pegadinha mais famosa dos submódulos. Um <code>git clone</code> comum traz o superprojeto, mas deixa a pasta do submódulo <strong>vazia</strong>:</p>
+<pre class="term">$ git clone https://github.com/ana-souza/receitas.git copia
+Cloning into 'copia'...
+$ cd copia
+$ ls estilos
+$ git submodule status
+-05a34b807cfbac6a88c8e4e8d986086f3bc0f4ef estilos     « o "-" no começo: ainda não foi baixado
+</pre>
+<p>O <code>ls estilos</code> não mostrou nada: a pasta existe, mas está vazia. O <code>-</code> no começo da linha do <code>git submodule status</code> quer dizer "submódulo não inicializado". O site, aberto agora, estaria sem estilo nenhum. Para baixar:</p>
+<pre class="term" data-cwd="~/copia">$ git submodule update --init
+Submodule 'estilos' (https://github.com/ana-souza/estilos.git) registered for path 'estilos'
+Cloning into '/home/ana/copia/estilos'...
+Submodule path 'estilos': checked out '05a34b807cfbac6a88c8e4e8d986086f3bc0f4ef'
+$ ls estilos
+README.md
+estilo.css
+$ git submodule status
+ 05a34b807cfbac6a88c8e4e8d986086f3bc0f4ef estilos (heads/main)
+</pre>
+<dl class="anatomy">
+  <dt>git submodule update</dt><dd>"Deixe cada submódulo no commit que o superprojeto aponta."</dd>
+  <dt>--init</dt><dd>Antes, registra os submódulos do <code>.gitmodules</code> que ainda não foram registrados neste clone: <code>Submodule 'estilos' (…) registered for path 'estilos'</code>.</dd>
+  <dt>Submodule path 'estilos': checked out '05a34b8…'</dt><dd>"O submódulo da pasta <code>estilos</code> foi colocado no commit <code>05a34b8…</code>", exatamente o do ponteiro.</dd>
+</dl>
+
+<p>Ou, já no clone, tudo de uma vez:</p>
+<pre class="term">$ git clone --recurse-submodules https://github.com/ana-souza/receitas.git copia2
+Cloning into 'copia2'...
+Submodule 'estilos' (https://github.com/ana-souza/estilos.git) registered for path 'estilos'
+Cloning into '/home/ana/copia2/estilos'...
+Submodule path 'estilos': checked out '05a34b807cfbac6a88c8e4e8d986086f3bc0f4ef'
+</pre>
+<p>O <code>--recurse-submodules</code> ("recursivamente, com os submódulos") clona o superprojeto e, em seguida, faz o <code>submodule update --init</code> sozinho.</p>
+
+<div class="warning">
+<strong>O submódulo fica em HEAD destacado</strong>
+<pre class="term" data-cwd="~/copia">$ cd estilos
+$ git status
+HEAD detached at 05a34b8
+nothing to commit, working tree clean
+</pre>
+<p>Depois de um <code>submodule update</code>, o submódulo não está em branch nenhum: ele está <strong>no commit exato</strong> do ponteiro (veja <a href="head-destacado.html">HEAD Destacado</a>). Para só <strong>usar</strong> o submódulo, isso é perfeito. Para <strong>mexer</strong> nele, entre na pasta e faça <code>git switch main</code> antes de editar; um commit feito em HEAD destacado fica solto e é fácil de perder.</p>
+</div>
+
+<div class="try" data-setup="git config --global protocol.file.allow always;;mkdir estilos;;cd estilos;;git init -q;;echo 'body { font-family: sans-serif; }' &gt; estilo.css;;git add estilo.css;;git commit -q -m 'Cria o estilo base';;git init -q --bare ../estilos.git;;git push -q ../estilos.git main;;cd ..;;rm -rf estilos;;mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o site de receitas';;git submodule add -q ../estilos.git estilos;;git commit -q -m 'Adiciona os estilos como submódulo';;cd ..;;git clone -q receitas copia;;cd copia" data-goal="file:copia/estilos/estilo.css,ran:submodule update" data-solucao="git submodule update --init">
+<p class="try-task"><strong>Missão:</strong> você acabou de clonar o site de receitas na pasta <code>copia</code> com um <code>git clone</code> comum, e a pasta <code>estilos</code> está vazia (confira com <code>ls estilos</code> e <code>git submodule status</code>). Baixe o submódulo.</p>
+</div>
+
+<hr>
+
+<h2>3. Atualizar o submódulo</h2>
+<p>O Bruno melhorou o repositório <code>estilos</code>: os títulos agora são vermelho-escuros. O site de receitas <strong>não</strong> muda sozinho: ele continua apontando para <code>05a34b8</code>, a "edição de março". Trocar de edição é uma decisão, e vira um commit.</p>
+<pre class="term" data-cwd="~/receitas">$ git submodule update --remote
+From https://github.com/ana-souza/estilos
+   05a34b8..f9b6a7d  main       -&gt; origin/main
+Submodule path 'estilos': checked out 'f9b6a7d1394ce388dd9c4b0f8cd62ffbe4fda17a'
+$ git status
+No ramo main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   estilos (novas submissões)
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+$ git diff
+diff --git a/estilos b/estilos
+index 05a34b8..f9b6a7d 160000
+--- a/estilos
++++ b/estilos
+@@ -1 +1 @@
+-Subproject commit 05a34b807cfbac6a88c8e4e8d986086f3bc0f4ef
++Subproject commit f9b6a7d1394ce388dd9c4b0f8cd62ffbe4fda17a
+</pre>
+<dl class="anatomy">
+  <dt>--remote</dt><dd>Em vez do commit do ponteiro, busca o commit mais novo do branch do submódulo no GitHub (a <code>main</code> do <code>estilos</code>) e coloca a pasta nele.</dd>
+  <dt>modified: estilos (novas submissões)</dt><dd>"Modificado: <code>estilos</code> (commits novos)". A pasta do submódulo está num commit diferente do ponteiro guardado.</dd>
+  <dt>-Subproject commit 05a34b8… / +Subproject commit f9b6a7d…</dt><dd>O <code>git diff</code> mostra a mudança como a troca de uma linha: o ponteiro velho sai, o novo entra.</dd>
+</dl>
+<p>Para o site passar a usar a edição nova, a Ana faz o commit do ponteiro, como de qualquer arquivo:</p>
+<pre class="term" data-cwd="~/receitas">$ git add estilos
+$ git commit -m "Atualiza os estilos"
+[main 6864716] Atualiza os estilos
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+$ git push
+To https://github.com/ana-souza/receitas.git
+   b5287c9..6864716  main -&gt; main
+</pre>
+
+<h3>Do outro lado: trazendo a atualização</h3>
+<p>Na pasta <code>copia</code>, um <code>git pull</code> traz o ponteiro novo, mas <strong>não</strong> muda a pasta do submódulo:</p>
+<pre class="term" data-cwd="~/copia">$ git pull
+From https://github.com/ana-souza/receitas
+   b5287c9..6864716  main       -&gt; origin/main
+Fetching submodule estilos
+From https://github.com/ana-souza/estilos
+   05a34b8..f9b6a7d  main       -&gt; origin/main
+Updating b5287c9..6864716
+Fast-forward
+ estilos | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+$ git status
+No ramo main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   estilos (novas submissões)
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+</pre>
+<p>Confuso: o <code>git status</code> diz <code>novas submissões</code>, mas aqui o submódulo está <strong>atrasado</strong> (ainda em <code>05a34b8</code>), e o ponteiro que chegou é que é novo. O Git só diz "é diferente". <strong>Não faça <code>git add estilos</code> aqui</strong>: isso voltaria o ponteiro para a versão velha. O certo é pôr o submódulo no commit do ponteiro:</p>
+<pre class="term" data-cwd="~/copia">$ git submodule update
+Submodule path 'estilos': checked out 'f9b6a7d1394ce388dd9c4b0f8cd62ffbe4fda17a'
+$ git status
+No ramo main
+Your branch is up to date with 'origin/main'.
+
+nothing to commit, working tree clean
+$ cat estilos/estilo.css
+body { font-family: sans-serif; }
+h1 { color: darkred; }                       « a mudança do Bruno chegou
+</pre>
+
+<div class="tip">
+<strong>Para o <code>pull</code> já atualizar os submódulos</strong>
+<p>Com a configuração <code>submodule.recurse</code> ligada, o <code>git pull</code> (e o <code>git switch</code>, entre outros) faz o <code>submodule update</code> sozinho. Em outra cópia, a <code>copia2</code>:</p>
+<pre class="term" data-cwd="~/copia2">$ git config submodule.recurse true
+$ git pull
+From https://github.com/ana-souza/receitas
+   b5287c9..6864716  main       -&gt; origin/main
+Fetching submodule estilos
+From https://github.com/ana-souza/estilos
+   05a34b8..f9b6a7d  main       -&gt; origin/main
+Updating b5287c9..6864716
+Fast-forward
+ estilos | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+Submodule path 'estilos': checked out 'f9b6a7d1394ce388dd9c4b0f8cd62ffbe4fda17a'     « o update veio junto
+$ git status --short
+</pre>
+<p>Sem <code>--global</code>, a configuração vale só para este repositório; com <code>git config --global submodule.recurse true</code>, vale para todos os seus (veja <a href="git-config.html">git config</a>).</p>
+</div>
+
+<hr>
+
+<h2>4. Remover um submódulo</h2>
+<pre class="term" data-cwd="~/copia2">$ git rm estilos
+rm 'estilos'
+$ git status
+No ramo main
+Your branch is up to date with 'origin/main'.
+
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	modified:   .gitmodules                « a entrada do estilos saiu do .gitmodules
+	deleted:    estilos
+
+$ cat .gitmodules
+$ ls
+README.md
+index.html
+</pre>
+<p>O <code>git rm</code> (veja <a href="git-rm.html">git rm</a>) apagou a pasta e já tirou o submódulo do <code>.gitmodules</code>, que ficou vazio. Falta só o commit (<code>git commit -m "Remove o submódulo estilos"</code>). Uma cópia do repositório do submódulo continua guardada dentro de <code>.git/modules/estilos</code>, para o caso de você voltar a um commit antigo que ainda o usa.</p>
+
+<hr>
+
+<h2 id="formas">Submódulo ou outra coisa?</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Melhor opção</th></tr>
+<tr><td>Um repositório seu (ou de terceiros) usado por vários projetos, e você quer controlar a versão exata</td><td>Submódulo</td></tr>
+<tr><td>Uma biblioteca de uma linguagem (JavaScript, Python, PHP…)</td><td>O gerenciador de pacotes da linguagem (npm, pip, composer…): é feito para isso e mais simples para todos</td></tr>
+<tr><td>Um arquivo pequeno que quase nunca muda</td><td>Copiar o arquivo mesmo</td></tr>
+<tr><td>Dois projetos que sempre mudam juntos</td><td>Talvez devessem ser <strong>um</strong> repositório só</td></tr>
+</table>
+</div>
+<p>Submódulos são poderosos, mas cobram atenção de <strong>todo mundo</strong> da equipe: cada pessoa precisa lembrar de clonar com <code>--recurse-submodules</code> e de rodar o <code>submodule update</code>. Use quando a vantagem (a versão exata, o repositório separado) compensar.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Clonei e a pasta do submódulo está vazia</strong>
+<p>É o comportamento normal do <code>git clone</code> sem <code>--recurse-submodules</code> (seção 2). O <code>git submodule status</code> mostra um <code>-</code> no começo da linha. <strong>Como resolver:</strong> <code>git submodule update --init</code>. Se houver submódulos dentro de submódulos, acrescente <code>--recursive</code>.</p>
+</div>
+
+<div class="cenario">
+<strong><code>modified: estilos (novas submissões)</code> e eu não mexi em nada</strong>
+<p>O submódulo está num commit diferente do ponteiro. Duas causas: (1) você rodou <code>git submodule update --remote</code> ou mexeu no submódulo, e a mudança é sua: se quer usá-la, <code>git add estilos</code> e commit; (2) você deu <code>git pull</code> e o ponteiro mudou: rode <code>git submodule update</code>. <strong>Como saber qual é:</strong> <code>git diff estilos</code> mostra o ponteiro guardado (<code>-Subproject commit</code>) e o commit da pasta (<code>+Subproject commit</code>); <code>git log -1 --oneline</code> dentro da pasta mostra em que commit ela está.</p>
+</div>
+
+<div class="cenario">
+<strong><code>fatal: 'estilos' already exists in the index</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git submodule add https://github.com/ana-souza/estilos.git estilos
+fatal: 'estilos' already exists in the index
+</pre>
+<p>"<code>estilos</code> já existe no índice": já há algo rastreado com esse caminho (aqui, o próprio submódulo, acrescentado antes). <strong>Como resolver:</strong> escolha outra pasta ou, se era um diretório comum que você quer trocar por um submódulo, tire-o antes com <code>git rm -r estilos</code> e faça o commit.</p>
+</div>
+
+<div class="cenario">
+<strong>Endereço errado: <code>Repository not found</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git submodule add https://github.com/ana-souza/estilo.git css
+Cloning into '/home/ana/receitas/css'...
+remote: Repository not found.
+fatal: repository 'https://github.com/ana-souza/estilo.git/' not found
+fatal: clone of 'https://github.com/ana-souza/estilo.git' into submodule path '/home/ana/receitas/css' failed
+</pre>
+<p>Faltou um <code>s</code> no nome (<code>estilo</code> em vez de <code>estilos</code>). O clone falhou e nada foi acrescentado (o <code>git status</code> continua limpo). <strong>Como resolver:</strong> confira o endereço no GitHub e rode de novo. Repositórios privados também dão essa mensagem quando falta permissão (veja <a href="https-token.html">HTTPS e Token</a> e <a href="ssh.html">Chave SSH</a>).</p>
+</div>
+
+<div class="cenario">
+<strong><code>fatal: transport 'file' not allowed</code></strong>
+<pre class="term">$ git submodule add /home/ana/t/estilos.git estilos
+Cloning into '/home/ana/t/receitas/estilos'...
+fatal: transport 'file' not allowed
+fatal: clone of '/home/ana/t/estilos.git' into submodule path '/home/ana/t/receitas/estilos' failed
+</pre>
+<p>"Transporte 'file' não permitido". <strong>O que aconteceu:</strong> o endereço era uma pasta do próprio computador. Por segurança, desde a versão 2.38.1 o Git não aceita submódulos vindos de pastas locais, a não ser que você libere. <strong>Como resolver:</strong> use o endereço do GitHub (o caso normal). Para um teste local, libere só naquele comando: <code>git -c protocol.file.allow=always submodule add /caminho/estilos.git estilos</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Fiz commit dentro do submódulo e ele "sumiu"</strong>
+<p>Depois de um <code>submodule update</code>, o submódulo fica em <code>HEAD detached</code>. Um commit feito ali não pertence a branch nenhum, e o próximo <code>update</code> tira a pasta dele. <strong>Como resolver:</strong> o commit ainda está no <a href="git-reflog.html">git reflog</a> do submódulo (rode dentro da pasta <code>estilos</code>); crie um branch nele com <code>git switch -c resgate HASH</code>. <strong>Para evitar:</strong> antes de editar, <code>cd estilos</code> e <code>git switch main</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git submodule add URL pasta</code></td><td>Acrescenta um submódulo (clona e prepara <code>.gitmodules</code> e o ponteiro)</td></tr>
+<tr><td><code>git submodule status</code></td><td>Lista os submódulos e o commit de cada um (<code>-</code> = não baixado)</td></tr>
+<tr><td><code>git clone --recurse-submodules URL</code></td><td>Clona já com os submódulos</td></tr>
+<tr><td><code>git submodule update --init [--recursive]</code></td><td>Baixa e coloca cada submódulo no commit do ponteiro</td></tr>
+<tr><td><code>git submodule update</code></td><td>Coloca os submódulos no commit do ponteiro (depois de um <code>pull</code>)</td></tr>
+<tr><td><code>git submodule update --remote</code></td><td>Leva o submódulo ao commit mais novo do branch dele; depois, <code>git add</code> + commit</td></tr>
+<tr><td><code>git config submodule.recurse true</code></td><td>Faz <code>pull</code>, <code>switch</code> e outros atualizarem os submódulos</td></tr>
+<tr><td><code>git rm pasta</code></td><td>Remove o submódulo (e a entrada do <code>.gitmodules</code>); depois, commit</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o clone</h3>
+<p>Clone o site já com os submódulos:</p>
+<div class="ex-code">git clone <input data-answer="--recurse-submodules" aria-label="opção"> https://github.com/ana-souza/receitas.git</div>
+</div>
+
+<div class="exercise">
+<h3>2. A pasta veio vazia</h3>
+<p>Você clonou sem a opção e a pasta do submódulo está vazia. Complete:</p>
+<div class="ex-code">git submodule <input data-answer="update" aria-label="subcomando"> <input data-answer="--init" aria-label="opção"></div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. O que o repositório <code>receitas</code> guarda, no histórico dele, sobre o submódulo <code>estilos</code>?</p>
+<label><input type="radio" name="q3"> Uma cópia de todos os arquivos do <code>estilos</code></label>
+<label><input type="radio" name="q3"> Nada: só o <code>.gitmodules</code></label>
+<label><input type="radio" name="q3"> O <code>.gitmodules</code> (pasta e endereço) e o hash do commit do <code>estilos</code> em uso</label>
+<label><input type="radio" name="q3"> O histórico inteiro do <code>estilos</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. O Bruno enviou um commit novo para o repositório <code>estilos</code>. O que acontece com o site de receitas?</p>
+<label><input type="radio" name="q4"> Nada, até alguém rodar <code>git submodule update --remote</code> e fazer o commit do ponteiro novo</label>
+<label><input type="radio" name="q4"> Passa a usar a versão nova na hora</label>
+<label><input type="radio" name="q4"> Dá conflito</label>
+<label><input type="radio" name="q4"> O submódulo é apagado</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">5. Depois de um <code>git pull</code>, o <code>git status</code> mostra <code>modified: estilos (novas submissões)</code>. Você não mexeu no submódulo. O que fazer?</p>
+<label><input type="radio" name="q5"> <code>git add estilos</code> e commit</label>
+<label><input type="radio" name="q5"> <code>git submodule update</code></label>
+<label><input type="radio" name="q5"> <code>git rm estilos</code></label>
+<label><input type="radio" name="q5"> Clonar de novo</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Submódulo é um repositório dentro de outro. O superprojeto guarda só o <code>.gitmodules</code> (pasta e endereço) e um <strong>ponteiro</strong> para um commit exato (<code>Subproject commit …</code>, modo <code>160000</code>).</li>
+  <li><code>git submodule add URL pasta</code> acrescenta; depois, commit.</li>
+  <li>Clonar: <code>git clone --recurse-submodules</code>, ou <code>git submodule update --init</code> depois de um clone comum (pasta vazia, <code>-</code> no <code>status</code>).</li>
+  <li>Atualizar para a versão nova: <code>git submodule update --remote</code>, <code>git add pasta</code> e commit. Trazer a atualização de outra pessoa: <code>git pull</code> e <code>git submodule update</code> (ou <code>submodule.recurse true</code>).</li>
+  <li>O submódulo fica em HEAD destacado: para editar, <code>git switch main</code> dentro dele antes.</li>
+  <li>Remover: <code>git rm pasta</code> e commit.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
