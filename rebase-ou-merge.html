@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Rebase ou Merge? — dois jeitos de juntar trabalho | Guia Git</title>
+<meta name="description" content="Rebase ou merge? A mesma situação resolvida dos dois jeitos no Git real: o histórico com o commit de merge e o histórico em linha reta, o que muda nos hashes, nos conflitos e na segurança, merge --ff-only, git pull --rebase, a configuração pull.rebase e a regra prática para escolher.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Rebase ou Merge?</span></h1>
+
+<p class="intro">Você já conhece os dois jeitos de juntar o trabalho de um branch com outro: o <a href="git-merge.html">git merge</a>, que <strong>junta</strong> os dois caminhos com um commit de merge, e o <a href="git-rebase.html">git rebase</a>, que <strong>refaz</strong> os seus commits em cima do outro branch, como se você tivesse começado depois. Os dois chegam aos <strong>mesmos arquivos</strong> no fim. O que muda é o <strong>histórico</strong> que fica para contar a história. Esta aula põe os dois lado a lado, na mesma situação, para você saber qual escolher.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A mesma situação resolvida com merge e com rebase, e o histórico real que cada um deixa.</li>
+  <li>O que muda de verdade: commits novos, hashes, conflitos e o que acontece com quem já baixou seus commits.</li>
+  <li>A regra prática que a maioria das equipes usa: rebase no que é só seu, merge no que é de todos.</li>
+  <li>Como o <code>git pull</code> pergunta qual dos dois você quer, e como responder de uma vez por todas (<code>pull.rebase</code>).</li>
+</ul>
+</div>
+
+<p>Todas as sessões desta aula rodaram no Git real do Ubuntu, na máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com as mensagens em português.</p>
+
+<hr>
+
+<h2>A ideia: o diário de viagem e o livro da viagem</h2>
+<p>A Ana e o Bruno viajaram juntos, mas passaram dois dias separados: ela foi à praia e ele foi à serra. Na volta, cada um tinha anotações no seu caderno. Há dois jeitos de juntar tudo num caderno só:</p>
+<ul>
+  <li><strong>O diário honesto (merge):</strong> cola as páginas dos dois cadernos <strong>como foram escritas</strong>, cada uma com a sua data, e acrescenta uma página dizendo "aqui os dois caminhos se juntaram". Quem ler vê que houve dois caminhos paralelos. Nada foi reescrito.</li>
+  <li><strong>O livro passado a limpo (rebase):</strong> reescreve as anotações da Ana <strong>como se ela tivesse viajado depois</strong> do Bruno, numa sequência só, sem a bifurcação. Fica mais fácil de ler, mas as páginas da Ana foram <strong>reescritas</strong>: não são mais as originais.</li>
+</ul>
+<p>Nenhum dos dois está errado. O diário mostra o que aconteceu; o livro mostra uma história arrumada. A pergunta é: <strong>o que é mais útil para quem vai ler depois</strong>, e <strong>alguém já tinha uma cópia das páginas originais?</strong></p>
+
+<hr>
+
+<h2>1. A situação</h2>
+<p>A Ana criou o branch <code>pudim</code> a partir do <code>main</code> e fez dois commits nele com a receita nova. Enquanto isso, o <code>main</code> ganhou um commit (o Bruno corrigiu o README). Os dois caminhos <strong>se separaram</strong>:</p>
+
+<p>Para comparar, a Ana montou essa situação na pasta <code>receitas-merge</code> e fez uma cópia idêntica dela, <code>receitas-rebase</code>, com <code>cp -r</code>. Numa, ela vai juntar com merge; na outra, com rebase. O ponto de partida das duas:</p>
+
+<pre class="term" data-cwd="~/receitas-merge">$ git log --oneline --graph --all
+* f724d33 Corrige o título do README
+| * 585943c Adiciona os ingredientes do pudim
+| * ca05c9e Adiciona a receita de pudim
+|/
+* 818e38e Adiciona a receita de bolo
+* 0cea70a Cria o README
+</pre>
+
+<pre>
+          C---D   pudim
+         /
+    A---B---X     main
+</pre>
+<p><code>C</code> e <code>D</code> são os dois commits do pudim; <code>X</code> é a correção do README que entrou no <code>main</code> depois que os caminhos se separaram.</p>
+
+<hr>
+
+<h2>2. Jeito 1: merge</h2>
+
+<pre class="term" data-cwd="~/receitas-merge">$ git switch main
+Already on 'main'
+$ git merge --no-edit pudim
+Merge made by the 'ort' strategy.
+ pudim.txt | 2 ++
+ 1 file changed, 2 insertions(+)
+ create mode 100644 pudim.txt
+$ git log --oneline --graph
+*   f081cef Merge branch 'pudim'
+|\
+| * 585943c Adiciona os ingredientes do pudim     « hash original
+| * ca05c9e Adiciona a receita de pudim           « hash original
+* | f724d33 Corrige o título do README
+|/
+* 818e38e Adiciona a receita de bolo
+* 0cea70a Cria o README
+</pre>
+
+<p>"Merge feito pela estratégia <code>ort</code>" (o nome do algoritmo de merge do Git; você não precisa escolher). O <code>--no-edit</code> aceita a mensagem pronta <code>Merge branch 'pudim'</code> sem abrir o editor; sem ele, o editor abre com essa mensagem e é só salvar e fechar (veja <a href="git-merge.html">git merge</a>).</p>
+
+<p>O desenho do <code>--graph</code> mostra exatamente a bifurcação: os commits <code>C</code> e <code>D</code> com os hashes originais (<code>ca05c9e</code> e <code>585943c</code>), o <code>X</code>, e um commit novo, o <strong>commit de merge</strong> (<code>M</code>), com <strong>dois pais</strong>, que junta os caminhos:</p>
+<pre>
+          C---D
+         /     \
+    A---B---X---M   main
+</pre>
+<ul>
+  <li>Nenhum commit que já existia mudou.</li>
+  <li>Apareceu <strong>um</strong> commit a mais, o de merge (veja <a href="merge-tres-vias.html">Merge de Três Vias</a>).</li>
+  <li>Se houvesse conflito, a Ana resolveria <strong>uma vez</strong>, no commit de merge.</li>
+</ul>
+
+<hr>
+
+<h2>3. Jeito 2: rebase (e depois um merge que só avança)</h2>
+
+<pre class="term" data-cwd="~/receitas-rebase">$ git switch pudim
+Switched to branch 'pudim'
+$ git rebase main
+Successfully rebased and updated refs/heads/pudim.
+$ git switch main
+Switched to branch 'main'
+$ git merge pudim
+Updating f724d33..340b09d
+Fast-forward
+ pudim.txt | 2 ++
+ 1 file changed, 2 insertions(+)
+ create mode 100644 pudim.txt
+$ git log --oneline --graph
+* 340b09d Adiciona os ingredientes do pudim       « hash novo
+* 3e0849a Adiciona a receita de pudim             « hash novo
+* f724d33 Corrige o título do README
+* 818e38e Adiciona a receita de bolo
+* 0cea70a Cria o README
+</pre>
+
+<dl class="anatomy">
+  <dt>git rebase main</dt><dd>No branch <code>pudim</code>: "refaça os meus commits em cima da ponta do <code>main</code>". Enquanto trabalha, o Git mostra rapidinho <code>Rebasing (1/2)</code>, <code>Rebasing (2/2)</code> na mesma linha, e no fim fica "rebase feito com sucesso, <code>refs/heads/pudim</code> atualizado" (<em>Successfully rebased and updated</em>).</dd>
+  <dt>Updating f724d33..340b09d / Fast-forward</dt><dd>De volta ao <code>main</code>, o merge só precisou <strong>avançar</strong> o <code>main</code> de <code>f724d33</code> até <code>340b09d</code>: o pudim agora está "na frente" do <code>main</code>, na mesma linha. É o fast-forward ("avanço rápido").</dd>
+</dl>
+
+<p>Agora o histórico é uma <strong>linha reta</strong>:</p>
+<pre>
+    A---B---X---C'---D'   main, pudim
+</pre>
+<ul>
+  <li>O <code>C</code> e o <code>D</code> foram <strong>refeitos</strong> em cima do <code>X</code>: viraram <code>C'</code> e <code>D'</code>, com <strong>hashes novos</strong> (compare os hashes das duas sessões).</li>
+  <li>Não existe commit de merge. O <code>git merge pudim</code> no fim foi um <a href="fast-forward.html">fast-forward</a>: o <code>main</code> só andou para frente.</li>
+  <li>Se houvesse conflito, a Ana poderia ter de resolver <strong>commit por commit</strong> (veja <a href="rebase-conflitos.html">Conflitos no Rebase</a>).</li>
+</ul>
+
+<h3>Os arquivos são os mesmos</h3>
+<pre class="term">$ diff -r --exclude=.git receitas-merge receitas-rebase &amp;&amp; echo 'nenhuma diferença'
+nenhuma diferença
+$ ls receitas-merge receitas-rebase
+receitas-merge:
+README.md
+bolo.txt
+pudim.txt
+
+receitas-rebase:
+README.md
+bolo.txt
+pudim.txt
+</pre>
+<p>O <code>diff -r</code> compara as duas pastas inteiras (o <code>--exclude=.git</code> deixa de fora a pasta escondida do Git, onde o histórico é diferente). Ele não mostrou nada, então o <code>echo</code> rodou.</p>
+
+<p>Nenhuma diferença nos arquivos: as duas pastas chegaram ao mesmo lugar. Merge e rebase discordam só sobre <strong>como contar a história</strong>.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona a receita de bolo';;git switch -q -c pudim;;echo 'Pudim de leite' &gt; pudim.txt;;git add pudim.txt;;git commit -q -m 'Adiciona a receita de pudim';;echo '- 1 lata de leite condensado' &gt;&gt; pudim.txt;;git commit -q -am 'Adiciona os ingredientes do pudim';;git switch -q main;;echo '# Receitas da Ana' &gt; README.md;;git commit -q -am 'Corrige o título do README'" data-goal="head:main,commits:5,contem:HEAD:pudim.txt=leite condensado,limpo" data-solucao="git switch pudim;;git rebase main;;git switch main;;git merge pudim">
+<p class="try-task"><strong>Missão:</strong> o <code>main</code> e o <code>pudim</code> se separaram. Traga o pudim para o <code>main</code> deixando o histórico em <strong>linha reta</strong>, sem commit de merge: faça o rebase do <code>pudim</code> em cima do <code>main</code> e depois avance o <code>main</code>. Confira com <code>git log --oneline --graph</code>. (Se você fizer só <code>git merge pudim</code> no <code>main</code>, vai aparecer um commit de merge, e o <code>main</code> fica com um commit a mais do que a missão pede.)</p>
+</div>
+
+<hr>
+
+<h2>4. Lado a lado</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th></th><th>merge</th><th>rebase</th></tr>
+<tr><td>Histórico</td><td>Mostra a bifurcação e o ponto em que os caminhos se juntaram</td><td>Linha reta, como se tudo tivesse sido feito em sequência</td></tr>
+<tr><td>Commits que já existiam</td><td>Ficam como estão (mesmos hashes)</td><td>São <strong>refeitos</strong>: hashes novos</td></tr>
+<tr><td>Commit a mais</td><td>Um commit de merge (quando não dá fast-forward)</td><td>Nenhum</td></tr>
+<tr><td>Conflitos</td><td>Resolvidos uma vez, no commit de merge</td><td>Podem aparecer em cada commit refeito</td></tr>
+<tr><td>Desfazer</td><td>Um <a href="git-revert.html">git revert -m 1</a> do commit de merge desfaz tudo</td><td>Os commits ficam misturados no histórico; desfazer é commit por commit</td></tr>
+<tr><td>Ler o histórico depois</td><td>Mais "barulhento" (muitos merges)</td><td>Mais limpo, fácil de seguir e de usar com <a href="git-bisect.html">git bisect</a></td></tr>
+<tr><td>Commits que outras pessoas já baixaram</td><td><strong>Seguro</strong></td><td><strong>Perigoso</strong>: veja <a href="regra-de-ouro.html">A Regra de Ouro</a></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>5. A regra prática</h2>
+<p>A maioria das equipes usa os dois, cada um no seu lugar:</p>
+<ol class="passo">
+  <li><strong>Rebase no que é só seu.</strong> Antes de mostrar o seu branch para alguém (antes do primeiro <code>push</code>, ou antes de abrir um <a href="pull-request.html">pull request</a>), traga as novidades do <code>main</code> com rebase e, se quiser, arrume os seus commits com o <a href="rebase-interativo.html">rebase interativo</a>. Ninguém tinha cópia desses commits, então reescrever não atrapalha ninguém.</li>
+  <li><strong>Merge no que é de todos.</strong> Para juntar um branch pronto no <code>main</code> compartilhado, e sempre que os commits já foram enviados e outras pessoas podem ter baixado, use merge. Ele não reescreve nada.</li>
+</ol>
+<div class="warning">
+<strong>A frase para decorar</strong>
+<p><strong>Nunca faça rebase de commits que já estão num repositório compartilhado</strong> e que outras pessoas podem ter baixado. A próxima aula, <a href="regra-de-ouro.html">A Regra de Ouro</a>, mostra o estrago que isso faz, com as mensagens reais do Git.</p>
+</div>
+
+<p>No GitHub, o botão de juntar um pull request oferece as duas filosofias (ilustrativo, conforme a documentação em <a href="https://docs.github.com/pt/pull-requests/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/merging-a-pull-request">docs.github.com</a>): <strong>Create a merge commit</strong> (merge), <strong>Squash and merge</strong> (junta todos os commits num só; veja <a href="squash.html">squash</a>) e <strong>Rebase and merge</strong> (refaz cada commit no branch de destino, com hashes novos). A equipe escolhe uma e usa sempre a mesma.</p>
+
+<hr>
+
+<h2>6. O <code>git pull</code> também pergunta: merge ou rebase?</h2>
+<p>O <a href="git-pull.html">git pull</a> é um <code>git fetch</code> seguido de um jeito de juntar. Quando o seu branch e o do servidor se separaram (você tem commits que o servidor não tem, e vice-versa), o Git precisa saber se junta com merge ou com rebase. Sem nenhuma configuração, ele se recusa a escolher por você.</p>
+<p>No exemplo, o repositório <code>receitas</code> da Ana está no GitHub (o "GitHub de mentira" do lab). O Bruno clonou, acrescentou as cenouras ao bolo e enviou. Ao mesmo tempo, a Ana commitou a receita de pudim no computador dela, sem saber do commit do Bruno:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main
+Seu ramo está à frente de 'origin/main' por 1 submissão.
+  (use "git push" to publish your local commits)
+
+nothing to commit, working tree clean
+$ git pull
+From https://github.com/ana-souza/receitas
+   c34349b..8ba76e5  main       -&gt; origin/main
+hint: You have divergent branches and need to specify how to reconcile them.
+hint: You can do so by running one of the following commands sometime before
+hint: your next pull:
+hint:
+hint:   git config pull.rebase false  # merge
+hint:   git config pull.rebase true   # rebase
+hint:   git config pull.ff only       # fast-forward only
+hint:
+hint: You can replace "git config" with "git config --global" to set a default
+hint: preference for all repositories. You can also pass --rebase, --no-rebase,
+hint: or --ff-only on the command line to override the configured default per
+hint: invocation.
+fatal: Need to specify how to reconcile divergent branches.
+</pre>
+
+<dl class="anatomy">
+  <dt>Seu ramo está à frente de 'origin/main' por 1 submissão.</dt><dd>O <code>status</code> só sabe o que o Git baixou da última vez; ele ainda não sabe do commit do Bruno. ("Submissão" é como a tradução do Git chama o commit.)</dd>
+  <dt>c34349b..8ba76e5  main -&gt; origin/main</dt><dd>A parte <code>fetch</code> do pull funcionou: o commit do Bruno (<code>8ba76e5</code>) foi baixado para o <code>origin/main</code>.</dd>
+  <dt>hint: You have divergent branches…</dt><dd>"Os seus branches divergiram e você precisa dizer como reconciliá-los. Rode um destes comandos antes do próximo pull": <code>pull.rebase false</code> (merge), <code>pull.rebase true</code> (rebase) ou <code>pull.ff only</code> (só avanço rápido). "Troque <code>git config</code> por <code>git config --global</code> para valer em todos os repositórios. Você também pode passar <code>--rebase</code>, <code>--no-rebase</code> ou <code>--ff-only</code> no próprio comando."</dd>
+  <dt>fatal: Need to specify how to reconcile divergent branches.</dt><dd>"É preciso dizer como reconciliar branches divergentes." O <code>main</code> da Ana <strong>não mudou</strong>: o commit dela continua lá, e o do Bruno está guardado no <code>origin/main</code>.</dd>
+</dl>
+
+<p>As três respostas possíveis, cada uma com um efeito:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Configuração</th><th>Na hora do <code>pull</code></th><th>Quando os branches se separaram</th></tr>
+<tr><td><code>git config pull.rebase false</code></td><td><code>git pull --no-rebase</code></td><td>Cria um commit de merge</td></tr>
+<tr><td><code>git config pull.rebase true</code></td><td><code>git pull --rebase</code></td><td>Refaz os <strong>seus</strong> commits locais (que ainda não foram enviados) em cima dos do servidor</td></tr>
+<tr><td><code>git config pull.ff only</code></td><td><code>git pull --ff-only</code></td><td>Recusa: você decide na mão o que fazer</td></tr>
+</table>
+</div>
+
+<p>A Ana escolheu o rebase, só nesta vez, no próprio comando:</p>
+<pre class="term" data-cwd="~/receitas">$ git pull --rebase
+Successfully rebased and updated refs/heads/main.
+$ git log --oneline --graph
+* 9521dee Adiciona a receita de pudim             « o commit da Ana, refeito
+* 8ba76e5 Adiciona as cenouras ao bolo            « o commit do Bruno
+* c34349b Adiciona a receita de bolo
+* 700bbd5 Cria o README
+$ git status
+No ramo main
+Seu ramo está à frente de 'origin/main' por 1 submissão.
+  (use "git push" to publish your local commits)
+
+nothing to commit, working tree clean
+</pre>
+<p>O commit da Ana foi refeito <strong>depois</strong> do commit do Bruno, em linha reta, e agora ela está 1 commit à frente do GitHub: é só dar <code>git push</code>. O commit do Bruno não foi tocado; o único commit reescrito foi o dela, que ainda não tinha saído do computador.</p>
+
+<p>O <code>pull --rebase</code> é um uso <strong>seguro</strong> do rebase: os commits refeitos são os seus, que ainda não saíram do seu computador. Muita gente configura <code>git config --global pull.rebase true</code> justamente para não encher o histórico de merges do tipo <code>Merge branch 'main' of …</code>.</p>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer a mesma coisa</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Você quer</th><th>Comandos</th></tr>
+<tr><td>Juntar e mostrar a bifurcação</td><td><code>git switch main</code> + <code>git merge pudim</code></td></tr>
+<tr><td>Juntar e <strong>sempre</strong> criar commit de merge, mesmo quando daria fast-forward</td><td><code>git merge --no-ff pudim</code></td></tr>
+<tr><td>Linha reta</td><td><code>git switch pudim</code> + <code>git rebase main</code>, depois <code>git switch main</code> + <code>git merge pudim</code></td></tr>
+<tr><td>Linha reta, com garantia de que o merge final <strong>só avança</strong> (e falha se não der)</td><td>o mesmo, terminando com <code>git merge --ff-only pudim</code></td></tr>
+<tr><td>Um commit só com tudo do branch</td><td><code>git merge --squash pudim</code> + <code>git commit</code> (veja <a href="squash.html">squash</a>)</td></tr>
+<tr><td>Trazer as novidades do servidor sem merges extras</td><td><code>git pull --rebase</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Pediu "só avanço rápido", mas os branches se separaram</strong>
+<p>No repositório <code>receitas</code>, a Ana tem o branch <code>chocolate</code> (com o pudim de chocolate), e o <code>main</code> ganhou um commit depois disso ("Adiciona os ovos ao bolo"). No <code>main</code>, ela tentou juntar exigindo linha reta:</p>
+<pre class="term" data-cwd="~/receitas">$ git merge --ff-only chocolate
+hint: Diverging branches can't be fast-forwarded, you need to either:
+hint:
+hint: 	git merge --no-ff
+hint:
+hint: or:
+hint:
+hint: 	git rebase
+hint:
+hint: Disable this message with "git config set advice.diverging false"
+fatal: Not possible to fast-forward, aborting.
+</pre>
+<p>"Branches que divergiram não podem avançar rápido; você precisa ou fazer <code>git merge --no-ff</code>, ou <code>git rebase</code>." E: "Não é possível avançar rápido; abortando". Nada mudou. É exatamente a escolha desta aula: o Git está perguntando se você quer o commit de merge ou a linha reta. <strong>Como resolver:</strong> para merge, rode <code>git merge chocolate</code> (sem o <code>--ff-only</code>); para linha reta, vá para o <code>chocolate</code>, faça <code>git rebase main</code> e volte para o <code>main</code> para o merge.</p>
+</div>
+
+<div class="cenario">
+<strong>Fez rebase num branch que já tinha enviado</strong>
+<p>O <code>chocolate</code> já estava no GitHub (a Ana tinha dado <code>git push -u origin chocolate</code>). Ela fez o rebase mesmo assim e tentou enviar:</p>
+<pre class="term" data-cwd="~/receitas">$ git switch chocolate
+Switched to branch 'chocolate'
+Your branch is up to date with 'origin/chocolate'.
+$ git rebase main
+Successfully rebased and updated refs/heads/chocolate.
+$ git push
+To https://github.com/ana-souza/receitas.git
+ ! [rejected]        chocolate -&gt; chocolate (non-fast-forward)
+error: failed to push some refs to 'https://github.com/ana-souza/receitas.git'
+hint: Updates were rejected because the tip of your current branch is behind
+hint: its remote counterpart. If you want to integrate the remote changes,
+hint: use 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+$ git status
+No ramo chocolate
+O seu branch e 'origin/chocolate' divergiram-se,
+e cada um tem 2 e 1 submissões, respectivamente.
+  (use "git pull" if you want to integrate the remote branch with yours)
+
+nothing to commit, working tree clean
+</pre>
+<p>O GitHub recusou (<code>rejected</code>, "não é avanço rápido"): o commit do pudim de chocolate que está lá não existe mais no branch da Ana, porque o rebase o trocou por uma cópia com hash novo. O <code>status</code> confirma: o branch local e o do GitHub <strong>divergiram</strong> (2 commits só daqui, 1 só de lá). <strong>Atenção:</strong> a dica sugere <code>git pull</code>, que aqui juntaria o commit antigo com a cópia nova (o mesmo trabalho duas vezes). Se ninguém mais usa esse branch, o certo é enviar com <code>git push --force-with-lease</code> (aula <a href="push-force.html">push --force-with-lease</a>). Se outras pessoas usam, não deveria ter feito o rebase: veja <a href="regra-de-ouro.html">A Regra de Ouro</a>.</p>
+</div>
+
+<div class="cenario">
+<strong>Não quer configurar nada agora</strong>
+<p>O <code>fatal: Need to specify how to reconcile divergent branches.</code> da seção 6 aparece em todo <code>git pull</code> com branches separados até você escolher. Se não quiser decidir de uma vez por todas, escolha a cada vez no próprio comando: <code>git pull --rebase</code> ou <code>git pull --no-rebase</code>. Para ver o que está configurado: <code>git config pull.rebase</code> (sem resposta = nada configurado).</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Escolha</th></tr>
+<tr><td>Branch só seu, ainda não enviado, atrasado em relação ao <code>main</code></td><td>rebase</td></tr>
+<tr><td>Arrumar commits antes de mostrar</td><td>rebase interativo</td></tr>
+<tr><td>Juntar um branch pronto num branch compartilhado</td><td>merge (ou o botão do pull request que a equipe escolheu)</td></tr>
+<tr><td>Commits que outras pessoas já baixaram</td><td>merge, nunca rebase</td></tr>
+<tr><td>Quer que o histórico registre que houve um branch</td><td><code>merge --no-ff</code></td></tr>
+<tr><td><code>git pull</code> com branches separados</td><td><code>pull --rebase</code> para commits locais; <code>pull --no-rebase</code> se preferir merges</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Linha reta</h3>
+<p>Complete os comandos para deixar o histórico em linha reta, trazendo o branch <code>pudim</code> para o <code>main</code>:</p>
+<div class="ex-code">git switch pudim<br>git <input data-answer="rebase" aria-label="subcomando"> main<br>git switch main<br>git merge <input data-answer="pudim" aria-label="branch"></div>
+</div>
+
+<div class="exercise">
+<h3>2. Configure o pull</h3>
+<p>Complete para o <code>git pull</code> sempre fazer rebase dos seus commits locais:</p>
+<div class="ex-code">git config --global <input data-answer="pull.rebase" aria-label="nome da configuração"> true</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. Depois de um rebase, o que acontece com os hashes dos commits do seu branch?</p>
+<label><input type="radio" name="q3"> Continuam os mesmos</label>
+<label><input type="radio" name="q3"> Só o último muda</label>
+<label><input type="radio" name="q3"> Mudam todos os que foram refeitos</label>
+<label><input type="radio" name="q3"> O Git apaga os hashes</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. O Bruno já baixou o branch <code>pudim</code> do GitHub. A Ana quer juntá-lo com as novidades do <code>main</code>. O mais seguro é:</p>
+<label><input type="radio" name="q4"> Rebase do <code>pudim</code> e <code>push --force</code></label>
+<label><input type="radio" name="q4"> Merge do <code>main</code> no <code>pudim</code> (ou do <code>pudim</code> no <code>main</code>)</label>
+<label><input type="radio" name="q4"> Apagar o branch e criar de novo</label>
+<label><input type="radio" name="q4"> Cherry-pick de todos os commits</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. Merge e rebase, feitos na mesma situação e sem conflito, deixam os <strong>arquivos</strong>:</p>
+<label><input type="radio" name="q5"> Iguais: muda só o histórico</label>
+<label><input type="radio" name="q5"> Diferentes: o rebase perde mudanças</label>
+<label><input type="radio" name="q5"> Diferentes: o merge duplica as linhas</label>
+<label><input type="radio" name="q5"> Depende da ordem dos commits</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">6. Qual destas é uma vantagem do merge sobre o rebase?</p>
+<label><input type="radio" name="q6"> Histórico em linha reta</label>
+<label><input type="radio" name="q6"> Menos commits no histórico</label>
+<label><input type="radio" name="q6"> Hashes novos para todos os commits</label>
+<label><input type="radio" name="q6"> Não reescreve commits que outras pessoas já têm</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Merge e rebase chegam aos <strong>mesmos arquivos</strong>; muda o histórico.</li>
+  <li><strong>Merge</strong> mantém os commits como foram feitos e acrescenta um commit de merge com dois pais. É seguro para o que é compartilhado.</li>
+  <li><strong>Rebase</strong> refaz os seus commits em cima do outro branch (hashes novos) e deixa uma linha reta. Use no que é só seu.</li>
+  <li>Regra prática: rebase antes de compartilhar, merge depois. Nunca rebase em commits que outras pessoas já baixaram.</li>
+  <li>O <code>git pull</code> com branches separados pede uma escolha: <code>pull.rebase true</code>, <code>false</code> ou <code>pull.ff only</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
