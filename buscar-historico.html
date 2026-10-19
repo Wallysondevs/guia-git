@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git: procurando no histórico — git grep e git log -S | Guia Git</title>
+<meta name="description" content="Como procurar texto no Git para quem está começando: git grep (nos arquivos de agora e de qualquer commit, com -n, -i e -c), git log -S para achar o commit que acrescentou ou tirou uma palavra, -G para qualquer linha mudada que contenha o texto, e a diferença para o --grep, com saídas reais do Git em português.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Procurando no Histórico</span></h1>
+
+<p class="intro">A Ana tem certeza de que já existiu <strong>manteiga</strong> na receita de brigadeiro. Hoje não tem mais. Quando ela saiu? E em que arquivos a palavra "manteiga" aparece agora? O Git responde às duas perguntas: o <code>git grep</code> procura um texto <strong>dentro dos arquivos</strong> (de hoje ou de qualquer commit), e o <code>git log -S</code> procura <strong>o commit</strong> em que um texto entrou ou saiu.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A procurar texto nos arquivos do repositório com <code>git grep</code> (e as opções <code>-n</code>, <code>-i</code> e <code>-c</code>).</li>
+  <li>A procurar num commit antigo: <code>git grep manteiga HEAD~2</code>.</li>
+  <li>A achar o commit que acrescentou ou removeu um texto com <code>git log -S</code>, e a ver a mudança com <code>-p</code>.</li>
+  <li>A diferença entre <code>-S</code>, <code>-G</code> e <code>--grep</code>.</li>
+  <li>Por que um <code>git grep</code> sem resultado não mostra nada (e devolve o código 1).</li>
+</ul>
+</div>
+
+<p>As saídas desta aula saíram do Git 2.53 do Ubuntu 26.04 na máquina da Ana.</p>
+
+<hr>
+
+<h2>A ideia: o Ctrl+F da máquina do tempo</h2>
+<p>No editor de texto, o <kbd>Ctrl</kbd>+<kbd>F</kbd> acha uma palavra no arquivo aberto. Agora imagine um <kbd>Ctrl</kbd>+<kbd>F</kbd> que procura em <strong>todos os arquivos</strong> do projeto de uma vez, e que também consegue procurar <strong>no passado</strong>: "em que versão esta palavra apareceu pela primeira vez? E quando sumiu?".</p>
+<p>São duas buscas diferentes:</p>
+<ul>
+  <li><strong>"Onde está?"</strong>: procurar nos arquivos de um momento (de agora, ou de um commit). É o <code>git grep</code>.</li>
+  <li><strong>"Quando mudou?"</strong>: procurar os commits que puseram ou tiraram o texto. É o <code>git log -S</code>.</li>
+</ul>
+
+<h2>O repositório desta aula</h2>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+54d0fe5 (HEAD -&gt; main) Ajusta o pão de queijo
+f3c1f5b Simplifica o brigadeiro
+877bf83 Melhora a massa do bolo
+7accc6b Adiciona o brigadeiro
+3bafa7d Adiciona as primeiras receitas
+</pre>
+
+<p>Repare que nenhuma mensagem fala em "manteiga". Procurar pela mensagem (o <code>--grep</code> da aula <a href="log-filtros.html">git log: Filtros e Formatos</a>) não ajuda:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --grep manteiga
+</pre>
+
+<p>Nada. A palavra está <strong>dentro dos arquivos</strong>, não nas mensagens. Vamos às ferramentas certas.</p>
+
+<hr>
+
+<h2>1. Onde está o texto agora: <code>git grep</code></h2>
+
+<pre class="term" data-cwd="~/receitas">$ git grep manteiga
+bolo.txt:2 colheres de manteiga
+</pre>
+
+<dl class="anatomy">
+  <dt>git grep</dt><dd>Procura um texto nos arquivos <strong>rastreados</strong> pelo Git (os que estão no repositório). O nome vem do <code>grep</code> do terminal, o comando clássico de busca.</dd>
+  <dt>manteiga</dt><dd>O texto procurado. Como no <code>grep</code>, pode ser uma expressão regular.</dd>
+  <dt>bolo.txt:2 colheres de manteiga</dt><dd>Cada resultado vem como <code>arquivo:linha encontrada</code>. A manteiga, hoje, só está no bolo.</dd>
+</dl>
+
+<p>No terminal, o Git pinta o nome do arquivo e destaca a palavra encontrada (as cores não aparecem aqui). Algumas opções úteis:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git grep -n manteiga
+bolo.txt:4:2 colheres de manteiga
+$ git grep -i MANTEIGA
+bolo.txt:2 colheres de manteiga
+$ git grep -c manteiga
+bolo.txt:1
+$ git grep polvilho -- pao.txt
+pao.txt:400 g de polvilho
+</pre>
+
+<dl class="anatomy">
+  <dt>-n</dt><dd>Mostra o <strong>número da linha</strong>: <code>bolo.txt:4:</code> = linha 4 do <code>bolo.txt</code>.</dd>
+  <dt>-i</dt><dd>Ignora maiúsculas e minúsculas: <code>MANTEIGA</code> achou <code>manteiga</code>.</dd>
+  <dt>-c</dt><dd>Só <strong>conta</strong>: quantas linhas de cada arquivo têm o texto.</dd>
+  <dt>-- pao.txt</dt><dd>Procura só nesse arquivo (ou pasta), depois do <code>--</code>.</dd>
+</dl>
+
+<div class="note">
+<strong>E o <code>grep -r</code> comum?</strong>
+<p>O <code>grep -rn manteiga .</code> do terminal também acha (<code>./bolo.txt:4:2 colheres de manteiga</code>). A diferença é que o <code>git grep</code> só olha os arquivos do repositório: pula a pasta <code>.git</code>, os arquivos ignorados pelo <a href="gitignore.html">.gitignore</a> (como <code>node_modules/</code>) e os que nunca foram adicionados. Num projeto grande, isso o deixa muito mais rápido e com menos "lixo" no resultado. E ele faz algo que o <code>grep</code> não faz: procurar no passado.</p>
+</div>
+
+<h3>Procurando num commit antigo</h3>
+<p>Ponha um commit depois do texto, e o <code>git grep</code> procura nos arquivos <strong>como estavam naquele commit</strong>, sem mexer na sua pasta:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git grep manteiga HEAD~2
+HEAD~2:bolo.txt:2 colheres de manteiga
+HEAD~2:brigadeiro.txt:1 colher de manteiga     «
+$ git grep -n manteiga HEAD~4
+</pre>
+
+<p>Dois commits atrás (<code>HEAD~2</code>, o "Melhora a massa do bolo"), o brigadeiro ainda tinha manteiga: a lembrança da Ana estava certa. Cada linha agora começa com o commit (<code>HEAD~2:</code>). Já no primeiro commit (<code>HEAD~4</code>), ninguém tinha manteiga. Dá para usar um hash ou um branch no lugar do <code>HEAD~2</code>.</p>
+
+<hr>
+
+<h2>2. Quando o texto mudou: <code>git log -S</code></h2>
+<p>Testar commit por commit com o <code>git grep</code> cansa. O <code>git log -S</code> faz isso por você: mostra só os commits em que o texto <strong>apareceu ou sumiu</strong>.</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline -S manteiga
+f3c1f5b Simplifica o brigadeiro
+877bf83 Melhora a massa do bolo
+7accc6b Adiciona o brigadeiro
+</pre>
+
+<dl class="anatomy">
+  <dt>-S manteiga</dt><dd>Só os commits que mudaram o <strong>número de vezes</strong> que <code>manteiga</code> aparece nos arquivos: commits que acrescentaram ou tiraram a palavra. Os programadores chamam isso de "picareta" (<em>pickaxe</em>): o <code>-S</code> cava o histórico atrás de um texto.</dd>
+</dl>
+
+<p>Leia de baixo para cima: o <code>7accc6b</code> criou o brigadeiro já com manteiga; o <code>877bf83</code> pôs manteiga no bolo; o <code>f3c1f5b</code> tirou a manteiga do brigadeiro. Para focar só no brigadeiro, acrescente o arquivo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log -S manteiga --oneline -- brigadeiro.txt
+f3c1f5b Simplifica o brigadeiro
+7accc6b Adiciona o brigadeiro
+</pre>
+
+<h3>Vendo a mudança: <code>-p</code></h3>
+<p>Com <code>-p</code> (de <em>patch</em>, a "diferença"), cada commit vem com a mudança completa, como no <a href="git-show.html">git show</a>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log -S manteiga -p -- brigadeiro.txt
+commit f3c1f5b95e46a362b1b163a80a065a7831042c7e
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Simplifica o brigadeiro
+
+diff --git a/brigadeiro.txt b/brigadeiro.txt
+index 704d92c..283e3c7 100644
+--- a/brigadeiro.txt
++++ b/brigadeiro.txt
+@@ -1,3 +1,2 @@
+ Brigadeiro
+ 1 lata de leite condensado
+-1 colher de manteiga     «
+
+commit 7accc6b2a7d159d8d271f86d5a2c2b4e4faf4174
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Adiciona o brigadeiro
+
+diff --git a/brigadeiro.txt b/brigadeiro.txt
+new file mode 100644
+index 0000000..704d92c
+--- /dev/null
++++ b/brigadeiro.txt
+@@ -0,0 +1,3 @@
++Brigadeiro
++1 lata de leite condensado
++1 colher de manteiga     «
+</pre>
+
+<p>Mistério resolvido: a manteiga entrou com o brigadeiro (<code>+1 colher de manteiga</code>, a linha com <code>+</code> foi acrescentada) e saiu no commit "Simplifica o brigadeiro" (<code>-1 colher de manteiga</code>, a linha com <code>-</code> foi apagada). Se a Ana quiser a manteiga de volta, ela sabe qual commit olhar (e pode desfazê-lo com o <a href="git-revert.html">git revert</a>).</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;printf 'Bolo de cenoura\n3 cenouras\nForno: 30 minutos\n' &gt; bolo.txt;;printf 'Pão de queijo\n500 g de polvilho\n' &gt; pao.txt;;git add .;;git commit -q -m 'Adiciona as primeiras receitas';;printf 'Brigadeiro\n1 lata de leite condensado\n1 colher de manteiga\n' &gt; brigadeiro.txt;;git add brigadeiro.txt;;git commit -q -m 'Adiciona o brigadeiro';;echo '2 colheres de manteiga' &gt;&gt; bolo.txt;;git commit -q -am 'Melhora a massa do bolo';;sed -i '/manteiga/d' brigadeiro.txt;;git commit -q -am 'Simplifica o brigadeiro';;sed -i 's/500 g/400 g/' pao.txt;;git commit -q -am 'Ajusta o pão de queijo';;git log --oneline;;git grep manteiga" data-goal="ran:git log,out:-1 colher de manteiga" data-solucao="git log -p -- brigadeiro.txt">
+<p class="try-task"><strong>Missão:</strong> o repositório desta aula já está pronto. Descubra em que commit a manteiga <strong>saiu</strong> da receita de brigadeiro, até ver na tela a linha <code>-1 colher de manteiga</code>. Use <code>git log -S manteiga -p -- brigadeiro.txt</code>, ou olhe todas as mudanças do arquivo com <code>git log -p -- brigadeiro.txt</code>.</p>
+</div>
+
+<hr>
+
+<h2>3. <code>-S</code> × <code>-G</code>: a pegadinha da contagem</h2>
+<p>O <code>-S</code> procura commits que mudaram a <strong>quantidade</strong> de vezes que o texto aparece. Isso tem uma consequência curiosa. No último commit, a Ana trocou <code>500 g de polvilho</code> por <code>400 g de polvilho</code>. Veja:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline -S '500 g'
+54d0fe5 (HEAD -&gt; main) Ajusta o pão de queijo
+3bafa7d Adiciona as primeiras receitas
+$ git log --oneline -S 'g de polvilho'
+3bafa7d Adiciona as primeiras receitas
+</pre>
+
+<p>Com <code>'500 g'</code>, o "Ajusta o pão de queijo" aparece: antes havia 1 "500 g", depois, 0. Mas com <code>'g de polvilho'</code> ele <strong>não</strong> aparece: a linha mudou, porém o texto "g de polvilho" continuou lá, 1 vez antes e 1 vez depois. Para o <code>-S</code>, nada mudou.</p>
+
+<p>Para achar <strong>qualquer</strong> commit que mexeu numa linha com o texto, use <code>-G</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline -G 'g de polvilho'
+54d0fe5 (HEAD -&gt; main) Ajusta o pão de queijo
+3bafa7d Adiciona as primeiras receitas
+</pre>
+
+<dl class="anatomy">
+  <dt>-G 'g de polvilho'</dt><dd>Commits cuja mudança (as linhas com <code>+</code> e <code>-</code>) contém o texto. O texto do <code>-G</code> é sempre uma expressão regular; o do <code>-S</code> é um texto comum.</dd>
+</dl>
+
+<p>Regra prática: <code>-S</code> para "quando esta palavra <strong>entrou ou saiu</strong>?"; <code>-G</code> para "quando <strong>mexeram</strong> numa linha com esta palavra?".</p>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de procurar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Pergunta</th><th>Comando</th><th>Onde procura</th></tr>
+<tr><td>Em que arquivos está a palavra, agora?</td><td><code>git grep palavra</code></td><td>Arquivos rastreados, na pasta</td></tr>
+<tr><td>E num commit antigo?</td><td><code>git grep palavra HEAD~2</code></td><td>Arquivos daquele commit</td></tr>
+<tr><td>Em que commit a palavra entrou ou saiu?</td><td><code>git log -S palavra</code></td><td>As mudanças de cada commit (contagem)</td></tr>
+<tr><td>Que commits mexeram em linhas com a palavra?</td><td><code>git log -G palavra</code></td><td>As linhas mudadas de cada commit</td></tr>
+<tr><td>Que commits falam disso na mensagem?</td><td><code>git log --grep palavra</code></td><td>As mensagens (aula <a href="log-filtros.html">git log: Filtros e Formatos</a>)</td></tr>
+<tr><td>Quem mudou esta linha por último?</td><td><code>git blame arquivo</code></td><td>As linhas de um arquivo (aula <a href="git-blame.html">git blame</a>)</td></tr>
+<tr><td>Onde está, incluindo arquivos fora do Git?</td><td><code>grep -rn palavra .</code></td><td>Todos os arquivos da pasta (o <code>grep</code> do terminal)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>O <code>git grep</code> não mostrou nada</strong>
+<pre class="term" data-cwd="~/receitas">$ git grep chocolate
+$ echo $?
+1
+</pre>
+<p><strong>O que aconteceu:</strong> nenhum arquivo rastreado tem "chocolate". O <code>git grep</code>, como o <code>grep</code>, não escreve nada e sai com o código <strong>1</strong> ("não achei"); com resultado, o código é 0.</p>
+<p><strong>Como resolver:</strong> confira as maiúsculas (use <code>-i</code>), e lembre que o <code>git grep</code> não olha arquivos que <strong>nunca foram adicionados</strong> ao Git nem os ignorados. Se o arquivo é novo, faça o <code>git add</code> dele, ou use <code>git grep --untracked chocolate</code>, que inclui os arquivos novos.</p>
+</div>
+
+<div class="cenario">
+<strong><code>fatal: no pattern given</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git grep
+fatal: no pattern given
+</pre>
+<p><strong>O que aconteceu:</strong> "nenhum padrão informado": faltou dizer o que procurar.</p>
+<p><strong>Como resolver:</strong> <code>git grep palavra</code>. Com espaços, use aspas: <code>git grep '1 colher'</code>.</p>
+</div>
+
+<div class="cenario">
+<strong><code>error: switch `S' requires a value</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git log -S
+error: switch `S' requires a value
+</pre>
+<p><strong>O que aconteceu:</strong> "a opção <code>S</code> exige um valor": o texto procurado tem de vir logo depois do <code>-S</code>.</p>
+<p><strong>Como resolver:</strong> <code>git log -S manteiga</code> (ou grudado: <code>-Smanteiga</code>). Com espaços, aspas: <code>git log -S '500 g'</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>O <code>-S</code> não achou o commit que eu sei que mexeu na linha</strong>
+<p><strong>O que aconteceu:</strong> é a pegadinha da seção 3: se o texto continuou aparecendo o mesmo número de vezes (a linha mudou em volta dele), o <code>-S</code> não considera mudança.</p>
+<p><strong>Como resolver:</strong> troque por <code>-G</code>, ou procure um pedaço do texto que de fato entrou ou saiu (<code>'500 g'</code>).</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git grep texto</code></td><td>Procura o texto nos arquivos rastreados</td></tr>
+<tr><td><code>git grep -n texto</code></td><td>Com o número da linha</td></tr>
+<tr><td><code>git grep -i texto</code></td><td>Ignorando maiúsculas e minúsculas</td></tr>
+<tr><td><code>git grep -c texto</code></td><td>Conta as linhas encontradas por arquivo</td></tr>
+<tr><td><code>git grep texto HEAD~2</code></td><td>Procura nos arquivos de um commit antigo</td></tr>
+<tr><td><code>git grep texto -- pasta/</code></td><td>Só numa pasta ou arquivo</td></tr>
+<tr><td><code>git log -S texto</code></td><td>Commits que acrescentaram ou tiraram o texto</td></tr>
+<tr><td><code>git log -G regex</code></td><td>Commits com linhas mudadas que contêm o texto</td></tr>
+<tr><td><code>git log -S texto -p -- arquivo</code></td><td>…com a mudança completa, só naquele arquivo</td></tr>
+<tr><td><code>git log --grep texto</code></td><td>Commits com o texto na <strong>mensagem</strong></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o comando</h3>
+<p>Procure "açúcar" nos arquivos do repositório, mostrando o número da linha:</p>
+<div class="ex-code">git <input data-answer="grep" aria-label="subcomando"> <input data-answer="-n" aria-label="opção do número da linha"> açúcar</div>
+</div>
+
+<div class="exercise">
+<h3>2. O commit que tirou o chocolate</h3>
+<p>Complete para listar os commits que acrescentaram ou removeram a palavra "chocolate":</p>
+<div class="ex-code">git log --oneline <input data-answer="-S" aria-label="opção"> chocolate</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. A Ana quer saber em que commit a palavra "canela" sumiu de um arquivo. As mensagens não falam de canela. Qual comando?</p>
+<label><input type="radio" name="q3"> <code>git log --grep canela</code></label>
+<label><input type="radio" name="q3"> <code>git grep canela</code></label>
+<label><input type="radio" name="q3"> <code>git log -S canela</code></label>
+<label><input type="radio" name="q3"> <code>git status canela</code></label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. O que faz <code>git grep manteiga HEAD~3</code>?</p>
+<label><input type="radio" name="q4"> Volta a pasta para 3 commits atrás e procura</label>
+<label><input type="radio" name="q4"> Procura "manteiga" nos arquivos como estavam 3 commits atrás, sem mexer na pasta</label>
+<label><input type="radio" name="q4"> Mostra os 3 últimos commits que falam de manteiga</label>
+<label><input type="radio" name="q4"> Apaga "manteiga" dos 3 últimos commits</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. Um commit trocou <code>500 g de polvilho</code> por <code>400 g de polvilho</code>. Por que <code>git log -S 'g de polvilho'</code> não o mostra?</p>
+<label><input type="radio" name="q5"> Porque o texto "g de polvilho" aparece o mesmo número de vezes antes e depois; o <code>-G</code> mostraria</label>
+<label><input type="radio" name="q5"> Porque o <code>-S</code> só procura nas mensagens</label>
+<label><input type="radio" name="q5"> Porque faltou o <code>-i</code></label>
+<label><input type="radio" name="q5"> Porque o <code>-S</code> só funciona com uma palavra</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git grep texto</code> procura nos arquivos rastreados (<code>-n</code> linha, <code>-i</code> sem maiúsculas, <code>-c</code> conta); com um commit no fim, procura no passado.</li>
+  <li><code>git log -S texto</code> acha os commits em que o texto entrou ou saiu; com <code>-p</code>, mostra a mudança; com <code>-- arquivo</code>, foca num arquivo.</li>
+  <li><code>-S</code> olha a <strong>contagem</strong>; <code>-G</code> olha <strong>qualquer linha mudada</strong> com o texto; <code>--grep</code> olha só as <strong>mensagens</strong>.</li>
+  <li>Busca sem resultado não é erro: o <code>git grep</code> não mostra nada e devolve o código 1.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
