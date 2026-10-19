@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Modelos de .gitignore — Node, Python, Java, sistemas e editores | Guia Git</title>
+<meta name="description" content="Referência de .gitignore: os padrões (*, **, /, !), o que ignorar em projetos Node.js, Python e Java, o lixo do Windows, do macOS e do Linux, e os arquivos do VS Code, JetBrains e Vim, com base nos modelos oficiais do github/gitignore (CC0) e testado no Git do Ubuntu 26.04.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Modelos de .gitignore</span></h1>
+
+<p class="intro">Todo projeto tem arquivos que não devem ir para o Git: dependências baixadas (que podem ser baixadas de novo), arquivos gerados pela compilação, senhas, e o "lixo" que o sistema e o editor criam sozinhos. Esta página mostra o que costuma entrar no <code>.gitignore</code> de cada tipo de projeto, com os trechos principais dos modelos oficiais mantidos pelo GitHub, e os comandos para conferir se está funcionando.</p>
+
+<div class="note">
+<strong>De onde vêm os modelos</strong>
+<ul>
+  <li>Os trechos desta página foram tirados do repositório <a href="https://github.com/github/gitignore">github/gitignore</a>, a coleção oficial de modelos do GitHub, distribuída sob a licença <strong>CC0 1.0</strong> (domínio público: pode copiar e adaptar à vontade, sem pedir licença). Mostramos só as linhas mais importantes de cada arquivo; o modelo completo está no link de cada seção.</li>
+  <li>São os mesmos modelos que o GitHub oferece na lista "Add .gitignore" ao criar um repositório pelo site (veja <a href="github-repositorio.html">Criando um Repositório no GitHub</a>).</li>
+  <li>Para entender as regras com calma, veja a aula <a href="gitignore.html">Ignorando Arquivos (.gitignore)</a>.</li>
+</ul>
+</div>
+
+<p class="indice-letras"><a href="#padroes">Os padrões</a> · <a href="#exemplo">Um exemplo testado</a> · <a href="#node">Node.js</a> · <a href="#python">Python</a> · <a href="#java">Java</a> · <a href="#sistemas">Windows, macOS e Linux</a> · <a href="#editores">Editores</a> · <a href="#global">O .gitignore pessoal</a> · <a href="#comandos">Comandos</a></p>
+
+<hr>
+
+<h2 id="padroes">Os padrões, em uma tabela</h2>
+<p>Cada linha do <code>.gitignore</code> é um padrão. Os caminhos são relativos à pasta onde o <code>.gitignore</code> está (em geral, a raiz do projeto).</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Linha</th><th>Ignora</th><th>Exemplo de arquivo ignorado</th></tr>
+<tr><td><code>segredo.txt</code></td><td>Qualquer arquivo ou pasta com esse nome, em qualquer subpasta.</td><td><code>segredo.txt</code>, <code>docs/segredo.txt</code></td></tr>
+<tr><td><code>*.log</code></td><td><code>*</code> = qualquer sequência de caracteres (menos <code>/</code>).</td><td><code>erro.log</code>, <code>logs/npm-debug.log</code></td></tr>
+<tr><td><code>pasta/</code></td><td>Com <code>/</code> no fim: só <strong>pastas</strong> com esse nome (e tudo dentro).</td><td><code>node_modules/</code> inteira</td></tr>
+<tr><td><code>/build</code></td><td>Com <code>/</code> no começo: só na raiz do projeto.</td><td><code>build</code>, mas não <code>src/build</code></td></tr>
+<tr><td><code>docs/*.txt</code></td><td>Uma <code>/</code> no meio prende o padrão ao caminho a partir da raiz.</td><td><code>docs/notas.txt</code>, mas não <code>docs/a/notas.txt</code></td></tr>
+<tr><td><code>**/temp</code></td><td><code>**</code> = qualquer número de pastas.</td><td><code>temp</code>, <code>a/b/temp</code></td></tr>
+<tr><td><code>log?.txt</code></td><td><code>?</code> = exatamente um caractere.</td><td><code>log1.txt</code>, <code>logA.txt</code></td></tr>
+<tr><td><code>*.py[cod]</code></td><td><code>[…]</code> = um dos caracteres entre colchetes.</td><td><code>x.pyc</code>, <code>x.pyo</code>, <code>x.pyd</code></td></tr>
+<tr><td><code>!.env.example</code></td><td><code>!</code> = exceção: volta a incluir algo que uma linha <strong>anterior</strong> ignorou.</td><td>(o <code>.env.example</code> deixa de ser ignorado)</td></tr>
+<tr><td><code># comentário</code></td><td>Linha começando com <code>#</code> é comentário; linha em branco é ignorada.</td><td></td></tr>
+</table>
+</div>
+<div class="warning">
+<strong>A exceção não "entra" numa pasta ignorada</strong>
+<p>Se uma pasta inteira foi ignorada (<code>.vscode/</code>), um <code>!.vscode/settings.json</code> depois não funciona: o Git nem olha dentro dela. Por isso os modelos escrevem <code>.vscode/*</code> (o <strong>conteúdo</strong> da pasta) e depois as exceções.</p>
+</div>
+
+<h2 id="exemplo">Um exemplo testado</h2>
+<p>A lojinha da Ana é um projeto Node.js. Antes do <code>.gitignore</code>, o <code>git status</code> quer levar tudo, inclusive a pasta de dependências e o arquivo de senhas. Saída real:</p>
+<pre class="term" data-cwd="~/lojinha">$ git status
+No ramo main
+
+No commits yet
+
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	.DS_Store              « lixo do macOS (veio num arquivo que o Bruno mandou)
+	.env                   « senhas!
+	.env.example
+	.vscode/
+	node_modules/          « dependências: milhares de arquivos
+	npm-debug.log          « log de erro
+	package.json
+	src/
+
+nada adicionado ao envio mas arquivos não registrados estão presentes (use "git add" to registrar)
+</pre>
+<p>Ela cria o <code>.gitignore</code> na raiz do projeto (num editor; aqui, mostrado com <code>cat</code>):</p>
+<pre class="term" data-cwd="~/lojinha">$ cat .gitignore
+# Dependências (o npm baixa de novo com "npm install")
+node_modules/
+
+# Segredos: nunca no Git
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# VS Code: só as configurações do projeto
+.vscode/*
+!.vscode/settings.json
+$ git status --short --ignored
+?? .DS_Store                « ainda aparece: veja "O .gitignore pessoal", abaixo
+?? .env.example             « a exceção funcionou
+?? .gitignore               « o próprio .gitignore deve ser commitado
+?? .vscode/                 « por causa do settings.json
+?? package.json
+?? src/
+!! .env                     « !! = ignorado
+!! .vscode/launch.json
+!! node_modules/
+!! npm-debug.log
+</pre>
+<p>Para saber <strong>qual linha</strong> está ignorando um arquivo, use <code>git check-ignore -v</code>. Ele mostra <code>arquivo:linha:padrão</code> e o caminho; quando o arquivo não é ignorado, não mostra nada e termina com código <code>1</code>:</p>
+<pre class="term" data-cwd="~/lojinha">$ git check-ignore -v .env npm-debug.log .vscode/launch.json node_modules/express/index.js
+.gitignore:5:.env	.env
+.gitignore:10:*.log	npm-debug.log
+.gitignore:13:.vscode/*	.vscode/launch.json
+.gitignore:2:node_modules/	node_modules/express/index.js
+$ git check-ignore -v src/app.js
+$ echo $?
+1
+</pre>
+
+<div class="try" data-setup="mkdir lojinha;;cd lojinha;;git init -q;;mkdir -p node_modules/express src;;echo 'x' &gt; node_modules/express/index.js;;echo 'console.log(1)' &gt; src/app.js;;echo 'SENHA=123' &gt; .env;;echo 'erro' &gt; npm-debug.log" data-goal="ignorado:node_modules/express/index.js,ignorado:.env,ignorado:npm-debug.log,rastreado:.gitignore" data-solucao="printf '%s\n' 'node_modules/' '.env' '*.log' &gt; .gitignore;;git add .gitignore">
+<p class="try-task"><strong>Missão:</strong> crie um <code>.gitignore</code> para a lojinha que ignore a pasta <code>node_modules</code>, o arquivo <code>.env</code> e todos os arquivos <code>.log</code>, e dê <code>git add</code> no próprio <code>.gitignore</code>. Confira com <code>git status --ignored</code>. Dica: <code>printf '%s\n' 'linha1' 'linha2' &gt; .gitignore</code> escreve uma linha por argumento.</p>
+</div>
+
+<h2 id="node">Node.js (JavaScript, TypeScript)</h2>
+<p>Modelo completo: <a href="https://github.com/github/gitignore/blob/main/Node.gitignore">Node.gitignore</a> (cerca de 150 linhas). As linhas que importam para quase todo projeto:</p>
+<pre class="file" data-file=".gitignore (trecho do Node.gitignore)"># Logs
+logs
+*.log
+npm-debug.log*
+
+# Dependency directories
+node_modules/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# dotenv environment variable files
+.env
+.env.*
+
+.cache
+.next
+dist
+</pre>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Linha</th><th>Por quê</th></tr>
+<tr><td><code>node_modules/</code></td><td>As bibliotecas baixadas pelo <code>npm install</code>. São enormes e o <code>package.json</code> + <code>package-lock.json</code> (que <strong>vão</strong> para o Git) bastam para baixá-las de novo.</td></tr>
+<tr><td><code>*.log</code>, <code>npm-debug.log*</code></td><td>Registros de erro do npm e do seu programa.</td></tr>
+<tr><td><code>.env</code>, <code>.env.*</code></td><td>Variáveis de ambiente, em geral com senhas e chaves de API. Commite um <code>.env.example</code> sem os valores (e acrescente <code>!.env.example</code>).</td></tr>
+<tr><td><code>dist</code>, <code>.next</code>, <code>.cache</code>, <code>*.tsbuildinfo</code></td><td>Saída da compilação e caches (gerados de novo a cada <code>build</code>).</td></tr>
+</table>
+</div>
+
+<h2 id="python">Python</h2>
+<p>Modelo completo: <a href="https://github.com/github/gitignore/blob/main/Python.gitignore">Python.gitignore</a> (mais de 200 linhas, cobrindo muitas ferramentas). O essencial:</p>
+<pre class="file" data-file=".gitignore (trecho do Python.gitignore)"># Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[codz]
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Unit test / coverage reports
+.coverage
+.cache
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Environments
+.env
+.venv
+env/
+venv/
+</pre>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Linha</th><th>Por quê</th></tr>
+<tr><td><code>__pycache__/</code>, <code>*.py[codz]</code></td><td>Arquivos que o Python gera sozinho ao rodar (<code>.pyc</code>, <code>.pyo</code>…).</td></tr>
+<tr><td><code>.venv</code>, <code>venv/</code>, <code>env/</code></td><td>O ambiente virtual (<code>python -m venv .venv</code>): as bibliotecas instaladas. Quem baixa o projeto recria com o <code>requirements.txt</code> ou o <code>pyproject.toml</code>, que vão para o Git.</td></tr>
+<tr><td><code>build/</code>, <code>dist/</code>, <code>*.egg-info/</code></td><td>Pacotes gerados para distribuir o projeto.</td></tr>
+<tr><td><code>.env</code></td><td>Senhas e configurações locais.</td></tr>
+<tr><td><code>.ipynb_checkpoints</code></td><td>Cópias automáticas do Jupyter (os <code>.ipynb</code> em si costumam ir para o Git).</td></tr>
+</table>
+</div>
+
+<h2 id="java">Java</h2>
+<p>O modelo <a href="https://github.com/github/gitignore/blob/main/Java.gitignore">Java.gitignore</a> é curto (cerca de 25 linhas) e cuida dos arquivos compilados. Quem usa Maven ou Gradle soma o modelo da ferramenta: <a href="https://github.com/github/gitignore/blob/main/Maven.gitignore">Maven.gitignore</a> ou <a href="https://github.com/github/gitignore/blob/main/Gradle.gitignore">Gradle.gitignore</a>.</p>
+<pre class="file" data-file=".gitignore (trechos de Java, Maven e Gradle)"># Compiled class file
+*.class
+
+# Log file
+*.log
+
+# Package Files #
+*.jar
+*.war
+*.zip
+
+# virtual machine crash logs
+hs_err_pid*
+
+# Maven
+target/
+
+# Gradle
+.gradle
+**/build/
+!gradle-wrapper.jar
+</pre>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Linha</th><th>Por quê</th></tr>
+<tr><td><code>*.class</code></td><td>O resultado do <code>javac</code>: gerado de novo a cada compilação.</td></tr>
+<tr><td><code>*.jar</code>, <code>*.war</code></td><td>Pacotes gerados. Repare na exceção <code>!gradle-wrapper.jar</code>: o "wrapper" do Gradle <strong>deve</strong> ir para o Git, para todo mundo usar a mesma versão.</td></tr>
+<tr><td><code>target/</code> (Maven), <code>build/</code> e <code>.gradle</code> (Gradle)</td><td>As pastas onde as ferramentas põem tudo o que geram.</td></tr>
+<tr><td><code>hs_err_pid*</code></td><td>Relatórios de quando a máquina virtual do Java trava.</td></tr>
+</table>
+</div>
+
+<h2 id="sistemas">Windows, macOS e Linux</h2>
+<p>Lixo que o sistema operacional cria nas pastas. Os modelos ficam na pasta <a href="https://github.com/github/gitignore/tree/main/Global">Global</a> do repositório, porque o lugar certo para eles é o seu <a href="#global">.gitignore pessoal</a>, não o do projeto (o lixo é do <strong>seu</strong> computador). Muitos projetos põem os dois ou três mais comuns no <code>.gitignore</code> do projeto mesmo, para proteger quem não configurou o seu.</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Sistema</th><th>Linhas principais</th><th>O que é</th></tr>
+<tr><td>macOS (<a href="https://github.com/github/gitignore/blob/main/Global/macOS.gitignore">macOS.gitignore</a>)</td><td><code>.DS_Store</code><br><code>._*</code><br><code>__MACOSX/</code></td><td>Preferências de exibição de cada pasta do Finder; "metadados" de arquivos copiados para pendrives; pasta que aparece em zips feitos no Mac.</td></tr>
+<tr><td>Windows (<a href="https://github.com/github/gitignore/blob/main/Global/Windows.gitignore">Windows.gitignore</a>)</td><td><code>Thumbs.db</code><br><code>ehthumbs.db</code><br><code>[Dd]esktop.ini</code><br><code>$RECYCLE.BIN/</code><br><code>*.lnk</code></td><td>Miniaturas das imagens; configuração de pasta; lixeira em pastas compartilhadas; atalhos.</td></tr>
+<tr><td>Linux (<a href="https://github.com/github/gitignore/blob/main/Global/Linux.gitignore">Linux.gitignore</a>)</td><td><code>*~</code><br><code>.fuse_hidden*</code><br><code>.directory</code><br><code>.Trash-*</code><br><code>.nfs*</code></td><td>Cópias de segurança de editores (<code>receita.txt~</code>); arquivos temporários; configuração de pasta do Dolphin (KDE); lixeira em pendrives.</td></tr>
+</table>
+</div>
+
+<h2 id="editores">Editores e IDEs</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Editor</th><th>Linhas principais</th><th>Observação</th></tr>
+<tr><td>VS Code (<a href="https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore">VisualStudioCode.gitignore</a>)</td><td><code>.vscode/*</code><br><code>!.vscode/settings.json</code><br><code>!.vscode/tasks.json</code><br><code>!.vscode/launch.json</code><br><code>!.vscode/extensions.json</code><br><code>*.vsix</code></td><td>Ignora a pasta <code>.vscode</code>, mas deixa as configurações que a equipe quer compartilhar. Se você não quer compartilhar nenhuma, use só <code>.vscode/</code>.</td></tr>
+<tr><td>JetBrains: IntelliJ, PyCharm, WebStorm, Android Studio… (<a href="https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore">JetBrains.gitignore</a>)</td><td><code>.idea/**/workspace.xml</code><br><code>.idea/**/tasks.xml</code><br><code>.idea/**/shelf</code><br><code>*.iws</code><br><code>out/</code></td><td>O modelo ignora só as partes pessoais da pasta <code>.idea</code>. Muita gente simplifica e ignora a pasta inteira: <code>.idea/</code>.</td></tr>
+<tr><td>Vim (<a href="https://github.com/github/gitignore/blob/main/Global/Vim.gitignore">Vim.gitignore</a>)</td><td><code>[._]*.sw[a-p]</code><br><code>Session.vim</code><br><code>*~</code></td><td>Os arquivos de troca (<code>.receita.txt.swp</code>) que o Vim cria enquanto um arquivo está aberto.</td></tr>
+</table>
+</div>
+
+<h2 id="global">O .gitignore pessoal (para todos os seus projetos)</h2>
+<p>O lixo do seu sistema e do seu editor aparece em <strong>todo</strong> projeto. Em vez de repetir no <code>.gitignore</code> de cada um, crie um arquivo seu e avise o Git com <code>core.excludesFile</code> (veja <a href="ref-config.html">Configurações</a>). Sem essa configuração, o Git já procura um arquivo em <code>~/.config/git/ignore</code>.</p>
+<pre class="term" data-cwd="~/lojinha">$ printf '%s\n' '.DS_Store' 'Thumbs.db' '*~' '.idea/' &gt; ~/.gitignore_global
+$ git config --global core.excludesFile ~/.gitignore_global
+$ git status --short
+?? .env.example
+?? .gitignore
+?? .vscode/
+?? package.json
+?? src/                                « o .DS_Store sumiu da lista
+$ git check-ignore -v .DS_Store
+/home/ana/.gitignore_global:1:.DS_Store	.DS_Store   « ignorado pelo arquivo pessoal, linha 1
+</pre>
+
+<h2 id="comandos">Comandos que andam junto</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Para</th><th>Comando</th><th>Aula</th></tr>
+<tr><td>Ver também os arquivos ignorados</td><td><code>git status --ignored</code> (curto: <code>git status -s --ignored</code>, ignorados marcados com <code>!!</code>)</td><td><a href="git-status.html">git status</a></td></tr>
+<tr><td>Descobrir qual linha ignora um arquivo</td><td><code>git check-ignore -v arquivo</code></td><td><a href="gitignore.html">.gitignore</a></td></tr>
+<tr><td>Adicionar um arquivo ignorado mesmo assim</td><td><code>git add -f arquivo</code> (a partir daí ele é rastreado)</td><td><a href="git-add.html">git add</a></td></tr>
+<tr><td>Parar de rastrear um arquivo que já foi commitado (mantendo-o na pasta)</td><td><code>git rm --cached arquivo</code> e commit</td><td><a href="git-rm.html">git rm</a></td></tr>
+<tr><td>Parar de rastrear uma pasta</td><td><code>git rm -r --cached pasta/</code> e commit</td><td><a href="git-rm.html">git rm</a></td></tr>
+<tr><td>Ignorar só no seu computador, sem commitar nada</td><td>Escreva o padrão em <code>.git/info/exclude</code> (mesmo formato do <code>.gitignore</code>)</td><td><a href="gitignore.html">.gitignore</a></td></tr>
+<tr><td>Apagar os arquivos ignorados (limpeza)</td><td><code>git clean -nX</code> (mostra) e <code>git clean -fX</code> (apaga)</td><td><a href="git-clean.html">git clean</a></td></tr>
+</table>
+</div>
+
+<h2>Quando dá errado</h2>
+
+<div class="cenario">
+<h3>Pus o arquivo no .gitignore e ele continua aparecendo</h3>
+<pre class="term" data-cwd="~/lojinha">$ echo '.env' &gt; .gitignore
+$ echo 'SENHA=456' &gt; .env
+$ git status --short
+ M .env                                « continua aparecendo como modificado
+?? .gitignore
+</pre>
+<p><strong>O que aconteceu:</strong> o <code>.gitignore</code> só vale para arquivos <strong>não rastreados</strong>. O <code>.env</code> já tinha entrado num commit antes, então o Git continua acompanhando.</p>
+<p><strong>Como resolver:</strong> tire-o do rastreamento, sem apagar da pasta, e commite junto com o <code>.gitignore</code>:</p>
+<pre class="term" data-cwd="~/lojinha">$ git rm --cached .env
+rm '.env'                              « "removido" do Git, não da pasta
+$ git status --short
+D  .env                                « vai sair do repositório no próximo commit
+?? .gitignore
+$ git add .gitignore
+$ git commit -q -m 'Para de rastrear o .env'
+$ git status --short
+$ ls -A
+.env                                   « o arquivo continua na pasta da Ana
+.git
+.gitignore
+app.js
+</pre>
+<p><strong>Atenção:</strong> o <code>.env</code> antigo continua nos commits anteriores. Se ele tinha uma senha de verdade e foi enviado ao GitHub, troque a senha. Veja <a href="senha-commitada.html">Commitei uma Senha!</a>.</p>
+</div>
+
+<div class="cenario">
+<h3>A exceção (!) não funciona</h3>
+<p><strong>O que aconteceu:</strong> a pasta inteira foi ignorada antes (<code>config/</code> e depois <code>!config/padrao.json</code>), ou a exceção veio <strong>antes</strong> da regra que ignora (a ordem importa: a última linha que casa vence).</p>
+<p><strong>Como resolver:</strong> ignore o conteúdo (<code>config/*</code>) em vez da pasta, ponha a exceção depois e confira com <code>git check-ignore -v config/padrao.json</code>.</p>
+</div>
+
+<div class="cenario">
+<h3>O .gitignore não funciona nenhum</h3>
+<p><strong>O que aconteceu:</strong> o arquivo está com nome errado (<code>gitignore</code> sem o ponto, <code>.gitignore.txt</code>, criado assim por alguns editores no Windows) ou numa pasta errada.</p>
+<p><strong>Como resolver:</strong> <code>ls -a</code> na raiz do projeto: o nome tem de ser exatamente <code>.gitignore</code>. Renomeie com <code>mv .gitignore.txt .gitignore</code>.</p>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Todos os logs</h3>
+<p>Complete a linha do <code>.gitignore</code> que ignora todo arquivo terminado em <code>.log</code>:</p>
+<div class="ex-code"><input data-answer="*.log" aria-label="padrão"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. Num projeto Node.js, por que o <code>node_modules/</code> vai para o <code>.gitignore</code>?</p>
+<label><input type="radio" name="q2"> Porque o Git não consegue guardar pastas.</label>
+<label><input type="radio" name="q2"> Porque é grande e pode ser baixado de novo a partir do <code>package.json</code> e do <code>package-lock.json</code>.</label>
+<label><input type="radio" name="q2"> Porque tem senhas.</label>
+<label><input type="radio" name="q2"> Porque o GitHub proíbe.</label>
+</div>
+
+<div class="exercise">
+<h3>3. Já estava commitado</h3>
+<p>Complete para parar de rastrear o <code>config.env</code> sem apagá-lo da pasta:</p>
+<div class="ex-code">git rm <input data-answer="--cached" aria-label="opção"> config.env</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. Onde é melhor pôr o <code>.DS_Store</code> do seu Mac?</p>
+<label><input type="radio" name="q4"> Em lugar nenhum: ele precisa ir para o Git.</label>
+<label><input type="radio" name="q4"> Num commit separado.</label>
+<label><input type="radio" name="q4"> No seu <code>.gitignore</code> pessoal (<code>core.excludesFile</code>), porque é lixo do seu computador; e, por garantia, também no do projeto.</label>
+<label><input type="radio" name="q4"> No <code>.git/config</code>.</label>
+</div>
+
+<div class="exercise">
+<h3>5. Qual linha?</h3>
+<p>Complete para o Git dizer qual linha do <code>.gitignore</code> está ignorando o <code>.env</code>:</p>
+<div class="ex-code">git check-ignore <input data-answer="-v|--verbose" aria-label="opção"> .env</div>
+</div>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
