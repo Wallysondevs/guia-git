@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git add — preparando arquivos para o próximo commit | Guia Git</title>
+<meta name="description" content="O git add para quem nunca usou Git: preparar um arquivo, vários, uma pasta, git add . e git add -A, git add -u, curingas, -v e --dry-run, arquivos apagados, o que acontece quando você edita depois do add, e os erros reais (pathspec did not match, arquivo ignorado, fora do repositório), com as saídas do Git em português.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">add</span></h1>
+
+<p class="intro">O <code>git add</code> ("adicionar") é o comando que diz ao Git: <strong>"esta mudança vai entrar no próximo commit"</strong>. Ele põe o arquivo na <strong>área de preparo</strong>, a mesa onde você arruma o que vai sair na próxima fotografia do projeto. Nesta aula você vai ver todas as formas de usar o <code>git add</code>: um arquivo, vários, uma pasta inteira, tudo de uma vez, só o que já era rastreado, e o que acontece com arquivos apagados.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que o <code>git add</code> faz de verdade: guarda uma <strong>cópia</strong> do arquivo como ele está naquele momento.</li>
+  <li>Preparar um arquivo, vários, uma pasta e tudo com <code>git add .</code> e <code>git add -A</code>.</li>
+  <li>A diferença entre <code>git add .</code>, <code>git add -A</code> e <code>git add -u</code>.</li>
+  <li>Ver o que o comando fez com <code>-v</code>, e o que ele <strong>faria</strong> com <code>--dry-run</code>.</li>
+  <li>Os erros reais: <code>pathspec … did not match any files</code>, o arquivo ignorado e o caminho fora do repositório.</li>
+</ul>
+</div>
+
+<p>As saídas são <strong>reais</strong>, do Git da máquina da Ana, em português. O <code>git status</code> aparece depois de cada <code>git add</code>, porque o <code>add</code> não mostra nada quando dá certo; se ainda não sabe ler o painel, veja antes a aula <a href="git-status.html">git status</a>.</p>
+
+<hr>
+
+<h2>A ideia: a mesa da foto</h2>
+<p>Lembre da confeitaria de <a href="primeiro-commit.html">Seu Primeiro Commit</a>: a cozinha é a pasta de trabalho, a mesa da foto é a área de preparo, o álbum é o histórico. O <code>git add</code> leva um bolo da cozinha para a mesa.</p>
+<p>Um detalhe importante: o Git não põe o <strong>arquivo</strong> na mesa, põe uma <strong>cópia</strong> do conteúdo dele, do jeito que está no instante do <code>git add</code>. É como fotografar o bolo para o rascunho do cardápio: se depois você muda a cobertura, o rascunho continua com a cobertura antiga, até você fotografar de novo. Você vai ver isso acontecer na seção <a href="#depois">Editei depois do add</a>.</p>
+
+<hr>
+
+<h2>1. Um arquivo</h2>
+<p>A Ana tem o repositório <code>receitas</code> com um commit (o <code>README.md</code>). Ela cria a receita de bolo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'Bolo de cenoura' &gt; bolo.txt
+$ git status
+No ramo main
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	bolo.txt
+
+nada adicionado ao envio mas arquivos não registrados estão presentes (use "git add" to registrar)
+$ git add bolo.txt
+$ git status
+No ramo main
+Mudanças a serem submetidas:                        « agora está na área de preparo
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	new file:   bolo.txt
+
+</pre>
+
+<dl class="anatomy">
+  <dt>git</dt><dd>O programa Git.</dd>
+  <dt>add</dt><dd>O subcomando: "adicionar à área de preparo".</dd>
+  <dt>bolo.txt</dt><dd>O caminho do arquivo, a partir da pasta onde você está. Se o arquivo estivesse numa subpasta, seria <code>doces/bolo.txt</code>.</dd>
+</dl>
+
+<p>Repare: o <code>git add</code> não escreveu nada. No terminal, silêncio é sucesso. O <code>git status</code> confirma que o arquivo passou de <code>Arquivos não monitorados</code> para <code>Mudanças a serem submetidas</code>, com a etiqueta <code>novo arquivo</code>.</p>
+
+<h3>Ver o que foi feito: <code>-v</code></h3>
+<p>Se você prefere uma confirmação, o <code>-v</code> (de <em>verbose</em>, "falante") faz o <code>git add</code> dizer cada arquivo que preparou. Para ver, a Ana tirou o <code>bolo.txt</code> da área de preparo (com o <code>git restore --staged</code>, que a dica do <code>git status</code> acabou de mostrar) e preparou de novo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git restore --staged bolo.txt
+$ git add -v bolo.txt
+add 'bolo.txt'
+</pre>
+
+<p><code>add 'bolo.txt'</code>: "adicionado o <code>bolo.txt</code>". A palavra <code>add</code> não é traduzida.</p>
+
+<hr>
+
+<h2>2. Vários arquivos de uma vez</h2>
+<p>Basta listar, separados por espaço:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'Pudim de leite' &gt; pudim.txt
+$ echo 'Brigadeiro' &gt; brigadeiro.txt
+$ git add pudim.txt brigadeiro.txt
+$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	new file:   bolo.txt               « já estava preparado
+	new file:   brigadeiro.txt
+	new file:   pudim.txt
+
+</pre>
+
+<p>A área de preparo vai acumulando: o <code>bolo.txt</code>, preparado antes, continua lá. O <code>git status</code> lista os arquivos em ordem alfabética, não na ordem em que você os preparou. A Ana commita os três (<code>git commit -m "Adiciona as receitas"</code>).</p>
+
+<p>Também dá para usar um <strong>curinga</strong> do terminal: <code>git add *.txt</code> prepara todos os arquivos terminados em <code>.txt</code> da pasta atual. Quem troca o <code>*.txt</code> pela lista de nomes é o terminal, antes de o Git rodar (veja os curingas no <a href="https://wallysondevs.github.io/guia-bash/">Guia Bash</a>).</p>
+
+<hr>
+
+<h2>3. Uma pasta inteira</h2>
+<p>Se você der o nome de uma <strong>pasta</strong>, o Git prepara tudo o que mudou dentro dela (e das pastas dentro dela). A Ana cria uma pasta para os doces:</p>
+
+<pre class="term" data-cwd="~/receitas">$ mkdir doces
+$ echo 'Cocada' &gt; doces/cocada.txt
+$ echo 'Quindim' &gt; doces/quindim.txt
+$ git status
+No ramo main
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	doces/                                « a pasta inteira é nova
+
+nada adicionado ao envio mas arquivos não registrados estão presentes (use "git add" to registrar)
+$ git add doces/
+$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	new file:   doces/cocada.txt              « cada arquivo, com o caminho
+	new file:   doces/quindim.txt
+
+</pre>
+
+<p>Antes do <code>add</code>, o <code>git status</code> resumia a pasta nova como <code>doces/</code>; depois, mostra cada arquivo preparado. A barra no fim de <code>doces/</code> é opcional no comando (<code>git add doces</code> dá no mesmo). A Ana commita (<code>git commit -m "Adiciona a pasta de doces"</code>).</p>
+
+<hr>
+
+<h2>4. Tudo: <code>git add .</code> e <code>git add -A</code></h2>
+<p>O ponto (<code>.</code>) quer dizer "a pasta onde estou". Então <code>git add .</code> prepara <strong>tudo o que mudou</strong> na pasta atual e nas de dentro: arquivos novos, modificados e apagados. A Ana muda o bolo, cria uma receita nova dentro de <code>doces/</code> e apaga o brigadeiro:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'Com cobertura' &gt;&gt; bolo.txt
+$ echo 'Mousse' &gt; doces/mousse.txt
+$ rm brigadeiro.txt
+$ git status
+No ramo main
+Changes not staged for commit:
+  (utilize "git add/rm &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   bolo.txt
+	deleted:    brigadeiro.txt
+
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	doces/mousse.txt
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+$ git add .
+$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	modified:   bolo.txt               « modificado
+	deleted:    brigadeiro.txt         « apagado
+	new file:   doces/mousse.txt       « novo, numa subpasta
+
+</pre>
+
+<p>Um comando só preparou as três coisas. O <code>git add -A</code> (de <em>all</em>, "todos"; também se escreve <code>--all</code>) faz o mesmo, mas no <strong>repositório inteiro</strong>, não importa em que subpasta você esteja. Na pasta principal do repositório, os dois dão o mesmo resultado. A diferença só aparece dentro de uma subpasta. A Ana desfaz a preparação (<code>git restore --staged .</code>) e entra em <code>doces/</code> para comparar, usando o formato curto do <code>git status</code> (<code>-s</code>: <code>??</code> = novo, <code>&nbsp;M</code>/<code>&nbsp;D</code> = modificado/apagado não preparado, letra na 1ª coluna = preparado; veja <a href="git-status.html#curto">git status</a>):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git restore --staged .
+$ git status -s
+ M bolo.txt
+ D brigadeiro.txt
+?? doces/mousse.txt
+$ cd doces
+$ git add .
+$ git status -s
+ M ../bolo.txt              « fora da pasta doces: ficou de fora
+ D ../brigadeiro.txt        « idem
+A  mousse.txt               « dentro da pasta doces: preparado
+$ git restore --staged mousse.txt
+$ git add -A
+$ git status -s
+M  ../bolo.txt              « o -A pegou o repositório inteiro
+D  ../brigadeiro.txt
+A  mousse.txt
+</pre>
+
+<p>Dentro de <code>doces/</code>, o <code>git add .</code> só preparou o <code>mousse.txt</code>, porque o ponto quer dizer "esta pasta". O <code>git add -A</code> preparou tudo, inclusive o que estava na pasta de cima. (Repare que, numa subpasta, o <code>git status</code> mostra os caminhos a partir de onde você está: <code>../bolo.txt</code> é "o <code>bolo.txt</code> da pasta de cima".)</p>
+
+<div class="warning">
+<strong>Olhe antes de usar o ponto</strong>
+<p><code>git add .</code> é prático, mas pega <strong>tudo</strong>, inclusive o que não devia entrar: um arquivo com senha, um rascunho, um arquivo gigante. Rode <code>git status</code> antes e, para arquivos que nunca devem entrar, use o <a href="gitignore.html">.gitignore</a>. Uma senha que entrou num commit dá muito trabalho para tirar (aula <a href="senha-commitada.html">Commitei uma Senha!</a>).</p>
+</div>
+
+<hr>
+
+<h2>5. Só o que já era rastreado: <code>git add -u</code></h2>
+<p>O <code>-u</code> (de <em>update</em>, "atualizar") prepara as mudanças e os apagamentos dos arquivos que o Git <strong>já conhece</strong>, e deixa de fora os arquivos novos. De volta à pasta principal, na mesma situação:</p>
+
+<pre class="term" data-cwd="~/receitas/doces">$ cd ..
+$ git restore --staged .
+$ git status -s
+ M bolo.txt
+ D brigadeiro.txt
+?? doces/mousse.txt
+$ git add -u
+$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	modified:   bolo.txt
+	deleted:    brigadeiro.txt
+
+Arquivos não monitorados:                « o novo ficou de fora
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	doces/mousse.txt
+
+</pre>
+
+<p>O <code>-u</code> é útil quando a pasta tem arquivos novos que você ainda não quer commitar, mas quer guardar todas as mudanças dos que já existiam. (O <code>git commit -a</code>, da aula <a href="git-commit.html">git commit</a>, faz um <code>git add -u</code> e o commit de uma vez só.)</p>
+
+<hr>
+
+<h2>6. Arquivos apagados também se "adicionam"</h2>
+<p>Parece estranho, mas apagar um arquivo também é uma mudança, e mudanças entram no commit pelo <code>git add</code>. Num outro repositório, a Ana apaga o <code>pudim.txt</code> (que estava no último commit) com o <code>rm</code> do terminal:</p>
+
+<pre class="term" data-cwd="~/receitas">$ rm pudim.txt
+$ git status -s
+ D pudim.txt            « apagado, não preparado
+$ git add pudim.txt
+$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	deleted:    pudim.txt
+
+</pre>
+
+<p>O arquivo não existe mais, e mesmo assim o <code>git add pudim.txt</code> funcionou: o que ele preparou foi a <strong>falta</strong> do arquivo. No próximo commit, o <code>pudim.txt</code> sai do projeto (ele continua guardado nos commits antigos). Existe um atalho que apaga e prepara de uma vez só, o <code>git rm</code> (aula <a href="git-rm.html">Apagando Arquivos</a>).</p>
+
+<hr>
+
+<h2>7. Ver antes de fazer: <code>--dry-run</code></h2>
+<p>O <code>-n</code> (ou <code>--dry-run</code>, "ensaio") mostra o que o <code>git add</code> <strong>faria</strong>, sem fazer nada. De volta à situação da seção 4 (bolo modificado, brigadeiro apagado, mousse novo):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git add -n .
+add 'bolo.txt'
+remover 'brigadeiro.txt'           « o apagamento aparece como "remover"
+add 'doces/mousse.txt'
+$ git status -s
+ M bolo.txt                        « nada mudou: foi só um ensaio
+ D brigadeiro.txt
+?? doces/mousse.txt
+$ git add -v .
+add 'bolo.txt'
+remover 'brigadeiro.txt'
+add 'doces/mousse.txt'
+</pre>
+
+<p>O <code>-n</code> é bom antes de um <code>git add .</code> numa pasta que você não conhece bem: ele mostra a lista, e você decide. O <code>-v</code> mostra a mesma lista, mas <strong>fazendo</strong>.</p>
+
+<hr>
+
+<h2 id="depois">Editei depois do add</h2>
+<p>A Ana preparou o <code>bolo.txt</code> e, antes de commitar, acrescentou mais um ingrediente:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo '4 ovos' &gt;&gt; bolo.txt
+$ git add bolo.txt
+$ echo '1 colher de fermento' &gt;&gt; bolo.txt
+$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	modified:   bolo.txt                « a versão com os ovos
+
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   bolo.txt                « o fermento, escrito depois do add
+
+$ git status -s
+MM bolo.txt
+$ git add bolo.txt
+$ git status -s
+M  bolo.txt                             « agora a versão com o fermento está preparada
+</pre>
+
+<p>O <code>bolo.txt</code> apareceu nos dois blocos (e com <code>MM</code> no formato curto): a área de preparo tinha a cópia do momento do primeiro <code>git add</code>, com os ovos; o fermento, escrito depois, estava só na pasta. Se a Ana commitasse naquele momento, o fermento ficaria de fora. Um segundo <code>git add bolo.txt</code> atualizou a cópia. <strong>Regra prática:</strong> rode <code>git status</code> logo antes do <code>git commit</code>.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Adiciona o README';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;echo '3 ovos' &gt;&gt; bolo.txt" data-goal="commits:2,limpo,contem:HEAD:bolo.txt=3 ovos" data-solucao="git status;;git add bolo.txt;;git commit -m 'Adiciona a receita de bolo'">
+<p class="try-task"><strong>Missão:</strong> o <code>bolo.txt</code> foi preparado e editado de novo (rode <code>git status</code> para ver ele em dois blocos). Prepare a versão nova e faça o commit: ele tem de levar o bolo <strong>com</strong> os ovos, e a pasta tem de ficar limpa.</p>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>Novos</th><th>Modificados</th><th>Apagados</th><th>Onde</th></tr>
+<tr><td><code>git add arquivo</code></td><td>sim</td><td>sim</td><td>sim</td><td>só esse arquivo</td></tr>
+<tr><td><code>git add pasta/</code></td><td>sim</td><td>sim</td><td>sim</td><td>dentro da pasta</td></tr>
+<tr><td><code>git add .</code></td><td>sim</td><td>sim</td><td>sim</td><td>a pasta atual e as de dentro</td></tr>
+<tr><td><code>git add -A</code></td><td>sim</td><td>sim</td><td>sim</td><td>o repositório inteiro</td></tr>
+<tr><td><code>git add -u</code></td><td><strong>não</strong></td><td>sim</td><td>sim</td><td>o repositório inteiro</td></tr>
+</table>
+</div>
+
+<p><strong>Qual usar?</strong> Comece nomeando os arquivos (<code>git add bolo.txt</code>): você vê exatamente o que entra, e os commits saem pequenos e com um assunto só. Use <code>git add .</code> quando o <code>git status</code> mostrar que tudo o que mudou é do mesmo assunto. Para escolher só <strong>algumas linhas</strong> de um arquivo, existe o <code>git add -p</code>, que aparece em <a href="area-de-preparo.html">A Área de Preparo</a>.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;echo 'Bolo de cenoura' &gt; bolo.txt;;git add .;;git commit -q -m 'Primeira versão';;echo 'Com cobertura' &gt;&gt; bolo.txt;;echo 'Pudim de leite' &gt; pudim.txt;;rm README.md" data-goal="preparado:bolo.txt,preparado:README.md,ran:git add +(-u|--update)" data-solucao="git add -u">
+<p class="try-task"><strong>Missão:</strong> rode <code>git status</code>: o <code>bolo.txt</code> foi modificado, o <code>README.md</code> foi apagado e o <code>pudim.txt</code> é novo. Com <strong>um só</strong> <code>git add</code>, prepare a modificação e o apagamento, mas deixe o <code>pudim.txt</code> de fora.</p>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>"pathspec … did not match any files"</strong>
+<pre class="term" data-cwd="~/receitas">$ git add pudin.txt
+fatal: pathspec 'pudin.txt' não encontrou nenhum arquivo
+$ git add Bolo.txt
+fatal: pathspec 'Bolo.txt' não encontrou nenhum arquivo
+</pre>
+<p>"O caminho (<em>pathspec</em>) não corresponde a nenhum arquivo". No primeiro, um erro de digitação (<code>pudin</code> em vez de <code>pudim</code>); no segundo, a letra maiúscula: no Linux, <code>Bolo.txt</code> e <code>bolo.txt</code> são nomes diferentes. Nada foi preparado. <strong>Como resolver:</strong> confira o nome com <code>ls</code> ou <code>git status</code>, e use a tecla <kbd>Tab</kbd> para completar nomes.</p>
+</div>
+
+<div class="cenario">
+<strong>O arquivo está no <code>.gitignore</code></strong>
+<pre class="term" data-cwd="~/receitas">$ echo 'senha123' &gt; senha.txt
+$ echo 'senha.txt' &gt; .gitignore
+$ git add senha.txt
+Os caminhos a seguir são ignorados por um dos seus arquivos .gitignore:
+senha.txt
+hint: Use -f if you really want to add them.
+hint: Disable this message with "git config set advice.addIgnoredFile false"
+</pre>
+<p>"Os caminhos a seguir são ignorados por um dos seus arquivos <code>.gitignore</code>". A Ana tinha mandado o Git ignorar o <code>senha.txt</code> (aula <a href="gitignore.html">Ignorando Arquivos</a>), e ele obedeceu: <strong>não preparou</strong>. As linhas <code>hint:</code> ("dica") dizem: "use <code>-f</code> se você quer mesmo adicioná-los" e "desligue esta mensagem com <code>git config set advice.addIgnoredFile false</code>". <strong>Como resolver:</strong> normalmente, não resolva: é para o arquivo ficar de fora mesmo (senha não vai para o Git). Se ele foi ignorado por engano, corrija o <code>.gitignore</code>; o <code>git add -f</code> (de <em>force</em>, "forçar") passa por cima, mas use só se tiver certeza.</p>
+</div>
+
+<div class="cenario">
+<strong>Caminho fora do repositório</strong>
+<pre class="term" data-cwd="~/receitas">$ git add ../notas.txt
+fatal: ../notas.txt: '../notas.txt' is outside repository at '/home/ana/receitas'
+</pre>
+<p>"O <code>../notas.txt</code> está fora do repositório que fica em <code>/home/ana/receitas</code>". Um repositório só cuida dos arquivos que estão dentro da pasta dele (e das subpastas). O <code>notas.txt</code> está na pasta de cima. <strong>Como resolver:</strong> se o arquivo é do projeto, copie ou mova para dentro da pasta do repositório e prepare de lá (<code>cp ../notas.txt .</code>, depois <code>git add notas.txt</code>).</p>
+</div>
+
+<div class="cenario">
+<strong>"not a git repository"</strong>
+<pre class="term" data-cwd="~/receitas">$ cd ~
+$ git add receitas/bolo.txt
+fatal: not a git repository (or any of the parent directories): .git
+</pre>
+<p>"Não é um repositório Git (nem nenhuma das pastas acima)". O Git decide em qual repositório trabalhar pela <strong>pasta onde você está</strong>, não pelo caminho do arquivo. Na pasta pessoal não existe repositório. <strong>Como resolver:</strong> <code>cd receitas</code> e então <code>git add bolo.txt</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>A pasta vazia não entra</strong>
+<pre class="term" data-cwd="~/receitas">$ mkdir fotos
+$ git add fotos
+$ git status -s
+A  .gitignore
+M  bolo.txt
+</pre>
+<p>Nenhum erro, mas também nada de <code>fotos</code> na área de preparo (o <code>.gitignore</code> e o <code>bolo.txt</code> foram preparados antes). O Git guarda <strong>arquivos</strong>; uma pasta só existe para ele se tiver algum arquivo dentro. <strong>Como resolver:</strong> ponha um arquivo nela. Quando a pasta precisa existir vazia no projeto, o costume é criar dentro dela um arquivo vazio chamado <code>.gitkeep</code> (<code>touch fotos/.gitkeep</code>) e preparar esse arquivo. O nome é só uma convenção: o Git não trata ele de um jeito especial.</p>
+</div>
+
+<div class="cenario">
+<strong>Preparei um arquivo que não devia</strong>
+<pre class="term" data-cwd="~/receitas">$ echo 'ligar pro Bruno' &gt; rascunho.txt
+$ git add .
+$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	new file:   bolo.txt
+	deleted:    pudim.txt
+	new file:   rascunho.txt            « este não era para entrar
+
+$ git restore --staged rascunho.txt
+$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	new file:   bolo.txt
+	deleted:    pudim.txt
+
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	rascunho.txt                        « voltou a ser não rastreado
+</pre>
+<p>O <code>git add .</code> pegou o rascunho junto. Antes do commit, isso se desfaz com a própria dica do <code>git status</code>: <code>git restore --staged rascunho.txt</code>. O arquivo continua na pasta, intacto; só saiu da área de preparo. Para o rascunho nunca mais aparecer, ponha-o no <a href="gitignore.html">.gitignore</a>. (Antes do primeiro commit do repositório, o comando é <code>git rm --cached arquivo</code>, como a dica daquele momento mostra.)</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git add arquivo</code></td><td>Prepara esse arquivo (novo, modificado ou apagado).</td></tr>
+<tr><td><code>git add a.txt b.txt</code></td><td>Prepara vários.</td></tr>
+<tr><td><code>git add *.txt</code></td><td>Prepara os <code>.txt</code> da pasta atual (o terminal expande o curinga).</td></tr>
+<tr><td><code>git add pasta/</code></td><td>Prepara tudo o que mudou dentro da pasta.</td></tr>
+<tr><td><code>git add .</code></td><td>Prepara tudo o que mudou na pasta atual e nas de dentro.</td></tr>
+<tr><td><code>git add -A</code> / <code>--all</code></td><td>Prepara tudo o que mudou no repositório inteiro.</td></tr>
+<tr><td><code>git add -u</code> / <code>--update</code></td><td>Prepara mudanças e apagamentos dos rastreados; ignora os novos.</td></tr>
+<tr><td><code>git add -v</code></td><td>Mostra cada arquivo preparado.</td></tr>
+<tr><td><code>git add -n</code> / <code>--dry-run</code></td><td>Mostra o que seria preparado, sem preparar.</td></tr>
+<tr><td><code>git add -f arquivo</code></td><td>Prepara mesmo um arquivo ignorado pelo <code>.gitignore</code>.</td></tr>
+<tr><td><code>git restore --staged arquivo</code></td><td>O contrário: tira da área de preparo (aula <a href="restore-staged.html">Tirando da Área de Preparo</a>).</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Prepare dois arquivos</h3>
+<p>Complete para preparar <code>bolo.txt</code> e <code>pudim.txt</code> num comando só:</p>
+<div class="ex-code">git <input data-answer="add" aria-label="subcomando"> bolo.txt <input data-answer="pudim.txt" aria-label="segundo arquivo"></div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">2. Qual destes <strong>não</strong> prepara um arquivo novo, não rastreado?</p>
+<label><input type="radio" name="q2"> <code>git add .</code></label>
+<label><input type="radio" name="q2"> <code>git add -A</code></label>
+<label><input type="radio" name="q2"> <code>git add -u</code></label>
+<label><input type="radio" name="q2"> <code>git add pudim.txt</code></label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. A Ana rodou <code>git add bolo.txt</code>, depois editou o <code>bolo.txt</code> e rodou <code>git commit -m "Bolo"</code>. O que o commit leva?</p>
+<label><input type="radio" name="q3"> A versão nova, com a última edição</label>
+<label><input type="radio" name="q3"> A versão do momento do <code>git add</code>, sem a última edição</label>
+<label><input type="radio" name="q3"> Nada: o Git dá erro</label>
+<label><input type="radio" name="q3"> As duas versões, em dois commits</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. O que o <code>git add</code> mostra quando dá certo (sem <code>-v</code>)?</p>
+<label><input type="radio" name="q4"> Nada</label>
+<label><input type="radio" name="q4"> <code>1 arquivo adicionado</code></label>
+<label><input type="radio" name="q4"> O conteúdo do arquivo</label>
+<label><input type="radio" name="q4"> O <code>git status</code> completo</label>
+</div>
+
+<h3>Missão final: dois commits, dois assuntos</h3>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add .;;git commit -q -m 'Adiciona o README';;echo 'Bolo de cenoura' &gt; bolo.txt;;echo 'Pudim de leite' &gt; pudim.txt;;echo 'Contato: ana@exemplo.com' &gt;&gt; README.md" data-goal="commits:3,limpo,logre:README" data-solucao="git add bolo.txt pudim.txt;;git commit -m 'Adiciona as receitas de bolo e pudim';;git add README.md;;git commit -m 'Adiciona o contato no README'">
+<p class="try-task"><strong>Missão:</strong> há duas receitas novas (<code>bolo.txt</code> e <code>pudim.txt</code>) e uma mudança no <code>README.md</code>. Faça <strong>dois</strong> commits: um só com as receitas e outro só com o README (com uma mensagem que fale do README). No fim, a pasta deve estar limpa.</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git add</code> põe uma <strong>cópia</strong> do arquivo, como ele está agora, na área de preparo. Editou depois? Rode <code>git add</code> de novo.</li>
+  <li>Aceita um arquivo, vários, curingas e pastas. <code>git add .</code> pega tudo da pasta atual; <code>git add -A</code>, tudo do repositório; <code>git add -u</code>, só o que já era rastreado.</li>
+  <li>Apagar um arquivo também é uma mudança: ela entra no commit com <code>git add</code> (ou <code>git rm</code>).</li>
+  <li>Sem <code>-v</code>, o <code>git add</code> não mostra nada quando dá certo: confira com <code>git status</code>.</li>
+  <li>Para desfazer um <code>git add</code>: <code>git restore --staged arquivo</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
