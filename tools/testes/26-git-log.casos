@@ -1,0 +1,20 @@
+### log-datas-e-formatos
+mkdir r && cd r && git init -q
+echo a > a; git add a; git commit -qm 'Primeiro commit'
+git tag v1
+echo b >> a; git commit -qam 'Segundo commit' -m 'Corpo da mensagem.'
+git log --date=short
+git log --date=iso --format='%h %ad %s'
+git log --date=iso-strict --format='%ad'
+git log --date=relative -1
+git log --date=format:'%d/%m/%Y %H:%M' --format='%ad %s'
+git log --format='%h %ci | %cr | %ai | %as'
+git log --format='%h%d %s'
+git log --format='%H%n%an%n%b---'
+git log --format='%Cred%h%Creset %s' | cat -v
+git log --format='%C(yellow)%h%C(reset) %s' | cat -v
+git log --pretty=short
+git log --pretty=full -1
+git log --oneline --decorate=full
+git show -s --format='%s%n%b'
+git log -2 --format='[%h] %<(20)%s|'

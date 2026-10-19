@@ -1468,19 +1468,20 @@
     /* ---------- log / show ---------- */
     function formatarCommit(repo, h, opt) {
       var c = repo.ler(h), s = "", au = parseIdent(c.author), co = parseIdent(c.committer);
-      var deco = opt.decorate ? decoracao(repo, h) : "";
+      var deco = opt.decorate ? decoracao(repo, h, opt.decoCompleta) : "";
       if (opt.oneline) {
         s += (opt.abbrev === false ? h : repo.abrev(h)) + (deco ? " (" + deco + ")" : "") + " " + assunto(c.msg) + "\n";
       } else if (opt.format != null) {
         if (opt.format === "") return "";
-        s += formatoLivre(repo, h, c, opt.format) + (opt.tformat ? "\n" : "");
+        s += formatoLivre(repo, h, c, opt.format, opt) + (opt.tformat ? "\n" : "");
       } else {
         s += "commit " + h + (deco ? " (" + deco + ")" : "") + "\n";
         if (c.parents.length > 1) s += "Merge: " + c.parents.map(function (p) { return repo.abrev(p); }).join(" ") + "\n";
         s += "Author: " + au.nome + " <" + au.email + ">\n";
         if (opt.fuller) s += "AuthorDate: " + dataPadrao(au.ts, au.tz) + "\nCommit:     " + co.nome + " <" + co.email + ">\nCommitDate: " + dataPadrao(co.ts, co.tz) + "\n";
-        else s += "Date:   " + (opt.dataRel ? dataRelativa(au.ts, Math.floor(repo.sh.k.clock / 1000)) : dataPadrao(au.ts, au.tz)) + "\n";
-        s += "\n" + c.msg.replace(/\n$/, "").split("\n").map(function (l) { return "    " + expandirTabs(l); }).join("\n") + "\n";
+        else if (opt.pretty === "full") s += "Commit: " + co.nome + " <" + co.email + ">\n";
+        else if (opt.pretty !== "short") s += "Date:   " + (opt.dataRel ? dataRelativa(au.ts, Math.floor(repo.sh.k.clock / 1000)) : fmtData(au.ts, au.tz, opt.dataFmt, Math.floor(repo.sh.k.clock / 1000))) + "\n";
+        s += "\n" + (opt.pretty === "short" ? assunto(c.msg) : c.msg.replace(/\n$/, "")).split("\n").map(function (l) { return "    " + expandirTabs(l); }).join("\n") + "\n";
       }
       return s;
     }
@@ -1500,23 +1501,70 @@
     }
     function expandirTabs(l) { if (l.indexOf("\t") < 0) return l; var r = ""; for (var i = 0; i < l.length; i++) { if (l[i] === "\t") { do r += " "; while (r.length % 8); } else r += l[i]; } return r; }
     function assunto(msg) { return msg.split(/\n[ \t]*\n/)[0].replace(/\n$/, "").split("\n").map(function (x) { return x.trim(); }).join(" "); }
-    function formatoLivre(repo, h, c, f) {
-      var au = parseIdent(c.author), co = parseIdent(c.committer), linhas = c.msg.replace(/\n$/, "").split("\n");
-      return f.replace(/%(H|h|T|t|P|p|an|ae|ad|ar|as|at|ai|cn|ce|cd|cr|cs|ct|s|b|B|n|d|D|%|C\([a-z ]+\)|Creset|Cred|Cgreen|Cblue|Cyellow)/g, function (m, k) {
+    var DIAS_PT = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"], DIAS_PT_L = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+    var MESES_PT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"], MESES_PT_L = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+    // --date=MODO (o strftime do format: usa o locale pt_BR, como no lab)
+    function fmtData(ts, tz, modo, agora) {
+      var p = partesData(ts, tz);
+      switch (modo || "default") {
+        case "short": return dataCurta(ts, tz);
+        case "iso": case "iso8601": return dataIso(ts, tz);
+        case "iso-strict": case "iso8601-strict": return p.Y + "-" + d2(p.M + 1) + "-" + d2(p.D) + "T" + d2(p.h) + ":" + d2(p.m) + ":" + d2(p.s) + tz.slice(0, 3) + ":" + tz.slice(3);
+        case "relative": return dataRelativa(ts, agora);
+        case "rfc": case "rfc2822": return DIAS_EN[p.w] + ", " + p.D + " " + MESES_EN[p.M] + " " + p.Y + " " + d2(p.h) + ":" + d2(p.m) + ":" + d2(p.s) + " " + tz;
+        case "raw": return ts + " " + tz;
+        case "unix": return String(ts);
+        case "local": return dataPadrao(ts, tz).replace(/ [+-]\d{4}$/, "");
+        default:
+          if (/^format(-local)?:/.test(modo)) return modo.replace(/^format(-local)?:/, "").replace(/%([a-zA-Z%])/g, function (m, k) {
+            switch (k) {
+              case "d": return d2(p.D); case "e": return (p.D < 10 ? " " : "") + p.D; case "m": return d2(p.M + 1); case "Y": return String(p.Y); case "y": return d2(p.Y % 100);
+              case "H": return d2(p.h); case "M": return d2(p.m); case "S": return d2(p.s); case "I": return d2(p.h % 12 || 12); case "p": return p.h < 12 ? "" : "";
+              case "a": return DIAS_PT[p.w]; case "A": return DIAS_PT_L[p.w]; case "b": case "h": return MESES_PT[p.M]; case "B": return MESES_PT_L[p.M];
+              case "z": return tz; case "Z": return "-03"; case "j": var ini = Date.UTC(p.Y, 0, 1), atual = Date.UTC(p.Y, p.M, p.D); return ("00" + (Math.round((atual - ini) / 864e5) + 1)).slice(-3);
+              case "F": return p.Y + "-" + d2(p.M + 1) + "-" + d2(p.D); case "T": return d2(p.h) + ":" + d2(p.m) + ":" + d2(p.s); case "R": return d2(p.h) + ":" + d2(p.m);
+              case "s": return String(ts); case "%": return "%";
+              default: return m;
+            }
+          });
+          return dataPadrao(ts, tz);
+      }
+    }
+    function formatoLivre(repo, h, c, f, opt) {
+      opt = opt || {};
+      var au = parseIdent(c.author), co = parseIdent(c.committer), agora = Math.floor(repo.sh.k.clock / 1000), pendente = null;
+      var re = /%(<\((\d+)(?:,(trunc|ltrunc|mtrunc))?\)|>\((\d+)(?:,(trunc|ltrunc|mtrunc))?\)|><\((\d+)\)|H|h|T|t|P|p|an|ae|al|aN|aE|ad|ar|as|at|ai|aI|cn|ce|cd|cr|cs|ct|ci|cI|s|f|b|B|n|d|D|N|%|x[0-9a-fA-F]{2}|C\([^)]*\)|Creset|Cred|Cgreen|Cblue|C)/g;
+      return f.replace(re, function (m, k, nE, tE, nD, tD, nC) {
+        if (nE !== undefined) { pendente = { n: +nE, lado: "e", t: tE }; return ""; }
+        if (nD !== undefined) { pendente = { n: +nD, lado: "d", t: tD }; return ""; }
+        if (nC !== undefined) { pendente = { n: +nC, lado: "c" }; return ""; }
+        var v = valor(k);
+        if (pendente && !/^C/.test(k)) {
+          var pd = pendente; pendente = null;
+          if (v.length > pd.n && pd.t) v = pd.t === "ltrunc" ? ".." + v.slice(v.length - pd.n + 2) : pd.t === "mtrunc" ? v.slice(0, Math.ceil((pd.n - 2) / 2)) + ".." + v.slice(v.length - Math.floor((pd.n - 2) / 2)) : v.slice(0, pd.n - 2) + "..";
+          var falta = pd.n - v.length;
+          if (falta > 0) v = pd.lado === "e" ? v + rep(" ", falta) : pd.lado === "d" ? rep(" ", falta) + v : rep(" ", Math.floor(falta / 2)) + v + rep(" ", Math.ceil(falta / 2));
+        }
+        return v;
+      });
+      function valor(k) {
         switch (k) {
           case "H": return h; case "h": return repo.abrev(h); case "T": return c.tree; case "t": return repo.abrev(c.tree);
           case "P": return c.parents.join(" "); case "p": return c.parents.map(function (p) { return repo.abrev(p); }).join(" ");
-          case "an": return au.nome; case "ae": return au.email; case "ad": return dataPadrao(au.ts, au.tz); case "ar": return dataRelativa(au.ts, Math.floor(repo.sh.k.clock / 1000));
-          case "as": return dataCurta(au.ts, au.tz); case "at": return String(au.ts); case "ai": return dataIso(au.ts, au.tz);
-          case "cn": return co.nome; case "ce": return co.email; case "cd": return dataPadrao(co.ts, co.tz); case "cr": return dataRelativa(co.ts, Math.floor(repo.sh.k.clock / 1000)); case "cs": return dataCurta(co.ts, co.tz); case "ct": return String(co.ts);
-          case "s": return assunto(c.msg); case "b": var corpo = c.msg.split("\n\n").slice(1).join("\n\n"); return corpo; case "B": return c.msg;
-          case "n": return "\n"; case "%": return "%";
+          case "an": case "aN": return au.nome; case "ae": case "aE": return au.email; case "al": return au.email.split("@")[0];
+          case "ad": return fmtData(au.ts, au.tz, opt.dataFmt, agora); case "ar": return dataRelativa(au.ts, agora);
+          case "as": return dataCurta(au.ts, au.tz); case "at": return String(au.ts); case "ai": return dataIso(au.ts, au.tz); case "aI": return fmtData(au.ts, au.tz, "iso-strict");
+          case "cn": return co.nome; case "ce": return co.email; case "cd": return fmtData(co.ts, co.tz, opt.dataFmt, agora); case "cr": return dataRelativa(co.ts, agora);
+          case "cs": return dataCurta(co.ts, co.tz); case "ct": return String(co.ts); case "ci": return dataIso(co.ts, co.tz); case "cI": return fmtData(co.ts, co.tz, "iso-strict");
+          case "s": return assunto(c.msg); case "f": return assunto(c.msg).replace(/[^A-Za-z0-9.]+/g, "-").replace(/^-+|-+$/g, "");
+          case "b": var i0 = c.msg.search(/\n[ \t]*\n/); return i0 < 0 ? "" : c.msg.slice(i0).replace(/^\n[ \t]*\n/, ""); case "B": return c.msg;
+          case "n": return "\n"; case "%": return "%"; case "N": return "";
           case "d": var d = decoracao(repo, h); return d ? " (" + d + ")" : ""; case "D": return decoracao(repo, h);
-          default: return "";
+          default: if (/^x/.test(k)) return String.fromCharCode(parseInt(k.slice(1), 16)); return "";
         }
-      });
+      }
     }
-    function decoracao(repo, h) {
+    function decoracao(repo, h, completo) {
       var partes = [], hr = repo.headRef(), headH = repo.head();
       var ramos = repo.listarRefs("refs/heads/"), remotos = repo.listarRefs("refs/remotes/"), tags = repo.listarRefs("refs/tags/");
       if (headH === h && !hr) partes.push("HEAD");
@@ -1528,7 +1576,9 @@
       tg.reverse();
       // ordem do git: HEAD -> ramo, tags, ramos locais, remotos (em ordem alfabética das refs, tags por último antes? segue o lab)
       var cab = partes.filter(function (p) { return /^HEAD/.test(p); }), locais = partes.filter(function (p) { return !/^HEAD/.test(p); });
-      return cab.concat(tg, remotosP, locais).join(", ");
+      var res = cab.concat(tg, remotosP, locais);
+      if (completo) res = res.map(function (x) { return x.replace(/^HEAD -> /, "HEAD -> refs/heads/").replace(/^tag: /, "tag: refs/tags/").replace(/^(?!HEAD|tag: |refs\/)(.*)$/, function (m0) { return (locais.indexOf(m0) >= 0 ? "refs/heads/" : "refs/remotes/") + m0; }); });
+      return res.join(", ");
     }
     // log.decorate=auto: decora quando a saída é um terminal (no .try), não quando vai para pipe/arquivo
     function decorarAuto(repo, io) { var v = repo.config("log.decorate"); if (v === "false" || v === "no") return false; if (v === "true" || v === "short" || v === "full") return true; return !!(io.tty && io.tty()); }
@@ -1548,6 +1598,8 @@
         else if (a === "--name-only") o.nameOnly = true;
         else if (a === "--name-status") o.nameStatus = true;
         else if (a === "--decorate" || a === "--decorate=short") o.decorate = true;
+        else if (a === "--decorate=full") { o.decorate = true; o.decoCompleta = true; }
+        else if (a === "--decorate=no") o.decorate = false;
         else if (a === "--no-decorate") o.decorate = false;
         else if (a === "--reverse") o.reverse = true;
         else if (a === "--first-parent") o.firstParent = true;
@@ -1557,7 +1609,8 @@
         else if (a === "-s" || a === "--no-patch") o.noPatch = true;
         else if (a === "--fuller" || a === "--pretty=fuller" || a === "--format=fuller") o.fuller = true;
         else if (a === "--pretty=oneline" || a === "--format=oneline") { o.oneline = true; o.abbrev = false; }
-        else if (a === "--pretty=short" || a === "--pretty=medium" || a === "--pretty") {}
+        else if ((m = /^--(?:pretty|format)=(short|full|medium)$/.exec(a))) o.pretty = m[1];
+        else if (a === "--pretty") {}
         else if (a === "--relative-date" || a === "--date=relative") o.dataRel = true;
         else if ((m = /^--(?:pretty|format)=(?:format:|tformat:)?(.*)$/.exec(a))) { o.format = m[1]; o.tformat = !/^--pretty=format:/.test(a); o.oneline = false; }
         else if (a === "-n" || a === "--max-count") o.n = +args[++i];
@@ -1667,7 +1720,7 @@
       var listaToda = lista.slice();
       if (o.n >= 0) lista = lista.slice(0, o.n);
       if (o.reverse) lista.reverse();
-      var opt = { oneline: o.oneline, decorate: o.decorate === true || (o.decorate === null && decorarAuto(repo, io)), format: o.format, tformat: o.tformat, abbrev: o.abbrev, fuller: o.fuller, dataRel: o.dataRel };
+      var opt = { oneline: o.oneline, decorate: o.decorate === true || (o.decorate === null && decorarAuto(repo, io)), format: o.format, tformat: o.tformat, abbrev: o.abbrev, fuller: o.fuller, dataRel: o.dataRel, dataFmt: o.dataFmt, pretty: o.pretty, decoCompleta: o.decoCompleta };
       var temCorpo = o.patch || o.stat || o.shortstat || o.nameOnly || o.nameStatus;
       if (o.graph) { io.out(desenharGrafo(repo, lista, listaToda, opt, o, specs)); return 0; }
       var out = "";
@@ -1872,7 +1925,7 @@
         if (obj.type === "blob") { out += obj.data; return; }
         if (obj.type === "tree") { out += "tree " + r + "\n\n" + obj.ents.map(function (e) { return e.name + (e.mode === "40000" ? "/" : ""); }).join("\n") + "\n"; return; }
         if (idx > 0 && !o.oneline) out += "\n";
-        out += formatarCommit(repo, h, { oneline: o.oneline, decorate: o.decorate === true || (o.decorate === null && decorarAuto(repo, io)), format: o.format, tformat: o.tformat, fuller: o.fuller });
+        out += formatarCommit(repo, h, { oneline: o.oneline, decorate: o.decorate === true || (o.decorate === null && decorarAuto(repo, io)), format: o.format, tformat: o.tformat, fuller: o.fuller, dataFmt: o.dataFmt, pretty: o.pretty, decoCompleta: o.decoCompleta });
         var c = obj;
         if (o.noPatch) return;
         if (c.parents.length > 1 && !o.stat && !o.nameOnly && !o.nameStatus) { out += "\n"; return; }
