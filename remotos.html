@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git: o que é um repositório remoto — origin, GitHub e origin/main | Guia Git</title>
+<meta name="description" content="O que é um repositório remoto para quem está começando: a cópia do projeto no GitHub, o nome origin, a URL, o ciclo clone, push, fetch e pull, o que é o origin/main, o que querem dizer à frente e atrás no git status, e os erros reais quando não há remoto.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">O que é um Repositório Remoto</span></h1>
+
+<p class="intro">Até aqui, tudo o que você fez com o Git ficou <strong>no seu computador</strong>: os commits, os branches, o histórico inteiro moram na pasta <code>.git</code> do projeto. Se o notebook quebrar, vai tudo junto. E se o Bruno quiser ajudar no site de receitas, ele não tem como ver os seus commits. A solução é ter <strong>outra cópia</strong> do repositório em outro lugar, normalmente no <a href="git-e-github.html">GitHub</a>. Essa outra cópia se chama <strong>repositório remoto</strong>.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é um repositório remoto, e o que quer dizer <code>origin</code>.</li>
+  <li>O ciclo de trabalho com um remoto: <code>clone</code>, <code>push</code>, <code>fetch</code> e <code>pull</code> (cada um tem a sua aula).</li>
+  <li>O que é o <code>origin/main</code> que aparece no <code>git log</code> e no <code>git status</code>.</li>
+  <li>O que querem dizer "à frente" e "atrás" de <code>origin/main</code>.</li>
+  <li>Os erros de quem tenta enviar sem ter um remoto.</li>
+</ul>
+</div>
+
+<p>As saídas desta aula saíram do Git 2.53 do Ubuntu 26.04, num terminal de verdade da máquina da Ana. O "GitHub" do laboratório é uma imitação local do GitHub, que responde aos comandos do Git como o de verdade. Repare que algumas mensagens saem em português e outras em inglês: a tradução do Git no Ubuntu é parcial (em outros sistemas, as frases podem estar diferentes ou todas em inglês).</p>
+
+<hr>
+
+<h2>A ideia: o caderno de receitas da avó</h2>
+<p>Na família da Ana, cada pessoa tem em casa uma <strong>cópia</strong> do caderno de receitas. O caderno "oficial" fica na casa da avó. Quando a Ana inventa uma receita, ela escreve no caderno dela; no domingo, leva até a casa da avó e <strong>copia para o oficial</strong>. Quando o Bruno quer as novidades, ele vai à casa da avó e <strong>copia do oficial</strong> para o caderno dele.</p>
+<p>Três detalhes dessa história valem para o Git:</p>
+<ul>
+  <li><strong>Cada um tem a cópia completa</strong>, com todas as receitas e toda a história. Dá para trabalhar sem ir à casa da avó (sem internet).</li>
+  <li><strong>Nada se copia sozinho.</strong> Diferente de uma pasta do Google Drive, o Git não sincroniza nada por conta própria: você <strong>manda</strong> (<code>push</code>) e <strong>busca</strong> (<code>fetch</code>/<code>pull</code>) quando quer.</li>
+  <li>O caderno da avó é só mais uma cópia, combinada como ponto de encontro. No Git, esse ponto de encontro é o <strong>remoto</strong>, e o mais comum é ele estar no GitHub.</li>
+</ul>
+
+<pre>        computador da Ana                 GitHub                  computador do Bruno
+     ┌───────────────────┐   push   ┌───────────────────┐  clone/  ┌───────────────────┐
+     │ receitas/         │ ───────→ │ ana-souza/        │  fetch/  │ receitas/         │
+     │   .git (cópia     │          │   receitas        │  pull    │   .git (cópia     │
+     │    completa)      │ ←─────── │ (o "remoto")      │ ───────→ │    completa)      │
+     └───────────────────┘  fetch/  └───────────────────┘ ←─────── └───────────────────┘
+                            pull                             push
+</pre>
+
+<h3>O vocabulário</h3>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Palavra</th><th>O que é</th></tr>
+<tr><td><strong>remoto</strong> (<em>remote</em>)</td><td>Outra cópia do repositório, em outro lugar (GitHub, um servidor, outra pasta), que o seu repositório conhece por um <strong>nome</strong>.</td></tr>
+<tr><td><code>origin</code></td><td>O nome tradicional do remoto principal ("origem"). É só um apelido para a URL; o Git o cria sozinho no <code>git clone</code>.</td></tr>
+<tr><td>URL</td><td>O endereço do remoto, como <code>https://github.com/ana-souza/receitas.git</code>.</td></tr>
+<tr><td><code>git clone</code></td><td>Copia um repositório remoto inteiro para o seu computador (aula <a href="git-clone.html">git clone</a>).</td></tr>
+<tr><td><code>git push</code></td><td>"Empurra": envia os seus commits para o remoto (aula <a href="git-push.html">git push</a>).</td></tr>
+<tr><td><code>git fetch</code></td><td>"Busca": traz os commits novos do remoto, sem mexer nos seus arquivos (aula <a href="git-fetch.html">git fetch</a>).</td></tr>
+<tr><td><code>git pull</code></td><td>"Puxa": busca e já junta no seu branch (aula <a href="git-pull.html">git pull</a>).</td></tr>
+<tr><td><code>origin/main</code></td><td>A "lembrança" que o seu repositório guarda de onde estava o <code>main</code> do remoto da última vez que vocês conversaram.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>1. Um repositório sem remoto</h2>
+<p>A Ana tem o repositório de receitas com 2 commits, feito com <code>git init</code>. O comando que lista os remotos é o <code>git remote</code> (aula <a href="git-remote.html">git remote</a>); com <code>-v</code>, ele mostra as URLs:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git remote -v
+</pre>
+
+<p>Nada: o repositório só existe no notebook. Um repositório criado com <code>git init</code> começa sem nenhum remoto.</p>
+
+<h2>2. Ligando o repositório ao GitHub</h2>
+<p>A Ana criou um repositório vazio no site do GitHub, chamado <code>receitas</code> (como fazer isso está na aula <a href="github-repositorio.html">Criando um Repositório no GitHub</a>). O GitHub mostra o endereço dele, e ela o registra no Git com o nome <code>origin</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git remote add origin https://github.com/ana-souza/receitas.git
+$ git remote -v
+origin  https://github.com/ana-souza/receitas.git (fetch)
+origin  https://github.com/ana-souza/receitas.git (push)
+</pre>
+
+<dl class="anatomy">
+  <dt>git remote add</dt><dd>"Acrescente um remoto".</dd>
+  <dt>origin</dt><dd>O nome do remoto. Daqui em diante, em vez da URL inteira, a Ana escreve só <code>origin</code>.</dd>
+  <dt>https://github.com/ana-souza/receitas.git</dt><dd>A URL: no GitHub, o usuário (<code>ana-souza</code>), o repositório (<code>receitas</code>) e o <code>.git</code> no fim.</dd>
+  <dt>(fetch) e (push)</dt><dd>O endereço usado para <strong>buscar</strong> e o usado para <strong>enviar</strong>. Quase sempre são o mesmo.</dd>
+</dl>
+
+<p>O <code>git remote add</code> não conversa com o GitHub: ele só anota o endereço no arquivo <code>.git/config</code>. A conversa começa no primeiro <code>push</code>.</p>
+
+<h2>3. O primeiro envio e o <code>origin/main</code></h2>
+
+<pre class="term" data-cwd="~/receitas">$ git push -u origin main
+Enumerating objects: 6, done.
+Counting objects: 100% (6/6), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (3/3), done.
+Writing objects: 100% (6/6), 498 bytes | 498.00 KiB/s, done.
+Total 6 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/receitas.git
+ * [new branch]      main -&gt; main
+branch 'main' set up to track 'origin/main'.
+</pre>
+
+<p>Os detalhes do <code>push</code> estão na aula <a href="git-push.html">git push</a>. Por enquanto, o importante: as linhas de cima são o Git contando e empacotando os commits; <code>* [new branch] main -&gt; main</code> diz que o <code>main</code> da Ana virou um branch <code>main</code> novo no GitHub; e a última linha diz que, a partir de agora, o <code>main</code> da Ana "acompanha" o <code>origin/main</code>. Veja onde ele aparece:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+c34349b (HEAD -&gt; main, origin/main) Adiciona a receita de bolo
+700bbd5 Cria o README
+$ git status
+No ramo main
+Your branch is up to date with 'origin/main'.
+
+nothing to commit, working tree clean
+$ git branch -a
+* main
+  remotes/origin/main
+</pre>
+
+<dl class="anatomy">
+  <dt>(HEAD -&gt; main, origin/main)</dt><dd>Duas etiquetas no mesmo commit: o seu <code>main</code> e o <code>origin/main</code> (o <code>main</code> do remoto <code>origin</code>) estão no mesmo lugar.</dd>
+  <dt>Your branch is up to date with 'origin/main'.</dt><dd>"O seu branch está em dia com o <code>origin/main</code>": nada a enviar, nada a receber (até onde o Git sabe).</dd>
+  <dt>remotes/origin/main</dt><dd>No <code>git branch -a</code> (de <em>all</em>, todos), o <code>origin/main</code> aparece como um branch de outro tipo: um <strong>branch remoto</strong> (os livros chamam de <em>remote-tracking branch</em>, "branch que acompanha o remoto"). Você não trabalha nele; o Git o atualiza sozinho a cada <code>push</code>, <code>fetch</code> e <code>pull</code>.</dd>
+</dl>
+
+<div class="warning">
+<strong>O <code>origin/main</code> é uma foto, não uma janela</strong>
+<p>O <code>origin/main</code> mostra onde o <code>main</code> do GitHub estava <strong>na última vez que o seu Git conversou com ele</strong>. Se o Bruno enviar commits agora, o seu <code>origin/main</code> não muda sozinho, e o <code>git status</code> continua dizendo "em dia". Para atualizar a foto, é preciso um <code>git fetch</code> (seção 5).</p>
+</div>
+
+<div class="try" data-setup="github novo ana-souza/receitas;;mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;printf 'Bolo de cenoura\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona a receita de bolo';;git remote add origin https://github.com/ana-souza/receitas.git;;git push -q -u origin main;;echo 'Forno: 40 minutos' &gt;&gt; bolo.txt;;git commit -q -am 'Corrige o tempo de forno do bolo'" data-goal="ran:git remote -v,out:https://github.com/ana-souza/receitas.git" data-solucao="git remote -v">
+<p class="try-task"><strong>Missão:</strong> o repositório de receitas da Ana já está ligado ao GitHub. Descubra o nome e o endereço (URL) do remoto.</p>
+</div>
+
+<hr>
+
+<h2>4. À frente: commits que o GitHub ainda não tem</h2>
+<p>A Ana corrigiu o tempo de forno e fez um commit. Ele existe só no notebook:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'Forno: 40 minutos' &gt;&gt; bolo.txt
+$ git commit -q -am 'Corrige o tempo de forno do bolo'
+$ git status
+No ramo main
+Seu ramo está à frente de 'origin/main' por 1 submissão.
+  (use "git push" to publish your local commits)
+
+nothing to commit, working tree clean
+$ git log --oneline
+c20285a (HEAD -&gt; main) Corrige o tempo de forno do bolo
+c34349b (origin/main) Adiciona a receita de bolo
+700bbd5 Cria o README
+</pre>
+
+<dl class="anatomy">
+  <dt>Seu ramo está à frente de 'origin/main' por 1 submissão.</dt><dd>"O seu branch está à frente do <code>origin/main</code> em 1 commit" (a tradução do Ubuntu chama commit de "submissão"): você tem 1 commit que o GitHub ainda não tem.</dd>
+  <dt>(use "git push" to publish your local commits)</dt><dd>A dica: "use <code>git push</code> para publicar os seus commits locais".</dd>
+  <dt>c34349b (origin/main)</dt><dd>No <code>git log</code>, as duas etiquetas se separaram: o <code>main</code> andou, o <code>origin/main</code> ficou para trás.</dd>
+</dl>
+
+<p>Seguindo a dica:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git push
+Enumerating objects: 5, done.
+Counting objects: 100% (5/5), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (2/2), done.
+Writing objects: 100% (3/3), 323 bytes | 323.00 KiB/s, done.
+Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/receitas.git
+   c34349b..c20285a  main -&gt; main
+$ git log --oneline
+c20285a (HEAD -&gt; main, origin/main) Corrige o tempo de forno do bolo
+c34349b Adiciona a receita de bolo
+700bbd5 Cria o README
+</pre>
+
+<p>Agora bastou <code>git push</code>, sem <code>origin main</code>: o <code>-u</code> do primeiro envio deixou combinado para onde o <code>main</code> vai. A linha <code>c34349b..c20285a main -&gt; main</code> diz que o <code>main</code> do GitHub andou do commit <code>c34349b</code> para o <code>c20285a</code>. E as etiquetas se juntaram de novo.</p>
+
+<div class="try" data-setup="github novo ana-souza/receitas;;mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;printf 'Bolo de cenoura\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona a receita de bolo';;git remote add origin https://github.com/ana-souza/receitas.git;;git push -q -u origin main;;echo 'Forno: 40 minutos' &gt;&gt; bolo.txt;;git commit -q -am 'Corrige o tempo de forno do bolo'" data-goal="ran:git push,out:up to date with 'origin/main'" data-solucao="git push;;git status">
+<p class="try-task"><strong>Missão:</strong> a Ana tem 1 commit que o GitHub ainda não tem. Confira com <code>git status</code>, envie com <code>git push</code> e rode o <code>git status</code> de novo até ele dizer que está em dia (<code>up to date</code>).</p>
+</div>
+
+<hr>
+
+<h2>5. Atrás: commits que você ainda não tem</h2>
+<p>No computador dele, o Bruno clonou o repositório, acrescentou a receita de pão de queijo e enviou com <code>git push</code>. No notebook da Ana, nada mudou, nem a "foto":</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+c20285a (HEAD -&gt; main, origin/main) Corrige o tempo de forno do bolo
+c34349b Adiciona a receita de bolo
+700bbd5 Cria o README
+</pre>
+
+<p>O Git da Ana só fica sabendo quando ela pede notícias com <code>git fetch</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git fetch
+remote: Enumerating objects: 4, done.
+remote: Counting objects: 100% (4/4), done.
+remote: Compressing objects: 100% (2/2), done.
+remote: Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (3/3), 315 bytes | 315.00 KiB/s, done.
+From https://github.com/ana-souza/receitas
+   c20285a..73a019c  main       -&gt; origin/main
+$ git status
+No ramo main
+Seu ramo está atrás de 'origin/main' em 1 submissão, e pode ser avançado.
+  (use "git pull" to update your local branch)
+
+nothing to commit, working tree clean
+$ git log --oneline --graph --all
+* 73a019c (origin/main, origin/HEAD) Adiciona a receita de pão de queijo
+* c20285a (HEAD -&gt; main) Corrige o tempo de forno do bolo
+* c34349b Adiciona a receita de bolo
+* 700bbd5 Cria o README
+</pre>
+
+<dl class="anatomy">
+  <dt>c20285a..73a019c main -&gt; origin/main</dt><dd>O <code>main</code> do GitHub tinha andado até o <code>73a019c</code>, e o <code>origin/main</code> da Ana foi atualizado para lá.</dd>
+  <dt>Seu ramo está atrás de 'origin/main' em 1 submissão, e pode ser avançado.</dt><dd>"O seu branch está 1 commit atrás do <code>origin/main</code>, e pode ser avançado" (sem conflito: é só andar para a frente).</dd>
+  <dt>(use "git pull" to update your local branch)</dt><dd>A dica: "use <code>git pull</code> para atualizar o seu branch local".</dd>
+  <dt>origin/HEAD</dt><dd>Uma etiqueta que diz qual é o branch principal do remoto (aqui, o <code>main</code>).</dd>
+</dl>
+
+<p>O commit do Bruno já está no computador da Ana (no <code>origin/main</code>), mas o <code>main</code> dela e os arquivos da pasta ainda não mudaram. O passo seguinte, o <code>git pull</code>, é assunto da aula <a href="git-pull.html">git pull</a>.</p>
+
+<hr>
+
+<h2 id="formas">Formas de ter um remoto</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Como o remoto aparece</th></tr>
+<tr><td>O projeto já existe no GitHub e você quer uma cópia</td><td><code>git clone URL</code>: o Git cria o <code>origin</code> sozinho (aula <a href="git-clone.html">git clone</a>)</td></tr>
+<tr><td>O projeto nasceu no seu computador (<code>git init</code>)</td><td>Crie o repositório vazio no GitHub e rode <code>git remote add origin URL</code> + <code>git push -u origin main</code></td></tr>
+<tr><td>Você quer mandar para dois lugares (GitHub e outro servidor)</td><td>Dois remotos com nomes diferentes (aula <a href="git-remote.html">git remote</a>)</td></tr>
+</table>
+</div>
+
+<p>O remoto não precisa ser o GitHub. Pode ser o GitLab, o Bitbucket, um servidor da empresa ou até outra pasta do mesmo computador. E a URL pode ter três formatos:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Formato</th><th>Exemplo</th><th>Quando</th></tr>
+<tr><td>HTTPS</td><td><code>https://github.com/ana-souza/receitas.git</code></td><td>O mais simples; para enviar, o GitHub pede um token (aula <a href="https-token.html">HTTPS e Token</a>)</td></tr>
+<tr><td>SSH</td><td><code>git@github.com:ana-souza/receitas.git</code></td><td>Com uma chave SSH configurada, não pede senha (aula <a href="ssh.html">Chaves SSH</a>)</td></tr>
+<tr><td>Caminho local</td><td><code>/home/ana/servidor/receitas.git</code></td><td>Outra pasta do computador (bom para treinar)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>fatal: No configured push destination.</code></strong>
+<pre class="term" data-cwd="~/sem-remoto">$ git push
+fatal: No configured push destination.
+Either specify the URL from the command-line or configure a remote repository using
+
+    git remote add &lt;name&gt; &lt;url&gt;
+
+and then push using the remote name
+
+    git push &lt;name&gt;
+
+</pre>
+<p><strong>O que aconteceu:</strong> "nenhum destino de envio configurado". O repositório não tem remoto, então o <code>push</code> não sabe para onde ir. A dica, em inglês: "informe a URL no comando ou configure um repositório remoto com <code>git remote add &lt;nome&gt; &lt;url&gt;</code> e depois envie com <code>git push &lt;nome&gt;</code>".</p>
+<p><strong>Como confirmar:</strong> <code>git remote -v</code> não mostra nada.</p>
+<p><strong>Como resolver:</strong> <code>git remote add origin URL</code> e depois <code>git push -u origin main</code>.</p>
+</div>
+
+<div class="cenario">
+<strong><code>fatal: 'origin' does not appear to be a git repository</code></strong>
+<pre class="term" data-cwd="~/sem-remoto">$ git push origin main
+fatal: 'origin' does not appear to be a git repository
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+</pre>
+<p><strong>O que aconteceu:</strong> "<code>origin</code> não parece ser um repositório Git". Não existe remoto com esse nome, então o Git tentou usar <code>origin</code> como se fosse um endereço, e falhou. O resto da mensagem ("não consegui ler do repositório remoto; confira se você tem acesso e se o repositório existe") é genérico.</p>
+<p><strong>Como resolver:</strong> confira os nomes com <code>git remote -v</code>. Se a lista está vazia, falta o <code>git remote add</code>; se o remoto tem outro nome, use esse nome.</p>
+</div>
+
+<div class="cenario">
+<strong><code>There is no tracking information for the current branch.</code></strong>
+<pre class="term" data-cwd="~/sem-remoto">$ git pull
+There is no tracking information for the current branch.
+Please specify which branch you want to merge with.
+See git-pull(1) for details.
+
+    git pull &lt;remote&gt; &lt;branch&gt;
+
+If you wish to set tracking information for this branch you can do so with:
+
+    git branch --set-upstream-to=&lt;remote&gt;/&lt;branch&gt; main
+
+</pre>
+<p><strong>O que aconteceu:</strong> "não há informação de acompanhamento para o branch atual": o <code>main</code> não está ligado a nenhum branch remoto, então o <code>pull</code> não sabe de onde puxar. Repare que, num repositório assim, o <code>git status</code> nem fala de <code>origin/main</code>:</p>
+<pre class="term" data-cwd="~/sem-remoto">$ git status
+No ramo main
+nothing to commit, working tree clean
+</pre>
+<p><strong>Como resolver:</strong> se o remoto ainda não existe, crie com <code>git remote add</code>. Se ele existe, ligue o branch no primeiro envio (<code>git push -u origin main</code>) ou com o comando da dica. Mais na aula <a href="upstream.html">Upstream</a>.</p>
+</div>
+
+<div class="cenario">
+<strong>"O GitHub tem coisas que eu não vejo"</strong>
+<p><strong>O que aconteceu:</strong> o seu <code>origin/main</code> é a foto da última conversa com o GitHub. Sem <code>git fetch</code> (ou <code>git pull</code>), o <code>git status</code> pode dizer "em dia" mesmo com commits novos lá.</p>
+<p><strong>Como resolver:</strong> <code>git fetch</code> e depois <code>git status</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando ou mensagem</th><th>O que quer dizer</th></tr>
+<tr><td><code>git remote -v</code></td><td>Lista os remotos e as URLs</td></tr>
+<tr><td><code>git remote add origin URL</code></td><td>Liga o repositório a um remoto chamado <code>origin</code></td></tr>
+<tr><td><code>git push -u origin main</code></td><td>Primeiro envio do <code>main</code>, deixando-o ligado ao <code>origin/main</code></td></tr>
+<tr><td><code>git branch -a</code></td><td>Lista os branches locais e os remotos (<code>remotes/origin/…</code>)</td></tr>
+<tr><td><code>origin/main</code></td><td>Onde estava o <code>main</code> do remoto na última conversa</td></tr>
+<tr><td><code>up to date with 'origin/main'</code></td><td>Em dia (até onde o Git sabe)</td></tr>
+<tr><td><code>à frente de 'origin/main' por N</code></td><td>Você tem N commits para enviar (<code>git push</code>)</td></tr>
+<tr><td><code>atrás de 'origin/main' em N</code></td><td>O remoto tem N commits que você não tem (<code>git pull</code>)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o comando</h3>
+<p>Ligue o repositório ao endereço <code>https://github.com/ana-souza/tcc.git</code> com o nome tradicional:</p>
+<div class="ex-code">git remote <input data-answer="add" aria-label="subcomando"> <input data-answer="origin" aria-label="nome do remoto"> https://github.com/ana-souza/tcc.git</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. O que é o <code>origin</code>?</p>
+<label><input type="radio" name="q2"> O primeiro commit do repositório</label>
+<label><input type="radio" name="q2"> O nome (apelido) do remoto principal, que guarda a URL</label>
+<label><input type="radio" name="q2"> O branch principal do GitHub</label>
+<label><input type="radio" name="q2"> Um comando para enviar commits</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. O <code>git status</code> diz <code>Seu ramo está à frente de 'origin/main' por 2 submissões</code>. O que fazer para o GitHub receber esses commits?</p>
+<label><input type="radio" name="q3"> <code>git pull</code></label>
+<label><input type="radio" name="q3"> <code>git fetch</code></label>
+<label><input type="radio" name="q3"> <code>git push</code></label>
+<label><input type="radio" name="q3"> Nada: o Git envia sozinho</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. O Bruno enviou um commit para o GitHub há 5 minutos. O <code>git status</code> da Ana diz <code>up to date with 'origin/main'</code>. Por quê?</p>
+<label><input type="radio" name="q4"> O commit do Bruno deu erro</label>
+<label><input type="radio" name="q4"> O <code>git status</code> só olha os arquivos</label>
+<label><input type="radio" name="q4"> O Bruno enviou para outro repositório</label>
+<label><input type="radio" name="q4"> O <code>origin/main</code> é a foto da última conversa com o GitHub; falta um <code>git fetch</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. Qual destas afirmações é verdadeira?</p>
+<label><input type="radio" name="q5"> Cada clone tem a cópia completa do histórico, e o Git só troca commits com o remoto quando você pede</label>
+<label><input type="radio" name="q5"> O GitHub guarda o histórico e o seu computador guarda só os arquivos</label>
+<label><input type="radio" name="q5"> O <code>git remote add</code> já envia os commits</label>
+<label><input type="radio" name="q5"> Um repositório só pode ter um remoto</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Um <strong>remoto</strong> é outra cópia do repositório (normalmente no GitHub), conhecida por um nome; o tradicional é <code>origin</code>.</li>
+  <li>Cada cópia tem o histórico completo, e nada se sincroniza sozinho: <code>push</code> envia, <code>fetch</code> busca, <code>pull</code> busca e junta, <code>clone</code> copia tudo pela primeira vez.</li>
+  <li><code>git remote -v</code> mostra os remotos; <code>git remote add origin URL</code> cria um.</li>
+  <li><code>origin/main</code> é a foto do <code>main</code> do remoto na última conversa: o <code>git status</code> compara o seu branch com ela ("em dia", "à frente", "atrás").</li>
+  <li>Sem remoto, o <code>push</code> reclama <code>No configured push destination</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
