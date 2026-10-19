@@ -10855,6 +10855,7 @@
     _internos: { mkF: mkF, mkD: mkD, utf8bytes: utf8bytes, compilarSed: compilarSed, casaPadrao: casaPadrao, ereParaJs: ereParaJs, imprimirCmd: imprimirCmd, Arith: Arith }
   };
   global.BashSim = BashSim;
+  (global.BashSimExtras || []).forEach(function (f) { f(BashSim); }); // extensões carregadas antes (gitsim.js)
   if (typeof document !== "undefined" && typeof montarTudo === "function") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", montarTudo); else montarTudo();
   }

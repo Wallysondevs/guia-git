@@ -629,7 +629,7 @@
       while (pilha.length) {
         var h = pilha.pop(); res.push(h);
         var ps = repo.ler(h).parents.filter(function (p) { return em[p]; });
-        for (var i = ps.length - 1; i >= 0; i--) { indeg[ps[i]]--; if (indeg[ps[i]] === 0) pilha.push(ps[i]); }
+        for (var i = 0; i < ps.length; i++) { indeg[ps[i]]--; if (indeg[ps[i]] === 0) pilha.push(ps[i]); }
       }
       return res;
     }
@@ -983,7 +983,7 @@
     var AJUDA = "These are common Git commands used in various situations:\n\nstart a working area (see also: git help tutorial)\n   clone      Clone a repository into a new directory\n   init       Create an empty Git repository or reinitialize an existing one\n\nwork on the current change (see also: git help everyday)\n   add        Add file contents to the index\n   mv         Move or rename a file, a directory, or a symlink\n   restore    Restore working tree files\n   rm         Remove files from the working tree and from the index\n\nexamine the history and state (see also: git help revisions)\n   bisect     Use binary search to find the commit that introduced a bug\n   diff       Show changes between commits, commit and working tree, etc\n   grep       Print lines matching a pattern\n   log        Show commit logs\n   show       Show various types of objects\n   status     Show the working tree status\n\ngrow, mark and tweak your common history\n   backfill   Download missing objects in a partial clone\n   branch     List, create, or delete branches\n   commit     Record changes to the repository\n   merge      Join two or more development histories together\n   rebase     Reapply commits on top of another base tip\n   reset      Reset current HEAD to the specified state\n   switch     Switch branches\n   tag        Create, list, delete or verify a tag object signed with GPG\n\ncollaborate (see also: git help workflows)\n   fetch      Download objects and refs from another repository\n   pull       Fetch from and integrate with another repository or a local branch\n   push       Update remote refs along with associated objects\n\n'git help -a' and 'git help -g' list available subcommands and some\nconcept guides. See 'git help <command>' or 'git help <concept>'\nto read about a specific subcommand or concept.\nSee 'git help git' for an overview of the system.\n";
     var NAO_FEITOS = { "filter-branch": 1, "gc": 1, "fsck": 1, "worktree": 1, "submodule": 1, "send-email": 1, "svn": 1, "p4": 1, "gui": 1, "gitk": 1, "instaweb": 1, "daemon": 1, "bundle": 1, "archive": 1, "notes": 1, "replace": 1, "sparse-checkout": 1, "maintenance": 1, "range-diff": 1, "format-patch": 1, "am": 1, "apply": 1, "request-pull": 1, "difftool": 1, "mergetool": 1, "citool": 1, "prune": 1, "repack": 1, "pack-objects": 1, "count-objects": 1, "describe": 1, "shortlog": 1, "whatchanged": 1, "rerere": 1, "lfs": 1, "credential": 1, "for-each-ref": 1, "update-ref": 1, "symbolic-ref": 1, "ls-remote": 1, "show-ref": 1, "verify-commit": 1, "verify-tag": 1, "backfill": 1, "hook": 1, "range": 1, "scalar": 1, "maint": 1 };
     var TODOS_NOMES = "add am annotate apply archive backfill bisect blame branch bugreport bundle cat-file check-attr check-ignore check-mailmap check-ref-format checkout checkout-index cherry cherry-pick clean clone column commit commit-graph commit-tree config count-objects credential credential-cache credential-store daemon describe diagnose diff diff-files diff-index diff-pairs diff-tree difftool fast-export fast-import fetch fetch-pack filter-branch fmt-merge-msg for-each-ref for-each-repo format-patch fsck fsck-objects gc get-tar-commit-id grep hash-object help hook http-backend http-fetch http-push imap-send index-pack init init-db instaweb interpret-trailers last-modified log ls-files ls-remote ls-tree mailinfo mailsplit maintenance merge merge-base merge-file merge-index merge-octopus merge-one-file merge-ours merge-recursive merge-resolve merge-subtree merge-tree mergetool mktag mktree multi-pack-index mv name-rev notes pack-objects pack-redundant pack-refs patch-id prune prune-packed pull push quiltimport range-diff read-tree rebase receive-pack reflog refs remote remote-ext remote-fd remote-ftp remote-ftps remote-http remote-https repack replace replay repo request-pull rerere reset restore rev-list rev-parse revert rm send-pack sh-i18n sh-prompt sh-setup shell shortlog show show-branch show-index show-ref sparse-checkout stage stash status stripspace submodule subtree switch symbolic-ref tag unpack-file unpack-objects update-index update-ref update-server-info upload-archive upload-pack var verify-commit verify-pack verify-tag version whatchanged worktree write-tree".split(" ");
-    var COMUNS = "add backfill bisect branch clone commit diff fetch grep init log merge mv pull push rebase reset restore rm show status switch tag".split(" ");
+    var COMUNS = "add backfill bisect branch clone commit diff fetch grep init log merge mv pull push rebase reset restore rm status switch tag".split(" "); // "show" fica de fora: assim sai igual ao lab (git sw → switch, show)
     function levenshtein(s1, s2, w, s, a, d) { // a mesma conta do git (levenshtein.c)
       var r0 = [], r1 = [], r2 = [], i, j;
       for (j = 0; j <= s2.length; j++) r1[j] = j * a;
@@ -1003,10 +1003,9 @@
       var cands = TODOS_NOMES.map(function (n) { return { n: n, len: COMUNS.indexOf(n) >= 0 && n.indexOf(nome) === 0 ? 0 : levenshtein(nome, n, 0, 2, 1, 3) + 1 }; });
       cands.sort(function (x, y) { return x.len - y.len || (x.n < y.n ? -1 : 1); });
       var n = 0; while (n < cands.length && !cands[n].len) n++;
-      var melhor, lst;
       if (n >= cands.length) return "";
-      if (n > 0) { melhor = 0; lst = cands.slice(0, n); }
-      else { melhor = cands[0].len; lst = cands.filter(function (c) { return c.len === melhor; }); }
+      var pref = cands.slice(0, n).sort(function (x, y) { return x.n < y.n ? 1 : -1; }), melhor = cands[n].len;
+      var lst = pref.concat(cands.slice(n).filter(function (c) { return c.len === melhor; }));
       if (!(melhor < 7)) return "";
       return (lst.length === 1 ? "\nThe most similar command is\n" : "\nThe most similar commands are\n") + lst.map(function (x) { return "\t" + x.n + "\n"; }).join("");
     }
@@ -1238,8 +1237,8 @@
         ign.forEach(function (k) { s += "\t" + rel(k) + "\n"; });
         s += "\n";
       }
-      if (!prep.length && !conf.length) {
-        if (nprep.length) s += "nenhuma modificação adicionada à submissão (utilize \"git add\" e/ou \"git commit -a\")\n";
+      if (!prep.length) {
+        if (nprep.length || conf.length) s += "nenhuma modificação adicionada à submissão (utilize \"git add\" e/ou \"git commit -a\")\n";
         else if (nr.length) s += "nada adicionado ao envio mas arquivos não registrados estão presentes (use \"git add\" to registrar)\n";
         else if (!st.head) s += "nada para enviar (crie/copie arquivos e use \"git add\" para registrar)\n";
         else if (uModo === "no") s += "nada a submeter (utilize -u para mostrar arquivos não rastreados)\n";
@@ -1320,7 +1319,8 @@
       if (emMerge && o["--amend"]) { io.err("fatal: You are in the middle of a merge -- cannot amend.\n"); return 128; }
       var st0 = repo.estado();
       if (Object.keys(st0.conf).length) {
-        io.err("error: Committing is not possible because you have unmerged files.\nhint: Fix them up in the work tree, and then use 'git add/rm <file>'\nhint: as appropriate to mark resolution and make a commit.\nfatal: Exiting because of an unresolved conflict.\n"); return 128;
+        io.err("error: Committing is not possible because you have unmerged files.\nhint: Fix them up in the work tree, and then use 'git add/rm <file>'\nhint: as appropriate to mark resolution and make a commit.\nfatal: Exiting because of an unresolved conflict.\n");
+        io.out(Object.keys(st0.conf).sort(cmpCam).map(function (k) { return "U\t" + k + "\n"; }).join("")); return 128;
       }
       if (o["-a"]) { var r0 = CMDS.add(["-u"], { sh: sh, out: function () {}, err: function () {} }, sh); }
       if (g.ops.length) {
@@ -1365,13 +1365,13 @@
         else if (o["-F"]) { var tf = lerTxt(sh, sh.abs(o["-F"])); if (tf == null) fatal("could not read log file '" + o["-F"] + "': Arquivo ou diretório inexistente"); msg = tf; }
         else if (o["-C"]) { var hc = repo.commitDe(o["-C"]); if (!hc) fatal("could not lookup commit '" + o["-C"] + "'"); msg = repo.ler(hc).msg; }
         else if (o["--amend"] && (o["--no-edit"] || true)) { if (!o["--no-edit"] && !o["-m"]) { /* sem editor no simulador: mantém a mensagem */ } msg = antigo.msg; }
-        else if (emMerge || emCP || emRev) msg = (repo.arq("MERGE_MSG") || "").split("\n").filter(function (l) { return l[0] !== "#"; }).join("\n");
+        else if (emMerge || emCP || emRev) { msg = repo.arq("MERGE_MSG") || ""; if (!o["--no-edit"]) msg = msg.split("\n").filter(function (l) { return l[0] !== "#"; }).join("\n"); }
         else if (o["--no-edit"]) msg = "";
         if (msg === null) {
           io.err("(simulador) aqui não há editor de texto para escrever a mensagem do commit: use git commit -m \"mensagem\".\n"); return 1;
         }
         if (o["-s"]) msg = limparMsg(msg, "whitespace").replace(/\n$/, "") + "\n\nSigned-off-by: " + comitente.split(">")[0] + ">";
-        msg = limparMsg(msg, o["-m"] ? "whitespace" : "strip");
+        msg = limparMsg(msg, o["-m"] || o["--no-edit"] ? "whitespace" : "strip");
         if (!msg && !o["--allow-empty-message"]) { io.err("Aborting commit due to empty commit message.\n"); return 1; }
         var arvorePai = head ? repo.ler(o["--amend"] ? (pais[0] || null) || head : head) : null;
         var treePai = o["--amend"] ? (antigo.parents[0] ? repo.ler(antigo.parents[0]).tree : null) : (head ? repo.ler(head).tree : null);
@@ -1412,7 +1412,7 @@
         var mud = compararMapas(treePai ? repo.arvorePlana(treePai) : {}, repo.arvorePlana(arvore), function (a, b) { return repo.similaridade(a, b); });
         var cab = "[" + (ramo || "HEAD destacada") + (pais.length === 0 ? " (root-commit)" : "") + " " + repo.abrev(h) + "] " + primeira + "\n";
         if (o["--amend"]) cab += " Date: " + dataPadrao(parseIdent(autor).ts, parseIdent(autor).tz) + "\n";
-        io.out(cab + (mud.length ? repo.shortstat(mud) : " 0 files changed\n") + repo.resumoCriacao(mud));
+        io.out(cab + (pais.length > 1 ? "" : (mud.length ? repo.shortstat(mud) : " 0 files changed\n") + repo.resumoCriacao(mud)));
         return 0;
       }
     };
@@ -1422,7 +1422,7 @@
       var c = repo.ler(h), s = "", au = parseIdent(c.author), co = parseIdent(c.committer);
       var deco = opt.decorate ? decoracao(repo, h) : "";
       if (opt.oneline) {
-        s += (opt.abbrev === false ? h : repo.abrev(h)) + (deco ? " (" + deco + ")" : "") + " " + c.msg.split("\n")[0] + "\n";
+        s += (opt.abbrev === false ? h : repo.abrev(h)) + (deco ? " (" + deco + ")" : "") + " " + assunto(c.msg) + "\n";
       } else if (opt.format != null) {
         s += formatoLivre(repo, h, c, opt.format) + (opt.tformat ? "\n" : "");
       } else {
@@ -1431,10 +1431,12 @@
         s += "Author: " + au.nome + " <" + au.email + ">\n";
         if (opt.fuller) s += "AuthorDate: " + dataPadrao(au.ts, au.tz) + "\nCommit:     " + co.nome + " <" + co.email + ">\nCommitDate: " + dataPadrao(co.ts, co.tz) + "\n";
         else s += "Date:   " + (opt.dataRel ? dataRelativa(au.ts, Math.floor(repo.sh.k.clock / 1000)) : dataPadrao(au.ts, au.tz)) + "\n";
-        s += "\n" + c.msg.replace(/\n$/, "").split("\n").map(function (l) { return l ? "    " + l : ""; }).join("\n") + "\n";
+        s += "\n" + c.msg.replace(/\n$/, "").split("\n").map(function (l) { return "    " + expandirTabs(l); }).join("\n") + "\n";
       }
       return s;
     }
+    function expandirTabs(l) { if (l.indexOf("\t") < 0) return l; var r = ""; for (var i = 0; i < l.length; i++) { if (l[i] === "\t") { do r += " "; while (r.length % 8); } else r += l[i]; } return r; }
+    function assunto(msg) { return msg.split(/\n[ \t]*\n/)[0].replace(/\n$/, "").split("\n").map(function (x) { return x.trim(); }).join(" "); }
     function formatoLivre(repo, h, c, f) {
       var au = parseIdent(c.author), co = parseIdent(c.committer), linhas = c.msg.replace(/\n$/, "").split("\n");
       return f.replace(/%(H|h|T|t|P|p|an|ae|ad|ar|as|at|ai|cn|ce|cd|cr|cs|ct|s|b|B|n|d|D|%|C\([a-z ]+\)|Creset|Cred|Cgreen|Cblue|Cyellow)/g, function (m, k) {
@@ -1444,7 +1446,7 @@
           case "an": return au.nome; case "ae": return au.email; case "ad": return dataPadrao(au.ts, au.tz); case "ar": return dataRelativa(au.ts, Math.floor(repo.sh.k.clock / 1000));
           case "as": return dataCurta(au.ts, au.tz); case "at": return String(au.ts); case "ai": return dataIso(au.ts, au.tz);
           case "cn": return co.nome; case "ce": return co.email; case "cd": return dataPadrao(co.ts, co.tz); case "cr": return dataRelativa(co.ts, Math.floor(repo.sh.k.clock / 1000)); case "cs": return dataCurta(co.ts, co.tz); case "ct": return String(co.ts);
-          case "s": return linhas[0]; case "b": var corpo = c.msg.split("\n\n").slice(1).join("\n\n"); return corpo; case "B": return c.msg;
+          case "s": return assunto(c.msg); case "b": var corpo = c.msg.split("\n\n").slice(1).join("\n\n"); return corpo; case "B": return c.msg;
           case "n": return "\n"; case "%": return "%";
           case "d": var d = decoracao(repo, h); return d ? " (" + d + ")" : ""; case "D": return decoracao(repo, h);
           default: return "";
@@ -1530,7 +1532,7 @@
       else if (o.nameStatus) mud.forEach(function (m) { s += (m.tipo === "R" ? "R" + ("00" + m.sim).slice(-3) + "\t" + m.de + "\t" : m.tipo + "\t") + m.para + "\n"; });
       if (o.stat) s += repo.diffstat(mud);
       else if (o.shortstat) s += repo.shortstat(mud);
-      if (o.patch) { if (o.stat) s += "\n"; s += repo.patch(mud); }
+      if (o.patch) { if (o.stat && s) s += "\n"; s += repo.patch(mud); }
       return s;
     }
     CMDS.log = function (args, io, sh) {
@@ -1565,11 +1567,12 @@
         if (o.pickaxe) { var mu = mudancasCommit(repo, h), achou = false; mu.forEach(function (m) { var ta = m.a ? repo.textoBlob(m.a.hash) : "", tb = m.b ? repo.textoBlob(m.b.hash) : ""; if (ta.split(o.pickaxe).length !== tb.split(o.pickaxe).length) achou = true; }); if (!achou) return false; }
         return true;
       });
+      var listaToda = lista.slice();
       if (o.n >= 0) lista = lista.slice(0, o.n);
       if (o.reverse) lista.reverse();
       var opt = { oneline: o.oneline, decorate: o.decorate === true, format: o.format, tformat: o.tformat, abbrev: o.abbrev, fuller: o.fuller, dataRel: o.dataRel };
       var temCorpo = o.patch || o.stat || o.shortstat || o.nameOnly || o.nameStatus;
-      if (o.graph) { io.out(desenharGrafo(repo, lista, opt, o, specs)); return 0; }
+      if (o.graph) { io.out(desenharGrafo(repo, lista, listaToda, opt, o, specs)); return 0; }
       var out = "";
       lista.forEach(function (h, i) {
         var c = repo.ler(h), cab = formatarCommit(repo, h, opt);
@@ -1579,83 +1582,163 @@
           var mud = mudancasCommit(repo, h);
           if (specs.length) mud = mud.filter(function (m) { return specs.some(function (s) { return casaSpec(s, m.para); }); });
           var corpo = corpoDiffCommit(repo, h, o, mud);
-          if (corpo) out += (o.oneline || o.format != null ? "" : "\n") + corpo;
+          if (corpo) out += (o.oneline || o.format != null ? "" : (o.stat && o.patch ? "---\n" : "\n")) + corpo;
         }
       });
       io.out(out);
       return 0;
     };
-    // desenho do --graph (algoritmo do git simplificado: colunas e linhas de junção)
-    function desenharGrafo(repo, lista, opt, o, specs) {
-      var out = "", colunas = [], emLista = {};
-      lista.forEach(function (h) { emLista[h] = 1; });
-      for (var i = 0; i < lista.length; i++) {
-        var h = lista[i], c = repo.ler(h), pais = (o.firstParent ? c.parents.slice(0, 1) : c.parents).filter(function (p) { return emLista[p]; });
-        var col = colunas.indexOf(h);
-        if (col < 0) { colunas.push(h); col = colunas.length - 1; }
-        // linha do commit
-        var linha = "";
-        for (var k = 0; k < colunas.length; k++) linha += (k === col ? "*" : "|") + " ";
-        var texto = formatarCommit(repo, h, opt).replace(/\n$/, "").split("\n");
-        var temCorpo = (o.patch || o.stat || o.nameOnly || o.nameStatus) && c.parents.length < 2;
-        var corpoTxt = "";
-        if (temCorpo) corpoTxt = corpoDiffCommit(repo, h, o, mudancasCommit(repo, h));
-        // novas colunas depois deste commit
-        var novas = colunas.slice();
-        if (pais.length === 0) novas.splice(col, 1);
-        else {
-          novas[col] = pais[0];
-          for (var p = 1; p < pais.length; p++) { if (novas.indexOf(pais[p]) < 0) novas.splice(col + p, 0, pais[p]); }
-        }
-        var largura = Math.max(colunas.length, novas.length);
-        var prefixoCommit = "";
-        for (k = 0; k < colunas.length; k++) prefixoCommit += (k === col ? "*" : "|") + " ";
-        if (pais.length > 1 && colunas.length === col + 1) prefixoCommit += "  ";
-        if (pais.length > 1) { prefixoCommit = prefixoCommit.replace(/\* $/, "*   ").replace(/\*   \s+$/, "*   "); }
-        var pre2 = prefixoCommit;
-        if (pais.length > 1) {
-          pre2 = ""; for (k = 0; k < colunas.length; k++) pre2 += (k === col ? "*" : "|") + " ";
-          pre2 = pre2.slice(0, 2 * col + 1) + "   " + pre2.slice(2 * col + 2);
-          pre2 = pre2.replace(/\s+$/, "") + " ";
-        }
-        var resto = "";
-        for (k = 0; k < novas.length; k++) resto += "| ";
-        var linhaCont = function () { var s = ""; for (var q = 0; q < Math.max(novas.length, 1); q++) s += "| "; return s; };
-        // linha do commit + continuação (mensagem com várias linhas)
-        texto.forEach(function (t, n) {
-          if (n === 0) out += pre2 + t + "\n";
-          else {
-            var pf = ""; for (var q = 0; q < novas.length; q++) pf += "| "; if (!novas.length) pf = "  ";
-            if (pais.length > 1 && n === 1) { pf = ""; for (q = 0; q < colunas.length; q++) pf += (q === col ? "|\\  " : "| "); pf = pf.replace(/\s+$/, "") + "  "; texto.mergeFeito = true; }
-            out += (t === "" ? pf.replace(/\s+$/, "") : pf + t) + "\n";
-          }
-        });
-        // linha de junção para merges
-        if (pais.length > 1 && !texto.mergeFeito) {
-          var lj = ""; for (k = 0; k < colunas.length; k++) lj += k === col ? "|\\  " : "| ";
-          out += lj.replace(/ +$/, "  ") + "\n";
-        }
-        if (corpoTxt) {
-          var pfc = ""; for (k = 0; k < novas.length; k++) pfc += "| ";
-          if (!novas.length) pfc = "  ";
-          corpoTxt.replace(/\n$/, "").split("\n").forEach(function (l) { out += (pfc + l).replace(/\s+$/, function (m) { return l === "" ? "" : m; }) + "\n"; });
-          if (i < lista.length - 1) out += pfc.replace(/\s+$/, "") + "\n";
-        }
-        // colunas que convergem (dois apontando para o mesmo pai): desenha "|/"
-        colunas = novas;
-        var dup = true;
-        while (dup) {
-          dup = false;
-          for (var a1 = 0; a1 < colunas.length; a1++) for (var b1 = a1 + 1; b1 < colunas.length; b1++) if (colunas[a1] === colunas[b1]) {
-            var lc = ""; for (k = 0; k < colunas.length; k++) { if (k < b1) lc += "| "; else if (k === b1) lc += "/ "; else lc += " /"; }
-            lc = ""; for (k = 0; k < b1; k++) lc += k === b1 - 1 && a1 === b1 - 1 ? "|/" : "| ";
-            if (a1 === b1 - 1) { lc = ""; for (k = 0; k < a1; k++) lc += "| "; lc += "|/"; for (k = b1 + 1; k < colunas.length; k++) lc += " /"; }
-            out += lc + "  \n";
-            colunas.splice(b1, 1); dup = true; break;
-          }
-        }
-        if (!o.oneline && o.format == null && !corpoTxt && i < lista.length - 1) { var pf2 = ""; for (k = 0; k < colunas.length; k++) pf2 += "| "; out += pf2.replace(/\s+$/, "") + "\n"; }
+    // desenho do --graph: porte do graph.c do Git (colunas, mapping, estados PADDING/COMMIT/POST_MERGE/COLLAPSING)
+    function Grafo(paisDe) {
+      this.paisDe = paisDe; this.columns = []; this.newColumns = []; this.mapping = []; this.oldMapping = []; this.mappingSize = 0;
+      this.state = "PADDING"; this.prevState = "PADDING"; this.commitIndex = 0; this.prevCommitIndex = 0; this.numParents = 0;
+      this.width = 0; this.mergeLayout = 0; this.edgesAdded = 0; this.prevEdgesAdded = 0; this.commit = null; this.parents = [];
+    }
+    var GP = Grafo.prototype;
+    GP.mudarEstado = function (s) { this.prevState = this.state; this.state = s; };
+    GP.update = function (h) {
+      this.commit = h; this.parents = this.paisDe(h); this.numParents = this.parents.length;
+      this.prevCommitIndex = this.commitIndex;
+      this.updateColumns();
+      if (this.state !== "PADDING") this.state = "SKIP"; else this.state = "COMMIT";
+    };
+    GP.updateColumns = function () {
+      this.columns = this.newColumns; this.newColumns = [];
+      var maxNew = this.columns.length + this.numParents, i, self = this;
+      this.mappingSize = 2 * maxNew; this.mapping = []; for (i = 0; i < this.mappingSize; i++) this.mapping[i] = -1;
+      this.width = 0; this.prevEdgesAdded = this.edgesAdded; this.edgesAdded = 0;
+      var visto = false;
+      for (i = 0; i <= this.columns.length; i++) {
+        var cc;
+        if (i === this.columns.length) { if (visto) break; cc = this.commit; } else cc = this.columns[i];
+        if (cc === this.commit) {
+          visto = true; this.commitIndex = i; this.mergeLayout = -1;
+          this.parents.forEach(function (p) { self.inserir(p, i); });
+          if (!this.numParents) this.width += 2;
+        } else this.inserir(cc, -1);
       }
+      while (this.mappingSize > 1 && this.mapping[this.mappingSize - 1] < 0) this.mappingSize--;
+    };
+    GP.inserir = function (c, idx) {
+      var i = this.newColumns.indexOf(c), mi;
+      if (i < 0) { i = this.newColumns.length; this.newColumns.push(c); }
+      if (this.numParents > 1 && idx > -1 && this.mergeLayout === -1) {
+        var dist = idx - i, shift = dist > 1 ? 2 * dist - 3 : 1;
+        this.mergeLayout = dist > 0 ? 0 : 1;
+        this.edgesAdded = this.numParents + this.mergeLayout - 2;
+        mi = this.width + (this.mergeLayout - 1) * shift;
+        this.width += 2 * this.mergeLayout;
+      } else if (this.edgesAdded > 0 && i === this.mapping[this.width - 2]) { mi = this.width - 2; this.edgesAdded = -1; }
+      else { mi = this.width; this.width += 2; }
+      this.mapping[mi] = i;
+    };
+    GP.mapeamentoCerto = function () { for (var i = 0; i < this.mappingSize; i++) { var t = this.mapping[i]; if (t < 0) continue; if (t === (i >> 1)) continue; return false; } return true; };
+    GP.terminado = function () { return this.state === "PADDING"; };
+    GP.pad = function (l) { while (l.length < this.width) l += " "; return l; };
+    GP.proxima = function () { // devolve {txt, commit}
+      var l = "", i, mostrou = false, self = this;
+      switch (this.state) {
+        case "PADDING": for (i = 0; i < this.newColumns.length; i++) l += "| "; break;
+        case "SKIP": l = "..."; this.mudarEstado("COMMIT"); break;
+        case "COMMIT": {
+          var visto = false;
+          for (i = 0; i <= this.columns.length; i++) {
+            var cc;
+            if (i === this.columns.length) { if (visto) break; cc = this.commit; } else cc = this.columns[i];
+            if (cc === this.commit) { visto = true; l += "*"; if (this.numParents > 2) l += octopus(this); }
+            else if (visto && this.edgesAdded > 1) l += "\\";
+            else if (visto && this.edgesAdded === 1) l += (this.prevState === "POST_MERGE" && this.prevEdgesAdded > 0 && this.prevCommitIndex < i) ? "\\" : "|";
+            else if (this.prevState === "COLLAPSING" && this.oldMapping[2 * i + 1] === i && this.mapping[2 * i] < i) l += "/";
+            else l += "|";
+            l += " ";
+          }
+          mostrou = true;
+          if (this.numParents > 1) this.mudarEstado("POST_MERGE");
+          else if (this.mapeamentoCerto()) this.mudarEstado("PADDING");
+          else this.mudarEstado("COLLAPSING");
+          break;
+        }
+        case "POST_MERGE": {
+          var visto2 = false, primeiro = this.parents[0], colPai = null, CH = ["/", "|", "\\"];
+          for (i = 0; i <= this.columns.length; i++) {
+            var c2;
+            if (i === this.columns.length) { if (visto2) break; c2 = this.commit; } else c2 = this.columns[i];
+            if (c2 === this.commit) {
+              var idx = this.mergeLayout; visto2 = true;
+              for (var j = 0; j < this.numParents; j++) {
+                l += CH[idx];
+                if (idx === 2) { if (this.edgesAdded > 0 || j < this.numParents - 1) l += " "; } else idx++;
+              }
+              if (this.edgesAdded === 0) l += " ";
+            } else if (visto2) { l += (this.edgesAdded > 0 ? "\\" : "|") + " "; }
+            else { l += "|"; if (this.mergeLayout !== 0 || i !== this.commitIndex - 1) l += colPai ? "_" : " "; }
+            if (c2 === primeiro) colPai = c2;
+          }
+          if (this.mapeamentoCerto()) this.mudarEstado("PADDING"); else this.mudarEstado("COLLAPSING");
+          break;
+        }
+        case "COLLAPSING": {
+          var usouHoriz = false, he = -1, het = -1, tmp = this.mapping; this.mapping = this.oldMapping; this.oldMapping = tmp;
+          for (i = 0; i < this.mappingSize; i++) this.mapping[i] = -1;
+          for (i = 0; i < this.mappingSize; i++) {
+            var t = this.oldMapping[i];
+            if (t === undefined || t < 0) continue;
+            if (t * 2 === i) this.mapping[i] = t;
+            else if (!(this.mapping[i - 1] >= 0)) {
+              this.mapping[i - 1] = t;
+              if (he === -1) { he = i; het = t; for (var q = t * 2 + 3; q < i - 2; q += 2) this.mapping[q] = t; }
+            } else if (this.mapping[i - 1] === t) { /* junta com a linha da esquerda */ }
+            else {
+              this.mapping[i - 2] = t;
+              if (he === -1) { het = t; he = i - 1; for (var q2 = t * 2 + 3; q2 < i - 2; q2 += 2) this.mapping[q2] = t; }
+            }
+          }
+          this.oldMapping = this.mapping.slice();
+          if (!(this.mapping[this.mappingSize - 1] >= 0)) this.mappingSize--;
+          for (i = 0; i < this.mappingSize; i++) {
+            var tg = this.mapping[i];
+            if (!(tg >= 0)) l += " ";
+            else if (tg * 2 === i) l += "|";
+            else if (tg === het && i !== he - 1) { if (i !== tg * 2 + 3) this.mapping[i] = -1; usouHoriz = true; l += "_"; }
+            else { if (usouHoriz && i < he) this.mapping[i] = -1; l += "/"; }
+          }
+          if (this.mapeamentoCerto()) this.mudarEstado("PADDING");
+          break;
+        }
+      }
+      return { txt: this.pad(l), commit: mostrou };
+    };
+    function octopus(g) { var s = "", n = g.numParents - 2; for (var i = 0; i < n; i++) s += i === n - 1 ? "." : "-"; return s; }
+    GP.separador = function () {
+      if (this.state !== "COMMIT") return this.proxima().txt;
+      var l = ""; for (var i = 0; i < this.columns.length; i++) l += "| ";
+      this.prevState = "PADDING";
+      return this.pad(l);
+    };
+    function desenharGrafo(repo, lista, listaToda, opt, o, specs) {
+      var dentro = {}; listaToda.forEach(function (h) { dentro[h] = 1; });
+      var g = new Grafo(function (h) { var ps = repo.ler(h).parents; if (o.firstParent) ps = ps.slice(0, 1); return ps.filter(function (p) { return dentro[p]; }); });
+      var out = "", umaLinha = o.oneline || o.format != null, mostrouUm = false;
+      lista.forEach(function (h) {
+        var c = repo.ler(h);
+        g.update(h);
+        if (!umaLinha && mostrouUm) out += g.separador() + "\n";
+        mostrouUm = true;
+        while (true) { var r = g.proxima(); out += r.txt; if (r.commit) break; out += "\n"; }
+        var texto = formatarCommit(repo, h, opt), linhas = texto.replace(/\n$/, "").split("\n");
+        linhas.forEach(function (l, n) { out += (n ? g.proxima().txt : "") + l + "\n"; });
+        var temCorpo = (o.patch || o.stat || o.shortstat || o.nameOnly || o.nameStatus) && c.parents.length < 2;
+        if (temCorpo) {
+          var mud = mudancasCommit(repo, h);
+          if (specs.length) mud = mud.filter(function (m) { return specs.some(function (s) { return casaSpec(s, m.para); }); });
+          var corpo = corpoDiffCommit(repo, h, o, mud);
+          if (corpo) {
+            if (!umaLinha) out += g.proxima().txt + (o.stat && o.patch ? "---" : "") + "\n";
+            corpo.replace(/\n$/, "").split("\n").forEach(function (l) { out += g.proxima().txt + l + "\n"; });
+          }
+        }
+        while (!g.terminado()) out += g.proxima().txt + "\n";
+      });
       return out;
     }
     CMDS.show = function (args, io, sh) {
@@ -1695,6 +1778,7 @@
         out += formatarCommit(repo, h, { oneline: o.oneline, decorate: o.decorate === true, format: o.format, tformat: o.tformat, fuller: o.fuller });
         var c = obj;
         if (o.noPatch) return;
+        if (c.parents.length > 1 && !o.stat && !o.nameOnly && !o.nameStatus) { out += "\n"; return; }
         var mud = c.parents.length > 1 ? [] : mudancasCommit(repo, h);
         if (o.paths.length) { var specs = o.paths.map(function (p) { return pathspec(repo, p); }); mud = mud.filter(function (m) { return specs.some(function (s) { return casaSpec(s, m.para); }); }); }
         if (!o.stat && !o.nameOnly && !o.nameStatus && !o.shortstat) o.patch = true;
@@ -2732,6 +2816,21 @@
       })(o, "");
       io.out(out); return 0;
     };
+    CMDS["check-ignore"] = function (args, io, sh) {
+      var repo = precisaRepo(io), v = false, q = false, n = false, cams = [];
+      args.forEach(function (a) { if (a === "-v" || a === "--verbose") v = true; else if (a === "-q" || a === "--quiet") q = true; else if (a === "-n" || a === "--non-matching") n = true; else if (a !== "--") cams.push(a); });
+      if (!cams.length) { io.err("fatal: no path specified\n"); return 128; }
+      var achou = false, out = "";
+      cams.forEach(function (c) {
+        var k = pathspec(repo, c), no = noDe(sh, repo.absDe(k)), dir = !!(no && no.t === "d");
+        var rastr = repo.lerIndice().some(function (e) { return e.path === k; });
+        var regra = rastr ? null : (function () { var p = k.split("/"); for (var i = 1; i < p.length; i++) { var r0 = repo.regraIgnore(p.slice(0, i).join("/"), true); if (r0 && !r0.neg) return r0; } return repo.regraIgnore(k, dir); })();
+        if (regra && (!regra.neg || v)) { if (!regra.neg) achou = true; out += v ? regra.origem + ":" + regra.linha + ":" + regra.texto + "\t" + c + "\n" : (regra.neg ? "" : c + "\n"); }
+        else if (n && v) out += "::\t" + c + "\n";
+      });
+      if (!q) io.out(out);
+      return achou ? 0 : 1;
+    };
     CMDS["write-tree"] = function (args, io, sh) { var repo = precisaRepo(io); io.out(repo.escreverArvore(repo.lerIndice()) + "\n"); return 0; };
     CMDS["merge-base"] = function (args, io, sh) { var repo = precisaRepo(io); var a = repo.commitDe(args[0]), b = repo.commitDe(args[1]); var m = a && b ? repo.mergeBase(a, b) : null; if (!m) return 1; io.out(m + "\n"); return 0; };
     CMDS["rev-list"] = function (args, io, sh) {
@@ -2791,5 +2890,6 @@
   }
 
   if (global.BashSim) instalar(global.BashSim);
+  else (global.BashSimExtras = global.BashSimExtras || []).push(instalar); // o bashsim.js chama ao carregar
   if (typeof module !== "undefined" && module.exports) module.exports = instalar;
 })(typeof window !== "undefined" ? window : globalThis);
