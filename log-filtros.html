@@ -1,0 +1,611 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git log: Filtros e Formatos — achar o commit certo no histórico | Guia Git</title>
+<meta name="description" content="Os filtros e formatos do git log para quem está começando: -n e -3, --oneline, --format com %h %an %s, --stat, --author, --grep (com -i e --all-match), o histórico de um arquivo com --, e as datas com --since e --until, com saídas reais do Git em português e os erros mais comuns.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">log: Filtros e Formatos</span></h1>
+
+<p class="intro">No começo, o <a href="git-log.html">git log</a> cabe numa tela. Depois de um mês de trabalho, a lista tem dezenas de commits; depois de um ano, centenas. Aí as perguntas mudam: "quais commits o Bruno fez?", "quando foi que mexemos na receita do bolo?", "o que entrou desde segunda-feira?". O <code>git log</code> responde a todas elas com <strong>filtros</strong> (que escolhem <em>quais</em> commits aparecem) e <strong>formatos</strong> (que escolhem <em>como</em> cada commit aparece).</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A limitar a quantidade de commits: <code>-n 3</code> ou só <code>-3</code>.</li>
+  <li>A escolher o formato: <code>--oneline</code>, <code>--stat</code>, <code>--name-only</code> e o <code>--format</code> feito sob medida (<code>%h %an %s</code>).</li>
+  <li>A filtrar por pessoa (<code>--author</code>), por palavra na mensagem (<code>--grep</code>) e por arquivo (<code>-- bolo.txt</code>).</li>
+  <li>A filtrar por data com <code>--since</code> e <code>--until</code>, e as pegadinhas das datas.</li>
+  <li>Os erros mais comuns: <code>ambiguous argument</code>, <code>not an integer</code> e o filtro que "não acha nada".</li>
+</ul>
+</div>
+
+<p>Todas as saídas desta aula saíram do Git do Ubuntu 26.04 (2.53) na máquina da Ana. Repare que a Ana e o Bruno fizeram os commits das receitas todos na mesma manhã (15/10/2026, às 10:30): isso vai importar na parte das datas.</p>
+
+<hr>
+
+<h2>A ideia: a galeria de fotos do celular</h2>
+<p>Pense na galeria de fotos do seu celular. Com 5 fotos, você rola a tela e acha tudo. Com 5 mil, você usa a <strong>busca</strong>: "fotos com a vovó", "fotos de dezembro", "fotos da praia". E pode escolher o jeito de ver: miniaturas pequenas (cabe muita coisa) ou uma foto por vez, grande, com todos os detalhes.</p>
+<p>O <code>git log</code> funciona igual. Os <strong>filtros</strong> são a busca (por pessoa, por data, por palavra, por arquivo) e os <strong>formatos</strong> são as miniaturas ou a foto grande. E dá para combinar: "os commits do Bruno, em miniatura, só do arquivo do pão de queijo".</p>
+
+<h2>O histórico desta aula</h2>
+<p>A Ana e o Bruno estão fazendo juntos o site de receitas. Este é o histórico completo, uma linha por commit (o <code>--oneline</code> que você já viu em <a href="git-log.html">git log</a>):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+c0ecf77 Adiciona a receita de brigadeiro
+b70de85 Corrige erro de digitação no pão de queijo
+9d984ae Adiciona a cobertura de chocolate ao bolo
+cbe9c2c Cria a página inicial
+b97da56 Corrige o tempo de forno do bolo
+e2542b6 Adiciona a receita de pão de queijo
+906c89d Adiciona a receita de bolo de cenoura
+700bbd5 Cria o README
+</pre>
+
+<p>São 8 commits, do mais novo (em cima) para o mais antigo (embaixo). Três deles foram feitos pelo Bruno, mas o <code>--oneline</code> não mostra o autor. Vamos descobrir quais são.</p>
+
+<hr>
+
+<h2>1. Quantos commits mostrar: <code>-n</code></h2>
+<p>O jeito mais simples de "filtrar" é pedir só os últimos commits. A opção <code>-n</code> recebe um número:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline -n 2
+c0ecf77 Adiciona a receita de brigadeiro
+b70de85 Corrige erro de digitação no pão de queijo
+</pre>
+
+<dl class="anatomy">
+  <dt>git log</dt><dd>Mostra o histórico, do commit mais novo para o mais antigo.</dd>
+  <dt>--oneline</dt><dd>Formato: uma linha por commit (o hash curto e a primeira linha da mensagem).</dd>
+  <dt>-n 2</dt><dd>Filtro: só os <strong>2</strong> commits mais recentes. O nome longo é <code>--max-count=2</code>, e o atalho é só <code>-2</code>.</dd>
+</dl>
+
+<p>As três formas dão o mesmo resultado: <code>-n 2</code>, <code>-2</code> e <code>--max-count=2</code>. O atalho com o número grudado no traço é o mais usado. Sem o <code>--oneline</code>, você vê os commits completos, no formato normal:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log -3
+commit c0ecf7737a483172e7e6d40cc08e6129be2ef0a6
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Adiciona a receita de brigadeiro
+
+commit b70de8519b13e2413511f72f00cd13f8e7ea76f0
+Author: Bruno Lima &lt;bruno@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Corrige erro de digitação no pão de queijo
+
+commit 9d984ae2cac68edfa9180c6a2ac0031461de07b3
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Adiciona a cobertura de chocolate ao bolo
+</pre>
+
+<p>Repare que as palavras <code>Author:</code> (autor) e <code>Date:</code> (data) e a data em si (<code>Thu Oct 15</code> = quinta-feira, 15 de outubro) continuam em inglês, mesmo com o Git em português: essas partes do <code>git log</code> não são traduzidas. Já o segundo commit é do <strong>Bruno</strong>: achamos o primeiro.</p>
+
+<div class="tip">
+<strong>Do mais antigo para o mais novo: <code>--reverse</code></strong>
+<p>Para ler a história "como um livro", do primeiro commit para o último, acrescente <code>--reverse</code> (ao contrário):</p>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --reverse
+700bbd5 Cria o README
+906c89d Adiciona a receita de bolo de cenoura
+e2542b6 Adiciona a receita de pão de queijo
+b97da56 Corrige o tempo de forno do bolo
+cbe9c2c Cria a página inicial
+9d984ae Adiciona a cobertura de chocolate ao bolo
+b70de85 Corrige erro de digitação no pão de queijo
+c0ecf77 Adiciona a receita de brigadeiro
+</pre>
+</div>
+
+<div class="note">
+<strong>O <code>git log</code> que "trava" a tela</strong>
+<p>No seu terminal, quando o histórico não cabe na tela, o Git o mostra dentro de um <strong>paginador</strong> (o programa <code>less</code>): use as setas ou o espaço para rolar e aperte <kbd>q</kbd> para sair. O <code>-n</code> é uma boa forma de nem precisar dele. As saídas desta aula aparecem inteiras, sem o paginador.</p>
+</div>
+
+<hr>
+
+<h2>2. Escolhendo o formato</h2>
+<p>O formato normal (o de cima) é a "foto grande": tudo sobre cada commit. O <code>--oneline</code> é a "miniatura". Entre os dois, há vários outros.</p>
+
+<h3>Quais arquivos cada commit mexeu: <code>--stat</code> e <code>--name-only</code></h3>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --stat -2
+c0ecf77 Adiciona a receita de brigadeiro
+ brigadeiro.txt | 2 ++
+ 1 file changed, 2 insertions(+)
+b70de85 Corrige erro de digitação no pão de queijo
+ pao-de-queijo.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+</pre>
+
+<dl class="anatomy">
+  <dt>--stat</dt><dd>De <em>statistics</em> (estatísticas): depois de cada commit, a lista dos arquivos que ele mudou.</dd>
+  <dt>brigadeiro.txt | 2 ++</dt><dd>O arquivo, o número de linhas mexidas e um "gráfico" com um <code>+</code> por linha acrescentada e um <code>-</code> por linha apagada.</dd>
+  <dt>1 file changed, 2 insertions(+)</dt><dd>O resumo, em inglês: "1 arquivo mudou, 2 linhas acrescentadas". No segundo commit, <code>1 insertion(+), 1 deletion(-)</code>: uma linha saiu e outra entrou, que é como o Git enxerga uma linha <strong>alterada</strong> (o <code>Pao</code> virou <code>Pão</code>).</dd>
+</dl>
+
+<p>Se você só quer os nomes dos arquivos, sem as contas, use <code>--name-only</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --name-only --oneline -3
+c0ecf77 Adiciona a receita de brigadeiro
+brigadeiro.txt
+b70de85 Corrige erro de digitação no pão de queijo
+pao-de-queijo.txt
+9d984ae Adiciona a cobertura de chocolate ao bolo
+bolo.txt
+</pre>
+
+<h3>O formato sob medida: <code>--format</code></h3>
+<p>Quer ver o autor na mesma linha do <code>--oneline</code>? Monte a linha você mesmo com <code>--format</code> (ou <code>--pretty=format:</code>, o nome antigo). Você escreve um "molde" e o Git troca cada código <code>%</code> por uma informação do commit:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --format='%h %an %s'
+c0ecf77 Ana Souza Adiciona a receita de brigadeiro
+b70de85 Bruno Lima Corrige erro de digitação no pão de queijo
+9d984ae Ana Souza Adiciona a cobertura de chocolate ao bolo
+cbe9c2c Bruno Lima Cria a página inicial
+b97da56 Ana Souza Corrige o tempo de forno do bolo
+e2542b6 Bruno Lima Adiciona a receita de pão de queijo
+906c89d Ana Souza Adiciona a receita de bolo de cenoura
+700bbd5 Ana Souza Cria o README
+</pre>
+
+<dl class="anatomy">
+  <dt>--format='…'</dt><dd>O molde de cada linha. As aspas simples são para o terminal entregar o molde inteiro, com os espaços, ao Git.</dd>
+  <dt>%h</dt><dd>O <strong>h</strong>ash curto do commit (<code>c0ecf77</code>). Com <code>%H</code> (maiúsculo), o hash completo de 40 caracteres.</dd>
+  <dt>%an</dt><dd>O nome do <strong>a</strong>utor (<em>author <strong>n</strong>ame</em>): quem escreveu a mudança.</dd>
+  <dt>%s</dt><dd>O assunto (<em><strong>s</strong>ubject</em>): a primeira linha da mensagem.</dd>
+</dl>
+
+<p>Agora está claro: os commits do Bruno são <code>b70de85</code>, <code>cbe9c2c</code> e <code>e2542b6</code>. O que não é código <code>%</code> sai do jeito que você escreveu, então dá para pôr separadores e a data:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --format='%h | %ad | %an | %s' -3
+c0ecf77 | Thu Oct 15 10:30:00 2026 -0300 | Ana Souza | Adiciona a receita de brigadeiro
+b70de85 | Thu Oct 15 10:30:00 2026 -0300 | Bruno Lima | Corrige erro de digitação no pão de queijo
+9d984ae | Thu Oct 15 10:30:00 2026 -0300 | Ana Souza | Adiciona a cobertura de chocolate ao bolo
+$ git log --format='%h %ad %s' --date=short -3
+c0ecf77 2026-10-15 Adiciona a receita de brigadeiro
+b70de85 2026-10-15 Corrige erro de digitação no pão de queijo
+9d984ae 2026-10-15 Adiciona a cobertura de chocolate ao bolo
+</pre>
+
+<p>O <code>%ad</code> é a data do autor (<em>author date</em>), e o <code>--date=short</code> a deixa curta, no formato ano-mês-dia. Os códigos mais úteis:</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Código</th><th>O que vira</th><th>Exemplo (do lab)</th></tr>
+<tr><td><code>%h</code> / <code>%H</code></td><td>hash curto / completo</td><td><code>c0ecf77</code> / <code>c0ecf7737a483172e7e6d40cc08e6129be2ef0a6</code></td></tr>
+<tr><td><code>%an</code></td><td>nome do autor</td><td><code>Ana Souza</code></td></tr>
+<tr><td><code>%ae</code></td><td>e-mail do autor</td><td><code>ana@exemplo.com</code></td></tr>
+<tr><td><code>%ad</code></td><td>data do autor (muda com <code>--date=short</code>, <code>--date=iso</code>…)</td><td><code>Thu Oct 15 10:30:00 2026 -0300</code></td></tr>
+<tr><td><code>%ar</code></td><td>data relativa ("há quanto tempo")</td><td><code>0 seconds ago</code> (no lab, o relógio parou na hora do commit)</td></tr>
+<tr><td><code>%s</code></td><td>assunto (primeira linha da mensagem)</td><td><code>Adiciona a receita de brigadeiro</code></td></tr>
+<tr><td><code>%cn</code></td><td>nome de quem gravou o commit (<em>committer</em>; quase sempre igual ao autor)</td><td><code>Ana Souza</code></td></tr>
+</table>
+</div>
+
+<p>Um exemplo com o e-mail entre parênteses:</p>
+<pre class="term" data-cwd="~/receitas">$ git log --format='%h %an (%ae) %s' -1
+c0ecf77 Ana Souza (ana@exemplo.com) Adiciona a receita de brigadeiro
+</pre>
+
+<div class="note">
+<strong>Por que não sai "há 2 dias"?</strong>
+<p>Na máquina da Ana, o relógio está parado em 15/10/2026 10:30, a mesma hora dos commits: por isso o <code>%ar</code> mostrou <code>0 seconds ago</code> ("0 segundos atrás"). No seu computador, com commits de dias diferentes, aparece algo como <code>3 days ago</code> ou <code>2 weeks ago</code> (o Git 2.53 do Ubuntu mostrou essas datas relativas em inglês).</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;printf 'Bolo de cenoura\n3 cenouras\n4 ovos\nForno: 30 minutos\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona a receita de bolo de cenoura';;printf 'Pao de queijo\n500 g de polvilho\n' &gt; pao-de-queijo.txt;;git add pao-de-queijo.txt;;git commit -q --author='Bruno Lima &lt;bruno@exemplo.com&gt;' -m 'Adiciona a receita de pão de queijo';;sed -i 's/30 minutos/40 minutos/' bolo.txt;;git commit -q -am 'Corrige o tempo de forno do bolo';;printf '&lt;h1&gt;Receitas da Ana&lt;/h1&gt;\n' &gt; index.html;;git add index.html;;git commit -q --author='Bruno Lima &lt;bruno@exemplo.com&gt;' -m 'Cria a página inicial';;echo 'Cobertura: 200 g de chocolate' &gt;&gt; bolo.txt;;git commit -q -am 'Adiciona a cobertura de chocolate ao bolo';;sed -i 's/Pao/Pão/' pao-de-queijo.txt;;git commit -q --author='Bruno Lima &lt;bruno@exemplo.com&gt;' -am 'Corrige erro de digitação no pão de queijo';;printf 'Brigadeiro\n1 lata de leite condensado\n' &gt; brigadeiro.txt;;git add brigadeiro.txt;;git commit -q -m 'Adiciona a receita de brigadeiro'" data-goal="ran:--(format|pretty),out:Bruno Lima" data-solucao="git log --format='%h %an %s'">
+<p class="try-task"><strong>Missão:</strong> o repositório de receitas da Ana já está pronto. Mostre o histórico com o hash curto, o <strong>nome do autor</strong> e a mensagem em cada linha (use <code>--format</code>), e descubra quantos commits são do Bruno.</p>
+</div>
+
+<hr>
+
+<h2>3. Por pessoa: <code>--author</code></h2>
+<p>Ler o histórico inteiro procurando o nome do Bruno funciona com 8 commits, mas não com 800. Peça ao Git:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --author=Bruno
+b70de85 Corrige erro de digitação no pão de queijo
+cbe9c2c Cria a página inicial
+e2542b6 Adiciona a receita de pão de queijo
+</pre>
+
+<dl class="anatomy">
+  <dt>--author=Bruno</dt><dd>Só os commits cujo autor <strong>contém</strong> o texto <code>Bruno</code>. O Git procura no nome <strong>e</strong> no e-mail juntos (<code>Bruno Lima &lt;bruno@exemplo.com&gt;</code>), então não precisa escrever o nome inteiro.</dd>
+</dl>
+
+<p>Como o Git procura também no e-mail, até <code>--author=bruno</code> (minúsculo) achou os mesmos 3 commits: o <code>bruno</code> estava no <code>bruno@exemplo.com</code>. Mas cuidado: a busca diferencia maiúsculas de minúsculas. Para ignorar essa diferença de verdade, use <code>-i</code> (de <em>ignore case</em>):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline -i --author=bruno
+b70de85 Corrige erro de digitação no pão de queijo
+cbe9c2c Cria a página inicial
+e2542b6 Adiciona a receita de pão de queijo
+</pre>
+
+<p>E dá para juntar com o <code>-n</code>: "os 2 últimos commits da Ana":</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline -2 --author=Ana
+c0ecf77 Adiciona a receita de brigadeiro
+9d984ae Adiciona a cobertura de chocolate ao bolo
+</pre>
+
+<p>O <code>-2</code> vale <strong>depois</strong> do filtro: o Git separa os commits da Ana e mostra os 2 primeiros deles (o commit do Bruno no meio, <code>b70de85</code>, foi pulado).</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;printf 'Bolo de cenoura\n3 cenouras\n4 ovos\nForno: 30 minutos\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona a receita de bolo de cenoura';;printf 'Pao de queijo\n500 g de polvilho\n' &gt; pao-de-queijo.txt;;git add pao-de-queijo.txt;;git commit -q --author='Bruno Lima &lt;bruno@exemplo.com&gt;' -m 'Adiciona a receita de pão de queijo';;sed -i 's/30 minutos/40 minutos/' bolo.txt;;git commit -q -am 'Corrige o tempo de forno do bolo';;printf '&lt;h1&gt;Receitas da Ana&lt;/h1&gt;\n' &gt; index.html;;git add index.html;;git commit -q --author='Bruno Lima &lt;bruno@exemplo.com&gt;' -m 'Cria a página inicial';;echo 'Cobertura: 200 g de chocolate' &gt;&gt; bolo.txt;;git commit -q -am 'Adiciona a cobertura de chocolate ao bolo';;sed -i 's/Pao/Pão/' pao-de-queijo.txt;;git commit -q --author='Bruno Lima &lt;bruno@exemplo.com&gt;' -am 'Corrige erro de digitação no pão de queijo';;printf 'Brigadeiro\n1 lata de leite condensado\n' &gt; brigadeiro.txt;;git add brigadeiro.txt;;git commit -q -m 'Adiciona a receita de brigadeiro'" data-goal="ran:--author,out:Cria a página inicial" data-solucao="git log --oneline --author=Bruno">
+<p class="try-task"><strong>Missão:</strong> mostre, uma linha por commit, só os commits feitos pelo <strong>Bruno</strong>.</p>
+</div>
+
+<hr>
+
+<h2>4. Por palavra na mensagem: <code>--grep</code></h2>
+<p>A Ana quer tudo o que já foi feito na receita do bolo. Se as mensagens são boas (veja <a href="mensagens-commit.html">Boas Mensagens de Commit</a>), basta procurar a palavra "bolo" nelas:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --grep=bolo
+9d984ae Adiciona a cobertura de chocolate ao bolo
+b97da56 Corrige o tempo de forno do bolo
+906c89d Adiciona a receita de bolo de cenoura
+</pre>
+
+<dl class="anatomy">
+  <dt>--grep=bolo</dt><dd>Só os commits cuja <strong>mensagem</strong> contém <code>bolo</code>. O nome vem do comando <code>grep</code>, o "procurador de texto" do terminal. Como no <code>grep</code>, o texto pode ser uma expressão regular (<code>--grep='^Corrige'</code> = mensagens que <strong>começam</strong> com "Corrige").</dd>
+</dl>
+
+<p>Aqui as maiúsculas fazem diferença de verdade: <code>--grep=Bolo</code> não acha nada, porque nenhuma mensagem tem "Bolo" com B maiúsculo. O <code>-i</code> resolve:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --grep=Bolo
+$ git log --oneline -i --grep=Bolo
+9d984ae Adiciona a cobertura de chocolate ao bolo
+b97da56 Corrige o tempo de forno do bolo
+906c89d Adiciona a receita de bolo de cenoura
+</pre>
+
+<p>Repare que o primeiro comando não mostrou <strong>nada</strong>, nem um aviso. Para o Git, "nenhum commit combina" não é um erro: é só uma lista vazia.</p>
+
+<h3>Várias palavras: "ou" e "e"</h3>
+<p>Com dois <code>--grep</code>, o Git mostra os commits que têm <strong>uma ou outra</strong> palavra:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --grep=bolo --grep=brigadeiro
+c0ecf77 Adiciona a receita de brigadeiro
+9d984ae Adiciona a cobertura de chocolate ao bolo
+b97da56 Corrige o tempo de forno do bolo
+906c89d Adiciona a receita de bolo de cenoura
+</pre>
+
+<p>Para exigir <strong>as duas</strong> palavras na mesma mensagem, acrescente <code>--all-match</code> ("todas precisam combinar"). "Commits que <em>adicionam</em> algo ao bolo":</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --grep=Adiciona --grep=bolo --all-match
+9d984ae Adiciona a cobertura de chocolate ao bolo
+906c89d Adiciona a receita de bolo de cenoura
+</pre>
+
+<div class="tip">
+<strong><code>--grep</code> procura na mensagem, não no arquivo</strong>
+<p>O <code>--grep</code> só olha o texto que você escreveu no <code>git commit -m</code>. Para achar o commit que acrescentou ou tirou uma palavra <strong>de dentro de um arquivo</strong> (por exemplo, quando "manteiga" sumiu da receita), o filtro é outro, o <code>-S</code>: veja <a href="buscar-historico.html">Procurando no Histórico</a>.</p>
+</div>
+
+<hr>
+
+<h2>5. Por arquivo: <code>git log -- arquivo</code></h2>
+<p>Outra forma de responder "o que aconteceu com o bolo?" é perguntar pelo <strong>arquivo</strong>, não pela mensagem. Ponha o nome do arquivo no fim, depois de dois traços:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline -- bolo.txt
+9d984ae Adiciona a cobertura de chocolate ao bolo
+b97da56 Corrige o tempo de forno do bolo
+906c89d Adiciona a receita de bolo de cenoura
+</pre>
+
+<dl class="anatomy">
+  <dt>--</dt><dd>Dois traços sozinhos querem dizer: "daqui em diante, só vêm <strong>nomes de arquivos</strong>". Eles evitam que o Git confunda o nome de um arquivo com o nome de um branch ou de um commit.</dd>
+  <dt>bolo.txt</dt><dd>Só os commits que <strong>mudaram</strong> esse arquivo (criaram, alteraram ou apagaram). Dá para pôr mais de um: <code>-- bolo.txt index.html</code>, ou uma pasta inteira.</dd>
+</dl>
+
+<p>Funciona mesmo que a mensagem do commit não diga nada sobre o arquivo: o Git olha o que mudou de verdade. Com o arquivo que já existe, o <code>--</code> é opcional (<code>git log --oneline bolo.txt</code> deu a mesma lista), mas com ele você nunca cai no erro da seção <a href="#errado">Quando dá errado</a>.</p>
+
+<p>Com dois arquivos, aparecem os commits que mexeram em <strong>qualquer um</strong> deles:</p>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline -- bolo.txt index.html
+9d984ae Adiciona a cobertura de chocolate ao bolo
+cbe9c2c Cria a página inicial
+b97da56 Corrige o tempo de forno do bolo
+906c89d Adiciona a receita de bolo de cenoura
+</pre>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;printf 'Bolo de cenoura\n3 cenouras\n4 ovos\nForno: 30 minutos\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona a receita de bolo de cenoura';;printf 'Pao de queijo\n500 g de polvilho\n' &gt; pao-de-queijo.txt;;git add pao-de-queijo.txt;;git commit -q --author='Bruno Lima &lt;bruno@exemplo.com&gt;' -m 'Adiciona a receita de pão de queijo';;sed -i 's/30 minutos/40 minutos/' bolo.txt;;git commit -q -am 'Corrige o tempo de forno do bolo';;printf '&lt;h1&gt;Receitas da Ana&lt;/h1&gt;\n' &gt; index.html;;git add index.html;;git commit -q --author='Bruno Lima &lt;bruno@exemplo.com&gt;' -m 'Cria a página inicial';;echo 'Cobertura: 200 g de chocolate' &gt;&gt; bolo.txt;;git commit -q -am 'Adiciona a cobertura de chocolate ao bolo';;sed -i 's/Pao/Pão/' pao-de-queijo.txt;;git commit -q --author='Bruno Lima &lt;bruno@exemplo.com&gt;' -am 'Corrige erro de digitação no pão de queijo';;printf 'Brigadeiro\n1 lata de leite condensado\n' &gt; brigadeiro.txt;;git add brigadeiro.txt;;git commit -q -m 'Adiciona a receita de brigadeiro'" data-goal="ran:git log.*pao-de-queijo\.txt,out:Adiciona a receita de pão de queijo" data-solucao="git log --oneline -- pao-de-queijo.txt">
+<p class="try-task"><strong>Missão:</strong> mostre só os commits que mexeram no arquivo <code>pao-de-queijo.txt</code>. (Dica: o <kbd>Tab</kbd> completa o nome do arquivo.)</p>
+</div>
+
+<hr>
+
+<h2>6. Por data: <code>--since</code> e <code>--until</code></h2>
+<p>"O que entrou desde o dia 1º?" e "o que já existia até o dia 14?" se perguntam com:</p>
+<ul>
+  <li><code>--since=DATA</code> ("desde"; o sinônimo é <code>--after</code>, "depois de"): commits feitos <strong>a partir</strong> dessa data;</li>
+  <li><code>--until=DATA</code> ("até"; o sinônimo é <code>--before</code>, "antes de"): commits feitos <strong>até</strong> essa data.</li>
+</ul>
+
+<p>Primeiro, no repositório das receitas. Lembre-se: os 8 commits foram feitos em 15/10/2026, às 10:30. Veja o que cada filtro devolve:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --since="2026-10-15 00:00" -2
+c0ecf77 Adiciona a receita de brigadeiro
+b70de85 Corrige erro de digitação no pão de queijo
+$ git log --oneline --since="2026-10-15 11:00"
+$ git log --oneline --since=2026-10-16
+$ git log --oneline --until="2026-10-14 23:59"
+$ git log --oneline --after=2026-10-01 --before=2026-10-31 -2
+c0ecf77 Adiciona a receita de brigadeiro
+b70de85 Corrige erro de digitação no pão de queijo
+</pre>
+
+<dl class="anatomy">
+  <dt>--since="2026-10-15 00:00"</dt><dd>Desde a meia-noite do dia 15: os commits das 10:30 entram (o <code>-2</code> mostra só os 2 primeiros).</dd>
+  <dt>--since="2026-10-15 11:00"</dt><dd>Desde as 11 horas do dia 15: nada, porque tudo foi feito antes, às 10:30.</dd>
+  <dt>--since=2026-10-16</dt><dd>Desde o dia 16: nada, nenhum commit é tão novo.</dd>
+  <dt>--until="2026-10-14 23:59"</dt><dd>Até o fim do dia 14: nada, nenhum commit é tão velho.</dd>
+  <dt>--after=… --before=…</dt><dd>Os dois juntos fazem um <strong>intervalo</strong>: "commits de outubro".</dd>
+</dl>
+
+<p>O formato mais seguro para a data é <strong>ano-mês-dia</strong> (<code>2026-10-15</code>), com a hora opcional depois de um espaço. Quando tem espaço, use aspas.</p>
+
+<div class="warning">
+<strong>A pegadinha da data sem hora</strong>
+<p>Quando você escreve só o dia (<code>--since=2026-10-15</code>), o Git completa a hora com a hora <strong>atual</strong> do relógio, e não com a meia-noite. Na máquina da Ana, o relógio marcava 10:30, então <code>--since=2026-10-15</code> virou "desde 15/10 às 10:30" e mostrou os 8 commits. Se ela rodasse o mesmo comando às 16h, os commits das 10:30 ficariam de fora. Para não depender do relógio, escreva a hora: <code>--since="2026-10-15 00:00"</code>.</p>
+</div>
+
+<h3>Datas relativas: "2 weeks ago", "yesterday"</h3>
+<p>O Git também entende datas contadas a partir de agora, <strong>em inglês</strong>: <code>"2 weeks ago"</code> (2 semanas atrás), <code>"3 days ago"</code>, <code>"1 hour ago"</code>, <code>yesterday</code> (ontem). Na máquina da Ana, com o relógio em 15/10 às 10:30:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --since="1 hour ago" -2
+c0ecf77 Adiciona a receita de brigadeiro
+b70de85 Corrige erro de digitação no pão de queijo
+$ git log --oneline --until="1 hour ago"
+$ git log --oneline --until=yesterday
+</pre>
+
+<p>"Desde 1 hora atrás" (desde as 9:30) pega os commits das 10:30; "até 1 hora atrás" e "até ontem" não pegam nenhum.</p>
+
+<div class="warning">
+<strong>"ontem" não funciona, e o Git não avisa</strong>
+<p>As palavras das datas são só em inglês. Com uma palavra que não conhece, o Git <strong>não dá erro</strong>: ele usa a hora atual no lugar. Na máquina da Ana, <code>--until=ontem</code> mostrou os 8 commits (deveria mostrar nenhum, como o <code>--until=yesterday</code> acima). Se um filtro de data "não filtrou nada", confira se a data está em inglês ou no formato <code>2026-10-15</code>.</p>
+</div>
+
+<h3>Com commits de dias diferentes</h3>
+<p>No seu repositório, os commits vão ter datas diferentes, e é aí que o <code>--since</code> brilha. A Ana tem um segundo repositório, o do TCC, onde ela fez <strong>um commit por noite</strong>, de 1º a 8 de outubro:</p>
+
+<pre class="term" data-cwd="~/tcc">$ git log --format='%h %ad %s' --date=short
+5de2ba1 2026-10-08 Corrige a formatação
+d4c1dbc 2026-10-07 Escreve a conclusão
+edf9e22 2026-10-06 Adiciona as referências
+511c1a3 2026-10-05 Escreve os resultados
+f9632c5 2026-10-04 Revisa a introdução
+b0e25d9 2026-10-03 Adiciona a metodologia
+7320fc7 2026-10-02 Escreve a introdução
+abeba2a 2026-10-01 Cria o sumário
+$ git log --oneline --since="2026-10-06 00:00"
+5de2ba1 Corrige a formatação
+d4c1dbc Escreve a conclusão
+edf9e22 Adiciona as referências
+$ git log --oneline --until="2026-10-03 23:59"
+b0e25d9 Adiciona a metodologia
+7320fc7 Escreve a introdução
+abeba2a Cria o sumário
+$ git log --oneline --since="2026-10-03 00:00" --until="2026-10-05 23:59"
+511c1a3 Escreve os resultados
+f9632c5 Revisa a introdução
+b0e25d9 Adiciona a metodologia
+</pre>
+
+<p>"Desde o dia 6" trouxe os 3 últimos; "até o dia 3", os 3 primeiros; e o intervalo "do dia 3 ao dia 5", os 3 do meio. Com datas relativas, contadas a partir do relógio (15/10, 10:30):</p>
+
+<pre class="term" data-cwd="~/tcc">$ git log --format='%h %ar %s' -3
+5de2ba1 7 days ago Corrige a formatação
+d4c1dbc 8 days ago Escreve a conclusão
+edf9e22 9 days ago Adiciona as referências
+$ git log --oneline --since="1 week ago"
+5de2ba1 Corrige a formatação
+</pre>
+
+<p>"1 semana atrás" é 08/10 às 10:30. O commit do dia 8 foi feito à noite, depois disso, e entrou; o do dia 7 ficou de fora. O <code>%ar</code> mostra a idade de cada commit, em inglês (<code>7 days ago</code> = "7 dias atrás").</p>
+
+<div class="note">
+<strong>E no terminal do guia?</strong>
+<p>No terminal simulado do guia, como no laboratório, todos os commits que você fizer ganham a mesma data e hora (15/10/2026 10:30). Por isso, pratique os filtros de data no Git do seu computador, com um repositório de verdade.</p>
+</div>
+
+<hr>
+
+<h2>7. Combinando filtros</h2>
+<p>Filtros de tipos diferentes se somam como um "<strong>e</strong>": o commit precisa passar em todos. "Os commits do Bruno, desde 1º de outubro, no arquivo do pão de queijo":</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --author=Bruno --since=2026-10-01 -- pao-de-queijo.txt
+b70de85 Corrige erro de digitação no pão de queijo
+e2542b6 Adiciona a receita de pão de queijo
+</pre>
+
+<p>E "os commits da Ana que falam de bolo":</p>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --author=Ana --grep=bolo
+9d984ae Adiciona a cobertura de chocolate ao bolo
+b97da56 Corrige o tempo de forno do bolo
+906c89d Adiciona a receita de bolo de cenoura
+</pre>
+
+<p>A ordem das opções não importa, com uma exceção: os nomes de arquivos vão sempre <strong>no fim</strong>, depois do <code>--</code>. A única combinação que vira "ou" é repetir a <strong>mesma</strong> opção (dois <code>--grep</code>, dois <code>--author</code>), como você viu na seção 4.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;printf 'Bolo de cenoura\n3 cenouras\n4 ovos\nForno: 30 minutos\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona a receita de bolo de cenoura';;printf 'Pao de queijo\n500 g de polvilho\n' &gt; pao-de-queijo.txt;;git add pao-de-queijo.txt;;git commit -q --author='Bruno Lima &lt;bruno@exemplo.com&gt;' -m 'Adiciona a receita de pão de queijo';;sed -i 's/30 minutos/40 minutos/' bolo.txt;;git commit -q -am 'Corrige o tempo de forno do bolo';;printf '&lt;h1&gt;Receitas da Ana&lt;/h1&gt;\n' &gt; index.html;;git add index.html;;git commit -q --author='Bruno Lima &lt;bruno@exemplo.com&gt;' -m 'Cria a página inicial';;echo 'Cobertura: 200 g de chocolate' &gt;&gt; bolo.txt;;git commit -q -am 'Adiciona a cobertura de chocolate ao bolo';;sed -i 's/Pao/Pão/' pao-de-queijo.txt;;git commit -q --author='Bruno Lima &lt;bruno@exemplo.com&gt;' -am 'Corrige erro de digitação no pão de queijo';;printf 'Brigadeiro\n1 lata de leite condensado\n' &gt; brigadeiro.txt;;git add brigadeiro.txt;;git commit -q -m 'Adiciona a receita de brigadeiro'" data-goal="ran:--author,ran:bolo,out:Corrige o tempo de forno do bolo" data-solucao="git log --oneline --author=Ana -- bolo.txt">
+<p class="try-task"><strong>Missão:</strong> mostre só os commits da <strong>Ana</strong> que mexeram no arquivo <code>bolo.txt</code> (ou, se preferir, que falam de "bolo" na mensagem).</p>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer a mesma coisa</h2>
+<p>A pergunta "o que aconteceu com o bolo?" tem pelo menos três respostas, e cada uma enxerga uma coisa:</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que ele olha</th><th>Quando usar</th></tr>
+<tr><td><code>git log --oneline --grep=bolo</code></td><td>As <strong>mensagens</strong></td><td>Quando as mensagens são boas e dizem o assunto</td></tr>
+<tr><td><code>git log --oneline -- bolo.txt</code></td><td>Os <strong>arquivos</strong> mudados</td><td>Quando você sabe qual arquivo é (mais confiável: não depende da mensagem)</td></tr>
+<tr><td><code>git log --oneline -S manteiga</code></td><td>O <strong>conteúdo</strong> dos arquivos</td><td>Quando você procura quem pôs ou tirou um texto (aula <a href="buscar-historico.html">Procurando no Histórico</a>)</td></tr>
+</table>
+</div>
+
+<p>E para ver quem fez cada commit:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>Resultado</th></tr>
+<tr><td><code>git log</code></td><td>Tudo, em várias linhas por commit (com <code>Author:</code>)</td></tr>
+<tr><td><code>git log --format='%h %an %s'</code></td><td>Uma linha por commit, com o nome do autor</td></tr>
+<tr><td><code>git log --oneline --author=Bruno</code></td><td>Só os commits de uma pessoa</td></tr>
+<tr><td><code>git shortlog -s</code></td><td>Um placar: quantos commits cada pessoa fez (veja <a href="ref-log.html">Referência: log</a>)</td></tr>
+</table>
+</div>
+
+<div class="tip">
+<strong>Cansou de digitar o formato?</strong>
+<p>Um <code>--format</code> que você usa todo dia pode virar um apelido, como <code>git config --global alias.historico "log --format='%h %an %s'"</code>. Depois, é só <code>git historico</code>. Veja <a href="alias.html">Apelidos (alias)</a>.</p>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>fatal: ambiguous argument</code>: o arquivo que não existe (mais)</strong>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline bolo
+fatal: ambiguous argument 'bolo': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git &lt;command&gt; [&lt;revision&gt;...] -- [&lt;file&gt;...]'
+</pre>
+<p><strong>O que aconteceu:</strong> a Ana esqueceu o <code>.txt</code>. Sem o <code>--</code>, o Git tentou adivinhar o que é <code>bolo</code>: não é um commit nem um branch ("<em>unknown revision</em>", revisão desconhecida) e não é um arquivo da pasta ("<em>path not in the working tree</em>"). As duas linhas de baixo são a dica, em inglês: "use <code>--</code> para separar commits de arquivos, assim: <code>git &lt;comando&gt; [&lt;commit&gt;...] -- [&lt;arquivo&gt;...]</code>".</p>
+<p><strong>Como confirmar:</strong> <code>ls</code> mostra os nomes certos dos arquivos.</p>
+<p><strong>Como resolver:</strong> escreva o nome certo (<code>bolo.txt</code>). E se o arquivo existiu no passado mas foi apagado, aí o <code>--</code> é obrigatório: <code>git log --oneline -- receita-velha.txt</code> mostra o histórico dele mesmo sem ele estar mais na pasta. Com um nome que nunca existiu, o <code>--</code> só troca o erro por uma lista vazia (<code>git log --oneline -- bolo</code> não mostrou nada).</p>
+</div>
+
+<div class="cenario">
+<strong>O filtro não mostrou nada</strong>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --author=Carla
+$ echo $?
+0
+</pre>
+<p><strong>O que aconteceu:</strong> nenhum commit combinou com o filtro. Para o Git, isso não é erro (o código de saída é 0, "deu certo"): a resposta é só uma lista vazia.</p>
+<p><strong>Como resolver:</strong> confira o texto do filtro. Os suspeitos de sempre são: <strong>maiúsculas</strong> (<code>--grep=Bolo</code> não acha "bolo": use <code>-i</code>), o <strong>nome</strong> do autor (veja como ele aparece com <code>git log --format='%an'</code>), a <strong>data</strong> (a pegadinha da hora atual e as palavras em português) e o <strong>branch</strong>: o <code>git log</code> só olha o branch atual.</p>
+</div>
+
+<div class="cenario">
+<strong><code>error: -n requires an argument</code> e <code>not an integer</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git log -n
+error: -n requires an argument
+$ git log --oneline -n tres
+fatal: 'tres': not an integer
+</pre>
+<p><strong>O que aconteceu:</strong> o <code>-n</code> precisa de um número logo depois. No primeiro, faltou o número ("<code>-n</code> exige um argumento"); no segundo, o número veio por extenso ("<code>'tres'</code>: não é um número inteiro").</p>
+<p><strong>Como resolver:</strong> <code>git log -n 3</code> ou só <code>git log -3</code>.</p>
+</div>
+
+<div class="cenario">
+<strong><code>fatal: argumento não reconhecido</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git log --autor=Bruno
+fatal: argumento não reconhecido: --autor=Bruno
+</pre>
+<p><strong>O que aconteceu:</strong> as opções do Git são em inglês: é <code>--author</code>, com "h". O Git não conhece <code>--autor</code> e para sem mostrar nada.</p>
+<p><strong>Como resolver:</strong> <code>git log --author=Bruno</code>. Na dúvida sobre o nome de uma opção, <code>git help log</code> mostra o manual (veja <a href="git-help.html">git help</a>).</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Opção</th><th>O que faz</th></tr>
+<tr><td><code>-n 5</code>, <code>-5</code>, <code>--max-count=5</code></td><td>Só os 5 commits mais recentes</td></tr>
+<tr><td><code>--reverse</code></td><td>Do mais antigo para o mais novo</td></tr>
+<tr><td><code>--oneline</code></td><td>Uma linha por commit</td></tr>
+<tr><td><code>--stat</code> / <code>--name-only</code></td><td>Mostra os arquivos mudados (com as contas / só os nomes)</td></tr>
+<tr><td><code>--format='%h %an %s'</code></td><td>Formato sob medida (<code>%h</code> hash, <code>%an</code> autor, <code>%ae</code> e-mail, <code>%ad</code> data, <code>%s</code> mensagem)</td></tr>
+<tr><td><code>--date=short</code></td><td>Datas no formato <code>2026-10-15</code></td></tr>
+<tr><td><code>--author=TEXTO</code></td><td>Só commits cujo autor (nome ou e-mail) contém o texto</td></tr>
+<tr><td><code>--grep=TEXTO</code></td><td>Só commits cuja mensagem contém o texto (vários = "ou"; com <code>--all-match</code> = "e")</td></tr>
+<tr><td><code>-i</code></td><td>Ignora maiúsculas e minúsculas no <code>--author</code> e no <code>--grep</code></td></tr>
+<tr><td><code>-- arquivo</code></td><td>Só commits que mudaram o arquivo (ou a pasta)</td></tr>
+<tr><td><code>--since=DATA</code> / <code>--after=DATA</code></td><td>Commits a partir da data</td></tr>
+<tr><td><code>--until=DATA</code> / <code>--before=DATA</code></td><td>Commits até a data</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o comando</h3>
+<p>Mostre, uma linha por commit, só os 4 commits mais recentes:</p>
+<div class="ex-code">git log <input data-answer="--oneline" aria-label="opção de uma linha"> <input data-answer="-4" aria-label="quantidade"></div>
+</div>
+
+<div class="exercise">
+<h3>2. Só os commits da Carla</h3>
+<p>Complete para mostrar só os commits da Carla:</p>
+<div class="ex-code">git log --oneline <input data-answer="--author=Carla" aria-label="filtro por autor"></div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. A Ana quer ver os commits que mudaram o arquivo <code>index.html</code>. Qual comando?</p>
+<label><input type="radio" name="q3"> <code>git log --grep=index.html</code></label>
+<label><input type="radio" name="q3"> <code>git log --author=index.html</code></label>
+<label><input type="radio" name="q3"> <code>git log --oneline -- index.html</code></label>
+<label><input type="radio" name="q3"> <code>git log --file index.html</code></label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. <code>git log --oneline --grep=Bolo</code> não mostrou nada, mas há commits com "bolo" na mensagem. Por quê?</p>
+<label><input type="radio" name="q4"> O <code>--grep</code> procura dentro dos arquivos, não nas mensagens</label>
+<label><input type="radio" name="q4"> A busca diferencia maiúsculas de minúsculas: faltou o <code>-i</code> (ou escrever <code>bolo</code>)</label>
+<label><input type="radio" name="q4"> O Git só procura palavras em inglês</label>
+<label><input type="radio" name="q4"> Faltou o <code>--</code> antes de <code>Bolo</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. No formato <code>--format='%h %an %s'</code>, o que o <code>%an</code> mostra?</p>
+<label><input type="radio" name="q5"> O nome do autor do commit</label>
+<label><input type="radio" name="q5"> O ano do commit</label>
+<label><input type="radio" name="q5"> O número do commit</label>
+<label><input type="radio" name="q5"> O nome do arquivo</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">6. São 16h. Os commits foram feitos hoje às 10h. O que mostra <code>git log --since=ontem</code>?</p>
+<label><input type="radio" name="q6"> Os commits de hoje, porque "ontem" é antes das 10h</label>
+<label><input type="radio" name="q6"> Uma mensagem de erro: "data inválida"</label>
+<label><input type="radio" name="q6"> Os commits de ontem</label>
+<label><input type="radio" name="q6"> Provavelmente nada: o Git não entende "ontem", usa a hora atual (16h) sem avisar, e os commits das 10h ficam de fora</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><strong>Filtros</strong> escolhem quais commits aparecem; <strong>formatos</strong> escolhem como cada um aparece. Dá para misturar os dois.</li>
+  <li><code>-3</code> (ou <code>-n 3</code>) mostra só os últimos 3; <code>--reverse</code> inverte a ordem.</li>
+  <li><code>--oneline</code>, <code>--stat</code>, <code>--name-only</code> e <code>--format='%h %an %s'</code> mudam o jeito de ver. As palavras <code>Author:</code> e <code>Date:</code> não são traduzidas.</li>
+  <li><code>--author=Bruno</code> filtra por pessoa (nome ou e-mail); <code>--grep=bolo</code> filtra pela mensagem; <code>-i</code> ignora maiúsculas; dois <code>--grep</code> = "ou", com <code>--all-match</code> = "e".</li>
+  <li><code>git log -- arquivo</code> mostra só os commits que mudaram o arquivo. Os nomes de arquivos vão no fim, depois do <code>--</code>.</li>
+  <li><code>--since</code>/<code>--until</code> filtram por data: prefira <code>"2026-10-15 00:00"</code> (sem hora, o Git usa a hora atual) e palavras em inglês (<code>yesterday</code>, <code>"2 weeks ago"</code>).</li>
+  <li>Filtro sem resultado não é erro: o Git só mostra uma lista vazia.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
