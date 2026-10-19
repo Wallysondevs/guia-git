@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Projeto: Trabalhando em Dupla — a Ana e o Bruno no mesmo repositório do GitHub | Guia Git</title>
+<meta name="description" content="Projeto passo a passo: a Ana envia o site de receitas para o GitHub, o Bruno clona e envia uma receita, o push da Ana é rejeitado, ela faz git pull (e configura pull.rebase), e os dois resolvem um conflito na mesma linha. Saídas reais do Git 2.53 em português e missões no terminal do guia.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Projeto: Trabalhando em Dupla</span></h1>
+
+<p class="intro">Até aqui, a Ana trabalhou sozinha. Agora o amigo dela, o <strong>Bruno</strong>, vai ajudar no site de receitas: ele também quer acrescentar receitas e mexer nas páginas. Cada um trabalha <strong>no seu computador</strong>, e os dois se encontram num repositório no <strong>GitHub</strong>. Neste projeto você acompanha a dupla do primeiro <code>push</code> até o primeiro conflito entre duas pessoas: o push recusado, o <code>git pull</code> que pede uma configuração, e a mesma linha mudada pelos dois. Tudo com as saídas reais do Git.</p>
+
+<div class="note">
+<strong>Você vai aprender (na prática)</strong>
+<ul>
+  <li>Enviar um repositório para o GitHub pela primeira vez (<code>git remote add</code> e <code>git push -u</code>).</li>
+  <li>Como o colega pega uma cópia (<code>git clone</code>) e envia o trabalho dele.</li>
+  <li>Por que o seu <code>git push</code> é recusado quando o colega enviou antes, e como resolver com <code>git pull</code>.</li>
+  <li>O aviso "divergent branches" do <code>git pull</code> e a configuração <code>pull.rebase</code>.</li>
+  <li>Resolver um conflito entre duas pessoas e manter os dois computadores em dia.</li>
+</ul>
+</div>
+
+<p>Este projeto põe em prática <a href="remotos.html">Repositórios Remotos</a>, <a href="git-clone.html">git clone</a>, <a href="git-push.html">git push</a>, <a href="git-pull.html">git pull</a>, <a href="push-rejeitado.html">Push Rejeitado</a> e <a href="resolver-conflitos.html">Resolvendo Conflitos</a>. As saídas saíram do <strong>Git 2.53</strong> do Ubuntu, com o sistema em português, no laboratório do guia: duas máquinas (a da Ana e a do Bruno) e um <strong>GitHub de treino</strong> que responde como o de verdade. O que acontece no <strong>site</strong> do GitHub (telas e botões) está descrito de forma <strong>ilustrativa</strong>, com base na documentação oficial.</p>
+
+<div class="note"><strong>Duas pessoas, dois terminais.</strong> Os terminais da Ana aparecem com o prompt <code>ana@notebook</code>; os do Bruno, com <code>bruno@notebook</code> (cada um no seu computador). Preste atenção em quem está digitando.</div>
+
+<hr>
+
+<h2>A ideia: o caderno de receitas da família</h2>
+<p>Imagine um caderno de receitas que fica na casa da avó. A Ana e o Bruno moram longe e cada um tem uma <strong>cópia</strong> dele em casa. Quando a Ana inventa uma receita, ela escreve na cópia dela e, no domingo, leva a novidade para o caderno da avó. O Bruno faz o mesmo.</p>
+<ul>
+  <li>O caderno da avó é o repositório no <strong>GitHub</strong> (o "remoto", chamado <code>origin</code>).</li>
+  <li>As cópias em casa são os repositórios <strong>locais</strong> de cada um.</li>
+  <li>Levar as novidades para a avó é o <code>git push</code> ("empurrar"); trazer as novidades da avó para casa é o <code>git pull</code> ("puxar").</li>
+</ul>
+<p>E a regra da avó: <strong>ninguém escreve por cima do que o outro já levou</strong>. Se o Bruno levou uma receita no sábado, a Ana precisa primeiro copiar essa receita para a cópia dela, juntar com o que ela fez, e só então levar a dela. Isso é o "push rejeitado" que você vai ver na etapa 3.</p>
+
+<hr>
+
+<h2>Etapa 0: o repositório no GitHub (ilustrativo)</h2>
+<p>No site do GitHub, entrando com a conta <code>ana-souza</code>, a Ana criou um repositório <strong>vazio</strong> chamado <code>receitas</code>, sem README (ela já tem um no computador; veja <a href="github-repositorio.html">Criando um Repositório no GitHub</a>). O endereço dele é:</p>
+<pre>https://github.com/ana-souza/receitas.git</pre>
+<p>Depois, nas configurações do repositório, na parte de colaboradores, ela convidou o usuário do Bruno (<code>bruno-lima</code>), que aceitou o convite. A partir daí, o GitHub deixa os dois enviarem para o repositório. (Os nomes exatos das telas mudam com o tempo; a documentação oficial, em docs.github.com/pt, mostra o caminho atual: procure por "Convidar colaboradores para um repositório pessoal".)</p>
+
+<div class="tip"><strong>Senha ou chave?</strong> Para o <code>git push</code> funcionar no GitHub de verdade, o seu computador precisa provar quem é você: com uma <a href="ssh.html">chave SSH</a> ou com um <a href="https-token.html">token de acesso</a> (a senha da conta não serve no terminal). Neste projeto, isso já está configurado nos dois computadores, então o Git não pergunta nada.</div>
+
+<hr>
+
+<h2>Etapa 1: a Ana envia o site</h2>
+<p>O repositório local da Ana tem um commit, com o README, a página inicial e a receita de bolo. Ela liga o repositório local ao do GitHub e envia:</p>
+
+<dl class="anatomy">
+  <dt>git remote add</dt><dd>"Acrescentar um remoto": dar um apelido a um endereço (<a href="git-remote.html">git remote</a>).</dd>
+  <dt>origin</dt><dd>O apelido. <code>origin</code> ("origem") é o nome que todo mundo usa para o remoto principal.</dd>
+  <dt>https://github.com/…</dt><dd>O endereço do repositório no GitHub.</dd>
+  <dt>git push -u origin main</dt><dd>Enviar o branch <code>main</code> para o <code>origin</code>. O <code>-u</code> (de <em>upstream</em>) grava a ligação "o meu <code>main</code> acompanha o <code>main</code> do <code>origin</code>": dos próximos em diante, basta <code>git push</code> e <code>git pull</code>, sem nomes.</dd>
+</dl>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+502c5a9 (HEAD -&gt; main) Cria o site de receitas
+$ git remote add origin https://github.com/ana-souza/receitas.git
+$ git remote -v
+origin  https://github.com/ana-souza/receitas.git (fetch)
+origin  https://github.com/ana-souza/receitas.git (push)
+$ git push -u origin main
+Enumerating objects: 5, done.
+Counting objects: 100% (5/5), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (3/3), done.
+Writing objects: 100% (5/5), 436 bytes | 436.00 KiB/s, done.
+Total 5 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/receitas.git
+ * [new branch]      main -&gt; main      « o main nasceu no GitHub
+branch 'main' set up to track 'origin/main'.      « efeito do -u
+$ git status
+No ramo main
+Your branch is up to date with 'origin/main'.      « em dia com o GitHub
+
+nothing to commit, working tree clean</pre>
+
+<ul>
+  <li>As linhas <code>Enumerating</code>, <code>Counting</code>, <code>Compressing</code>, <code>Writing objects</code> são o progresso: o Git conta, compacta e envia os "objetos" (arquivos e commits). Elas só aparecem quando você roda no terminal.</li>
+  <li><code>* [new branch]      main -&gt; main</code>: no GitHub nasceu um branch <code>main</code>, cópia do <code>main</code> da Ana.</li>
+  <li><code>branch 'main' set up to track 'origin/main'.</code>: "o branch main passou a acompanhar o origin/main". É o efeito do <code>-u</code>.</li>
+  <li><code>Your branch is up to date with 'origin/main'.</code>: "o seu branch está em dia com o origin/main". O <code>git status</code> agora compara também com o GitHub.</li>
+</ul>
+
+<div class="try" data-setup="mkdir -p github/ana-souza;;git init -q --bare -b main github/ana-souza/receitas.git;;mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;printf '&lt;h1&gt;Receitas da Ana&lt;/h1&gt;\n&lt;p&gt;Bolo de cenoura&lt;/p&gt;\n' &gt; index.html;;printf 'Bolo de cenoura\nForno: 180 graus por 40 minutos\nCobertura: chocolate\n' &gt; bolo.txt;;git add .;;git commit -q -m 'Cria o site de receitas'" data-goal="remoto:origin,contem:origin/main:README.md=Receitas da Ana" data-solucao="git remote add origin ~/github/ana-souza/receitas.git;;git push -u origin main">
+<p class="try-task"><strong>Missão 1:</strong> o repositório local da Ana já tem um commit. No treino, o "GitHub" é uma pasta do próprio computador: <code>~/github/ana-souza/receitas.git</code> (o Git aceita uma pasta como endereço de remoto, do mesmo jeito que aceita um https). Ligue o repositório a esse endereço com o apelido <code>origin</code> e envie o <code>main</code> com <code>-u</code>. Depois, confira com <code>git status</code>.</p>
+</div>
+
+<hr>
+
+<h2>Etapa 2: o Bruno clona e envia uma receita</h2>
+<p>No computador dele, o Bruno pega uma cópia completa do repositório, com todo o histórico, usando o <a href="git-clone.html">git clone</a>. Depois, acrescenta a receita de pudim e envia:</p>
+
+<pre class="term" data-user="bruno">$ git clone https://github.com/ana-souza/receitas.git
+Cloning into 'receitas'...
+remote: Enumerating objects: 5, done.
+remote: Counting objects: 100% (5/5), done.
+remote: Compressing objects: 100% (3/3), done.
+remote: Total 5 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+Receiving objects: 100% (5/5), done.
+$ cd receitas
+$ ls
+README.md  bolo.txt  index.html
+$ git log --oneline
+502c5a9 (HEAD -&gt; main, origin/main, origin/HEAD) Cria o site de receitas      « o mesmo commit da Ana
+$ printf 'Pudim de leite\nForno: 160 graus por 1 hora, em banho-maria\n' &gt; pudim.txt
+$ git add pudim.txt
+$ git commit -m 'Adiciona a receita de pudim'
+[main b1b6024] Adiciona a receita de pudim
+ 1 file changed, 2 insertions(+)
+ create mode 100644 pudim.txt
+$ git push
+Enumerating objects: 4, done.
+Counting objects: 100% (4/4), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (3/3), done.
+Writing objects: 100% (3/3), 337 bytes | 337.00 KiB/s, done.
+Total 3 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/receitas.git
+   502c5a9..b1b6024  main -&gt; main</pre>
+
+<ul>
+  <li><code>Cloning into 'receitas'...</code>: "clonando em 'receitas'". O clone cria a pasta com o nome do repositório.</li>
+  <li>No <code>git log</code> do Bruno aparecem <code>origin/main</code> e <code>origin/HEAD</code>: são as etiquetas que lembram onde estava o <code>main</code> do GitHub na última conversa. O clone já deixa o <code>main</code> do Bruno ligado ao <code>origin/main</code>; por isso, o primeiro <code>git push</code> dele não precisa de <code>-u</code>.</li>
+  <li><code>502c5a9..b1b6024  main -&gt; main</code>: o <code>main</code> do GitHub andou do commit da Ana (<code>502c5a9</code>) para o do Bruno (<code>b1b6024</code>).</li>
+</ul>
+
+<hr>
+
+<h2>Etapa 3: o push da Ana é recusado</h2>
+<p>Enquanto isso, sem saber do pudim, a Ana mudou a página inicial e fez um commit. Na hora de enviar:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo '&lt;p&gt;Fotos novas toda semana&lt;/p&gt;' &gt;&gt; index.html
+$ git add index.html
+$ git commit -m 'Avisa das fotos novas na página inicial'
+[main 02657c2] Avisa das fotos novas na página inicial
+ 1 file changed, 1 insertion(+)
+$ git push
+To https://github.com/ana-souza/receitas.git
+ ! [rejected]        main -&gt; main (fetch first)      « recusado
+error: failed to push some refs to 'https://github.com/ana-souza/receitas.git'
+hint: Updates were rejected because the remote contains work that you do not
+hint: have locally. This is usually caused by another repository pushing to
+hint: the same ref. If you want to integrate the remote changes, use
+hint: 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+$ git status
+No ramo main
+Seu ramo está à frente de 'origin/main' por 1 submissão.      « o commit dela, ainda não enviado
+  (use "git push" to publish your local commits)
+
+nothing to commit, working tree clean</pre>
+
+<p>Linha por linha:</p>
+<ul>
+  <li><code>! [rejected]        main -&gt; main (fetch first)</code>: "recusado (busque primeiro)". O GitHub tem um commit (o do Bruno) que a Ana não tem.</li>
+  <li><code>error: failed to push some refs</code>: "falhou ao enviar algumas referências". <strong>Nada foi enviado</strong> e nada se perdeu.</li>
+  <li>As dicas (<code>hint</code>) explicam: "o remoto contém trabalho que você não tem localmente; isso costuma acontecer quando outro repositório enviou para a mesma referência; para integrar as mudanças do remoto, use <code>git pull</code> antes de enviar de novo".</li>
+</ul>
+<p>Por que o GitHub recusa? Se aceitasse, o <code>main</code> do GitHub passaria a ser o da Ana, e o commit do pudim do Bruno sumiria do histórico. O Git protege o trabalho do colega.</p>
+
+<div class="warning"><strong>Não "resolva" com <code>--force</code>.</strong> Um <code>git push --force</code> faria exatamente o que o GitHub está evitando: apagaria o commit do Bruno. O caminho certo é trazer o trabalho dele primeiro (veja <a href="push-force.html">push --force-with-lease</a> para os raros casos em que forçar faz sentido).</div>
+
+<h3>O <code>git pull</code> e a pergunta "merge ou rebase?"</h3>
+<p>A dica mandou usar <code>git pull</code>. A Ana tenta:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git pull
+remote: Enumerating objects: 4, done.
+remote: Counting objects: 100% (4/4), done.
+remote: Compressing objects: 100% (3/3), done.
+remote: Total 3 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (3/3), 317 bytes | 317.00 KiB/s, done.
+From https://github.com/ana-souza/receitas
+   502c5a9..b1b6024  main       -&gt; origin/main      « baixou o commit do Bruno
+hint: You have divergent branches and need to specify how to reconcile them.
+hint: You can do so by running one of the following commands sometime before
+hint: your next pull:
+hint:
+hint:   git config pull.rebase false  # merge
+hint:   git config pull.rebase true   # rebase
+hint:   git config pull.ff only       # fast-forward only
+hint:
+hint: You can replace "git config" with "git config --global" to set a default
+hint: preference for all repositories. You can also pass --rebase, --no-rebase,
+hint: or --ff-only on the command line to override the configured default per
+hint: invocation.
+fatal: Need to specify how to reconcile divergent branches.      « mas não juntou</pre>
+
+<ul>
+  <li>A primeira parte funcionou: o Git <strong>baixou</strong> o commit do Bruno (<code>502c5a9..b1b6024  main -&gt; origin/main</code>).</li>
+  <li>Mas parou com <code>fatal: Need to specify how to reconcile divergent branches.</code>: "é preciso dizer como conciliar branches que divergiram". A Ana tem um commit que o GitHub não tem, e o GitHub tem um que ela não tem. Há três jeitos de juntar, e o Git atual pede que você escolha um, em vez de escolher sozinho.</li>
+  <li>As dicas mostram as três opções: <code>pull.rebase false</code> (fazer um <a href="git-merge.html">merge</a>), <code>pull.rebase true</code> (fazer um <a href="git-rebase.html">rebase</a>) e <code>pull.ff only</code> (só aceitar quando não houver nada a juntar). E lembram que, com <code>--global</code>, a escolha vale para todos os repositórios.</li>
+</ul>
+
+<p>A Ana escolhe o merge, que é o que ela já conhece, para todos os repositórios dela, e repete o <code>git pull</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git config --global pull.rebase false
+$ git pull
+Merge made by the 'ort' strategy.
+ pudim.txt | 2 ++
+ 1 file changed, 2 insertions(+)
+ create mode 100644 pudim.txt
+$ git log --oneline --graph
+*   7c46a4f (HEAD -&gt; main) Merge branch 'main' of https://github.com/ana-souza/receitas
+|\
+| * b1b6024 (origin/main, origin/HEAD) Adiciona a receita de pudim      « o do Bruno
+* | 02657c2 Avisa das fotos novas na página inicial      « o da Ana
+|/
+* 502c5a9 Cria o site de receitas
+$ ls
+README.md  bolo.txt  index.html  pudim.txt
+$ git status
+No ramo main
+Seu ramo está à frente de 'origin/main' por 2 submissões.
+  (use "git push" to publish your local commits)
+
+nothing to commit, working tree clean
+$ git push
+Enumerating objects: 9, done.
+Counting objects: 100% (8/8), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (5/5), done.
+Writing objects: 100% (5/5), 581 bytes | 581.00 KiB/s, done.
+Total 5 (delta 2), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/receitas.git
+   b1b6024..7c46a4f  main -&gt; main      « agora foi</pre>
+
+<ul>
+  <li>O <code>git pull</code> é, na verdade, dois comandos em um: <a href="git-fetch.html">git fetch</a> (baixar) + <code>git merge</code> (juntar). Como os dois lados andaram, o Git criou um commit de merge, com a mensagem pronta <code>Merge branch 'main' of https://github.com/ana-souza/receitas</code>. (No seu terminal, o editor pode abrir com essa mensagem: salve e feche.)</li>
+  <li>O <code>pudim.txt</code> do Bruno chegou na pasta da Ana.</li>
+  <li><code>Seu ramo está à frente de 'origin/main' por 2 submissões.</code>: o commit dela e o de merge ainda não estão no GitHub. Agora o <code>git push</code> passa, porque o histórico dela <strong>contém</strong> o do GitHub.</li>
+</ul>
+
+<div class="try" data-setup="mkdir -p github/ana-souza;;git init -q --bare -b main github/ana-souza/receitas.git;;mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;printf '&lt;h1&gt;Receitas da Ana&lt;/h1&gt;\n&lt;p&gt;Bolo de cenoura&lt;/p&gt;\n' &gt; index.html;;printf 'Bolo de cenoura\nForno: 180 graus por 40 minutos\nCobertura: chocolate\n' &gt; bolo.txt;;git add .;;git commit -q -m 'Cria o site de receitas';;git remote add origin ~/github/ana-souza/receitas.git;;git push -q -u origin main;;git config pull.rebase false;;cd ~;;git clone -q github/ana-souza/receitas.git bruno;;cd bruno;;git config user.name 'Bruno Lima';;git config user.email bruno@exemplo.com;;printf 'Pudim de leite\nForno: 160 graus por 1 hora, em banho-maria\n' &gt; pudim.txt;;git add pudim.txt;;git commit -q -m 'Adiciona a receita de pudim';;git push -q;;cd ~/receitas;;echo '&lt;p&gt;Fotos novas toda semana&lt;/p&gt;' &gt;&gt; index.html;;git add index.html;;git commit -q -m 'Avisa das fotos novas na página inicial'" data-goal="contem:origin/main:pudim.txt=Pudim,contem:origin/main:index.html=Fotos novas,limpo" data-solucao="git pull --no-edit;;git push">
+<p class="try-task"><strong>Missão 2:</strong> o Bruno já enviou a receita de pudim, e a Ana tem um commit novo que ainda não está no "GitHub" de treino. Tente <code>git push</code> e leia a recusa. Depois, traga o trabalho do Bruno com <code>git pull</code> (aqui o <code>pull.rebase</code> já está configurado como <code>false</code>) e envie de novo. No fim, o <code>git status</code> tem de dizer que o branch está em dia com o <code>origin/main</code>.</p>
+</div>
+
+<hr>
+
+<h2>Etapa 4: o Bruno se atualiza</h2>
+<p>Antes de começar a mexer de novo, o Bruno traz o que a Ana enviou:</p>
+
+<pre class="term" data-user="bruno" data-cwd="~/receitas">$ git pull
+remote: Enumerating objects: 9, done.
+remote: Counting objects: 100% (8/8), done.
+remote: Compressing objects: 100% (5/5), done.
+remote: Total 5 (delta 2), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (5/5), 561 bytes | 561.00 KiB/s, done.
+From https://github.com/ana-souza/receitas
+   b1b6024..7c46a4f  main       -&gt; origin/main
+Updating b1b6024..7c46a4f
+Fast-forward      « só avançou
+ index.html | 1 +
+ 1 file changed, 1 insertion(+)
+$ git log --oneline --graph
+*   7c46a4f (HEAD -&gt; main, origin/main, origin/HEAD) Merge branch 'main' of https://github.com/ana-souza/receitas
+|\
+| * b1b6024 Adiciona a receita de pudim
+* | 02657c2 Avisa das fotos novas na página inicial
+|/
+* 502c5a9 Cria o site de receitas</pre>
+
+<ul>
+  <li><code>Fast-forward</code> ("avanço rápido"): o Bruno não tinha nada novo, então o Git só <strong>avançou</strong> o <code>main</code> dele até o commit de merge da Ana, sem criar commit nenhum (veja <a href="fast-forward.html">Merge Fast-forward</a>). Nenhuma pergunta sobre merge ou rebase: não há nada a conciliar.</li>
+  <li>Os dois computadores e o GitHub agora têm exatamente o mesmo histórico (<code>HEAD -&gt; main, origin/main</code> no mesmo commit).</li>
+</ul>
+
+<div class="tip"><strong>O hábito que evita metade dos problemas:</strong> sempre que for começar a trabalhar, <code>git pull</code>. Quanto mais cedo você traz o trabalho do colega, menores as chances de conflito.</div>
+
+<hr>
+
+<h2>Etapa 5: os dois mudam a mesma linha</h2>
+<p>O Bruno decide trocar a cobertura do bolo por brigadeiro e envia (ele usou o <code>sed</code> para trocar a palavra; poderia ter usado qualquer editor):</p>
+
+<pre class="term" data-user="bruno" data-cwd="~/receitas">$ sed -i 's/Cobertura: chocolate/Cobertura: brigadeiro/' bolo.txt
+$ git commit -am 'Troca a cobertura por brigadeiro'
+[main aa2e042] Troca a cobertura por brigadeiro
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+$ git push
+Enumerating objects: 5, done.
+Counting objects: 100% (5/5), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (3/3), done.
+Writing objects: 100% (3/3), 341 bytes | 341.00 KiB/s, done.
+Total 3 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/receitas.git
+   7c46a4f..aa2e042  main -&gt; main</pre>
+
+<p>Ao mesmo tempo, a Ana resolve pôr morango na cobertura, <strong>na mesma linha</strong>. Commit, push… recusado de novo. Ela já sabe o que fazer: <code>git pull</code>. Só que, desta vez, o merge encontra a mesma linha mudada dos dois lados:</p>
+
+<pre class="term" data-cwd="~/receitas">$ sed -i 's/Cobertura: chocolate/Cobertura: chocolate com morango/' bolo.txt
+$ git commit -am 'Põe morango na cobertura'
+[main 38ef793] Põe morango na cobertura
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+$ git push
+To https://github.com/ana-souza/receitas.git
+ ! [rejected]        main -&gt; main (fetch first)
+error: failed to push some refs to 'https://github.com/ana-souza/receitas.git'
+hint: Updates were rejected because the remote contains work that you do not
+hint: have locally. This is usually caused by another repository pushing to
+hint: the same ref. If you want to integrate the remote changes, use
+hint: 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+$ git pull
+remote: Enumerating objects: 5, done.
+remote: Counting objects: 100% (5/5), done.
+remote: Compressing objects: 100% (3/3), done.
+remote: Total 3 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (3/3), 321 bytes | 321.00 KiB/s, done.
+From https://github.com/ana-souza/receitas
+   7c46a4f..aa2e042  main       -&gt; origin/main
+Mesclagem automática de bolo.txt
+CONFLITO (conteúdo): conflito de mesclagem em bolo.txt
+Automatic merge failed; fix conflicts and then commit the result.
+$ git status
+No ramo main
+O seu branch e 'origin/main' divergiram-se,
+e cada um tem 1 e 1 submissões, respectivamente.
+  (use "git pull" if you want to integrate the remote branch with yours)
+
+Você tem caminhos não mesclados.
+  (fixar conflitos e executar "git commit")
+  (use "git merge --abort" to abort the merge)
+
+Caminhos não mesclados:
+  (usar "git add &lt;arquivo&gt;..." para marcar resolução)
+        ambos modificados:   bolo.txt
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+$ cat bolo.txt
+Bolo de cenoura
+Forno: 180 graus por 40 minutos
+&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+Cobertura: chocolate com morango      « a versão da Ana
+=======
+Cobertura: brigadeiro      « a versão do Bruno
+&gt;&gt;&gt;&gt;&gt;&gt;&gt; aa2e0428d15b41eaec22d85c25e8235163f55e3e</pre>
+
+<ul>
+  <li><code>CONFLITO (conteúdo): conflito de mesclagem em bolo.txt</code>: exatamente como no <a href="projeto-conflito.html">projeto do conflito</a>, só que agora o "outro branch" é o trabalho do Bruno, vindo do GitHub.</li>
+  <li><code>O seu branch e 'origin/main' divergiram-se, e cada um tem 1 e 1 submissões, respectivamente.</code>: a Ana tem 1 commit que o GitHub não tem, e vice-versa.</li>
+  <li>No arquivo, entre <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD</code> e <code>=======</code> está a versão da Ana; entre <code>=======</code> e <code>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code>, a do Bruno. Como o Bruno não estava num branch com nome na máquina da Ana, o marcador final mostra o <strong>hash completo</strong> do commit dele (<code>aa2e042…</code>).</li>
+</ul>
+
+<p>A Ana manda uma mensagem ao Bruno: "brigadeiro com morango?". Ele topa. Ela resolve, avisa o Git com <code>git add</code>, conclui o merge e envia:</p>
+
+<pre class="term" data-cwd="~/receitas">$ printf 'Bolo de cenoura\nForno: 180 graus por 40 minutos\nCobertura: brigadeiro com morango\n' &gt; bolo.txt
+$ git add bolo.txt
+$ git commit --no-edit
+[main b1fe699] Merge branch 'main' of https://github.com/ana-souza/receitas
+$ git push
+Enumerating objects: 10, done.
+Counting objects: 100% (10/10), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (6/6), done.
+Writing objects: 100% (6/6), 647 bytes | 647.00 KiB/s, done.
+Total 6 (delta 4), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/receitas.git
+   aa2e042..b1fe699  main -&gt; main</pre>
+
+<p>Por fim, o Bruno puxa e recebe a versão combinada, sem conflito nenhum do lado dele (o conflito já foi resolvido pela Ana, e a resolução está no commit de merge):</p>
+
+<pre class="term" data-user="bruno" data-cwd="~/receitas">$ git pull
+remote: Enumerating objects: 10, done.
+remote: Counting objects: 100% (10/10), done.
+remote: Compressing objects: 100% (6/6), done.
+remote: Total 6 (delta 4), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (6/6), 627 bytes | 627.00 KiB/s, done.
+From https://github.com/ana-souza/receitas
+   aa2e042..b1fe699  main       -&gt; origin/main
+Updating aa2e042..b1fe699
+Fast-forward
+ bolo.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+$ cat bolo.txt
+Bolo de cenoura
+Forno: 180 graus por 40 minutos
+Cobertura: brigadeiro com morango
+$ git log --oneline --graph
+*   b1fe699 (HEAD -&gt; main, origin/main, origin/HEAD) Merge branch 'main' of https://github.com/ana-souza/receitas
+|\
+| * aa2e042 Troca a cobertura por brigadeiro
+* | 38ef793 Põe morango na cobertura
+|/
+*   7c46a4f Merge branch 'main' of https://github.com/ana-souza/receitas
+|\
+| * b1b6024 Adiciona a receita de pudim
+* | 02657c2 Avisa das fotos novas na página inicial
+|/
+* 502c5a9 Cria o site de receitas</pre>
+
+<p>O histórico mostra a história toda da dupla: dois momentos em que os dois trabalharam ao mesmo tempo, e dois merges que juntaram tudo.</p>
+
+<div class="try" data-setup="mkdir -p github/ana-souza;;git init -q --bare -b main github/ana-souza/receitas.git;;mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;printf '&lt;h1&gt;Receitas da Ana&lt;/h1&gt;\n&lt;p&gt;Bolo de cenoura&lt;/p&gt;\n' &gt; index.html;;printf 'Bolo de cenoura\nForno: 180 graus por 40 minutos\nCobertura: chocolate\n' &gt; bolo.txt;;git add .;;git commit -q -m 'Cria o site de receitas';;git remote add origin ~/github/ana-souza/receitas.git;;git push -q -u origin main;;git config pull.rebase false;;cd ~;;git clone -q github/ana-souza/receitas.git bruno;;cd bruno;;git config user.name 'Bruno Lima';;git config user.email bruno@exemplo.com;;printf 'Pudim de leite\nForno: 160 graus por 1 hora, em banho-maria\n' &gt; pudim.txt;;git add pudim.txt;;git commit -q -m 'Adiciona a receita de pudim';;git push -q;;cd ~/receitas;;echo '&lt;p&gt;Fotos novas toda semana&lt;/p&gt;' &gt;&gt; index.html;;git add index.html;;git commit -q -m 'Avisa das fotos novas na página inicial';;git pull -q --no-edit;;git push -q;;cd ~/bruno;;git pull -q;;printf 'Bolo de cenoura\nForno: 180 graus por 40 minutos\nCobertura: brigadeiro\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Troca a cobertura por brigadeiro';;git push -q;;cd ~/receitas;;printf 'Bolo de cenoura\nForno: 180 graus por 40 minutos\nCobertura: chocolate com morango\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Põe morango na cobertura';;git pull" data-goal="semconflito,limpo,contem:origin/main:bolo.txt=brigadeiro com morango" data-solucao="printf 'Bolo de cenoura\nForno: 180 graus por 40 minutos\nCobertura: brigadeiro com morango\n' &gt; bolo.txt;;git add bolo.txt;;git commit --no-edit;;git push">
+<p class="try-task"><strong>Missão 3:</strong> o <code>git pull</code> da Ana acabou de parar com conflito no <code>bolo.txt</code>: o Bruno pôs "brigadeiro", ela pôs "chocolate com morango". Resolva com a linha <code>Cobertura: brigadeiro com morango</code> (por exemplo, <code>printf 'Bolo de cenoura\nForno: 180 graus por 40 minutos\nCobertura: brigadeiro com morango\n' &gt; bolo.txt</code>), avise o Git, conclua o merge e envie para o "GitHub".</p>
+</div>
+
+<hr>
+
+<h2>A rotina da dupla</h2>
+<ol class="passo">
+  <li><strong>Começou a trabalhar?</strong> <code>git pull</code>.</li>
+  <li>Trabalhe em <strong>commits pequenos</strong>, com mensagens claras.</li>
+  <li><strong>Vai enviar?</strong> <code>git pull</code> de novo (alguém pode ter enviado enquanto isso), resolva o que precisar, e então <code>git push</code>.</li>
+  <li>Push recusado? Não force: <code>git pull</code>, resolva, <code>git push</code>.</li>
+  <li><strong>Conflito?</strong> Converse com o colega antes de decidir a versão da linha.</li>
+</ol>
+
+<h2>Formas diferentes de fazer</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Jeito</th><th>Como</th><th>Resultado</th></tr>
+<tr><td>Pull com merge (o deste projeto)</td><td><code>git config --global pull.rebase false</code> e <code>git pull</code></td><td>Cria um commit de merge quando os dois lados andaram. O histórico mostra os galhos.</td></tr>
+<tr><td>Pull com rebase</td><td><code>git pull --rebase</code> (ou <code>pull.rebase true</code>)</td><td>Reaplica os seus commits <strong>depois</strong> dos do colega: histórico em linha reta, sem commit de merge. Veja <a href="rebase-ou-merge.html">Rebase ou Merge?</a>.</td></tr>
+<tr><td>Só avanço rápido</td><td><code>git pull --ff-only</code> (ou <code>pull.ff only</code>)</td><td>Recusa o pull se houver algo a juntar: você decide na hora o que fazer.</td></tr>
+<tr><td>Olhar antes de juntar</td><td><code>git fetch</code>, depois <code>git log --oneline --graph --all</code>, depois <code>git merge</code></td><td>O mesmo que o pull, em passos separados (<a href="git-fetch.html">git fetch</a>).</td></tr>
+<tr><td>Cada um no seu branch</td><td>Branches + <a href="pull-request.html">pull requests</a> no GitHub</td><td>O jeito mais comum em equipes: ninguém envia direto no <code>main</code> (veja <a href="github-flow.html">O GitHub Flow</a>).</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Quando dá errado</h2>
+
+<div class="cenario">
+<strong>"! [rejected] … (fetch first)" no <code>git push</code></strong>
+<p>É o da etapa 3. <strong>O que aconteceu:</strong> alguém enviou commits que você não tem. <strong>Como confirmar:</strong> <code>git fetch</code> e depois <code>git status</code> (vai dizer que os branches divergiram). <strong>Como resolver:</strong> <code>git pull</code>, resolva conflitos se houver, e <code>git push</code>. Mais detalhes em <a href="push-rejeitado.html">Push Rejeitado: o que Fazer</a>.</p>
+</div>
+
+<div class="cenario">
+<strong>"fatal: Need to specify how to reconcile divergent branches."</strong>
+<p>É o da etapa 3, no <code>git pull</code>. <strong>O que aconteceu:</strong> os dois lados andaram e o Git não sabe se você prefere merge ou rebase. O download já foi feito; só a junção não. <strong>Como resolver:</strong> escolha uma vez, para sempre: <code>git config --global pull.rebase false</code> (merge). Ou escolha só naquele pull: <code>git pull --no-rebase</code> (merge) ou <code>git pull --rebase</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>"error: remote origin already exists."</strong>
+<pre class="term" data-cwd="~/receitas">$ git remote add origin https://github.com/ana-souza/receitas.git
+error: remote origin already exists.</pre>
+<p><strong>O que aconteceu:</strong> o repositório já tem um remoto chamado <code>origin</code> ("o remoto origin já existe"); talvez você já tenha rodado esse comando, ou o repositório veio de um <code>git clone</code>.</p>
+<p><strong>Como confirmar:</strong> <code>git remote -v</code> mostra para onde o <code>origin</code> aponta.</p>
+<p><strong>Como resolver:</strong> se o endereço está certo, não precisa fazer nada. Se está errado, troque com <code>git remote set-url origin NOVO-ENDEREÇO</code> (veja <a href="git-remote.html">git remote</a>).</p>
+</div>
+
+<div class="cenario">
+<strong>"fatal: The current branch … has no upstream branch."</strong>
+<pre class="term" data-cwd="~/receitas">$ git switch -q -c teste
+$ git push
+fatal: The current branch teste has no upstream branch.
+To push the current branch and set the remote as upstream, use
+
+    git push --set-upstream origin teste
+
+To have this happen automatically for branches without a tracking
+upstream, see 'push.autoSetupRemote' in 'git help config'.
+</pre>
+<p><strong>O que aconteceu:</strong> o branch <code>teste</code> é novo e ainda não tem ligação com nenhum branch do GitHub ("não tem branch de upstream"). Um <code>git push</code> sem nomes não sabe para onde ir.</p>
+<p><strong>Como resolver:</strong> faça o primeiro envio com o nome, como a própria mensagem sugere: <code>git push --set-upstream origin teste</code> (ou a forma curta, <code>git push -u origin teste</code>). Veja <a href="upstream.html">Branch de Rastreamento (upstream)</a>.</p>
+</div>
+
+<div class="cenario">
+<strong>"remote: Repository not found."</strong>
+<pre class="term" data-cwd="~/receitas">$ git push https://github.com/ana-souza/receitass.git main
+remote: Repository not found.
+fatal: repository 'https://github.com/ana-souza/receitass.git/' not found</pre>
+<p><strong>O que aconteceu:</strong> o endereço está errado (aqui, <code>receitass</code> com dois "s"), o repositório não existe, ou (no GitHub de verdade) a sua conta não tem acesso a ele: um repositório privado aparece como "não encontrado" para quem não tem permissão.</p>
+<p><strong>Como resolver:</strong> confira o endereço com <code>git remote -v</code> e na página do repositório no GitHub. Se o Bruno recebe esse erro no repositório da Ana, confira se o convite de colaborador foi aceito.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida do projeto</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Quem</th><th>Comando</th><th>Para quê</th></tr>
+<tr><td>Ana</td><td><code>git remote add origin URL</code></td><td>Ligar o repositório local ao do GitHub.</td></tr>
+<tr><td>Ana</td><td><code>git push -u origin main</code></td><td>Primeiro envio, gravando a ligação.</td></tr>
+<tr><td>Bruno</td><td><code>git clone URL</code></td><td>Pegar a cópia completa.</td></tr>
+<tr><td>Os dois</td><td><code>git pull</code></td><td>Trazer e juntar o trabalho do outro.</td></tr>
+<tr><td>Os dois</td><td><code>git push</code></td><td>Enviar os commits novos.</td></tr>
+<tr><td>Uma vez</td><td><code>git config --global pull.rebase false</code></td><td>Dizer ao <code>pull</code> que junte com merge.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Primeiro envio</h3>
+<p>Complete para enviar o <code>main</code> pela primeira vez e gravar a ligação com o <code>origin</code>:</p>
+<div class="ex-code">git push <input data-answer="-u" aria-label="opção"> origin main</div>
+</div>
+
+<div class="exercise">
+<h3>2. Escolher o merge no pull</h3>
+<p>Complete para que o <code>git pull</code> junte com merge em todos os seus repositórios:</p>
+<div class="ex-code">git config --global <input data-answer="pull.rebase" aria-label="configuração"> false</div>
+</div>
+
+<div class="exercise">
+<h3>3. Pegar a cópia</h3>
+<p>Complete o comando que o Bruno usa para baixar o repositório da Ana pela primeira vez:</p>
+<div class="ex-code">git <input data-answer="clone" aria-label="subcomando"> https://github.com/ana-souza/receitas.git</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. O <code>git push</code> da Ana mostrou <code>! [rejected] main -&gt; main (fetch first)</code>. O que ela deve fazer?</p>
+<label><input type="radio" name="q4"> <code>git push --force</code>, para garantir que a versão dela fique no GitHub.</label>
+<label><input type="radio" name="q4"> Apagar a pasta e clonar de novo.</label>
+<label><input type="radio" name="q4"> <code>git pull</code>, resolver o que for preciso, e <code>git push</code> de novo.</label>
+<label><input type="radio" name="q4"> Esperar o GitHub liberar o envio.</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">5. O <code>git pull</code> do Bruno mostrou <code>Fast-forward</code>. O que isso quer dizer?</p>
+<label><input type="radio" name="q5"> Houve conflito, resolvido automaticamente.</label>
+<label><input type="radio" name="q5"> Ele não tinha commits novos; o Git só avançou o <code>main</code> dele, sem criar commit de merge.</label>
+<label><input type="radio" name="q5"> O Git enviou os commits do Bruno para o GitHub.</label>
+<label><input type="radio" name="q5"> O download foi mais rápido que o normal.</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">6. Por que o GitHub recusa o push quando o colega enviou antes?</p>
+<label><input type="radio" name="q6"> Para não apagar do histórico os commits que o colega enviou.</label>
+<label><input type="radio" name="q6"> Porque só o dono do repositório pode enviar.</label>
+<label><input type="radio" name="q6"> Porque o push só funciona uma vez por dia.</label>
+<label><input type="radio" name="q6"> Porque a Ana esqueceu o <code>-u</code>.</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Cada pessoa tem o repositório completo no seu computador; o GitHub (<code>origin</code>) é o ponto de encontro.</li>
+  <li>Primeiro envio: <code>git remote add origin URL</code> + <code>git push -u origin main</code>. Quem chega depois: <code>git clone URL</code>.</li>
+  <li>Push recusado com <code>(fetch first)</code> = o colega enviou antes. Nunca force: <code>git pull</code>, e depois <code>git push</code>.</li>
+  <li>Se os dois lados andaram, o <code>git pull</code> do Git atual pede que você escolha como juntar: <code>git config --global pull.rebase false</code> (merge) é a escolha deste guia para começar.</li>
+  <li>Conflito entre duas pessoas se resolve igual ao de dois branches: arquivo sem marcadores, <code>git add</code>, <code>git commit</code>, e então <code>git push</code>. O colega recebe a resolução pronta no próximo <code>git pull</code>.</li>
+  <li>Hábito de ouro: <code>git pull</code> antes de começar e antes de enviar.</li>
+</ul>
+
+<p>Próximo projeto: o site ficou bom. Hora de marcar a primeira versão oficial, a 1.0.0, em <a href="projeto-versao.html">Lançando uma Versão com Tags</a>.</p>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
