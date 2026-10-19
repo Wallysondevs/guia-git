@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git squash — juntando vários commits em um | Guia Git</title>
+<meta name="description" content="Como juntar commits (squash) no Git: squash e fixup no rebase interativo, a mensagem combinada que abre no editor, git commit --fixup com --autosquash, git merge --squash e git reset --soft, com saídas reais do Git 2.53, a tabela de qual usar e os erros mais comuns.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">squash</span></h1>
+
+<p class="intro">Enquanto escrevia a receita de pudim, a Ana fez quatro commits: o pudim, o leite, os ovos, e um "corrige a quantidade de leite". Para ela, foi ótimo: cada passo ficou salvo. Mas para quem vai ler o histórico, isso é <strong>uma coisa só</strong>: "adiciona a receita de pudim". Juntar vários commits em um se chama <strong>squash</strong> (em inglês, "espremer", "achatar"). Nesta aula você vai ver os jeitos de fazer isso, a começar pelos comandos <code>squash</code> e <code>fixup</code> do <a href="rebase-interativo.html">rebase interativo</a>.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é juntar commits e quando isso ajuda (e quando atrapalha).</li>
+  <li>Usar <code>squash</code> e <code>fixup</code> na lista do <code>git rebase -i</code>, e a mensagem combinada que abre no editor.</li>
+  <li>Marcar um commit de conserto com <code>git commit --fixup</code> e deixar o Git arrumar com <code>--autosquash</code>.</li>
+  <li>Dois atalhos: <code>git merge --squash</code> e <code>git reset --soft</code>.</li>
+  <li>Os erros reais: <code>cannot 'squash' without a previous commit</code> e a mensagem vazia.</li>
+</ul>
+</div>
+
+<p>Todos os comandos rodaram no <strong>Git 2.53</strong> da máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português. As listas e mensagens do rebase interativo saem em inglês (sem tradução no Git do Ubuntu) e estão traduzidas no texto. Como na aula anterior, o laboratório editou as listas com <code>sed</code> e mostrou o que o editor receberia com <code>GIT_EDITOR=cat</code> (veja <a href="rebase-interativo.html">Rebase Interativo</a>, seção 7).</p>
+
+<hr>
+
+<h2>A ideia: o rascunho e a versão passada a limpo</h2>
+<p>Quando você escreve uma redação, o rascunho tem riscos, setas, "ops, era 'receita'". Você entrega ao professor a versão <strong>passada a limpo</strong>: o mesmo texto final, sem o vaivém. Juntar commits é passar a limpo: o <strong>resultado</strong> (os arquivos) é exatamente o mesmo; só o caminho até ele fica mais curto.</p>
+<pre>Antes:   A---P---L---O---C    (pudim, leite, ovos, correção)
+Depois:  A---P'                (um commit com tudo)
+</pre>
+<p>Por que fazer:</p>
+<ul>
+  <li>O histórico fica fácil de ler: um commit = uma mudança com sentido (aula <a href="boas-praticas.html">Boas Práticas</a>).</li>
+  <li>Some o "conserta o commit anterior", que não interessa a ninguém.</li>
+  <li>Desfazer fica mais fácil: um <a href="git-revert.html">git revert</a> de um commit só tira a receita inteira.</li>
+</ul>
+<p>E quando <strong>não</strong> fazer: quando os commits já estão no GitHub e outras pessoas os usam (aula <a href="regra-de-ouro.html">A Regra de Ouro</a>), e quando cada commit é uma mudança diferente que vale a pena manter separada.</p>
+
+<hr>
+
+<h2>1. A situação</h2>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+2209ebb Corrige a quantidade de leite
+5a86526 Acrescenta os ovos
+89d6767 Acrescenta o leite
+528c363 Adiciona receita de pudim
+8bf5d5b Adiciona receita de bolo          « o main
+</pre>
+<p>Os quatro de cima estão no branch <code>pudim</code>; o <code>8bf5d5b</code> é o <code>main</code>. O objetivo: um commit só, "Adiciona receita de pudim".</p>
+
+<hr>
+
+<h2>2. <code>squash</code>: juntar e escrever a mensagem</h2>
+<p>A Ana abre o rebase interativo sobre o <code>main</code> e, na lista, deixa o <strong>primeiro</strong> commit como <code>pick</code> e marca os outros três com <code>squash</code> (ou só <code>s</code>):</p>
+<pre class="file" data-file="lista do rebase (editada)">pick 528c363 # Adiciona receita de pudim
+squash 89d6767 # Acrescenta o leite
+squash 5a86526 # Acrescenta os ovos
+squash 2209ebb # Corrige a quantidade de leite
+</pre>
+<p>O <code>squash</code> quer dizer "use este commit, mas <strong>funda no de cima</strong>". O primeiro tem de ser <code>pick</code>: é nele que os outros se juntam. Ao salvar a lista, o Git funde os quatro e abre o editor com <strong>todas</strong> as mensagens, para você escrever a mensagem final. No laboratório, o editor recebeu este texto:</p>
+
+<pre class="file" data-file="mensagem do commit (no editor)"># This is a combination of 4 commits.
+# This is the 1st commit message:
+
+Adiciona receita de pudim
+
+# This is the commit message #2:
+
+Acrescenta o leite
+
+# This is the commit message #3:
+
+Acrescenta os ovos
+
+# This is the commit message #4:
+
+Corrige a quantidade de leite
+
+# Please enter the commit message for your changes. Lines starting
+# with '#' will be ignored, and an empty message aborts the commit.
+#
+# Date:      Thu Oct 15 10:30:00 2026 -0300
+#
+# interactive rebase in progress; onto 8bf5d5b
+# Last commands done (4 commands done):
+#    squash 5a86526 # Acrescenta os ovos
+#    squash 2209ebb # Corrige a quantidade de leite
+# No commands remaining.
+# You are currently rebasing branch 'pudim' on '8bf5d5b'.
+#
+# Mudanças a serem submetidas:
+#	new file:   pudim.txt
+#
+</pre>
+<ul>
+  <li><code># This is a combination of 4 commits.</code>: "isto é a combinação de 4 commits". Em seguida, cada mensagem, com um comentário dizendo de qual commit ela veio (<code>1st</code> = 1ª, <code>#2</code> = 2ª…).</li>
+  <li>As linhas com <code>#</code> serão ignoradas. As que <strong>não</strong> têm <code>#</code> viram a mensagem. Se você só salvar, a mensagem final terá as quatro frases, uma embaixo da outra.</li>
+  <li>"Uma mensagem vazia cancela o commit": se você apagar tudo, o rebase para (veja <a href="#errado">Quando dá errado</a>).</li>
+</ul>
+<p>A Ana apaga tudo e escreve a mensagem que ela quer: um título e, depois de uma linha em branco, um detalhe (aula <a href="mensagens-commit.html">Boas Mensagens de Commit</a>):</p>
+<pre class="file" data-file="mensagem do commit (como a Ana deixou)">Adiciona receita de pudim
+
+Leite condensado, leite e ovos.
+</pre>
+<p>Ela salva e fecha o editor:</p>
+<pre class="term" data-cwd="~/receitas">$ git rebase -i main
+Rebasing (2/4)Rebasing (3/4)Rebasing (4/4)[detached HEAD 670194f] Adiciona receita de pudim
+ Date: Thu Oct 15 10:30:00 2026 -0300
+ 1 file changed, 4 insertions(+)                 « as 4 linhas do pudim, num commit só
+ create mode 100644 pudim.txt
+Successfully rebased and updated refs/heads/pudim.
+$ git log --oneline
+670194f Adiciona receita de pudim
+8bf5d5b Adiciona receita de bolo
+$ git log -1
+commit 670194fc68dafbf730aebea25be8d30f925c1256
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Adiciona receita de pudim
+
+    Leite condensado, leite e ovos.
+$ cat pudim.txt
+Pudim de leite
+1 lata de leite condensado
+1 lata de leite
+3 ovos
+</pre>
+<p>Quatro commits viraram um, com a mensagem nova. O arquivo <code>pudim.txt</code> ficou <strong>exatamente</strong> como estava depois do último commit (com a correção para "1 lata de leite"): juntar commits não muda o resultado, só o caminho. (Os <code>Rebasing (2/4)…</code> são o contador de progresso, que um terminal apaga da tela.)</p>
+
+<hr>
+
+<h2>3. <code>fixup</code>: juntar sem mexer na mensagem</h2>
+<p>Muitas vezes a mensagem do primeiro commit já é a certa, e as outras são lixo ("conserta", "ops"). Aí o <code>fixup</code> (ou <code>f</code>) é mais rápido: ele funde o commit no de cima e <strong>joga fora a mensagem dele</strong>, sem abrir o editor:</p>
+<pre class="file" data-file="lista do rebase (editada)">pick 528c363 # Adiciona receita de pudim
+fixup 89d6767 # Acrescenta o leite
+fixup 5a86526 # Acrescenta os ovos
+fixup 2209ebb # Corrige a quantidade de leite
+</pre>
+<pre class="term" data-cwd="~/receitas">$ git rebase -i main
+Rebasing (2/4)Rebasing (3/4)Rebasing (4/4)Successfully rebased and updated refs/heads/pudim.
+$ git log --oneline
+dcdac71 Adiciona receita de pudim
+8bf5d5b Adiciona receita de bolo
+</pre>
+<p>Sem editor, sem pergunta: um commit, com a mensagem do primeiro.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;git switch -q -c pudim;;printf 'Pudim de leite\n1 lata de leite condensado\n' &gt; pudim.txt;;git add pudim.txt;;git commit -q -m 'Adiciona receita de pudim';;echo '2 latas de leite' &gt;&gt; pudim.txt;;git commit -q -am 'Acrescenta o leite';;echo '3 ovos' &gt;&gt; pudim.txt;;git commit -q -am 'Acrescenta os ovos';;sed -i 's/2 latas/1 lata/' pudim.txt;;git commit -q -am 'Corrige a quantidade de leite'" data-goal="head:pudim,commits:2,msg:Adiciona receita de pudim,contem:HEAD:pudim.txt=1 lata de leite,contem:HEAD:pudim.txt=3 ovos,semconflito" data-solucao="GIT_SEQUENCE_EDITOR='sed -i 2,4s/^pick/fixup/' git rebase -i main">
+<p class="try-task"><strong>Missão:</strong> junte os quatro commits do branch <code>pudim</code> num só, com a mensagem "Adiciona receita de pudim". Use <code>git rebase -i main</code> com <code>fixup</code> nas linhas 2, 3 e 4. Se o editor não abrir no terminal do guia, o jeito sem editor é: <code>GIT_SEQUENCE_EDITOR='sed -i 2,4s/^pick/fixup/' git rebase -i main</code>. Confira com <code>git log --oneline</code> e <code>cat pudim.txt</code>.</p>
+</div>
+
+<h3>Juntando só alguns</h3>
+<p>Não precisa ser tudo ou nada. Cada <code>squash</code>/<code>fixup</code> se funde no commit <strong>logo acima</strong> dele na lista. Aqui a Ana junta o leite no pudim (com <code>squash</code>), deixa os ovos separados, e funde a correção nos ovos (com <code>fixup</code>):</p>
+<pre class="file" data-file="lista do rebase (editada)">pick 528c363 # Adiciona receita de pudim
+squash 89d6767 # Acrescenta o leite
+pick 5a86526 # Acrescenta os ovos
+fixup 2209ebb # Corrige a quantidade de leite
+</pre>
+<pre class="term" data-cwd="~/receitas">$ git rebase -i main
+Rebasing (2/4)# This is a combination of 2 commits.
+# This is the 1st commit message:
+…                                                  « o editor abre só para juntar pudim + leite
+[detached HEAD c8fe594] Adiciona receita de pudim
+ Date: Thu Oct 15 10:30:00 2026 -0300
+ 1 file changed, 3 insertions(+)
+ create mode 100644 pudim.txt
+Rebasing (3/4)Rebasing (4/4)Successfully rebased and updated refs/heads/pudim.
+$ git log --oneline
+7bfbb8b Acrescenta os ovos
+c8fe594 Adiciona receita de pudim
+8bf5d5b Adiciona receita de bolo
+</pre>
+<p>(No laboratório, o "editor" foi o <code>cat</code>, que imprime a mensagem combinada no meio da saída; o <code>…</code> marca o trecho cortado, igual ao da seção 2, agora com 2 mensagens. A mensagem ficou a do <code>cat</code>, sem mudanças: o título "Adiciona receita de pudim" e, embaixo, "Acrescenta o leite".) Resultado: dois commits. Repare que a correção do leite foi parar no commit dos ovos, porque o <code>fixup</code> funde no de cima. A <strong>ordem das linhas</strong> decide onde cada um entra; se precisar, mude a ordem (aula <a href="rebase-interativo.html">Rebase Interativo</a>, seção 5).</p>
+
+<hr>
+
+<h2>4. <code>git commit --fixup</code> + <code>--autosquash</code>: o Git arruma a lista</h2>
+<p>A Ana percebe que o título da receita devia ser "Pudim de leite condensado". O erro está no <strong>primeiro</strong> commit do branch, não no último. Em vez de fazer um commit comum e depois arrastar a linha na lista, ela já diz ao Git, ao commitar, qual commit este conserta:</p>
+<pre class="term" data-cwd="~/receitas">$ sed -i '1s/.*/Pudim de leite condensado/' pudim.txt
+$ git commit -a --fixup=528c363
+[pudim 51dce18] fixup! Adiciona receita de pudim       « a mensagem é feita sozinha
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+$ git log --oneline
+51dce18 fixup! Adiciona receita de pudim
+2209ebb Corrige a quantidade de leite
+5a86526 Acrescenta os ovos
+89d6767 Acrescenta o leite
+528c363 Adiciona receita de pudim
+8bf5d5b Adiciona receita de bolo
+</pre>
+<dl class="anatomy">
+  <dt>git commit -a</dt><dd>Commit de tudo o que mudou nos arquivos rastreados (aula <a href="git-commit.html">git commit</a>).</dd>
+  <dt>--fixup=528c363</dt><dd>"Este commit conserta o <code>528c363</code>". O Git escreve a mensagem sozinho: <code>fixup!</code> + a mensagem do commit consertado.</dd>
+</dl>
+<p>Na hora de arrumar, o <code>--autosquash</code> lê esses <code>fixup!</code> e já monta a lista com cada conserto <strong>embaixo</strong> do commit certo, marcado com <code>fixup</code>:</p>
+<pre class="term" data-cwd="~/receitas">$ git rebase -i --autosquash main
+</pre>
+<pre class="file" data-file="lista do rebase (como o Git montou)">pick 528c363 # Adiciona receita de pudim
+fixup 51dce18 # fixup! Adiciona receita de pudim
+pick 89d6767 # Acrescenta o leite
+pick 5a86526 # Acrescenta os ovos
+pick 2209ebb # Corrige a quantidade de leite
+</pre>
+<p>A Ana só confere e salva:</p>
+<pre class="term" data-cwd="~/receitas">Rebasing (2/5)Rebasing (3/5)Rebasing (4/5)Rebasing (5/5)Successfully rebased and updated refs/heads/pudim.
+$ git log --oneline
+426ad18 Corrige a quantidade de leite
+ba2b933 Acrescenta os ovos
+678f141 Acrescenta o leite
+9735255 Adiciona receita de pudim
+8bf5d5b Adiciona receita de bolo
+$ git show HEAD~3:pudim.txt
+Pudim de leite condensado                 « o conserto entrou no 1º commit
+1 lata de leite condensado
+</pre>
+<p>O commit <code>fixup!</code> sumiu, e o título já nasce certo no primeiro commit (o <code>git show HEAD~3:pudim.txt</code> mostra o arquivo como ele era naquele commit). Existe também o <code>git commit --squash=HASH</code>, que faz o mesmo com <code>squash</code> (abrindo o editor para juntar as mensagens).</p>
+
+<hr>
+
+<h2>5. Outros jeitos de chegar a um commit só</h2>
+
+<h3><code>git merge --squash</code>: o branch inteiro vira um commit no <code>main</code></h3>
+<p>Em vez de arrumar o branch, a Ana pode levar <strong>o resultado</strong> dele para o <code>main</code> como um commit novo:</p>
+<pre class="term" data-cwd="~/receitas">$ git switch -q main
+$ git merge --squash pudim
+Updating 8bf5d5b..2209ebb
+Fast-forward
+Squash commit -- not updating HEAD                « não fez commit: só preparou as mudanças
+ pudim.txt | 4 ++++
+ 1 file changed, 4 insertions(+)
+ create mode 100644 pudim.txt
+$ git status --short
+A  pudim.txt                                      « na área de preparo, esperando o commit
+$ git commit -q -m 'Adiciona receita de pudim'
+$ git log --oneline --graph --all
+* dcdac71 Adiciona receita de pudim
+| * 2209ebb Corrige a quantidade de leite
+| * 5a86526 Acrescenta os ovos
+| * 89d6767 Acrescenta o leite
+| * 528c363 Adiciona receita de pudim
+|/
+* 8bf5d5b Adiciona receita de bolo
+</pre>
+<p>"Commit de squash: o HEAD não foi atualizado." O <code>--squash</code> traz todas as mudanças do branch para a área de preparo, mas <strong>não</strong> faz o commit nem liga os históricos: você faz o commit com a mensagem que quiser. O <code>main</code> ganhou um commit com a receita inteira; o branch <code>pudim</code> continua lá, com os quatro commits (pode apagá-lo depois: aula <a href="apagar-branch.html">Apagando Branches</a>). É o que o botão "Squash and merge" do GitHub faz num <a href="pull-request.html">pull request</a>.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;git switch -q -c pudim;;printf 'Pudim de leite\n1 lata de leite condensado\n' &gt; pudim.txt;;git add pudim.txt;;git commit -q -m 'Adiciona receita de pudim';;echo '1 lata de leite' &gt;&gt; pudim.txt;;git commit -q -am 'Acrescenta o leite';;echo '3 ovos' &gt;&gt; pudim.txt;;git commit -q -am 'Acrescenta os ovos'" data-goal="head:main,commits:2,contem:HEAD:pudim.txt=3 ovos,msg:pudim,limpo" data-solucao="git switch main;;git merge --squash pudim;;git commit -m 'Adiciona receita de pudim'">
+<p class="try-task"><strong>Missão:</strong> leve a receita de pudim para o <code>main</code> como <strong>um commit só</strong>, sem mexer no branch <code>pudim</code>: troque para o <code>main</code>, use <code>git merge --squash pudim</code>, veja o <code>git status</code> e faça o commit com uma mensagem que fale do pudim.</p>
+</div>
+
+<h3><code>git reset --soft</code>: desfazer os commits e refazer um</h3>
+<p>Outro jeito, no próprio branch: voltar o branch para o <code>main</code> <strong>sem mexer nos arquivos</strong>, e commitar tudo de uma vez (aula <a href="reset-modos.html">reset --soft, --mixed e --hard</a>):</p>
+<pre class="term" data-cwd="~/receitas">$ git reset --soft main
+$ git status --short
+A  pudim.txt                                      « tudo preparado, como se nunca tivesse sido commitado
+$ git commit -q -m 'Adiciona receita de pudim'
+$ git log --oneline
+dcdac71 Adiciona receita de pudim
+8bf5d5b Adiciona receita de bolo
+</pre>
+<p>Rápido e sem editor, mas sem a lista: junta <strong>todos</strong> os commits depois do <code>main</code>, sem escolher. Repare que o hash final (<code>dcdac71</code>) é o mesmo do <code>fixup</code> da seção 3 e do <code>merge --squash</code>: mesmo conteúdo, mesmo pai, mesma mensagem, autor e data (fixa no laboratório) dão o mesmo commit.</p>
+
+<h3>Qual usar?</h3>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Jeito</th><th>Bom para</th><th>Cuidado</th></tr>
+<tr><td><code>squash</code> no <code>git rebase -i</code></td><td>Juntar commits escolhendo quais, e escrever a mensagem final</td><td>Abre o editor para a mensagem</td></tr>
+<tr><td><code>fixup</code> no <code>git rebase -i</code></td><td>Juntar consertos no commit certo, mantendo a mensagem dele</td><td>A mensagem do commit fundido é descartada</td></tr>
+<tr><td><code>git commit --fixup</code> + <code>git rebase -i --autosquash</code></td><td>Consertar um commit antigo sem arrastar linhas na lista</td><td>Precisa saber o hash do commit consertado</td></tr>
+<tr><td><code>git merge --squash</code></td><td>Levar um branch inteiro para o <code>main</code> como um commit</td><td>Não liga os históricos: o Git não sabe que o branch foi "mesclado", e o <code>git branch -d pudim</code> recusa com <code>error: the branch 'pudim' is not fully merged</code> ("não foi totalmente mesclado"); apague com <code>-D</code></td></tr>
+<tr><td><code>git reset --soft main</code></td><td>Juntar tudo do branch, rápido</td><td>Junta tudo, sem escolher; erre o alvo do reset e você junta commits demais</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>cannot 'squash' without a previous commit</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git rebase -i main
+error: cannot 'squash' without a previous commit
+You can fix this with 'git rebase --edit-todo' and then run 'git rebase --continue'.
+Or you can abort the rebase with 'git rebase --abort'.
+</pre>
+<p>"Não dá para fazer <code>squash</code> sem um commit anterior." A Ana marcou a <strong>primeira</strong> linha da lista com <code>squash</code>, mas não há nada acima dela para fundir. O rebase fica em andamento, sem ter feito nada (<code>git status</code> mostra <code>No commands done</code>). <strong>Como resolver:</strong> <code>git rebase --edit-todo</code>, deixe a primeira linha como <code>pick</code>, salve e rode <code>git rebase --continue</code>; ou desista com <code>git rebase --abort</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Apagou toda a mensagem do squash</strong>
+<pre class="term" data-cwd="~/receitas">$ git rebase -i main
+Rebasing (2/4)Rebasing (3/4)Rebasing (4/4)Aborting commit due to empty commit message.
+Could not apply 2209ebb... # Corrige a quantidade de leite
+</pre>
+<p>"Cancelando o commit por causa da mensagem vazia." No editor da mensagem combinada, só sobraram linhas com <code>#</code> (ou nada). O rebase fica <strong>parado</strong> no fim da junção, com as mudanças preparadas; o <code>git status</code> diz <code>interactive rebase in progress</code> e a dica <code>execute "git rebase --continue"</code>. <strong>Como resolver:</strong> rode <code>git rebase --continue</code>: o editor abre de novo; escreva a mensagem, salve e feche. No laboratório:</p>
+<pre class="term" data-cwd="~/receitas">$ git rebase --continue
+[detached HEAD dcdac71] Adiciona receita de pudim
+ Date: Thu Oct 15 10:30:00 2026 -0300
+ 1 file changed, 4 insertions(+)
+ create mode 100644 pudim.txt
+Successfully rebased and updated refs/heads/pudim.
+</pre>
+<p>Ou desista com <code>git rebase --abort</code> e comece de novo.</p>
+</div>
+
+<div class="cenario">
+<strong>Tentou começar outro rebase com um parado</strong>
+<pre class="term" data-cwd="~/receitas">$ git rebase -i main
+fatal: It seems that there is already a rebase-merge directory, and
+I wonder if you are in the middle of another rebase.  If that is the
+case, please try
+	git rebase (--continue | --abort | --skip)
+If that is not the case, please
+	rm -fr ".git/rebase-merge"
+and run me again.  I am stopping in case you still have something
+valuable there.
+
+</pre>
+<p>"Parece que já existe um diretório de rebase; será que você está no meio de outro rebase? Se estiver, use <code>--continue</code>, <code>--abort</code> ou <code>--skip</code>." Um rebase anterior ficou parado (por conflito, por mensagem vazia…). <strong>Como resolver:</strong> <code>git status</code> mostra o rebase em andamento; termine-o com <code>git rebase --continue</code> ou desista com <code>git rebase --abort</code>. Não apague a pasta <code>.git/rebase-merge</code> à mão: o <code>--abort</code> faz isso do jeito certo.</p>
+</div>
+
+<div class="cenario">
+<strong>Juntou demais</strong>
+<p>Marcou <code>fixup</code> num commit que devia ficar separado? Logo depois do rebase, <code>git reset --hard ORIG_HEAD</code> volta o branch para como estava antes (o <code>ORIG_HEAD</code> guarda essa posição; cuidado, o <code>--hard</code> descarta mudanças não commitadas). Mais tarde, o <a href="git-reflog.html">git reflog</a> ainda mostra o commit de antes do rebase.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>squash</code> / <code>s</code> na lista do <code>git rebase -i</code></td><td>Funde no commit de cima e abre o editor com as mensagens juntas</td></tr>
+<tr><td><code>fixup</code> / <code>f</code> na lista</td><td>Funde no commit de cima e fica com a mensagem dele</td></tr>
+<tr><td><code>git commit --fixup=HASH</code></td><td>Faz um commit <code>fixup! …</code> marcado para se fundir no <code>HASH</code></td></tr>
+<tr><td><code>git commit --squash=HASH</code></td><td>Igual, para virar <code>squash</code></td></tr>
+<tr><td><code>git rebase -i --autosquash main</code></td><td>Monta a lista já com os <code>fixup!</code>/<code>squash!</code> no lugar certo</td></tr>
+<tr><td><code>git merge --squash BRANCH</code></td><td>Traz as mudanças do branch para a área de preparo, para um commit só</td></tr>
+<tr><td><code>git reset --soft main</code> + <code>git commit</code></td><td>Junta todos os commits depois do <code>main</code> num só</td></tr>
+<tr><td><code>git reset --hard ORIG_HEAD</code></td><td>Logo depois do rebase: volta para antes dele</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete a lista</h3>
+<p>Complete para juntar os três commits num só, ficando com a mensagem do primeiro e sem abrir o editor:</p>
+<div class="ex-code">pick 528c363 # Adiciona receita de pudim<br><input data-answer="fixup" aria-label="comando da linha 2"> 89d6767 # Acrescenta o leite<br><input data-answer="fixup" aria-label="comando da linha 3"> 5a86526 # Acrescenta os ovos</div>
+</div>
+
+<div class="exercise">
+<h3>2. O commit de conserto</h3>
+<p>Complete para fazer um commit que conserta o <code>528c363</code> e será fundido nele pelo <code>--autosquash</code>:</p>
+<div class="ex-code">git commit -a <input data-answer="--fixup=528c363" aria-label="opção"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. Na lista, um commit marcado com <code>squash</code> se funde em qual commit?</p>
+<label><input type="radio" name="q3"> No commit de baixo</label>
+<label><input type="radio" name="q3"> No commit logo acima dele na lista</label>
+<label><input type="radio" name="q3"> No último commit do <code>main</code></label>
+<label><input type="radio" name="q3"> Em todos os outros</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. Depois de juntar quatro commits num só, o arquivo <code>pudim.txt</code>…</p>
+<label><input type="radio" name="q4"> volta a ter só o conteúdo do primeiro commit</label>
+<label><input type="radio" name="q4"> fica com as marcas de conflito</label>
+<label><input type="radio" name="q4"> fica exatamente como estava depois do último dos quatro commits</label>
+<label><input type="radio" name="q4"> é apagado</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. O que o <code>git merge --squash pudim</code> faz?</p>
+<label><input type="radio" name="q5"> Prepara todas as mudanças do <code>pudim</code> na área de preparo, sem commitar; você faz um commit só</label>
+<label><input type="radio" name="q5"> Junta os commits dentro do branch <code>pudim</code></label>
+<label><input type="radio" name="q5"> Apaga o branch <code>pudim</code></label>
+<label><input type="radio" name="q5"> Faz um merge comum, com commit de junção</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Juntar commits (<em>squash</em>) passa o histórico a limpo: os arquivos ficam iguais, o caminho fica mais curto.</li>
+  <li>No <code>git rebase -i</code>: deixe o primeiro como <code>pick</code>; <code>squash</code> funde no de cima e abre o editor com as mensagens juntas; <code>fixup</code> funde e fica com a mensagem de cima.</li>
+  <li><code>git commit --fixup=HASH</code> + <code>git rebase -i --autosquash</code>: o Git põe cada conserto no lugar certo da lista.</li>
+  <li><code>git merge --squash BRANCH</code> leva o branch inteiro ao <code>main</code> como um commit; <code>git reset --soft main</code> junta tudo no próprio branch.</li>
+  <li>Junte só o que ainda não foi compartilhado. Errou? <code>git rebase --abort</code> no meio; <code>git reset --hard ORIG_HEAD</code> logo depois.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
