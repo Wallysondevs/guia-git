@@ -1,0 +1,64 @@
+## erros e casos de canto comparados com o Git do lab
+### comandos-e-erros
+mkdir r && cd r && git init -q
+printf 'Bolo\nfarinha\novos\nleite\n' > bolo.txt; git add .; git commit -qm 'Adiciona bolo'
+echo 'Pudim' > pudim.txt; git add .; git commit -qm 'Adiciona pudim'
+git commit --amend -m 'Adiciona pudim de leite'
+git reset --soft HEAD~1
+git status
+git reset HEAD~0 pudim.txt
+git reset
+git status -s
+git add .; git commit -qm 'Pudim'
+git reset --hard HEAD~1
+git reset --hard nada
+git restore nada.txt
+git restore --staged nada.txt
+git branch -d main
+git branch nova; git branch nova
+git branch -D inexistente
+git switch -c nova
+git tag v1; git tag v1
+git tag -d v2
+git show v1 --stat
+git rm nada.txt
+echo mais >> bolo.txt
+git rm bolo.txt
+git rm --cached bolo.txt
+git status
+git add bolo.txt
+git diff HEAD
+git diff --stat HEAD
+git log --stat --graph --oneline
+git commit -qm 'x'
+git cherry-pick nova
+git revert HEAD~5
+git diff HEAD~1 HEAD --name-status
+git log --oneline --decorate --graph --all
+git show --oneline -s
+git show HEAD~1:bolo.txt
+git status --porcelain
+git log --format='%h %an <%ae> %s'
+git log --pretty=oneline
+git log -1 --format=%H
+git branch --merged
+git branch --no-merged
+git checkout -b velho HEAD~1
+git checkout -
+git log --oneline -2 velho
+### operacoes-em-andamento
+mkdir r && cd r && git init -q
+printf "1\n2\n" > a; git add a; git commit -qm um
+git switch -qc b; echo B > a; git commit -qam b; git switch -q main; echo M > a; git commit -qam m
+git merge b
+git switch b
+git switch -c c
+git checkout b
+git merge --abort
+git cherry-pick b
+git switch b
+git checkout -
+git cherry-pick --abort
+git revert HEAD
+git revert --abort
+git switch -

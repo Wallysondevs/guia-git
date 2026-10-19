@@ -2220,6 +2220,8 @@
       if (g.erro) { io.err("error: " + g.erro + "\n"); return 129; }
       var repo = precisaRepo(io); precisaArvore(repo);
       var o = g.o, ops = g.ops;
+      var emOp = repo.existe("MERGE_HEAD") ? ["merging", "merge"] : repo.existe("CHERRY_PICK_HEAD") ? ["cherry-picking", "cherry-pick"] : repo.existe("REVERT_HEAD") ? ["reverting", "revert"] : repo.existe("rebase-merge") ? ["rebasing", "rebase"] : null;
+      if (emOp) fatal("cannot switch branch while " + emOp[0] + "\nConsider \"git " + emOp[1] + " --quit\" or \"git worktree add\".");
       if (o["--orphan"]) {
         var r0 = repo.trocarArvore(repo.arvoreDe(repo.head()), {}, { forcar: true });
         repo.gravar("HEAD", "ref: refs/heads/" + o["--orphan"] + "\n"); repo.gravarIndice([]);
@@ -2266,6 +2268,8 @@
       if (g.erro) { io.err("error: " + g.erro + "\n"); return 129; }
       var repo = precisaRepo(io); precisaArvore(repo);
       var o = g.o, ops = g.ops, sep = o["--"];
+      var trocaRamo = !(sep !== undefined || o["--ours"] || o["--theirs"]) && (o["-b"] || o["-B"] || o["--orphan"] || (ops.length === 1 && ((ops[0] === "-" && ramoAnterior(repo)) || repo.commitDe(ops[0]) || repo.listarRefs("refs/remotes/").some(function (r) { return r.nome.replace(/^refs\/remotes\/[^/]+\//, "") === ops[0]; }))));
+      if (trocaRamo) { var unm = {}; repo.lerIndice().forEach(function (e) { if (e.stage) unm[e.path] = 1; }); if (Object.keys(unm).length) { io.err("error: you need to resolve your current index first\n" + Object.keys(unm).sort(cmpCam).map(function (k) { return k + ": needs merge\n"; }).join("")); return 1; } }
       if (o["-b"] || o["-B"]) { var aa = ["-" + (o["-b"] ? "c" : "C"), o["-b"] || o["-B"]].concat(ops); if (o["-f"]) aa.push("-f"); return CMDS.switch(aa, io, sh); }
       if (o["--orphan"]) return CMDS.switch(["--orphan", o["--orphan"]], io, sh);
       if (sep !== undefined || o["--ours"] || o["--theirs"]) {
@@ -2275,7 +2279,7 @@
         return r;
       }
       if (!ops.length) { var stt = repo.estado(); var s = ""; stt.naoPrep.forEach(function (m) { s += m.tipo + "\t" + m.para + "\n"; }); io.out(s); var up = repo.branchAtual() && upstream(repo, repo.branchAtual()); if (up && repo.head()) io.out(textoUpstream(repo, repo.head(), up).replace(/\n\n$/, "\n")); return 0; }
-      var alvo = ops[0] === "-" ? ramoAnterior(repo) : ops[0];
+      var alvo = ops[0] === "-" ? (ramoAnterior(repo) || "-") : ops[0];
       if (ops.length === 1 && repo.resolverRef("refs/heads/" + alvo) && !o["--detach"]) return trocarPara(repo, io, { ramo: alvo }, { forcar: o["-f"] });
       if (ops.length === 1) {
         var remotos = repo.listarRefs("refs/remotes/").filter(function (r) { return r.nome.replace(/^refs\/remotes\/[^/]+\//, "") === alvo && !/\/HEAD$/.test(r.nome); });
@@ -2563,7 +2567,14 @@
       var repo = precisaRepo(io), o = g.o, ops = g.ops, head = repo.head(), sep = o["--"];
       var rev = "HEAD", cams = [];
       if (sep !== undefined) { rev = ops.slice(0, sep)[0] || "HEAD"; cams = ops.slice(sep); }
-      else if (ops.length) { if (repo.commitDe(ops[0])) { rev = ops[0]; cams = ops.slice(1); } else cams = ops; }
+      else if (ops.length) {
+        if (repo.commitDe(ops[0])) { rev = ops[0]; cams = ops.slice(1); }
+        else {
+          cams = ops;
+          var k0 = repo.raiz ? pathspec(repo, ops[0]) : ops[0];
+          if (!noDe(sh, sh.abs(ops[0])) && !repo.lerIndice().some(function (e) { return casaSpec(k0, e.path); }) && !repo.arvoreDe(repo.head())[k0]) fatal("ambiguous argument '" + ops[0] + "': unknown revision or path not in the working tree.\nUse '--' to separate paths from revisions, like this:\n'git <command> [<revision>...] -- [<file>...]'");
+        }
+      }
       if (cams.length) {
         if (o["--hard"] || o["--soft"]) fatal("Cannot do " + (o["--hard"] ? "hard" : "soft") + " reset with paths.");
         var specs = cams.map(function (p) { return pathspec(repo, p); }), hc = repo.commitDe(rev);
@@ -2617,7 +2628,7 @@
         repo.gravar("MERGE_MSG", msg + "\n# Conflicts:\n" + res.conflitos.map(function (x) { return "#\t" + x.path + "\n"; }).join(""));
         var acao2 = modo === "revert" ? "revert" : "cherry-pick";
         io.out(res.msgs.join(""));
-        io.err("error: could not " + (modo === "revert" ? "revert" : "apply") + " " + curto + "... " + titulo + "\nhint: After resolving the conflicts, mark them with\nhint: \"git add/rm <pathspec>\", then run\nhint: \"git " + acao2 + " --continue\".\nhint: You can instead skip this commit with \"git " + acao2 + " --skip\".\nhint: To abort and get back to the state before \"git " + acao2 + "\",\nhint: run \"git " + acao2 + " --abort\".\nhint: Disable this message with \"git config set advice.mergeConflict false\"\n");
+        io.err("error: não foi possível " + (modo === "revert" ? "reverter" : "aplicar") + " " + curto + "... " + titulo + "\nhint: After resolving the conflicts, mark them with\nhint: \"git add/rm <pathspec>\", then run\nhint: \"git " + acao2 + " --continue\".\nhint: You can instead skip this commit with \"git " + acao2 + " --skip\".\nhint: To abort and get back to the state before \"git " + acao2 + "\",\nhint: run \"git " + acao2 + " --abort\".\nhint: Disable this message with \"git config set advice.mergeConflict false\"\n");
         return 1;
       }
       if (opt.noCommit) return 0;
@@ -2640,7 +2651,7 @@
     function continuarSequencia(repo, io, sh, modo, acao) {
       var arq = modo === "revert" ? "REVERT_HEAD" : "CHERRY_PICK_HEAD";
       if (acao === "--abort") {
-        if (!repo.existe(arq)) { io.err("error: no " + (modo === "revert" ? "revert" : "cherry-pick") + " in progress\nfatal: " + modo + " failed\n"); return 128; }
+        if (!repo.existe(arq)) { io.err("error: Nenhum cherry-pick ou revert em progresso\nfatal: " + modo + " failed\n"); return 128; }
         var orig = repo.arq("ORIG_HEAD").slice(0, 40);
         repo.trocarArvore(repo.arvoreDe(repo.head()), repo.arvoreDe(orig), { forcar: true });
         [arq, "MERGE_MSG"].forEach(function (f) { repo.apagarArq(f); });
