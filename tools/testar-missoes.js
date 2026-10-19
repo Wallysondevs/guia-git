@@ -7,6 +7,9 @@
     node tools/testar-missoes.js variaveis.html   # só estas páginas
     node tools/testar-missoes.js --sem-lab ...    # não compara com o Bash real do laboratório
     node tools/testar-missoes.js --refazer-lab    # ignora o cache do laboratório
+    node tools/testar-missoes.js --nativo pagina.html   # também roda setup + solução de cada .try no
+                                                  # Git REAL do lab (~/guia-git-lab) e compara a saída
+                                                  # do terminal com a do simulador (lento: ~2 s por missão)
 
   Para cada .try:       roda data-setup → confere que a meta AINDA NÃO foi cumprida →
                         digita data-solucao → confere que a meta FOI cumprida.
@@ -23,7 +26,9 @@ var fs = require("fs"), path = require("path"), cp = require("child_process"), c
 var RAIZ = path.join(__dirname, "..");
 var BashSim = require(path.join(RAIZ, "assets", "bashsim.js"));
 var sim = require(path.join(__dirname, "sim.js"));
-var LAB = path.join(process.env.HOME || "/home/wallyson", "guia-bash-lab", "lab");
+var LAB = path.join(process.env.HOME || "/home/wallyson", "guia-git-lab", "lab");
+var GITHUB = path.join(process.env.HOME || "/home/wallyson", "guia-git-lab", "github");
+var CACHE_NATIVO = path.join(__dirname, ".cache-nativo.json");
 var CACHE = path.join(__dirname, ".cache-missoes.json");
 
 function decodificar(s) {
@@ -141,6 +146,35 @@ function casoLab(m) {
   var id = crypto.createHash("sha1").update(setup + "\0" + cmd).digest("hex").slice(0, 16);
   return { id: id, setup: setup, cmd: cmd };
 }
+// ---- --nativo: a mesma missão no Git real do lab ----
+// O setup roda no lab (as linhas "github ..." rodam no ~/guia-git-lab/github, fora do lab, como lá);
+// a pasta atual passa de um trecho para o outro. Devolve a transcrição da solução ("$ cmd" + saída).
+function rodarNativo(setup, solucao) {
+  var nome = "testes-nativo", cwd = null, MARCA = "__FIM_DO_SETUP__";
+  function lab(entrada, reset) {
+    var r = cp.spawnSync("timeout", ["120", LAB, "-n", nome].concat(reset ? ["-r"] : []).concat(["-i"]), { input: entrada, encoding: "utf8", maxBuffer: 16 * 1024 * 1024 });
+    if (r.error) throw r.error;
+    return r.stdout || "";
+  }
+  cp.spawnSync("timeout", ["60", LAB, "-n", nome, "-r", "--", "true"], { encoding: "utf8" });
+  var linhas = (setup || "").split(";;").map(function (x) { return x.trim(); }).filter(Boolean), trecho = [];
+  function soltar() {
+    if (!trecho.length) return;
+    var out = lab((cwd ? "cd " + citar(cwd) + "\n" : "") + trecho.join("\n") + "\necho " + MARCA + "\"$PWD\"\n", false);
+    var m = new RegExp("^" + MARCA + "(.*)$", "m").exec(out); if (m) cwd = m[1];
+    trecho = [];
+  }
+  linhas.forEach(function (l) {
+    var mg = /^github\s+(.*)$/.exec(l);
+    if (mg) { soltar(); cp.spawnSync("timeout", ["60", "bash", "-c", citar(GITHUB) + " -n " + nome + " " + mg[1]], { encoding: "utf8" }); }
+    else trecho.push(l);
+  });
+  soltar();
+  var cmds = solucao.split(";;").map(function (x) { return x.trim(); }).filter(Boolean);
+  var saida = lab((cwd ? "cd " + citar(cwd) + "\n" : "") + "echo " + MARCA + "\n" + cmds.join("\n") + "\n", false);
+  var i = saida.indexOf("\n" + MARCA + "\n");
+  return i >= 0 ? saida.slice(i + MARCA.length + 2) : saida;
+}
 function normalizarDatas(s) {
   return s.replace(/(?<!\d)\d{4}-\d{2}-\d{2}(?!\d)/g, "AAAA-MM-DD").replace(/\b\d{2}:\d{2}(:\d{2})?\b/g, "HH:MM").replace(/\b\d{8}([_-]?\d{4,6})?\b/g, "AAAAMMDD").replace(/_\d{6}(?!\d)/g, "_HHMMSS").replace(/\b\d{10}\b/g, "EPOCH")
     .replace(/\b(seg|ter|qua|qui|sex|sáb|dom)\b/g, "DIA").replace(/\b\d{1,2} (jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)\b/g, "D MES");
@@ -156,7 +190,8 @@ function diffLinhas(a, b) {
 }
 
 function main(argv) {
-  var semLab = argv.indexOf("--sem-lab") >= 0, refazer = argv.indexOf("--refazer-lab") >= 0;
+  var semLab = argv.indexOf("--sem-lab") >= 0, refazer = argv.indexOf("--refazer-lab") >= 0, nativo = argv.indexOf("--nativo") >= 0;
+  var cacheNativo = {}; if (nativo) { try { cacheNativo = JSON.parse(fs.readFileSync(CACHE_NATIVO, "utf8")); } catch (e) { /* */ } }
   var paginas = argv.filter(function (a) { return a[0] !== "-"; });
   if (!paginas.length) paginas = fs.readdirSync(RAIZ).filter(function (f) { return /\.html$/.test(f); }).sort();
   var falhas = 0, total = 0, relatorio = [], comparacoes = [];
@@ -183,6 +218,21 @@ function main(argv) {
             var ult = rodarComandos(s, cmds, m.at["data-stdin"] ? m.at["data-stdin"].split("\\n") : []);
             var depois = BashSim.checarMeta(s.sh, meta, { out: ult.out, err: ult.err, exit: s.sh.status, digitados: s.digitados });
             if (depois.length) erros.push("depois da solução, a meta não foi cumprida: " + depois.join(", ") + (ult.out || ult.err ? "\n      saída do último comando: " + JSON.stringify((ult.out + ult.err).slice(0, 300)) : ""));
+            // metas de arquivo do Bash são a partir de ~: avisa se o caminho só faz sentido a partir da pasta atual
+            var s0 = sessaoComSetup(m.at["data-setup"], true), cwd0 = s0.sh.cwd, HOME0 = "/home/ana";
+            if (cwd0 !== HOME0) BashSim.dividirMetas(meta).forEach(function (g) {
+              var mm = /^(absent|file|dir|contains|exec|link):([^=]*)/.exec(g); if (!mm || /^[~\/]/.test(mm[2])) return;
+              var noCwd = s0.sh.resolver(cwd0 + "/" + mm[2], false).no, noHome = s0.sh.resolver(HOME0 + "/" + mm[2], false).no;
+              var rel = cwd0.indexOf(HOME0 + "/") === 0 ? cwd0.slice(HOME0.length + 1) + "/" : "";
+              if (mm[1] === "absent" && noCwd && !noHome) erros.push("a meta " + g + " é a partir de ~ (pasta pessoal), não da pasta atual (" + cwd0.replace(HOME0, "~") + "): ela já é verdade antes da solução. Você quis dizer absent:" + rel + mm[2] + "?");
+              else if (mm[1] !== "absent" && noCwd && !noHome) erros.push("a meta " + g + " é a partir de ~ (pasta pessoal), não da pasta atual (" + cwd0.replace(HOME0, "~") + "). Você quis dizer " + mm[1] + ":" + rel + g.slice(mm[1].length + 1) + "?");
+            });
+            if (nativo) {
+              var chave = crypto.createHash("sha1").update((m.at["data-setup"] || "") + "\u0000" + sol).digest("hex");
+              var real = (!refazer && cacheNativo[chave] !== undefined) ? cacheNativo[chave] : (cacheNativo[chave] = rodarNativo(m.at["data-setup"], sol));
+              var simT = sim.rodarSessao(sol.split(";;").map(function (c) { return c.trim(); }).filter(Boolean), { setup: m.at["data-setup"], tty: false }).texto;
+              if (real !== simT) avisos.push("a saída no simulador difere da do Git real (lab):\n" + diffLinhas(real, simT).split("\n").map(function (l) { return "      " + l; }).join("\n"));
+            }
           }
         } else {
           if (m.script === null) erros.push("falta pre.script");
@@ -235,6 +285,7 @@ function main(argv) {
       c.erros.push("a saída no simulador é diferente da do Bash real:\n" + diffLinhas(real, c.simTexto));
     });
   }
+  if (nativo) try { fs.writeFileSync(CACHE_NATIVO, JSON.stringify(cacheNativo)); } catch (e) { /* */ }
   relatorio.forEach(function (r) {
     if (!r.linhas.length) return;
     console.log(r.pg);
