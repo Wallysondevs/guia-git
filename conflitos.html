@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Conflitos de Merge — por que acontecem e como lê-los | Guia Git</title>
+<meta name="description" content="Conflitos de merge no Git para iniciantes: por que acontecem (os dois lados mudaram a mesma linha), a mensagem CONFLITO, o git status durante o conflito, os marcadores &lt;&lt;&lt;&lt;&lt;&lt;&lt; ======= &gt;&gt;&gt;&gt;&gt;&gt;&gt; no arquivo, o estilo diff3, conflitos de arquivo apagado e o que o Git não deixa fazer enquanto o conflito existe.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Conflitos de Merge</span></h1>
+
+<p class="intro">Na aula <a href="merge-tres-vias.html">Merge de Três Vias</a>, os dois branches mudaram <strong>arquivos diferentes</strong>, e o Git juntou tudo sozinho. Mas e se a Ana, no <code>main</code>, mudar o tempo de forno do bolo para 45 minutos e, no outro branch, o tempo virar 30 minutos? O Git não tem como saber qual dos dois está certo. Ele para no meio do merge e pede ajuda: é o <strong>conflito</strong> (em inglês, <em>merge conflict</em>). Conflito não é erro nem defeito: é o Git sendo honesto e deixando a decisão com você.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Quando um conflito acontece (e quando não acontece).</li>
+  <li>A mensagem <code>CONFLITO</code> do <code>git merge</code> e o <code>git status</code> durante o conflito, linha por linha.</li>
+  <li>Como ler os marcadores que o Git escreve dentro do arquivo: <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>, <code>=======</code> e <code>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code>.</li>
+  <li>Outros tipos de conflito: arquivo apagado de um lado e mudado do outro, e arquivo criado nos dois lados.</li>
+  <li>O que o Git não deixa fazer enquanto o conflito existe. (Resolver é a próxima aula: <a href="resolver-conflitos.html">Resolvendo Conflitos</a>.)</li>
+</ul>
+</div>
+
+<p>Todas as saídas desta aula vieram do Git 2.53.0 da máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português. A tradução do Git no Ubuntu é <strong>incompleta</strong>: algumas mensagens do conflito saem em português, outras em inglês, às vezes no mesmo bloco. Elas estão copiadas como saíram, e as frases em inglês ganham tradução na explicação.</p>
+
+<hr>
+
+<h2>A ideia: dois bilhetes para o mesmo bolo</h2>
+<p>A Ana deixa a receita de bolo colada na geladeira com "forno: 180 graus por 40 minutos". De manhã, ela risca e escreve "45 minutos". À tarde, o irmão, que não viu o bilhete novo, pega uma cópia antiga e escreve "200 graus por 30 minutos". Quem passa a receita a limpo à noite fica com dois bilhetes que <strong>discordam na mesma linha</strong>. Não dá para ficar com os dois; alguém precisa decidir.</p>
+<p>No Git é igual. No merge de três vias, o Git compara cada lado com o ancestral comum, <strong>linha por linha</strong>:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>O que aconteceu com uma linha</th><th>O que o Git faz</th></tr>
+<tr><td>Ninguém mudou</td><td>Mantém a linha</td></tr>
+<tr><td>Só um lado mudou</td><td>Fica com a mudança desse lado, sozinho</td></tr>
+<tr><td>Os dois mudaram, e ficou igual nos dois</td><td>Fica com essa versão, sozinho</td></tr>
+<tr><td><strong>Os dois mudaram, cada um de um jeito</strong></td><td><strong>Conflito</strong>: para e pergunta a você</td></tr>
+</table>
+</div>
+<p>Repare: conflito tem a ver com <strong>a mesma parte do mesmo arquivo</strong> (a mesma linha, ou linhas vizinhas). Duas pessoas mexendo no mesmo arquivo, em partes diferentes, <strong>não</strong> dá conflito.</p>
+
+<hr>
+
+<h2>1. Montando o conflito</h2>
+<p>A receita de bolo começa assim, num único commit no <code>main</code>:</p>
+
+<pre class="file" data-file="bolo.txt">Bolo de cenoura
+- 3 cenouras
+- 3 ovos
+- 2 xícaras de açúcar
+Forno: 180 graus por 40 minutos
+</pre>
+
+<p>No branch <code>forno</code>, a Ana troca a última linha para <code>200 graus por 30 minutos</code> e cria a <code>cobertura.txt</code>. Depois, no <code>main</code>, troca a mesma linha para <code>180 graus por 45 minutos</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch -c forno
+Switched to a new branch 'forno'
+$ sed -i 's/180 graus por 40/200 graus por 30/' bolo.txt
+$ printf 'Cobertura de chocolate\n' &gt; cobertura.txt
+$ git add bolo.txt cobertura.txt
+$ git commit -q -m 'Assa mais quente e mais rápido'
+$ git switch main
+Switched to branch 'main'
+$ sed -i 's/180 graus por 40/180 graus por 45/' bolo.txt
+$ git commit -q -am 'Aumenta o tempo de forno'
+</pre>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --graph --all
+* 70c15e0 (forno) Assa mais quente e mais rápido
+| * aa84752 (HEAD -&gt; main) Aumenta o tempo de forno
+|/
+* a071866 Adiciona a receita de bolo
+</pre>
+
+<p>O <code>sed -i 's/velho/novo/'</code> troca um texto dentro do arquivo, como o "Localizar e substituir" de um editor; aqui ele só serve para a Ana mudar a linha do forno sem abrir o editor (você pode mudar a linha no editor que preferir). O <code>-am</code> do último commit prepara e commita de uma vez o arquivo já rastreado (aula <a href="git-commit.html">git commit</a>). O desenho é o mesmo "Y" da aula anterior: o <code>main</code> e o <code>forno</code> saíram do <code>a071866</code> e andaram, cada um com um commit. A diferença é que, agora, <strong>os dois mudaram a última linha do <code>bolo.txt</code></strong>, cada um de um jeito.</p>
+
+<hr>
+
+<h2>2. O merge que para no meio</h2>
+
+<pre class="term" data-cwd="~/receitas">$ git merge forno
+Mesclagem automática de bolo.txt
+CONFLITO (conteúdo): conflito de mesclagem em bolo.txt
+Automatic merge failed; fix conflicts and then commit the result.
+$ echo $?
+1
+</pre>
+
+<p>Linha por linha:</p>
+<dl class="anatomy">
+  <dt>Mesclagem automática de bolo.txt</dt><dd>"Mesclando automaticamente o <code>bolo.txt</code>". O Git percebeu que os dois lados mexeram nesse arquivo e tentou juntá-los sozinho, linha por linha. (Em inglês: <code>Auto-merging bolo.txt</code>.)</dd>
+  <dt>CONFLITO (conteúdo): conflito de mesclagem em bolo.txt</dt><dd>Não deu. Há um conflito <strong>de conteúdo</strong>: as mesmas linhas foram mudadas dos dois lados. (Em inglês: <code>CONFLICT (content): Merge conflict in bolo.txt</code>.) Num merge com vários arquivos, aparece uma linha <code>CONFLITO</code> para cada arquivo com problema.</dd>
+  <dt>Automatic merge failed; fix conflicts and then commit the result.</dt><dd>"O merge automático falhou; conserte os conflitos e depois faça o commit do resultado." Esta frase está em inglês mesmo no sistema em português. Ela já diz o que fazer: consertar e commitar.</dd>
+  <dt>echo $? → 1</dt><dd>O código de saída do <code>git merge</code> (veja <a href="terminal-basico.html">O Mínimo de Terminal</a>). <code>0</code> seria "deu certo"; <code>1</code> avisa que o merge não terminou. Scripts usam isso para saber que precisam de uma pessoa.</dd>
+</dl>
+
+<div class="warning">
+<strong>O merge ficou pela metade</strong>
+<p>Depois dessa mensagem, o repositório está num estado especial: <strong>"merge em andamento"</strong>. O commit de merge ainda <strong>não</strong> existe. O Git juntou o que conseguiu, deixou o resto para você e está esperando. Enquanto isso, nada de trocar de branch ou fazer outro merge: primeiro termine (próxima aula) ou desista (<a href="abortar-merge.html">Desistindo de um Merge</a>).</p>
+</div>
+
+<hr>
+
+<h2>3. O <code>git status</code> durante o conflito</h2>
+<p>Na dúvida, <code>git status</code>. Durante um conflito, ele é o seu guia:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main
+Você tem caminhos não mesclados.
+  (fixar conflitos e executar "git commit")
+  (use "git merge --abort" to abort the merge)
+
+Mudanças a serem submetidas:
+        new file:   cobertura.txt
+
+Caminhos não mesclados:
+  (usar "git add &lt;arquivo&gt;..." para marcar resolução)
+        ambos modificados:   bolo.txt
+
+</pre>
+
+<dl class="anatomy">
+  <dt>Você tem caminhos não mesclados.</dt><dd>"Você tem caminhos (arquivos) que não foram juntados." É o jeito do <code>git status</code> dizer que há um merge em andamento, com conflito. (Em inglês: <code>You have unmerged paths.</code>)</dd>
+  <dt>(fixar conflitos e executar "git commit")</dt><dd>A primeira saída: conserte os conflitos e rode <code>git commit</code>. É o que você vai fazer na próxima aula.</dd>
+  <dt>(use "git merge --abort" to abort the merge)</dt><dd>A outra saída: "use <code>git merge --abort</code> para cancelar o merge" e voltar a como estava antes. Aula <a href="abortar-merge.html">Desistindo de um Merge</a>.</dd>
+  <dt>Mudanças a serem submetidas: new file: cobertura.txt</dt><dd>O que o Git <strong>conseguiu</strong> juntar sozinho já está na área de preparo (<em>new file</em> = "arquivo novo"). A <code>cobertura.txt</code> só existia do lado do <code>forno</code>, então não tem conflito: ela vai entrar no commit de merge.</dd>
+  <dt>Caminhos não mesclados:</dt><dd>A lista do que <strong>você</strong> precisa resolver. A dica embaixo diz como avisar o Git que um arquivo foi resolvido: <code>git add &lt;arquivo&gt;</code> ("para marcar resolução").</dd>
+  <dt>ambos modificados: bolo.txt</dt><dd>O tipo do conflito: o arquivo foi <strong>modificado pelos dois lados</strong> (em inglês, <code>both modified</code>). Mais adiante você vê outros tipos.</dd>
+</dl>
+
+<hr>
+
+<h2>4. Dentro do arquivo: os marcadores de conflito</h2>
+<p>O Git não deixa o arquivo como estava: ele escreve as <strong>duas versões</strong> da parte em conflito dentro do próprio arquivo, separadas por marcadores. Veja o <code>bolo.txt</code> agora:</p>
+
+<pre class="term" data-cwd="~/receitas">$ cat bolo.txt
+Bolo de cenoura
+- 3 cenouras
+- 3 ovos
+- 2 xícaras de açúcar
+&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+Forno: 180 graus por 45 minutos
+=======
+Forno: 200 graus por 30 minutos
+&gt;&gt;&gt;&gt;&gt;&gt;&gt; forno
+</pre>
+
+<p>Os marcadores dividem o trecho em conflito em duas partes:</p>
+<dl class="anatomy">
+  <dt>&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD</dt><dd>Sete sinais de "menor que" e o nome <code>HEAD</code>: <strong>começa</strong> o trecho em conflito. Daqui até o <code>=======</code> vem a versão do <strong>HEAD</strong>, isto é, do branch em que você está (o <code>main</code>): <code>180 graus por 45 minutos</code>.</dd>
+  <dt>=======</dt><dd>Sete sinais de igual: a <strong>divisa</strong> entre as duas versões.</dd>
+  <dt>&gt;&gt;&gt;&gt;&gt;&gt;&gt; forno</dt><dd>Sete sinais de "maior que" e o nome do branch que está chegando: <strong>fecha</strong> o trecho. Entre o <code>=======</code> e esta linha vem a versão do <code>forno</code>: <code>200 graus por 30 minutos</code>.</dd>
+</dl>
+
+<pre>&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD                         ┐
+Forno: 180 graus por 45 minutos       │ a NOSSA versão (main, onde você está)
+=======                               ┤
+Forno: 200 graus por 30 minutos       │ a versão DELES (o branch forno)
+&gt;&gt;&gt;&gt;&gt;&gt;&gt; forno                        ┘</pre>
+
+<p>Tudo o que está <strong>fora</strong> dos marcadores (as quatro primeiras linhas) não teve conflito: os dois lados concordam. Num arquivo grande, pode haver vários trechos com marcadores; o resto do arquivo já está juntado.</p>
+
+<div class="tip">
+<strong>"Nosso" e "deles"</strong>
+<p>Nos merges, a parte de cima (<code>HEAD</code>) é a <strong>nossa</strong> (em inglês, <em>ours</em>): o branch em que você está, que recebe o merge. A parte de baixo é a <strong>deles</strong> (<em>theirs</em>): o branch que está chegando. Esses dois nomes voltam na próxima aula, nas opções <code>--ours</code> e <code>--theirs</code>.</p>
+</div>
+
+<h3>O <code>git diff</code> durante o conflito</h3>
+
+<pre class="term" data-cwd="~/receitas">$ git diff
+diff --cc bolo.txt
+index 798cdff,e6355df..0000000
+--- a/bolo.txt
++++ b/bolo.txt
+@@@ -2,4 -2,4 +2,8 @@@ Bolo de cenour
+  - 3 cenouras
+  - 3 ovos
+  - 2 xícaras de açúcar
+++&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+ +Forno: 180 graus por 45 minutos
+++=======
++ Forno: 200 graus por 30 minutos
+++&gt;&gt;&gt;&gt;&gt;&gt;&gt; forno
+</pre>
+
+<p>Durante o conflito, o <code>git diff</code> mostra um formato especial, o <strong>diff combinado</strong> (<code>diff --cc</code>), com <strong>duas colunas</strong> de sinais no começo de cada linha: a primeira compara o arquivo com o nosso lado (o <code>HEAD</code>), a segunda com o lado deles (o <code>forno</code>). Um <code>+</code> numa coluna quer dizer "esta linha não existe naquele lado". Assim, <code> +Forno: 180…</code> (espaço, depois <code>+</code>) existe no nosso lado e não no deles; <code>+ Forno: 200…</code> existe no deles e não no nosso; e <code>++</code> marca as linhas que não existem em nenhum dos dois: os marcadores, que o Git inventou. Não precisa decorar: o que importa é que o <code>git diff</code> mostra só os <strong>trechos com conflito</strong>, o que ajuda muito num arquivo grande. (O <code>git diff</code> normal está em <a href="git-diff.html">git diff</a>.)</p>
+
+<h3>E a <code>cobertura.txt</code>?</h3>
+
+<pre class="term" data-cwd="~/receitas">$ cat cobertura.txt
+Cobertura de chocolate
+</pre>
+
+<p>Arquivo inteiro, sem nenhum marcador: ele não tem conflito. O merge não é "tudo ou nada": o Git faz <strong>tudo o que consegue</strong> e só deixa para você o que não sabe decidir. E o histórico? Um <code>git log --oneline --graph --all</code> agora mostra exatamente o mesmo desenho de antes do merge: o commit de merge <strong>ainda não existe</strong>. Ele só nasce quando você terminar.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo 'Forno: 180 graus' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Receita de bolo';;git switch -q -c forno;;echo 'Forno: 200 graus' &gt; bolo.txt;;git commit -q -am 'Forno mais quente';;git switch -q main;;echo 'Forno: 160 graus' &gt; bolo.txt;;git commit -q -am 'Forno mais baixo'" data-goal="conflito,head:main,ran:\bcat bolo\.txt" data-solucao="git merge forno;;git status;;cat bolo.txt">
+<p class="try-task"><strong>Missão:</strong> no repositório <code>receitas</code>, o <code>main</code> e o branch <code>forno</code> mudaram a mesma linha do <code>bolo.txt</code>. Faça o merge do <code>forno</code> no <code>main</code>, leia o <code>git status</code> e veja os marcadores com <code>cat bolo.txt</code>. (Não precisa resolver: isso é a próxima aula.)</p>
+</div>
+
+<hr>
+
+<h2>5. Vendo a base também: o estilo <code>diff3</code></h2>
+<p>Os marcadores normais mostram "o nosso" e "o deles", mas não mostram <strong>como era antes</strong>. Às vezes é exatamente isso que falta para decidir. Com a configuração <code>merge.conflictStyle</code>, o Git mostra também a versão do ancestral comum:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git config merge.conflictStyle diff3
+$ git merge forno
+Mesclagem automática de bolo.txt
+CONFLITO (conteúdo): conflito de mesclagem em bolo.txt
+Automatic merge failed; fix conflicts and then commit the result.
+$ cat bolo.txt
+Bolo de cenoura
+- 3 cenouras
+- 3 ovos
+- 2 xícaras de açúcar
+&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+Forno: 180 graus por 45 minutos
+||||||| a071866
+Forno: 180 graus por 40 minutos
+=======
+Forno: 200 graus por 30 minutos
+&gt;&gt;&gt;&gt;&gt;&gt;&gt; forno
+</pre>
+
+<p>(Para repetir o merge com o estilo novo, a Ana primeiro desistiu do anterior com <code>git merge --abort</code>, da aula <a href="abortar-merge.html">Desistindo de um Merge</a>.) Apareceu um trecho a mais, entre <code>|||||||</code> (sete barras verticais) e o <code>=======</code>: a linha como ela era no <strong>ancestral comum</strong>, o commit <code>a071866</code>. Agora a história fica clara: era <code>180 graus por 40 minutos</code>; no <code>main</code>, a Ana só mudou o <strong>tempo</strong> (45); no <code>forno</code>, mudaram a <strong>temperatura e o tempo</strong> (200 e 30). Com a base à vista, fica mais fácil decidir. Existe também o estilo <code>zdiff3</code> (do Git 2.35 em diante), que faz o mesmo e tira do trecho em conflito as linhas que ficaram iguais nos dois lados; neste exemplo, de uma linha só, a saída foi idêntica. Para usar sempre, em todos os repositórios: <code>git config --global merge.conflictStyle zdiff3</code> (veja <a href="config-util.html">Configurações Úteis</a>). Para voltar ao estilo normal: <code>git config --unset merge.conflictStyle</code>.</p>
+
+<hr>
+
+<h2>6. Outros tipos de conflito</h2>
+<p>Nem todo conflito é "a mesma linha mudada dos dois lados". A Ana preparou outra situação: no branch <code>limpeza</code>, ela apagou o <code>pudim.txt</code> e criou uma <code>compras.txt</code>; no <code>main</code>, ela <strong>mudou</strong> o <code>pudim.txt</code> e criou <strong>outra</strong> <code>compras.txt</code>, com conteúdo diferente:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git merge limpeza
+Mesclagem automática de compras.txt
+CONFLITO (adicionar/adicionar): conflito de mesclagem em compras.txt
+CONFLICT (modify/delete): pudim.txt deleted in limpeza and modified in HEAD.  Version HEAD of pudim.txt left in tree.
+Automatic merge failed; fix conflicts and then commit the result.
+$ git status
+No ramo main
+Você tem caminhos não mesclados.
+  (fixar conflitos e executar "git commit")
+  (use "git merge --abort" to abort the merge)
+
+Caminhos não mesclados:
+  (use "git add/rm &lt;file&gt;..." as appropriate to mark resolution)
+        ambos adicionaram:   compras.txt
+        excluídos por eles:  pudim.txt
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+$ cat compras.txt
+Lista de compras
+&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+- farinha
+=======
+- ovos
+&gt;&gt;&gt;&gt;&gt;&gt;&gt; limpeza
+</pre>
+
+<dl class="anatomy">
+  <dt>CONFLITO (adicionar/adicionar) … compras.txt</dt><dd>Os <strong>dois</strong> lados criaram um arquivo com o mesmo nome, com conteúdos diferentes (em inglês, <em>add/add</em>). No <code>git status</code>: <code>ambos adicionaram</code>. Dentro do arquivo, os marcadores de sempre: a primeira linha, igual nos dois, ficou fora deles.</dd>
+  <dt>CONFLICT (modify/delete): pudim.txt deleted in limpeza and modified in HEAD.</dt><dd>"O <code>pudim.txt</code> foi apagado no <code>limpeza</code> e modificado no HEAD." Um lado jogou o arquivo fora, o outro continuou mexendo nele. Não há linha para marcar: a dúvida é se o arquivo <strong>fica ou sai</strong>.</dd>
+  <dt>Version HEAD of pudim.txt left in tree.</dt><dd>"A versão do HEAD do <code>pudim.txt</code> foi deixada na pasta." Por segurança, o Git deixou na pasta o arquivo com as mudanças do <code>main</code>. No <code>git status</code>: <code>excluídos por eles</code> (o lado "deles", o <code>limpeza</code>, apagou). Se fosse o contrário, apareceria <code>excluídos por nós</code>.</dd>
+  <dt>(use "git add/rm &lt;file&gt;..." as appropriate to mark resolution)</dt><dd>"Use <code>git add</code> ou <code>git rm</code>, conforme o caso, para marcar a resolução": <code>git add pudim.txt</code> para manter o arquivo, <code>git rm pudim.txt</code> para aceitar que ele saia (aula <a href="git-rm.html">git rm</a>).</dd>
+  <dt>nenhuma modificação adicionada à submissão</dt><dd>Desta vez, nada entrou sozinho na área de preparo: os dois arquivos que mudaram estão em conflito.</dd>
+</dl>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<p>No conflito em si, nada deu "errado": é o funcionamento normal do Git. O que dá errado é tentar seguir a vida <strong>como se o conflito não existisse</strong>. Enquanto o merge está em andamento, o Git recusa vários comandos. Todas as mensagens abaixo saíram no repositório do <code>bolo.txt</code>, com o conflito ainda aberto.</p>
+
+<div class="cenario">
+<strong>Tentou commitar sem resolver: <code>Committing is not possible because you have unmerged files</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git commit -m 'teste'
+U       bolo.txt
+error: Committing is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm &lt;file&gt;'
+hint: as appropriate to mark resolution and make a commit.
+fatal: Exiting because of an unresolved conflict.
+</pre>
+<p>O <code>U</code> (de <em>unmerged</em>, "não mesclado") marca o arquivo com problema. "Erro: não é possível commitar porque você tem arquivos não mesclados. Dica: conserte-os na pasta de trabalho e use <code>git add</code>/<code>git rm</code> para marcar a resolução e fazer o commit. Fatal: saindo por causa de um conflito não resolvido." <strong>Como resolver:</strong> resolva o arquivo e rode <code>git add bolo.txt</code> antes do <code>git commit</code> (aula <a href="resolver-conflitos.html">Resolvendo Conflitos</a>).</p>
+</div>
+
+<div class="cenario">
+<strong>Tentou trocar de branch: <code>cannot switch branch while merging</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git switch forno
+fatal: cannot switch branch while merging
+Consider "git merge --quit" or "git worktree add".
+</pre>
+<p>"Fatal: não dá para trocar de branch durante um merge. Considere <code>git merge --quit</code> ou <code>git worktree add</code>." Trocar de branch agora deixaria o merge pela metade, perdido. As duas sugestões do Git são para casos avançados (veja <a href="git-worktree.html">git worktree</a>); para quem está começando, as saídas são <strong>terminar</strong> o merge ou <strong>desistir</strong> dele com <code>git merge --abort</code> (aula <a href="abortar-merge.html">Desistindo de um Merge</a>), e só então trocar de branch.</p>
+</div>
+
+<div class="cenario">
+<strong>Tentou outro merge por cima: <code>Merging is not possible because you have unmerged files</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git merge forno
+error: Merging is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm &lt;file&gt;'
+hint: as appropriate to mark resolution and make a commit.
+fatal: Exiting because of an unresolved conflict.
+</pre>
+<p>"Não é possível fazer merge porque você tem arquivos não mesclados." Um merge de cada vez: termine ou desista deste antes de começar outro.</p>
+</div>
+
+<div class="cenario">
+<strong>"O que é isso no meu arquivo?" Marcadores esquecidos</strong>
+<p>Se você fechar o terminal e voltar no dia seguinte, o merge continua em andamento, e os marcadores continuam <strong>dentro do arquivo</strong>. Um site com <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD</code> no meio da página, um programa que não roda mais: quase sempre é um conflito que ficou para trás. <strong>Como confirmar:</strong> <code>git status</code> (procure "Caminhos não mesclados") e um <code>cat</code> no arquivo. <strong>Como resolver:</strong> a próxima aula, <a href="resolver-conflitos.html">Resolvendo Conflitos</a>, que também mostra como o Git ajuda a achar marcadores esquecidos.</p>
+</div>
+
+<div class="note">
+<strong>Onde o Git guarda o merge em andamento?</strong>
+<p>Dentro da pasta <code>.git</code> apareceram arquivos novos durante o conflito. O <code>MERGE_HEAD</code> guarda o hash do commit que está chegando, e o <code>MERGE_MSG</code>, a mensagem que o commit de merge vai ter, já com a lista dos arquivos que tiveram conflito:</p>
+<pre class="term" data-cwd="~/receitas">$ cat .git/MERGE_HEAD
+70c15e0ba234b92f9d26aee6ba628f258e86a718
+$ cat .git/MERGE_MSG
+Merge branch 'forno'
+
+# Conflicts:
+#       bolo.txt
+</pre>
+<p>É pela existência do <code>MERGE_HEAD</code> que o <code>git status</code> sabe que você "continua mesclando". Não mexa nesses arquivos à mão: o <code>git commit</code> e o <code>git merge --abort</code> cuidam deles.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Você vê</th><th>Quer dizer</th></tr>
+<tr><td><code>CONFLITO (conteúdo): conflito de mesclagem em X</code></td><td>Os dois lados mudaram as mesmas linhas do arquivo X</td></tr>
+<tr><td><code>CONFLITO (adicionar/adicionar)</code></td><td>Os dois lados criaram o mesmo arquivo, com conteúdos diferentes</td></tr>
+<tr><td><code>CONFLICT (modify/delete)</code></td><td>Um lado apagou o arquivo, o outro o modificou</td></tr>
+<tr><td><code>Automatic merge failed; fix conflicts and then commit the result.</code></td><td>O merge parou no meio: resolva e faça o commit</td></tr>
+<tr><td><code>Caminhos não mesclados:</code> (no <code>git status</code>)</td><td>A lista dos arquivos que você precisa resolver</td></tr>
+<tr><td><code>ambos modificados</code> / <code>ambos adicionaram</code></td><td>Mudado / criado dos dois lados</td></tr>
+<tr><td><code>excluídos por eles</code> / <code>excluídos por nós</code></td><td>Apagado no branch que chega / no branch atual</td></tr>
+<tr><td><code>&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD</code></td><td>Começo do trecho em conflito; embaixo, a nossa versão</td></tr>
+<tr><td><code>|||||||</code></td><td>Só com <code>merge.conflictStyle diff3</code> ou <code>zdiff3</code>: embaixo, a versão do ancestral comum</td></tr>
+<tr><td><code>=======</code></td><td>Divisa; embaixo, a versão deles</td></tr>
+<tr><td><code>&gt;&gt;&gt;&gt;&gt;&gt;&gt; forno</code></td><td>Fim do trecho em conflito (com o nome do branch que chega)</td></tr>
+<tr><td><code>U  bolo.txt</code></td><td>Arquivo não mesclado (aparece quando um comando é recusado)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Os marcadores</h3>
+<p>Complete com os marcadores na ordem em que aparecem no arquivo (sete caracteres cada):</p>
+<div class="ex-code"><input data-answer="&lt;&lt;&lt;&lt;&lt;&lt;&lt;" aria-label="primeiro marcador"> HEAD<br>a nossa versão<br><input data-answer="=======" aria-label="separador"><br>a versão deles<br><input data-answer="&gt;&gt;&gt;&gt;&gt;&gt;&gt;" aria-label="último marcador"> forno</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. A Ana mudou a linha 1 do <code>bolo.txt</code> no <code>main</code>, e o Bruno mudou a linha 20 do mesmo arquivo em outro branch. O que acontece no merge?</p>
+<label><input type="radio" name="q2"> Conflito, porque é o mesmo arquivo</label>
+<label><input type="radio" name="q2"> O Git junta as duas mudanças sozinho</label>
+<label><input type="radio" name="q2"> O Git fica só com a versão do <code>main</code></label>
+<label><input type="radio" name="q2"> O merge é recusado</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. Durante um conflito, no arquivo, a parte entre <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD</code> e <code>=======</code> é…</p>
+<label><input type="radio" name="q3"> a versão do ancestral comum</label>
+<label><input type="radio" name="q3"> a versão do branch que está chegando</label>
+<label><input type="radio" name="q3"> a versão do branch em que você está</label>
+<label><input type="radio" name="q3"> a versão que o Git escolheu</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. Na saída do <code>git status</code> durante o conflito, onde aparecem os arquivos que você precisa resolver?</p>
+<label><input type="radio" name="q4"> Em "Arquivos não monitorados"</label>
+<label><input type="radio" name="q4"> Em "Mudanças a serem submetidas"</label>
+<label><input type="radio" name="q4"> Não aparecem: só o <code>git diff</code> mostra</label>
+<label><input type="radio" name="q4"> Em "Caminhos não mesclados"</label>
+</div>
+
+<h3>Missão final: provoque um conflito</h3>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo 'Forno: 180 graus' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Receita de bolo'" data-goal="conflito,head:main,branch:quente" data-solucao="git switch -c quente;;echo 'Forno: 200 graus' &gt; bolo.txt;;git commit -am 'Forno mais quente';;git switch main;;echo 'Forno: 160 graus' &gt; bolo.txt;;git commit -am 'Forno mais baixo';;git merge quente">
+<p class="try-task"><strong>Missão:</strong> o <code>bolo.txt</code> tem uma linha só: <code>Forno: 180 graus</code>. Provoque um conflito de propósito: crie o branch <code>quente</code> e, nele, troque a linha para <code>Forno: 200 graus</code> (dica: <code>echo 'Forno: 200 graus' &gt; bolo.txt</code>) e faça o commit; volte para o <code>main</code>, troque a mesma linha para <code>Forno: 160 graus</code> e faça o commit; por fim, faça o merge do <code>quente</code> no <code>main</code>. Confira o resultado com <code>git status</code> e <code>cat bolo.txt</code>.</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Conflito acontece quando os dois lados de um merge mudam <strong>a mesma parte</strong> do mesmo arquivo, cada um de um jeito. Partes diferentes do mesmo arquivo o Git junta sozinho.</li>
+  <li>O <code>git merge</code> avisa com <code>CONFLITO</code> e para no meio: o merge fica <strong>em andamento</strong>, sem commit de merge.</li>
+  <li>O <code>git status</code> lista os arquivos em conflito em <strong>"Caminhos não mesclados"</strong> e ensina as saídas: resolver e <code>git commit</code>, ou <code>git merge --abort</code>.</li>
+  <li>Dentro do arquivo, <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD</code> abre a nossa versão, <code>=======</code> separa, e <code>&gt;&gt;&gt;&gt;&gt;&gt;&gt; forno</code> fecha a versão deles. Com <code>merge.conflictStyle diff3</code>, aparece também a base (<code>|||||||</code>).</li>
+  <li>Também há conflito quando um lado apaga um arquivo que o outro mudou, ou quando os dois criam o mesmo arquivo com conteúdos diferentes.</li>
+  <li>Como resolver, na próxima aula: <a href="resolver-conflitos.html">Resolvendo Conflitos</a>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
