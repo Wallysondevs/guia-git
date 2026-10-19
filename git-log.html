@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git log — vendo o histórico de commits | Guia Git</title>
+<meta name="description" content="O git log para quem nunca usou Git: cada linha da saída explicada (commit, HEAD -> main, Author, Date, mensagem), o pager e a tecla q, --oneline, -n, --stat, -p, --graph, --reverse, o histórico de um arquivo, --grep e --author, e os erros reais (does not have any commits yet, ambiguous argument, not a git repository).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">log</span></h1>
+
+<p class="intro">Você já fez vários commits. Onde eles estão? O <code>git log</code> ("registro", "diário de bordo") abre o <strong>álbum</strong>: mostra os commits do ramo atual, do mais novo para o mais velho, com o código, o autor, a data e a mensagem de cada um. É o comando para responder "o que aconteceu neste projeto?", "quando isso mudou?" e "qual é o código daquele commit?".</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A ler cada linha do <code>git log</code>, inclusive o <code>(HEAD -&gt; main)</code>.</li>
+  <li>A sair do histórico longo (o <em>pager</em>) com a tecla <kbd>q</kbd>.</li>
+  <li>As formas mais usadas: <code>--oneline</code>, <code>-n</code>, <code>--stat</code>, <code>-p</code>, <code>--graph</code> e <code>--reverse</code>.</li>
+  <li>A ver o histórico de <strong>um arquivo</strong> e a procurar por palavra na mensagem (<code>--grep</code>) e por autor (<code>--author</code>).</li>
+  <li>Os erros reais: repositório sem commits, <code>ambiguous argument</code> e <code>not a git repository</code>.</li>
+</ul>
+</div>
+
+<p>As saídas são <strong>reais</strong>, do Git 2.53 da máquina da Ana (Ubuntu 26.04), num terminal de verdade. A Ana fez cinco commits no repositório <code>receitas</code>, todos com a data fixa do laboratório do guia (15/10/2026, 10:30); na sua máquina, cada commit terá a data e a hora em que você o fez.</p>
+
+<hr>
+
+<h2>A ideia: o diário de bordo</h2>
+<p>Navios têm um diário de bordo: cada anotação tem data, quem escreveu e o que aconteceu, e a mais recente fica no fim do caderno. O <code>git log</code> é o diário do projeto, só que de trás para a frente: a anotação mais <strong>recente</strong> aparece <strong>primeiro</strong>, porque normalmente é ela que você quer ver.</p>
+
+<hr>
+
+<h2>1. O <code>git log</code> completo</h2>
+
+<pre class="term" data-cwd="~/receitas">$ git log
+commit e4dc8675c7066aa6015b13725c2d51e94dd0cb02 (HEAD -&gt; main)      « o mais novo
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Adiciona o e-mail de contato no README
+
+commit ea0e4fa83f1c338c65c14e143ca02e2de44b0e68
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Corrige a quantidade de ovos do bolo
+
+    A receita da vó leva 4 ovos, não 3.
+
+commit cce6adb99b92e3defe20ebb458dc7d445997bbf9
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Adiciona a receita de pudim
+
+commit da810ac78dd854c9ea62084ba2ae7c570fd7710d
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Adiciona a receita de bolo de cenoura
+
+commit d84dc9769de7f3c81874872c30843402cbae59f9                  « o primeiro de todos
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Adiciona o README
+(END)                                                             « aperte q para sair
+</pre>
+
+<p>Cada commit ocupa um bloco. Linha por linha:</p>
+<dl class="anatomy">
+  <dt>commit e4dc8675c7066aa6015b13725c2d51e94dd0cb02</dt><dd>O <strong>hash</strong> do commit: o código de 40 caracteres que identifica este commit e nenhum outro (aula <a href="hash.html">O Hash do Commit</a>). Para se referir a ele, bastam os primeiros caracteres: <code>e4dc867</code>.</dd>
+  <dt>(HEAD -&gt; main)</dt><dd>Uma etiqueta: o ramo <code>main</code> aponta para este commit, e o <code>HEAD</code> ("cabeça", "onde você está") aponta para o <code>main</code>. Em português: "este é o último commit do ramo em que você está". Ela só aparece no commit onde o ramo está; quando você fizer o próximo commit, ela "anda" para ele (aula <a href="head.html">O que é HEAD</a>). Depois de ligar o repositório ao GitHub, aparecem outras etiquetas, como <code>origin/main</code>.</dd>
+  <dt>Author: Ana Souza &lt;ana@exemplo.com&gt;</dt><dd>"Autor": o nome e o e-mail configurados com o <a href="git-config.html">git config</a> de quem fez o commit.</dd>
+  <dt>Date: Thu Oct 15 10:30:00 2026 -0300</dt><dd>"Data", sempre em inglês: <code>Thu</code> = quinta-feira (<em>Thursday</em>), <code>Oct</code> = outubro, 15, às 10:30:00, de 2026; <code>-0300</code> é o fuso horário (3 horas a menos que o horário universal: o horário de Brasília).</dd>
+  <dt>a mensagem, recuada</dt><dd>A mensagem inteira, com 4 espaços na frente: título e, se houver, a linha em branco e o corpo (como no commit dos ovos).</dd>
+  <dt>(END)</dt><dd>"Fim": você chegou ao fim do histórico dentro do <em>pager</em> (próxima seção). Aperte <kbd>q</kbd> para voltar ao terminal.</dd>
+</dl>
+
+<h3>O pager: como rolar e como sair</h3>
+<p>Quando o histórico não cabe na tela, o Git não despeja tudo de uma vez: ele abre a saída num <strong>pager</strong> (um "paginador", o programa <code>less</code>), que mostra uma tela por vez. Você percebe que está nele porque o prompt <code>$</code> não volta: no rodapé aparece <code>:</code>, ou <code>(END)</code> quando chegou ao fim. Os comandos:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Tecla</th><th>O que faz</th></tr>
+<tr><td><kbd>q</kbd></td><td><strong>Sai</strong> e volta ao terminal (de <em>quit</em>). A mais importante.</td></tr>
+<tr><td><kbd>Espaço</kbd> / <kbd>b</kbd></td><td>Desce / sobe uma tela.</td></tr>
+<tr><td><kbd>↓</kbd> / <kbd>↑</kbd> (ou <kbd>j</kbd> / <kbd>k</kbd>)</td><td>Desce / sobe uma linha.</td></tr>
+<tr><td><kbd>/</kbd>palavra <kbd>Enter</kbd></td><td>Procura a palavra (<kbd>n</kbd> vai para a próxima).</td></tr>
+</table>
+</div>
+<p>Quando a saída cabe na tela, o Git mostra tudo e devolve o prompt direto, sem pager. Para nunca usar o pager num comando, escreva <code>git --no-pager log</code>.</p>
+
+<hr>
+
+<h2>2. Uma linha por commit: <code>--oneline</code></h2>
+<p>Na maior parte do tempo, o resumo basta:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+e4dc867 (HEAD -&gt; main) Adiciona o e-mail de contato no README
+ea0e4fa Corrige a quantidade de ovos do bolo
+cce6adb Adiciona a receita de pudim
+da810ac Adiciona a receita de bolo de cenoura
+d84dc97 Adiciona o README
+</pre>
+
+<p>Cada linha tem o hash curto (7 caracteres), as etiquetas e o <strong>título</strong> da mensagem (o corpo não aparece). É aqui que um bom título faz diferença (aula <a href="mensagens-commit.html">Boas Mensagens de Commit</a>).</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add .;;git commit -q -m 'Adiciona o README';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add .;;git commit -q -m 'Adiciona a receita de bolo de cenoura';;echo 'Pudim de leite' &gt; pudim.txt;;git add .;;git commit -q -m 'Adiciona a receita de pudim'" data-goal="ran:git log.*--oneline,out:Adiciona a receita de pudim" data-solucao="git log --oneline">
+<p class="try-task"><strong>Missão:</strong> o repositório <code>receitas</code> já tem três commits. Veja o histórico completo com <code>git log</code> e depois o resumido, com <code>git log --oneline</code>. Qual é o commit mais recente?</p>
+</div>
+
+<hr>
+
+<h2>3. Só os últimos: <code>-n</code></h2>
+<p>Num projeto com centenas de commits, você quer ver só os últimos. <code>-2</code> mostra os 2 mais recentes (qualquer número serve; a forma longa é <code>-n 2</code> ou <code>--max-count=2</code>):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log -2
+commit e4dc8675c7066aa6015b13725c2d51e94dd0cb02 (HEAD -&gt; main)
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Adiciona o e-mail de contato no README
+
+commit ea0e4fa83f1c338c65c14e143ca02e2de44b0e68
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Corrige a quantidade de ovos do bolo
+
+    A receita da vó leva 4 ovos, não 3.
+$ git log --oneline -3
+e4dc867 (HEAD -&gt; main) Adiciona o e-mail de contato no README
+ea0e4fa Corrige a quantidade de ovos do bolo
+cce6adb Adiciona a receita de pudim
+</pre>
+
+<p>O <code>git log -1</code> (só o último commit) é muito usado para conferir o commit que você acabou de fazer.</p>
+
+<hr>
+
+<h2>4. Quais arquivos mudaram: <code>--stat</code></h2>
+
+<pre class="term" data-cwd="~/receitas">$ git log --stat -2
+commit e4dc8675c7066aa6015b13725c2d51e94dd0cb02 (HEAD -&gt; main)
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Adiciona o e-mail de contato no README
+
+ README.md | 1 +                              « 1 linha acrescentada no README.md
+ 1 file changed, 1 insertion(+)
+
+commit ea0e4fa83f1c338c65c14e143ca02e2de44b0e68
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Corrige a quantidade de ovos do bolo
+
+    A receita da vó leva 4 ovos, não 3.
+
+ bolo.txt | 2 +-                              « 1 linha trocada: 1 entrou (+), 1 saiu (-)
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+</pre>
+
+<p>O <code>--stat</code> (de "estatística") acrescenta, embaixo de cada commit, os arquivos que ele mudou e quantas linhas: <code>+</code> para linhas acrescentadas, <code>-</code> para removidas. Uma linha <strong>modificada</strong> conta como uma removida e uma acrescentada (o <code>4 ovos</code> substituiu o <code>3 ovos</code>).</p>
+
+<hr>
+
+<h2>5. O que mudou, linha por linha: <code>-p</code></h2>
+<p>O <code>-p</code> (de <em>patch</em>) mostra, embaixo de cada commit, as linhas exatas que ele mudou:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log -p -1
+commit e4dc8675c7066aa6015b13725c2d51e94dd0cb02 (HEAD -&gt; main)
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Adiciona o e-mail de contato no README
+
+diff --git a/README.md b/README.md
+index 2644316..bd4bba2 100644
+--- a/README.md
++++ b/README.md
+@@ -1 +1,2 @@
+ # Receitas da Ana
++Contato: ana@exemplo.com                     « a linha que entrou
+</pre>
+
+<p>A linha com <code>+</code> é a que o commit acrescentou. Como ler cada linha desse bloco (<code>diff</code>, <code>index</code>, <code>---</code>, <code>+++</code>, <code>@@</code>) está na aula <a href="git-diff.html">git diff</a>. Para ver um commit só, com essas mesmas informações, existe o <a href="git-show.html">git show</a>. Sem o <code>-1</code>, o <code>git log -p</code> mostra o histórico inteiro com todas as mudanças, e quase sempre abre o pager.</p>
+
+<hr>
+
+<h2>6. Desenhando o histórico: <code>--graph</code></h2>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --graph
+* e4dc867 (HEAD -&gt; main) Adiciona o e-mail de contato no README
+* ea0e4fa Corrige a quantidade de ovos do bolo
+* cce6adb Adiciona a receita de pudim
+* da810ac Adiciona a receita de bolo de cenoura
+* d84dc97 Adiciona o README
+</pre>
+
+<p>Cada <code>*</code> é um commit, ligado ao de baixo (o "pai" dele). Por enquanto o histórico é uma linha reta, e o desenho parece inútil. Quando você começar a usar <a href="branches.html">ramos</a>, aparecem os galhos (<code>|</code>, <code>/</code>, <code>\</code>), e o <code>--graph</code> vira indispensável: aula <a href="log-graph.html">Vendo os Galhos</a>.</p>
+
+<h3>Do mais velho para o mais novo: <code>--reverse</code></h3>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --reverse
+d84dc97 Adiciona o README
+da810ac Adiciona a receita de bolo de cenoura
+cce6adb Adiciona a receita de pudim
+ea0e4fa Corrige a quantidade de ovos do bolo
+e4dc867 (HEAD -&gt; main) Adiciona o e-mail de contato no README
+</pre>
+<p>Bom para ler a história do projeto desde o começo, como um livro.</p>
+
+<hr>
+
+<h2>7. Procurando no histórico</h2>
+
+<h3>O histórico de um arquivo</h3>
+<p>Ponha <code>--</code> e o nome do arquivo no fim: só aparecem os commits que mudaram aquele arquivo.</p>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline -- bolo.txt
+ea0e4fa Corrige a quantidade de ovos do bolo
+da810ac Adiciona a receita de bolo de cenoura
+</pre>
+<p>O <code>--</code> ("daqui em diante, só nomes de arquivos") é opcional quando o arquivo existe, mas evita confusão (veja <a href="#errado">Quando dá errado</a>).</p>
+
+<h3>Por palavra na mensagem: <code>--grep</code></h3>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --grep=pudim
+cce6adb Adiciona a receita de pudim
+</pre>
+<p>Mostra os commits cuja mensagem contém a palavra (maiúsculas e minúsculas contam: <code>Pudim</code> não acha <code>pudim</code>, a não ser com <code>-i</code>). Mais um motivo para escrever boas mensagens.</p>
+
+<h3>Por autor: <code>--author</code></h3>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --author=Ana
+e4dc867 (HEAD -&gt; main) Adiciona o e-mail de contato no README
+ea0e4fa Corrige a quantidade de ovos do bolo
+cce6adb Adiciona a receita de pudim
+da810ac Adiciona a receita de bolo de cenoura
+d84dc97 Adiciona o README
+</pre>
+<p>Aqui todos os commits são da Ana. Num projeto em dupla, <code>--author=Bruno</code> mostraria só os do Bruno. Filtros por data (<code>--since</code>), formatos personalizados e outras buscas estão em <a href="log-filtros.html">git log: Filtros e Formatos</a> e <a href="buscar-historico.html">Procurando no Histórico</a>.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add .;;git commit -q -m 'Adiciona o README';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add .;;git commit -q -m 'Adiciona a receita de bolo de cenoura';;echo 'Pudim de leite' &gt; pudim.txt;;git add .;;git commit -q -m 'Adiciona a receita de pudim';;echo '4 ovos' &gt;&gt; bolo.txt;;git add .;;git commit -q -m 'Corrige a quantidade de ovos do bolo';;echo 'Contato' &gt;&gt; README.md;;git add .;;git commit -q -m 'Adiciona o contato no README'" data-goal="ran:git log.*bolo\.txt,out:Corrige a quantidade de ovos do bolo" data-solucao="git log --oneline -- bolo.txt">
+<p class="try-task"><strong>Missão:</strong> o repositório tem cinco commits. Mostre só os commits que mudaram o <code>bolo.txt</code> (dica: <code>-- bolo.txt</code> no fim). Quantos são?</p>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Quero…</th><th>Comando</th></tr>
+<tr><td>ver tudo, com detalhes</td><td><code>git log</code></td></tr>
+<tr><td>uma visão geral rápida</td><td><code>git log --oneline</code></td></tr>
+<tr><td>conferir o commit que acabei de fazer</td><td><code>git log -1</code></td></tr>
+<tr><td>saber quais arquivos cada commit mudou</td><td><code>git log --stat</code></td></tr>
+<tr><td>ver as linhas que mudaram</td><td><code>git log -p</code> (ou <code>git show</code> para um commit)</td></tr>
+<tr><td>ver os galhos dos ramos</td><td><code>git log --oneline --graph</code> (com <code>--all</code>, todos os ramos)</td></tr>
+<tr><td>a história de um arquivo</td><td><code>git log --oneline -- arquivo</code></td></tr>
+<tr><td>achar um commit pela mensagem</td><td><code>git log --oneline --grep=palavra</code></td></tr>
+</table>
+</div>
+<p>As opções se combinam: <code>git log --oneline --stat -3 -- bolo.txt</code> funciona. Se você usa sempre a mesma combinação, crie um atalho (aula <a href="alias.html">alias</a>).</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>"does not have any commits yet"</strong>
+<pre class="term" data-cwd="~/vazio">$ git log
+fatal: your current branch 'main' does not have any commits yet
+</pre>
+<p>"O seu ramo atual, <code>main</code>, ainda não tem nenhum commit". O repositório acabou de ser criado com <code>git init</code> e o álbum está vazio. <strong>Como resolver:</strong> faça o primeiro commit (<a href="primeiro-commit.html">Seu Primeiro Commit</a>).</p>
+</div>
+
+<div class="cenario">
+<strong>"ambiguous argument"</strong>
+<pre class="term" data-cwd="~/receitas">$ git log bolo
+fatal: ambiguous argument 'bolo': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git &lt;command&gt; [&lt;revision&gt;...] -- [&lt;file&gt;...]'
+$ git log --oneline 3
+fatal: ambiguous argument '3': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git &lt;command&gt; [&lt;revision&gt;...] -- [&lt;file&gt;...]'
+</pre>
+<p>"Argumento ambíguo: <code>bolo</code> não é uma revisão (um commit, ramo ou tag) conhecida nem um caminho que exista na pasta. Use <code>--</code> para separar caminhos de revisões". No primeiro, faltou o <code>.txt</code>: o arquivo se chama <code>bolo.txt</code>. No segundo, a Ana queria os 3 últimos commits e esqueceu o tracinho: é <code>-3</code>, não <code>3</code>. <strong>Como resolver:</strong> confira o nome do arquivo com <code>ls</code> (e use <code>-- arquivo</code>), e o número com o <code>-</code> na frente.</p>
+</div>
+
+<div class="cenario">
+<strong>"not a git repository"</strong>
+<pre class="term" data-cwd="~/receitas">$ cd ~
+$ git log
+fatal: not a git repository (or any of the parent directories): .git
+</pre>
+<p>Você está fora do repositório. <strong>Como resolver:</strong> <code>cd receitas</code> (a pasta do projeto).</p>
+</div>
+
+<div class="cenario">
+<strong>O terminal "travou" depois do <code>git log</code></strong>
+<p>Não travou: você está no pager (seção 1), e o rodapé mostra <code>:</code> ou <code>(END)</code>. Aperte <kbd>q</kbd>. O <kbd>Ctrl</kbd>+<kbd>C</kbd> não sai do <code>less</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>O commit que acabei de fazer não aparece</strong>
+<p>O <code>git log</code> mostra só o histórico do <strong>ramo atual</strong>. Se o commit foi feito em outro ramo, ele não aparece aqui; confira o ramo na primeira linha do <code>git status</code> e veja todos os ramos com <code>git log --oneline --graph --all</code> (aula <a href="log-graph.html">Vendo os Galhos</a>). Confira também se o commit deu certo: um <code>git commit</code> sem nada preparado não cria commit nenhum.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Opção</th><th>O que faz</th></tr>
+<tr><td><code>git log</code></td><td>Histórico do ramo atual, do mais novo para o mais velho.</td></tr>
+<tr><td><code>--oneline</code></td><td>Uma linha por commit: hash curto e título.</td></tr>
+<tr><td><code>-N</code> (ex.: <code>-3</code>)</td><td>Só os N commits mais recentes.</td></tr>
+<tr><td><code>--stat</code></td><td>Arquivos e número de linhas mudadas em cada commit.</td></tr>
+<tr><td><code>-p</code></td><td>As linhas mudadas em cada commit (o diff).</td></tr>
+<tr><td><code>--graph</code></td><td>Desenha a ligação entre os commits.</td></tr>
+<tr><td><code>--all</code></td><td>Commits de todos os ramos, não só do atual.</td></tr>
+<tr><td><code>--reverse</code></td><td>Do mais velho para o mais novo.</td></tr>
+<tr><td><code>-- arquivo</code></td><td>Só os commits que mudaram o arquivo.</td></tr>
+<tr><td><code>--grep=texto</code></td><td>Só os commits com o texto na mensagem.</td></tr>
+<tr><td><code>--author=nome</code></td><td>Só os commits desse autor.</td></tr>
+<tr><td><code>git --no-pager log</code></td><td>Sem o pager (tudo direto no terminal).</td></tr>
+<tr><td><kbd>q</kbd></td><td>Sai do pager.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">1. Em que ordem o <code>git log</code> mostra os commits?</p>
+<label><input type="radio" name="q1"> Do mais velho para o mais novo</label>
+<label><input type="radio" name="q1"> Do mais novo para o mais velho</label>
+<label><input type="radio" name="q1"> Em ordem alfabética da mensagem</label>
+<label><input type="radio" name="q1"> Em ordem aleatória</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">2. O que quer dizer <code>(HEAD -&gt; main)</code> ao lado de um commit?</p>
+<label><input type="radio" name="q2"> Que o commit tem um erro</label>
+<label><input type="radio" name="q2"> Que é o primeiro commit do repositório</label>
+<label><input type="radio" name="q2"> Que o commit já foi enviado para o GitHub</label>
+<label><input type="radio" name="q2"> Que é o último commit do ramo <code>main</code>, o ramo em que você está</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">3. O <code>git log</code> abriu e o terminal mostra <code>:</code> no rodapé. Como voltar ao prompt?</p>
+<label><input type="radio" name="q3"> Apertando <kbd>q</kbd></label>
+<label><input type="radio" name="q3"> Fechando o terminal</label>
+<label><input type="radio" name="q3"> Digitando <code>exit</code></label>
+<label><input type="radio" name="q3"> Esperando: ele fecha sozinho</label>
+</div>
+
+<div class="exercise">
+<h3>4. Complete</h3>
+<p>Complete o comando que mostra os 5 commits mais recentes, uma linha por commit:</p>
+<div class="ex-code">git log <input data-answer="--oneline" aria-label="opção de uma linha"> <input data-answer="-5" aria-label="quantidade"></div>
+</div>
+
+<div class="exercise">
+<h3>5. Qual opção?</h3>
+<p>Qual opção do <code>git log</code> mostra, embaixo de cada commit, os arquivos que ele mudou e quantas linhas?</p>
+<div class="ex-code">git log <input data-answer="--stat" aria-label="opção"></div>
+</div>
+
+<h3>Missão final: o detetive</h3>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add .;;git commit -q -m 'Adiciona o README';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add .;;git commit -q -m 'Adiciona a receita de bolo de cenoura';;echo 'Pudim de leite' &gt; pudim.txt;;git add .;;git commit -q -m 'Adiciona a receita de pudim';;echo 'Calda de caramelo' &gt;&gt; pudim.txt;;git add .;;git commit -q -m 'Acrescenta a calda no pudim' -m 'A Carla disse que sem calda o pudim fica sem graça.';;echo 'Contato' &gt;&gt; README.md;;git add .;;git commit -q -m 'Adiciona o contato no README'" data-goal="ran:git log.*(--grep|pudim|-p|-[0-9]),out:Carla" data-solucao="git log --grep=calda">
+<p class="try-task"><strong>Missão:</strong> alguém pôs calda no pudim, e a Ana quer saber <strong>por quê</strong>. Ache o commit e leia o corpo da mensagem, que tem o nome de quem pediu. Dica: <code>git log --grep=calda</code>, ou <code>git log -- pudim.txt</code>.</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git log</code> mostra os commits do ramo atual, do mais novo para o mais velho: hash, etiquetas, autor, data e mensagem.</li>
+  <li><code>(HEAD -&gt; main)</code> marca o último commit do ramo em que você está.</li>
+  <li>Histórico longo abre no pager: <kbd>Espaço</kbd> desce, <kbd>q</kbd> sai.</li>
+  <li><code>--oneline</code> resume, <code>-N</code> limita, <code>--stat</code> mostra os arquivos, <code>-p</code> mostra as linhas, <code>--graph</code> desenha.</li>
+  <li><code>-- arquivo</code>, <code>--grep=texto</code> e <code>--author=nome</code> filtram o histórico.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
