@@ -55,6 +55,8 @@
 <p>Se uma pasta inteira foi ignorada (<code>.vscode/</code>), um <code>!.vscode/settings.json</code> depois não funciona: o Git nem olha dentro dela. Por isso os modelos escrevem <code>.vscode/*</code> (o <strong>conteúdo</strong> da pasta) e depois as exceções.</p>
 </div>
 
+<div class="note"><strong>Português e inglês misturados?</strong> A tradução do Git que vem no Ubuntu é parcial: algumas mensagens saem em português, outras em inglês (e algumas em português de Portugal, como "submissões"). As saídas abaixo estão exatamente como apareceram; as mensagens em inglês ganham tradução no texto. Em outros sistemas, as frases podem sair diferentes ou todas em inglês.</div>
+
 <h2 id="exemplo">Um exemplo testado</h2>
 <p>A lojinha da Ana é um projeto Node.js. Antes do <code>.gitignore</code>, o <code>git status</code> quer levar tudo, inclusive a pasta de dependências e o arquivo de senhas. Saída real:</p>
 <pre class="term" data-cwd="~/lojinha">$ git status
@@ -288,10 +290,7 @@ $ git add .gitignore
 $ git commit -q -m 'Para de rastrear o .env'
 $ git status --short
 $ ls -A
-.env                                   « o arquivo continua na pasta da Ana
-.git
-.gitignore
-app.js
+.env  .git  .gitignore  app.js         « o .env continua na pasta da Ana
 </pre>
 <p><strong>Atenção:</strong> o <code>.env</code> antigo continua nos commits anteriores. Se ele tinha uma senha de verdade e foi enviado ao GitHub, troque a senha. Veja <a href="senha-commitada.html">Commitei uma Senha!</a>.</p>
 </div>
