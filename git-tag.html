@@ -82,7 +82,7 @@ c34349b Adiciona a receita de bolo
 <p>O <code>tag: revisado</code> está colado no <code>bbf4ec7</code>, o commit onde a Ana estava. E o <code>git show</code> com o nome da tag mostra o commit:</p>
 
 <pre class="term" data-cwd="~/receitas">$ git show revisado
-commit bbf4ec7677f7e692ad5643513bfad21c6657510a
+commit bbf4ec7677f7e692ad5643513bfad21c6657510a (HEAD -&gt; main, tag: revisado)
 Author: Ana Souza &lt;ana@exemplo.com&gt;
 Date:   Thu Oct 15 10:30:00 2026 -0300
 
@@ -123,7 +123,7 @@ Date:   Thu Oct 15 10:30:00 2026 -0300
 
 Primeira versão do site: bolo e pudim
 
-commit bbf4ec7677f7e692ad5643513bfad21c6657510a
+commit bbf4ec7677f7e692ad5643513bfad21c6657510a (HEAD -&gt; main, tag: v1.0, tag: revisado)
 Author: Ana Souza &lt;ana@exemplo.com&gt;
 Date:   Thu Oct 15 10:30:00 2026 -0300
 
@@ -283,8 +283,7 @@ $ git status
 HEAD detached at v0.9
 nothing to commit, working tree clean
 $ ls
-README.md
-bolo.txt
+README.md  bolo.txt
 $ git switch main
 Previous HEAD position was c34349b Adiciona a receita de bolo
 Switched to branch 'main'
