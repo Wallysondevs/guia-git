@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git worktree — dois branches abertos ao mesmo tempo, em pastas diferentes | Guia Git</title>
+<meta name="description" content="git worktree para iniciantes: abrir outro branch numa segunda pasta sem stash nem commit pela metade, com git worktree add, add -b, list, remove e prune, o arquivo .git que aponta para o repositório principal, e os erros reais (branch já usado por outra pasta, pasta com arquivos modificados, pasta apagada à mão).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">worktree</span></h1>
+
+<p class="intro">A Ana está no meio da receita de pudim, no branch <code>receita-pudim</code>, com arquivos mexidos e nada pronto para commit. O Bruno liga: "o link do bolo no site está quebrado, dá para arrumar agora?". Ela poderia guardar tudo com <a href="git-stash.html">git stash</a>, trocar de branch, consertar, voltar e tirar do stash. Ou pode simplesmente abrir <strong>outra pasta</strong>, com a <code>main</code>, ao lado da pasta onde está trabalhando, sem tocar em nada do pudim. É isso que o <code>git worktree</code> faz: várias <strong>pastas de trabalho</strong> (<em>working trees</em>) ligadas ao <strong>mesmo</strong> repositório, cada uma num branch.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é uma pasta de trabalho e por que um repositório pode ter várias.</li>
+  <li>Como criar uma com <code>git worktree add</code>, já com um branch novo (<code>-b</code>).</li>
+  <li>Como ver todas (<code>git worktree list</code>) e apagar (<code>git worktree remove</code>, <code>git worktree prune</code>).</li>
+  <li>Por que um branch não pode estar aberto em duas pastas ao mesmo tempo, e os outros erros reais.</li>
+</ul>
+</div>
+
+<p>Os comandos desta aula rodaram no Git 2.53 do Ubuntu da Ana (usuária <code>ana</code>, computador <code>notebook</code>). As mensagens do <code>git worktree</code> ainda não têm tradução em português nessa versão e saem em inglês; a aula traduz cada uma. O comando existe desde o Git 2.5 <span class="versao">git 2.5+</span>.</p>
+
+<hr>
+
+<h2>A ideia: duas mesas, um só arquivo de documentos</h2>
+<p>Até agora, cada repositório tinha <strong>uma</strong> pasta de trabalho: a pasta onde você edita os arquivos, que mostra <strong>um</strong> branch de cada vez. Trocar de branch é como guardar todos os papéis da mesa e espalhar outros. Com o <code>worktree</code>, você monta uma <strong>segunda mesa</strong>, com outros papéis, e as duas usam o <strong>mesmo arquivo</strong> de documentos (a pasta <code>.git</code>, com todo o histórico):</p>
+<pre>
+/home/ana/receitas/            « a pasta principal, no branch receita-pudim
+   ├── .git/                   « o repositório (histórico, branches, tudo)
+   ├── pudim.md   (mexido)
+   └── notas.txt  (novo)
+
+/home/ana/receitas-corrige/    « a segunda pasta, no branch corrige-link
+   ├── .git       (um ARQUIVO que aponta para /home/ana/receitas/.git)
+   ├── index.md
+   └── …
+</pre>
+<p>Um commit feito numa pasta aparece na hora para a outra: o histórico é um só.</p>
+
+<hr>
+
+<h2>1. O ponto de partida</h2>
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo receita-pudim
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   pudim.md
+
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	notas.txt
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+</pre>
+<p>O <code>pudim.md</code> está modificado e o <code>notas.txt</code> é novo (veja <a href="git-status.html">git status</a>). Nada disso está pronto para um commit, e a Ana não quer mexer nesses arquivos agora.</p>
+
+<hr>
+
+<h2>2. Criar a segunda pasta: <code>git worktree add</code></h2>
+<pre class="term" data-cwd="~/receitas">$ git worktree add ../receitas-corrige -b corrige-link main
+Preparing worktree (new branch 'corrige-link')
+HEAD is now at ec8392a Adiciona receita de bolo
+</pre>
+
+<dl class="anatomy">
+  <dt>git worktree add</dt><dd>"Acrescente uma pasta de trabalho."</dd>
+  <dt>../receitas-corrige</dt><dd>Onde criar a pasta nova. O <code>..</code> quer dizer "ao lado da pasta atual", em <code>/home/ana/receitas-corrige</code>. Evite criar dentro da pasta do repositório: ela apareceria como arquivo não rastreado.</dd>
+  <dt>-b corrige-link</dt><dd>Cria um branch novo com esse nome para a pasta nova (como o <code>-c</code> do <code>git switch</code>).</dd>
+  <dt>main</dt><dd>De onde o branch novo nasce.</dd>
+  <dt>Preparing worktree (new branch 'corrige-link')</dt><dd>"Preparando a pasta de trabalho (branch novo <code>corrige-link</code>)".</dd>
+  <dt>HEAD is now at ec8392a Adiciona receita de bolo</dt><dd>"O HEAD agora está em <code>ec8392a</code>": a pasta nova mostra o último commit da <code>main</code>.</dd>
+</dl>
+
+<p>As duas pastas estão lado a lado na pasta pessoal da Ana, e o <code>git worktree list</code> mostra as duas, com o commit e o branch de cada uma:</p>
+<pre class="term" data-cwd="~/receitas">$ git worktree list
+/home/ana/receitas         1934126 [receita-pudim]       « a principal
+/home/ana/receitas-corrige ec8392a [corrige-link]        « a nova
+$ ls ..
+Documentos
+Downloads
+Imagens
+Modelos
+Música
+Público
+Vídeos
+receitas
+receitas-corrige
+Área de trabalho
+</pre>
+
+<hr>
+
+<h2>3. Trabalhar na pasta nova</h2>
+<p>Basta entrar nela. Para o Git, ela é uma pasta de repositório como qualquer outra:</p>
+<pre class="term" data-cwd="~/receitas">$ cd ../receitas-corrige
+$ ls
+README.md
+bolo.md
+index.md                                   « sem pudim.md nem notas.txt: aqui é a main
+$ git status
+No ramo corrige-link
+nothing to commit, working tree clean      « "nada a commitar, pasta limpa"
+$ sed -i 's/bolo.htm/bolo.md/' index.md
+$ git commit -am "Corrige link do bolo"
+[corrige-link b64663e] Corrige link do bolo
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+</pre>
+<p>(O <code>sed -i</code> só troca o texto do link pelo terminal; você pode usar o editor.) E o que é o <code>.git</code> dessa pasta? Não é uma pasta, é um arquivinho de uma linha:</p>
+<pre class="term" data-cwd="~/receitas-corrige">$ cat .git
+gitdir: /home/ana/receitas/.git/worktrees/receitas-corrige
+</pre>
+<p>"O diretório do Git está em <code>/home/ana/receitas/.git/worktrees/receitas-corrige</code>": a pasta nova não tem histórico próprio; ela usa o da pasta principal. Por isso o commit já aparece lá, e o trabalho do pudim continua intocado:</p>
+<pre class="term" data-cwd="~/receitas-corrige">$ cd ../receitas
+$ git status --short
+ M pudim.md                                « tudo como a Ana deixou
+?? notas.txt
+$ git log --oneline --graph --all
+* b64663e Corrige link do bolo             « o commit feito na outra pasta
+| * 1934126 Começa a receita de pudim
+|/
+* ec8392a Adiciona receita de bolo
+* a56584f Cria o site de receitas
+</pre>
+<p>Agora o <code>corrige-link</code> segue o caminho normal: <code>git push -u origin corrige-link</code> e um <a href="pull-request.html">pull request</a>, como no <a href="github-flow.html">GitHub Flow</a>. Tudo isso pode ser feito de qualquer uma das duas pastas.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas' &gt; README.md;;echo '- [Bolo](bolo.htm)' &gt; index.md;;git add .;;git commit -q -m 'Adiciona receita de bolo';;git switch -q -c receita-pudim;;echo '# Pudim' &gt; pudim.md;;git add pudim.md;;git commit -q -m 'Começa a receita de pudim';;echo '- 3 ovos' &gt;&gt; pudim.md" data-goal="branch:corrige-link,dir:/home/ana/receitas-corrige,contem:corrige-link:index.md=bolo.md" data-solucao="git worktree add ../receitas-corrige -b corrige-link main;;cd ../receitas-corrige;;sed -i 's/bolo.htm/bolo.md/' index.md;;git commit -am 'Corrige link do bolo'">
+<p class="try-task"><strong>Missão:</strong> você está em <code>~/receitas</code>, no branch <code>receita-pudim</code>, com o <code>pudim.md</code> modificado. Sem mexer nele, crie a pasta <code>../receitas-corrige</code> com o branch novo <code>corrige-link</code> a partir da <code>main</code>, entre nela, troque <code>bolo.htm</code> por <code>bolo.md</code> no <code>index.md</code> (por exemplo, com <code>sed -i 's/bolo.htm/bolo.md/' index.md</code>) e faça o commit. Depois, volte a <code>~/receitas</code> e confira com <code>git log --oneline --graph --all</code>.</p>
+</div>
+
+<hr>
+
+<h2>4. Um branch, uma pasta</h2>
+<p>Uma regra importante: <strong>o mesmo branch não pode estar aberto em duas pastas</strong>. Se pudesse, um commit feito numa pasta mudaria o branch "por baixo" da outra, e os arquivos dela ficariam errados. O Git recusa:</p>
+<pre class="term" data-cwd="~/receitas">$ git worktree add ../outra-pasta receita-pudim
+Preparing worktree (checking out 'receita-pudim')
+fatal: 'receita-pudim' is already used by worktree at '/home/ana/receitas'
+</pre>
+<p>"<code>receita-pudim</code> já está em uso pela pasta de trabalho <code>/home/ana/receitas</code>". Repare na forma do comando: sem <code>-b</code>, o último argumento é um branch <strong>que já existe</strong>, para abrir na pasta nova. Com um branch livre, como a <code>main</code>, funciona:</p>
+<pre class="term" data-cwd="~/receitas">$ git worktree add ../outra-pasta main
+Preparing worktree (checking out 'main')
+HEAD is now at ec8392a Adiciona receita de bolo
+$ git worktree list
+/home/ana/receitas         1934126 [receita-pudim]
+/home/ana/outra-pasta      ec8392a [main]
+/home/ana/receitas-corrige b64663e [corrige-link]
+</pre>
+<p>A regra também vale para o <code>git switch</code>: enquanto a <code>main</code> estiver aberta em outra pasta, você não consegue trocar para ela na pasta principal (veja <a href="#errado">Quando dá errado</a>).</p>
+
+<hr>
+
+<h2>5. Apagar a pasta: <code>git worktree remove</code></h2>
+<p>Terminado o conserto, a pasta extra pode ir embora. O comando certo é o <code>git worktree remove</code>, que apaga a pasta <strong>e</strong> avisa o repositório. Ele se recusa se houver algo não salvo lá dentro:</p>
+<pre class="term" data-cwd="~/receitas">$ echo teste &gt; ../receitas-corrige/teste.txt
+$ git worktree remove ../receitas-corrige
+fatal: '../receitas-corrige' contains modified or untracked files, use --force to delete it
+$ rm ../receitas-corrige/teste.txt
+$ git worktree remove ../receitas-corrige
+$ git worktree list
+/home/ana/receitas    1934126 [receita-pudim]
+/home/ana/outra-pasta ec8392a [main]
+</pre>
+<p>"<code>../receitas-corrige</code> contém arquivos modificados ou não rastreados; use <code>--force</code> para apagá-la". Havia um <code>teste.txt</code> esquecido lá. A Ana apagou o arquivo e tentou de novo: sem mensagem nenhuma, a pasta foi removida. <strong>O branch <code>corrige-link</code> continua existindo</strong>, com o commit: apagar a pasta não apaga o branch nem o histórico.</p>
+
+<h3>E se a pasta foi apagada à mão? <code>git worktree prune</code></h3>
+<p>Se alguém apagar a pasta extra com <code>rm -rf</code> ou pelo gerenciador de arquivos, o repositório continua achando que ela existe:</p>
+<pre class="term" data-cwd="~/receitas">$ rm -rf ../outra-pasta
+$ git worktree list
+/home/ana/receitas    1934126 [receita-pudim]
+/home/ana/outra-pasta ec8392a [main] prunable       « "podável": a pasta sumiu
+$ git worktree prune
+$ git worktree list
+/home/ana/receitas 1934126 [receita-pudim]
+</pre>
+<p>O <code>prunable</code> ("podável") marca uma pasta que não existe mais. O <code>git worktree prune</code> ("podar") limpa esses registros.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas' &gt; README.md;;echo '- [Bolo](bolo.htm)' &gt; index.md;;git add .;;git commit -q -m 'Adiciona receita de bolo';;git switch -q -c receita-pudim;;echo '# Pudim' &gt; pudim.md;;git add pudim.md;;git commit -q -m 'Começa a receita de pudim';;echo '- 3 ovos' &gt;&gt; pudim.md;;git worktree add -q ../receitas-corrige -b corrige-link main" data-goal="absent:/home/ana/receitas-corrige,branch:corrige-link,ran:worktree remove" data-solucao="git worktree list;;git worktree remove ../receitas-corrige">
+<p class="try-task"><strong>Missão:</strong> a pasta <code>../receitas-corrige</code> já cumpriu o seu papel. Veja as pastas de trabalho com <code>git worktree list</code> e apague essa com o comando certo do Git. Depois, confira com <code>git branch</code> que o branch <code>corrige-link</code> continua lá.</p>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Para</th><th>Comando</th><th>Observação</th></tr>
+<tr><td>Pasta nova com branch novo, nascido de outro</td><td><code>git worktree add ../pasta -b novo main</code></td><td>O mais comum.</td></tr>
+<tr><td>Pasta nova com um branch que já existe</td><td><code>git worktree add ../pasta branch</code></td><td>O branch não pode estar aberto em outra pasta.</td></tr>
+<tr><td>Pasta nova com branch novo do mesmo nome da pasta</td><td><code>git worktree add ../revisao</code></td><td>Cria o branch <code>revisao</code> a partir do commit atual (veja abaixo).</td></tr>
+<tr><td>Pasta para só olhar um commit ou tag</td><td><code>git worktree add --detach ../v1 v1.0</code></td><td>Sem branch, em HEAD destacado (veja <a href="head-destacado.html">HEAD Destacado</a>).</td></tr>
+<tr><td>Interromper sem pasta nova</td><td><a href="git-stash.html">git stash</a></td><td>Bom para interrupções curtas; o worktree é melhor quando as duas tarefas vão durar.</td></tr>
+<tr><td>Outra cópia completa</td><td><code>git clone</code> de novo</td><td>Funciona, mas duplica o histórico inteiro e os branches não são compartilhados.</td></tr>
+</table>
+</div>
+<p>A forma curta, só com a pasta:</p>
+<pre class="term" data-cwd="~/receitas">$ git worktree add ../revisao
+Preparing worktree (new branch 'revisao')
+HEAD is now at 1934126 Começa a receita de pudim
+</pre>
+<p>O Git criou o branch <code>revisao</code> (o nome da pasta) a partir do commit atual, <code>1934126</code>.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>fatal: '…' is already used by worktree at '…'</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git switch main
+fatal: 'main' is already used by worktree at '/home/ana/site-main'
+</pre>
+<p>"A <code>main</code> já está em uso pela pasta <code>/home/ana/site-main</code>". <strong>O que aconteceu:</strong> o branch está aberto em outra pasta de trabalho, e o Git não deixa abrir o mesmo branch em duas. <strong>Como confirmar:</strong> <code>git worktree list</code>. <strong>Como resolver:</strong> trabalhe com a <code>main</code> naquela pasta (<code>cd ../site-main</code>), ou remova a pasta extra com <code>git worktree remove ../site-main</code>. Se a pasta foi apagada à mão, rode <code>git worktree prune</code>.</p>
+</div>
+
+<div class="cenario">
+<strong><code>contains modified or untracked files, use --force to delete it</code></strong>
+<p>O <code>git worktree remove</code> se recusa a apagar uma pasta com mudanças não commitadas ou arquivos novos (você viu na seção 5). <strong>Como resolver:</strong> entre na pasta e olhe o <code>git status</code>. Se é trabalho que importa, faça o commit; se é lixo, apague os arquivos. O <code>--force</code> apaga tudo sem perguntar: use só quando tiver certeza.</p>
+</div>
+
+<div class="cenario">
+<strong>Apaguei a pasta com <code>rm -rf</code></strong>
+<p>Nada se perde do que estava commitado: o histórico e o branch estão na pasta principal. O que estava <strong>sem commit</strong> naquela pasta, esse sim, foi embora. O <code>git worktree list</code> mostra a pasta como <code>prunable</code>; rode <code>git worktree prune</code> para limpar o registro.</p>
+</div>
+
+<div class="cenario">
+<strong>Não acho a pasta principal pelo <code>.git</code></strong>
+<p>Na pasta extra, o <code>.git</code> é um arquivo, não uma pasta. Ferramentas antigas que procuram a pasta <code>.git</code> podem estranhar. O <code>cat .git</code> mostra onde está o repositório de verdade, e o <code>git worktree list</code> (de qualquer pasta) mostra todas.</p>
+</div>
+
+<hr>
+
+<h2>Referência</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git worktree add CAMINHO -b NOVO [ORIGEM]</code></td><td>Cria a pasta com um branch novo</td></tr>
+<tr><td><code>git worktree add CAMINHO BRANCH</code></td><td>Cria a pasta com um branch existente (e livre)</td></tr>
+<tr><td><code>git worktree add CAMINHO</code></td><td>Cria a pasta e um branch com o nome dela</td></tr>
+<tr><td><code>git worktree add --detach CAMINHO COMMIT</code></td><td>Cria a pasta num commit, sem branch</td></tr>
+<tr><td><code>git worktree list</code></td><td>Lista as pastas, com commit e branch</td></tr>
+<tr><td><code>git worktree remove CAMINHO</code></td><td>Apaga a pasta (recusa se houver mudanças; <code>--force</code> apaga mesmo assim)</td></tr>
+<tr><td><code>git worktree prune</code></td><td>Limpa os registros de pastas apagadas à mão</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o comando</h3>
+<p>Crie a pasta <code>../site-hotfix</code> com o branch novo <code>hotfix</code> a partir da <code>main</code>:</p>
+<div class="ex-code">git <input data-answer="worktree" aria-label="comando"> <input data-answer="add" aria-label="subcomando"> ../site-hotfix <input data-answer="-b" aria-label="opção de branch novo"> hotfix main</div>
+</div>
+
+<div class="exercise">
+<h3>2. Qual subcomando?</h3>
+<p>A pasta extra foi apagada pelo gerenciador de arquivos, e o <code>git worktree list</code> mostra <code>prunable</code>. Qual subcomando limpa o registro?</p>
+<div class="ex-code">git worktree <input data-answer="prune" aria-label="subcomando"></div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. A Ana fez um commit na pasta <code>../receitas-corrige</code>. Na pasta principal <code>~/receitas</code>, o que o <code>git log --all</code> mostra?</p>
+<label><input type="radio" name="q3"> Nada: cada pasta tem o seu histórico</label>
+<label><input type="radio" name="q3"> O commit, mas só depois de um <code>git pull</code></label>
+<label><input type="radio" name="q3"> O commit, na hora: as duas pastas usam o mesmo repositório</label>
+<label><input type="radio" name="q3"> Um erro, porque o branch está em outra pasta</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. O que acontece com o branch quando você roda <code>git worktree remove</code> na pasta dele?</p>
+<label><input type="radio" name="q4"> É apagado junto com a pasta</label>
+<label><input type="radio" name="q4"> Continua existindo, com todos os commits</label>
+<label><input type="radio" name="q4"> Vira um stash</label>
+<label><input type="radio" name="q4"> É mesclado na <code>main</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. Por que o Git não deixa abrir o mesmo branch em duas pastas?</p>
+<label><input type="radio" name="q5"> Porque um commit numa pasta mudaria o branch por baixo da outra, deixando os arquivos dela desatualizados</label>
+<label><input type="radio" name="q5"> Porque ocuparia o dobro do espaço</label>
+<label><input type="radio" name="q5"> Porque o GitHub não aceita</label>
+<label><input type="radio" name="q5"> Ele deixa, desde que você use <code>-b</code></label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git worktree</code> abre outro branch numa <strong>segunda pasta</strong>, ligada ao mesmo repositório: nada de stash nem commit pela metade para atender uma urgência.</li>
+  <li><code>git worktree add ../pasta -b novo main</code> cria a pasta com um branch novo; <code>git worktree add ../pasta branch</code> abre um branch existente.</li>
+  <li>O histórico é um só: um commit numa pasta aparece na hora nas outras. Na pasta extra, o <code>.git</code> é um arquivo que aponta para o repositório principal.</li>
+  <li>Um branch só pode estar aberto em uma pasta: senão, <code>is already used by worktree at …</code>.</li>
+  <li><code>git worktree list</code> mostra as pastas; <code>git worktree remove</code> apaga (o branch fica); <code>git worktree prune</code> limpa o registro de pastas apagadas à mão.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
