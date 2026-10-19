@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Glossário — commit, branch, HEAD, merge, rebase e os outros termos explicados | Guia Git</title>
+<meta name="description" content="Glossário do Git e do GitHub em português: área de preparo, branch, commit, HEAD, hash, merge, rebase, remoto, origin, upstream, fork, pull request, stash, tag e dezenas de outros termos, cada um com a tradução, uma explicação simples e o link para a aula.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Glossário</span></h1>
+
+<p class="intro">O Git fala inglês, e as palavras dele aparecem em toda mensagem, tutorial e conversa de equipe: <em>commit</em>, <em>branch</em>, <em>merge</em>, <em>push</em>… Este glossário traduz cada termo, explica com uma frase simples e leva você à aula que trata do assunto. Os termos estão em ordem alfabética, pelo nome que você mais vai ver (em geral, o inglês).</p>
+
+<div class="note">
+<strong>Como usar</strong>
+<ul>
+  <li>Use <kbd>Ctrl</kbd>+<kbd>F</kbd> no navegador para achar um termo, ou pule pela letra abaixo.</li>
+  <li>Entre parênteses, a tradução usada no guia. Em <em>itálico</em>, outros nomes para a mesma coisa.</li>
+  <li>Na mensagem do Git em português, alguns termos já aparecem traduzidos (<code>No ramo main</code> = "no branch main"; <code>Arquivos não monitorados</code> = arquivos não rastreados).</li>
+</ul>
+</div>
+
+<p class="indice-letras"><a href="#a">A</a> · <a href="#b">B</a> · <a href="#c">C</a> · <a href="#d">D</a> · <a href="#f">F</a> · <a href="#g">G</a> · <a href="#h">H</a> · <a href="#i">I</a> · <a href="#l">L</a> · <a href="#m">M</a> · <a href="#o">O</a> · <a href="#p">P</a> · <a href="#r">R</a> · <a href="#s">S</a> · <a href="#t">T</a> · <a href="#u">U</a> · <a href="#w">W</a></p>
+
+<hr>
+
+<h2>Os termos num desenho só</h2>
+<p>Boa parte do vocabulário aparece numa única saída real do <code>git log --oneline --graph --all</code> do repositório da Ana:</p>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --graph --all
+* 70a65a8 (bolo) Ajusta a farinha do bolo                « um commit no branch "bolo"
+| * 152d79c (HEAD -&gt; main) Atualiza o título do README   « HEAD: onde você está; main: o branch atual
+|/                                                       « o ponto onde os dois branches se separam
+* c8d0fdc (tag: v1.0) Adiciona receita de pudim         « uma tag: etiqueta fixa num commit
+* 8426608 Adiciona cobertura de chocolate ao bolo        « 8426608: o hash (curto) do commit
+* c94a9e3 Adiciona receita de bolo
+* fe996fb Primeiro commit                                « o commit raiz: o primeiro, sem pai
+</pre>
+
+<h2 id="a">A</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Termo</th><th>O que é</th><th>Aula</th></tr>
+<tr><td><strong>add</strong> (adicionar)</td><td>Pôr uma mudança na área de preparo, para ela entrar no próximo commit: <code>git add receita.txt</code>.</td><td><a href="git-add.html">git add</a></td></tr>
+<tr><td><strong>alias</strong> (atalho)</td><td>Um nome curto que você cria para um comando longo: <code>git st</code> = <code>git status</code>.</td><td><a href="alias.html">Atalhos</a></td></tr>
+<tr><td><strong>amend</strong> (emendar)</td><td>Refazer o último commit, para corrigir a mensagem ou acrescentar um arquivo esquecido. Gera um commit novo, com outro hash.</td><td><a href="commit-amend.html">--amend</a></td></tr>
+<tr><td><strong>ancestral comum</strong> (<em>merge base</em>)</td><td>O último commit que dois branches têm em comum: o ponto onde eles se separaram. O merge de três vias compara tudo com ele.</td><td><a href="merge-tres-vias.html">Merge de Três Vias</a></td></tr>
+<tr><td><strong>área de preparo</strong> (<em>staging area</em>, <em>index</em>, <em>stage</em>)</td><td>A "sala de espera" do commit: o que você escolheu com <code>git add</code> e vai entrar no próximo commit. Nas mensagens: "Mudanças a serem submetidas".</td><td><a href="area-de-preparo.html">A Área de Preparo</a></td></tr>
+<tr><td><strong>author</strong> (autor) × <strong>committer</strong></td><td>O autor escreveu a mudança; o committer gravou o commit. Quase sempre é a mesma pessoa; diferem num cherry-pick, rebase ou patch aplicado por outra pessoa.</td><td><a href="ref-log.html">Formatos do git log</a></td></tr>
+</table>
+</div>
+
+<h2 id="b">B</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Termo</th><th>O que é</th><th>Aula</th></tr>
+<tr><td><strong>bare</strong> (repositório "nu")</td><td>Um repositório sem pasta de trabalho, só com o histórico (o conteúdo da <code>.git</code>). É o que fica num servidor, para receber <code>push</code>.</td><td><a href="remotos.html">Repositório Remoto</a></td></tr>
+<tr><td><strong>bisect</strong> (dividir ao meio)</td><td>Achar o commit que criou um bug testando o commit do meio, depois o do meio da metade… <code>git bisect</code>.</td><td><a href="git-bisect.html">git bisect</a></td></tr>
+<tr><td><strong>blame</strong> (culpar)</td><td>Mostra, linha por linha, qual commit e quem mudou cada linha de um arquivo.</td><td><a href="git-blame.html">git blame</a></td></tr>
+<tr><td><strong>blob</strong></td><td>O objeto em que o Git guarda o conteúdo de um arquivo (sem o nome).</td><td><a href="como-git-guarda.html">Como o Git Guarda</a></td></tr>
+<tr><td><strong>branch</strong> (ramo; nas mensagens, "ramo")</td><td>Uma linha de trabalho independente. Por dentro, é só um nome que aponta para um commit e anda sozinho a cada commit novo.</td><td><a href="branches.html">O que é um Branch</a></td></tr>
+<tr><td><strong>branch padrão</strong> (<em>default branch</em>)</td><td>O branch principal do repositório, criado pelo <code>git init</code>: hoje quase sempre <code>main</code> (antigamente, <code>master</code>).</td><td><a href="git-init.html">git init</a></td></tr>
+</table>
+</div>
+
+<h2 id="c">C</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Termo</th><th>O que é</th><th>Aula</th></tr>
+<tr><td><strong>checkout</strong></td><td>O comando antigo "faz-tudo": troca de branch, visita commits e restaura arquivos. Hoje dividido em <code>switch</code> e <code>restore</code>.</td><td><a href="git-checkout.html">git checkout</a></td></tr>
+<tr><td><strong>cherry-pick</strong> (colher a cereja)</td><td>Copiar um commit específico de outro branch para o atual.</td><td><a href="cherry-pick.html">cherry-pick</a></td></tr>
+<tr><td><strong>clean</strong> (limpar)</td><td>Apagar arquivos novos, não rastreados: <code>git clean -n</code> (mostra), <code>-f</code> (apaga).</td><td><a href="git-clean.html">git clean</a></td></tr>
+<tr><td><strong>clone</strong> (clonar)</td><td>Baixar uma cópia completa de um repositório remoto, com todo o histórico.</td><td><a href="git-clone.html">git clone</a></td></tr>
+<tr><td><strong>commit</strong> (registro, "fotografia"; verbo: commitar)</td><td>Uma fotografia do projeto inteiro num momento, com autor, data, mensagem e um hash. Também o ato de gravá-la: <code>git commit</code>.</td><td><a href="git-commit.html">git commit</a></td></tr>
+<tr><td><strong>commit de merge</strong></td><td>Um commit com dois pais, que junta dois branches.</td><td><a href="merge-tres-vias.html">Merge de Três Vias</a></td></tr>
+<tr><td><strong>config</strong></td><td>As configurações do Git (nome, e-mail, editor…), em três níveis: sistema, global e do repositório.</td><td><a href="ref-config.html">Configurações</a></td></tr>
+<tr><td><strong>conflito</strong> (<em>merge conflict</em>)</td><td>Quando os dois lados mudaram a mesma parte de um arquivo e o Git não sabe qual escolher: ele marca o trecho com <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>, <code>=======</code> e <code>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code> e pede ajuda.</td><td><a href="conflitos.html">Conflitos</a></td></tr>
+<tr><td><strong>Conventional Commits</strong></td><td>Um padrão de mensagens: <code>feat: …</code>, <code>fix: …</code>, <code>docs: …</code>.</td><td><a href="conventional-commits.html">Conventional Commits</a></td></tr>
+</table>
+</div>
+
+<h2 id="d">D</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Termo</th><th>O que é</th><th>Aula</th></tr>
+<tr><td><strong>detached HEAD</strong> (HEAD destacado)</td><td>Quando o HEAD aponta direto para um commit, e não para um branch (ao visitar um commit antigo). Commits feitos assim ficam "soltos" se você sair sem criar um branch.</td><td><a href="head-destacado.html">HEAD Destacado</a></td></tr>
+<tr><td><strong>diff</strong> (diferença)</td><td>As linhas que mudaram entre duas versões: <code>-</code> saiu, <code>+</code> entrou.</td><td><a href="git-diff.html">git diff</a></td></tr>
+</table>
+</div>
+
+<h2 id="f">F</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Termo</th><th>O que é</th><th>Aula</th></tr>
+<tr><td><strong>fast-forward</strong> (avanço rápido)</td><td>Um merge em que o branch de destino não mudou: o Git só "avança o ponteiro", sem criar commit de merge.</td><td><a href="fast-forward.html">Fast-forward</a></td></tr>
+<tr><td><strong>fetch</strong> (buscar)</td><td>Baixar as novidades do remoto <strong>sem</strong> mexer nos seus branches (elas ficam em <code>origin/main</code>).</td><td><a href="git-fetch.html">git fetch</a></td></tr>
+<tr><td><strong>fork</strong> (bifurcação)</td><td>No GitHub: uma cópia de um repositório de outra pessoa na sua conta, para você mexer e depois propor mudanças.</td><td><a href="fork.html">Fork</a></td></tr>
+<tr><td><strong>force push</strong> (envio forçado)</td><td>Um <code>push</code> que sobrescreve o histórico do servidor. Use sempre <code>--force-with-lease</code>.</td><td><a href="push-force.html">push --force-with-lease</a></td></tr>
+</table>
+</div>
+
+<h2 id="g">G</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Termo</th><th>O que é</th><th>Aula</th></tr>
+<tr><td><strong>Git</strong></td><td>O programa de controle de versão, que roda no seu computador.</td><td><a href="introducao.html">O que é Git</a></td></tr>
+<tr><td><strong>.git</strong> (a pasta)</td><td>A pasta escondida, dentro do projeto, onde o Git guarda todo o histórico e as configurações do repositório. Apagá-la apaga o histórico.</td><td><a href="git-init.html">git init</a></td></tr>
+<tr><td><strong>.gitattributes</strong></td><td>Arquivo que diz como tratar certos arquivos (fim de linha, binários, LFS).</td><td><a href="gitattributes.html">.gitattributes</a></td></tr>
+<tr><td><strong>.gitignore</strong></td><td>Arquivo com os nomes e padrões de arquivos que o Git deve ignorar.</td><td><a href="gitignore.html">.gitignore</a></td></tr>
+<tr><td><strong>GitHub</strong></td><td>Um site que hospeda repositórios Git e acrescenta pull requests, issues, Pages, Actions… (GitLab e Bitbucket são parecidos).</td><td><a href="git-e-github.html">Git × GitHub</a></td></tr>
+<tr><td><strong>GitHub Actions</strong></td><td>Automação do GitHub: rodar testes ou publicar algo a cada push.</td><td><a href="github-actions.html">GitHub Actions</a></td></tr>
+<tr><td><strong>GitHub Pages</strong></td><td>Hospedagem gratuita de sites estáticos direto de um repositório.</td><td><a href="github-pages.html">GitHub Pages</a></td></tr>
+<tr><td><strong>gh</strong></td><td>O programa de linha de comando do GitHub (GitHub CLI).</td><td><a href="github-cli.html">GitHub CLI</a></td></tr>
+</table>
+</div>
+
+<h2 id="h">H</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Termo</th><th>O que é</th><th>Aula</th></tr>
+<tr><td><strong>hash</strong> (<em>SHA</em>, <em>id do commit</em>)</td><td>O código de 40 caracteres que identifica um commit (<code>152d79c53b87…</code>); os 7 primeiros (<code>152d79c</code>) costumam bastar.</td><td><a href="hash.html">O Hash do Commit</a></td></tr>
+<tr><td><strong>HEAD</strong></td><td>"Onde você está": aponta para o branch atual (que aponta para o último commit dele). <code>HEAD~1</code> = um commit antes.</td><td><a href="head.html">O que é HEAD</a></td></tr>
+<tr><td><strong>hook</strong> (gancho)</td><td>Um script que o Git roda sozinho num momento (antes do commit, antes do push…).</td><td><a href="hooks.html">Git Hooks</a></td></tr>
+<tr><td><strong>hunk</strong> (pedaço)</td><td>Um bloco de linhas mudadas dentro de um diff, que começa com <code>@@</code>. O <code>git add -p</code> pergunta um por um.</td><td><a href="git-diff.html">git diff</a></td></tr>
+</table>
+</div>
+
+<h2 id="i">I</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Termo</th><th>O que é</th><th>Aula</th></tr>
+<tr><td><strong>index</strong></td><td>Outro nome da área de preparo (é o arquivo <code>.git/index</code>).</td><td><a href="area-de-preparo.html">A Área de Preparo</a></td></tr>
+<tr><td><strong>issue</strong> (questão, chamado)</td><td>No GitHub: um registro de bug, ideia ou tarefa, com conversa.</td><td><a href="issues.html">Issues</a></td></tr>
+</table>
+</div>
+
+<h2 id="l">L</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Termo</th><th>O que é</th><th>Aula</th></tr>
+<tr><td><strong>LFS</strong> (<em>Large File Storage</em>)</td><td>Extensão para guardar arquivos grandes (vídeos, imagens pesadas) fora do histórico normal.</td><td><a href="git-lfs.html">Git LFS</a></td></tr>
+<tr><td><strong>log</strong> (registro, diário)</td><td>A lista dos commits: <code>git log</code>.</td><td><a href="git-log.html">git log</a></td></tr>
+</table>
+</div>
+
+<h2 id="m">M</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Termo</th><th>O que é</th><th>Aula</th></tr>
+<tr><td><strong>main</strong> / <strong>master</strong></td><td>Os nomes mais comuns do branch principal. <code>main</code> é o padrão do GitHub desde 2020; <code>master</code> ainda aparece em projetos antigos.</td><td><a href="git-init.html">git init</a></td></tr>
+<tr><td><strong>merge</strong> (mesclar, juntar)</td><td>Trazer o trabalho de um branch para outro.</td><td><a href="git-merge.html">git merge</a></td></tr>
+<tr><td><strong>mensagem de commit</strong></td><td>O texto que explica o commit: um título curto (até ~50 caracteres), no imperativo, e, se precisar, um corpo depois de uma linha em branco.</td><td><a href="mensagens-commit.html">Boas Mensagens</a></td></tr>
+</table>
+</div>
+
+<h2 id="o">O</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Termo</th><th>O que é</th><th>Aula</th></tr>
+<tr><td><strong>origin</strong></td><td>O apelido padrão do remoto de onde você clonou. É só um nome: dá para trocar.</td><td><a href="git-remote.html">git remote</a></td></tr>
+<tr><td><strong>origin/main</strong> (<em>remote-tracking branch</em>)</td><td>A cópia local de como estava o <code>main</code> do servidor no último <code>fetch</code>. Você não commita nele.</td><td><a href="git-fetch.html">git fetch</a></td></tr>
+</table>
+</div>
+
+<h2 id="p">P</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Termo</th><th>O que é</th><th>Aula</th></tr>
+<tr><td><strong>pai</strong> (<em>parent</em>)</td><td>O commit anterior a um commit. O primeiro commit não tem pai; um commit de merge tem dois.</td><td><a href="como-git-guarda.html">Como o Git Guarda</a></td></tr>
+<tr><td><strong>pull</strong> (puxar)</td><td><code>fetch</code> + juntar (merge ou rebase) no branch atual, num comando só.</td><td><a href="git-pull.html">git pull</a></td></tr>
+<tr><td><strong>pull request</strong> (PR, pedido de incorporação; no GitLab, <em>merge request</em>)</td><td>No GitHub: um pedido para juntar um branch em outro, com revisão e conversa.</td><td><a href="pull-request.html">Pull Request</a></td></tr>
+<tr><td><strong>push</strong> (empurrar, enviar)</td><td>Mandar seus commits para o repositório remoto.</td><td><a href="git-push.html">git push</a></td></tr>
+</table>
+</div>
+
+<h2 id="r">R</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Termo</th><th>O que é</th><th>Aula</th></tr>
+<tr><td><strong>README</strong></td><td>O arquivo de apresentação do projeto (em geral <code>README.md</code>, em Markdown), mostrado na página do repositório no GitHub.</td><td><a href="readme.html">O README</a></td></tr>
+<tr><td><strong>rebase</strong> (mudar a base)</td><td>Reaplicar os commits de um branch em cima de outro ponto, deixando o histórico em linha reta. Cria commits novos.</td><td><a href="git-rebase.html">git rebase</a></td></tr>
+<tr><td><strong>ref</strong> (referência)</td><td>Qualquer nome que aponta para um commit: branch, tag, <code>HEAD</code>, <code>origin/main</code>.</td><td><a href="head.html">O que é HEAD</a></td></tr>
+<tr><td><strong>reflog</strong> (diário das referências)</td><td>O histórico de tudo por onde o HEAD passou, até o que sumiu do <code>log</code>. A rede de segurança para recuperar commits.</td><td><a href="git-reflog.html">git reflog</a></td></tr>
+<tr><td><strong>remote</strong> (remoto)</td><td>Outra cópia do repositório, em geral num servidor como o GitHub, com um apelido (<code>origin</code>).</td><td><a href="remotos.html">Repositório Remoto</a></td></tr>
+<tr><td><strong>repositório</strong> (<em>repo</em>)</td><td>O projeto com todo o seu histórico: a pasta do projeto mais a <code>.git</code>.</td><td><a href="git-init.html">git init</a></td></tr>
+<tr><td><strong>rerere</strong></td><td>"Reuse recorded resolution": o Git lembra como você resolveu um conflito e repete a solução.</td><td><a href="ref-config.html">Configurações</a></td></tr>
+<tr><td><strong>reset</strong></td><td>Mover o branch atual para outro commit, com três modos (<code>--soft</code>, <code>--mixed</code>, <code>--hard</code>).</td><td><a href="git-reset.html">git reset</a></td></tr>
+<tr><td><strong>restore</strong> (restaurar)</td><td>Descartar mudanças de um arquivo ou tirá-lo da área de preparo (<code>--staged</code>).</td><td><a href="git-restore.html">git restore</a></td></tr>
+<tr><td><strong>revert</strong> (reverter)</td><td>Criar um commit novo que faz o contrário de um commit antigo. O jeito seguro de desfazer o que já foi enviado.</td><td><a href="git-revert.html">git revert</a></td></tr>
+</table>
+</div>
+
+<h2 id="s">S</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Termo</th><th>O que é</th><th>Aula</th></tr>
+<tr><td><strong>squash</strong> (espremer)</td><td>Juntar vários commits num só.</td><td><a href="squash.html">squash</a></td></tr>
+<tr><td><strong>SSH</strong> (chave SSH)</td><td>Um par de chaves (pública e privada) para o GitHub reconhecer você sem senha.</td><td><a href="ssh.html">Chave SSH</a></td></tr>
+<tr><td><strong>stash</strong> (esconderijo)</td><td>Uma gaveta onde você guarda mudanças não commitadas para depois: <code>git stash</code> / <code>git stash pop</code>.</td><td><a href="git-stash.html">git stash</a></td></tr>
+<tr><td><strong>staged</strong> / <strong>unstaged</strong> (preparado / não preparado)</td><td>Mudança que está / não está na área de preparo.</td><td><a href="git-status.html">git status</a></td></tr>
+<tr><td><strong>submódulo</strong> (<em>submodule</em>)</td><td>Um repositório Git dentro de outro, preso a um commit.</td><td><a href="submodulos.html">Submódulos</a></td></tr>
+<tr><td><strong>switch</strong> (trocar)</td><td>Trocar de branch (<code>git switch</code>) ou criar e trocar (<code>git switch -c</code>).</td><td><a href="git-switch.html">git switch</a></td></tr>
+</table>
+</div>
+
+<h2 id="t">T</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Termo</th><th>O que é</th><th>Aula</th></tr>
+<tr><td><strong>tag</strong> (etiqueta)</td><td>Um nome fixo para um commit, em geral uma versão (<code>v1.0</code>). Diferente do branch, não anda.</td><td><a href="git-tag.html">git tag</a></td></tr>
+<tr><td><strong>token</strong> (de acesso pessoal)</td><td>Uma "senha" gerada no GitHub para usar no lugar da senha da conta no HTTPS.</td><td><a href="https-token.html">HTTPS e Token</a></td></tr>
+<tr><td><strong>tracked</strong> / <strong>untracked</strong> (rastreado / não rastreado; nas mensagens, "não monitorados")</td><td>Arquivo que o Git já conhece (está em algum commit ou na área de preparo) / arquivo novo, que o Git só vê de longe.</td><td><a href="git-status.html">git status</a></td></tr>
+<tr><td><strong>tree</strong> (árvore)</td><td>O objeto que guarda uma pasta: a lista de arquivos (blobs) e subpastas (outras árvores).</td><td><a href="como-git-guarda.html">Como o Git Guarda</a></td></tr>
+<tr><td><strong>três vias</strong> (<em>three-way merge</em>)</td><td>O merge que compara três versões (os dois lados e o ancestral comum) e cria um commit de merge.</td><td><a href="merge-tres-vias.html">Merge de Três Vias</a></td></tr>
+</table>
+</div>
+
+<h2 id="u">U</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Termo</th><th>O que é</th><th>Aula</th></tr>
+<tr><td><strong>upstream</strong> (branch de rastreamento)</td><td>O branch do remoto que um branch local acompanha (<code>main</code> → <code>origin/main</code>). É ele que deixa o <code>git push</code> e o <code>git pull</code> funcionarem sem argumentos. Em forks, "upstream" também é o apelido comum do repositório original.</td><td><a href="upstream.html">upstream</a></td></tr>
+</table>
+</div>
+
+<h2 id="w">W</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Termo</th><th>O que é</th><th>Aula</th></tr>
+<tr><td><strong>working tree</strong> (pasta de trabalho, <em>working directory</em>)</td><td>Os arquivos que você vê e edita na pasta do projeto, fora da <code>.git</code>.</td><td><a href="area-de-preparo.html">A Área de Preparo</a></td></tr>
+<tr><td><strong>worktree</strong></td><td>Uma pasta de trabalho extra, ligada ao mesmo repositório, para ter dois branches abertos ao mesmo tempo.</td><td><a href="git-worktree.html">git worktree</a></td></tr>
+</table>
+</div>
+
+<h2>Experimente</h2>
+<p>Muitos termos do glossário aparecem numa olhada no repositório. O asterisco do <code>git branch</code> marca o branch para onde o <strong>HEAD</strong> aponta.</p>
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit';;git branch bolo;;git tag v1.0" data-goal="ran:^git branch$,out:* main" data-solucao="git branch">
+<p class="try-task"><strong>Missão:</strong> liste os <strong>branches</strong> do repositório e descubra em qual deles o <strong>HEAD</strong> está (o que tem o <code>*</code>).</p>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">1. Qual destes é outro nome para a área de preparo?</p>
+<label><input type="radio" name="q1"> working tree</label>
+<label><input type="radio" name="q1"> index</label>
+<label><input type="radio" name="q1"> reflog</label>
+<label><input type="radio" name="q1"> origin</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">2. Qual a diferença entre um branch e uma tag?</p>
+<label><input type="radio" name="q2"> Não há diferença.</label>
+<label><input type="radio" name="q2"> A tag só existe no GitHub.</label>
+<label><input type="radio" name="q2"> O branch anda a cada commit novo; a tag fica parada no mesmo commit.</label>
+<label><input type="radio" name="q2"> O branch guarda arquivos; a tag guarda mensagens.</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">3. O que o <code>fetch</code> faz que o <code>pull</code> também faz?</p>
+<label><input type="radio" name="q3"> Baixa as novidades do remoto (o <code>pull</code> ainda junta no seu branch).</label>
+<label><input type="radio" name="q3"> Envia os seus commits.</label>
+<label><input type="radio" name="q3"> Apaga branches locais.</label>
+<label><input type="radio" name="q3"> Cria um fork.</label>
+</div>
+
+<div class="exercise">
+<h3>4. Onde você está</h3>
+<p>Complete: o nome que o Git usa para "o commit/branch onde você está agora" é</p>
+<div class="ex-code"><input data-answer="HEAD|head" aria-label="termo"></div>
+</div>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
