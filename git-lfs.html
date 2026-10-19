@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Arquivos Grandes (Git LFS) — vídeos e imagens fora do histórico | Guia Git</title>
+<meta name="description" content="Git LFS para quem nunca usou: por que vídeos e arquivos grandes incham o repositório (com medidas reais), o que é o arquivo ponteiro, git lfs install, git lfs track, o .gitattributes com filter=lfs, os limites do GitHub (50 MiB, 100 MiB) e os erros de quem esquece de instalar o LFS.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Arquivos Grandes (Git LFS)</span></h1>
+
+<p class="intro">O Git foi feito para arquivos de <strong>texto</strong>: código, receitas, páginas. Ele guarda <strong>todas</strong> as versões de tudo, para sempre. Com um vídeo de 20 MB, isso vira um problema: cada versão nova do vídeo fica guardada inteira, e quem clona o repositório baixa todas. O <strong>Git LFS</strong> (<em>Large File Storage</em>, "armazenamento de arquivos grandes") resolve isso guardando os arquivos grandes <strong>num lugar separado</strong> e deixando no Git só uma "etiqueta" que aponta para eles.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Por que arquivos grandes incham o repositório, com uma medida real.</li>
+  <li>A ideia do LFS: o arquivo ponteiro no Git e o arquivo de verdade no servidor.</li>
+  <li>Os comandos: <code>git lfs install</code>, <code>git lfs track</code> e o <code>.gitattributes</code> que ele escreve.</li>
+  <li>Os limites do GitHub para arquivos grandes.</li>
+  <li>O que acontece quando alguém da equipe não tem o LFS instalado.</li>
+</ul>
+</div>
+
+<div class="warning">
+<strong>O que nesta aula é real e o que é ilustrativo</strong>
+<p>O Git LFS é um programa <strong>à parte</strong>, que não vem com o Git. A máquina da Ana usada no guia (o Git 2.53 do Ubuntu, usuária <code>ana</code>, computador <code>notebook</code>) <strong>não</strong> tem o LFS: por isso as saídas das seções 1 e 5 são reais, e os comandos <code>git lfs</code> das seções 3 e 4 são <strong>ilustrativos</strong>, baseados na documentação oficial (git-lfs.com e docs.github.com/pt). A versão atual do Git LFS, quando esta aula foi escrita, era a 3.8.</p>
+</div>
+
+<hr>
+
+<h2>A ideia: o guarda-volumes</h2>
+<p>No museu, ninguém entra com a mala: você a deixa no <strong>guarda-volumes</strong> e recebe uma <strong>ficha</strong> com um número. Você anda pelo museu leve, só com a ficha. Quando precisa da mala, entrega a ficha e a recebe de volta.</p>
+<p>O Git LFS faz isso com os arquivos grandes:</p>
+<ul>
+  <li>a "mala" (o vídeo de 20 MB) vai para um servidor LFS (no GitHub, ele já vem junto com o repositório);</li>
+  <li>no repositório Git fica só a "ficha": um <strong>arquivo ponteiro</strong> de três linhas, com o número que identifica o vídeo;</li>
+  <li>quando você faz <code>clone</code>, <code>pull</code> ou troca de branch, o LFS troca as fichas pelas malas, mas só as da versão que você está usando.</li>
+</ul>
+
+<hr>
+
+<h2>1. O problema, medido</h2>
+<p>A Ana começou a guardar os vídeos do canal de receitas no Git. Ela commitou um vídeo de 20 MB e, depois, duas versões corrigidas dele. (Os "vídeos" aqui são 20 MB de bytes aleatórios, que se comportam como um vídeo de verdade: não dá para comprimir.)</p>
+
+<pre class="term" data-cwd="~/videos">$ ls -lh bolo.mp4
+-rw-rw-r-- 1 ana ana 20M Oct 15 10:29 bolo.mp4
+$ git add bolo.mp4 &amp;&amp; git commit -q -m 'Adiciona vídeo do bolo'
+$ head -c 20000000 /dev/urandom &gt; bolo.mp4
+$ git add bolo.mp4 &amp;&amp; git commit -q -m 'Corrige o vídeo do bolo'
+$ head -c 20000000 /dev/urandom &gt; bolo.mp4
+$ git add bolo.mp4 &amp;&amp; git commit -q -m 'Vídeo do bolo com legenda'
+$ git count-objects -vH
+count: 12
+size: 57.28 MiB                « as três versões, inteiras
+in-pack: 0
+packs: 0
+size-pack: 0 bytes
+prune-packable: 0
+garbage: 0
+size-garbage: 0 bytes
+$ du -sh .git
+58M	.git
+</pre>
+
+<p>Um vídeo de 20 MB, três versões, e a pasta <code>.git</code> já tem <strong>58 MB</strong>: o Git guardou cada versão inteira (veja <a href="como-git-guarda.html">Como o Git Guarda as Coisas</a>). E apagar o vídeo não ajuda:</p>
+
+<pre class="term" data-cwd="~/videos">$ git rm -q bolo.mp4 &amp;&amp; git commit -q -m 'Remove o vídeo'
+$ du -sh .git
+58M	.git
+</pre>
+
+<p>Continua com 58 MB, porque os commits antigos ainda têm o vídeo, e o Git nunca esquece um commit. Quem clonar este repositório vai baixar os 58 MB, mesmo que só queira o README. Com dezenas de vídeos e centenas de versões, o repositório fica impossível de clonar.</p>
+
+<hr>
+
+<h2>2. O que o LFS guarda no Git: o ponteiro</h2>
+<p>Com o LFS, no lugar do vídeo, o Git guarda um arquivo de texto pequeno como este (o exemplo é o da especificação oficial do Git LFS):</p>
+
+<pre class="file" data-file="bolo.mp4 (como o Git o vê, com LFS)">version https://git-lfs.github.com/spec/v1
+oid sha256:4d7a214614ab2935c943f9e0ff69d22eadbb8f32b1258daaa5e2ca24d17e2393
+size 12345
+</pre>
+
+<dl class="anatomy">
+  <dt>version</dt><dd>Qual versão do formato de ponteiro é esta.</dd>
+  <dt>oid sha256:…</dt><dd>A "ficha do guarda-volumes": o <strong>hash</strong> do conteúdo do arquivo de verdade (parecido com o <a href="hash.html">hash do commit</a>). É por ele que o LFS acha o arquivo no servidor.</dd>
+  <dt>size</dt><dd>O tamanho do arquivo de verdade, em bytes.</dd>
+</dl>
+
+<p>Três versões do vídeo viram três ponteiros de umas 130 letras cada no histórico. Os 20 MB de cada versão ficam no servidor LFS, e o seu computador só baixa a versão que você está usando. Na sua pasta, você continua vendo e abrindo o <code>bolo.mp4</code> normal: o LFS faz a troca sozinho.</p>
+
+<hr>
+
+<h2>3. Instalando e ligando o LFS (ilustrativo)</h2>
+<p>Primeiro, instale o programa. No Ubuntu, ele vem no pacote <code>git-lfs</code> (<code>sudo apt install git-lfs</code>); no Windows, o instalador do Git para Windows já traz o LFS; para outros sistemas, veja git-lfs.com. Antes de instalar, o Git não conhece o comando:</p>
+
+<pre class="term">$ git lfs install
+git: 'lfs' não é um comando git. Veja 'git --help'.
+
+The most similar command is
+	refs
+</pre>
+
+<p>(Saída real da máquina da Ana, que não tem o LFS. A sugestão <code>refs</code> é só o comando de nome mais parecido.) Depois de instalado, o primeiro comando liga o LFS <strong>uma vez por usuário</strong>:</p>
+
+<pre class="file" data-file="ilustrativo">git lfs install
+</pre>
+
+<p>Ele acrescenta ao seu <code>~/.gitconfig</code> a configuração do "filtro" <code>lfs</code> (é ela que troca arquivos por ponteiros e vice-versa). Dentro de um repositório, o LFS também instala alguns <a href="hooks.html">hooks</a>, como um <code>pre-push</code> que envia os arquivos grandes junto com o push.</p>
+
+<h3>Dizendo quais arquivos vão para o LFS: <code>git lfs track</code></h3>
+<p>Dentro do repositório, diga quais tipos de arquivo o LFS deve cuidar. A documentação do GitHub mostra assim:</p>
+
+<pre class="file" data-file="ilustrativo (docs.github.com/pt)">$ git lfs track "*.psd"
+&gt; Tracking "*.psd"
+</pre>
+
+<p>"Rastreando <code>*.psd</code>." As aspas são importantes: sem elas, o terminal trocaria <code>*.psd</code> pelos nomes dos arquivos <code>.psd</code> da pasta, antes de o comando ver o padrão. O <code>git lfs track</code> não guarda nada escondido: ele escreve uma linha no <a href="gitattributes.html">.gitattributes</a>:</p>
+
+<pre class="file" data-file=".gitattributes">*.psd filter=lfs diff=lfs merge=lfs -text
+</pre>
+
+<dl class="anatomy">
+  <dt>*.psd</dt><dd>O padrão: todos os arquivos do Photoshop.</dd>
+  <dt>filter=lfs</dt><dd>"Ao guardar, passe o arquivo pelo filtro <code>lfs</code>", que troca o conteúdo pelo ponteiro. É o coração do LFS.</dd>
+  <dt>diff=lfs merge=lfs</dt><dd>Como mostrar diferenças e como juntar versões desses arquivos: pelo LFS, e não linha por linha.</dd>
+  <dt>-text</dt><dd>"Não é texto": o Git nunca mexe no fim de linha dele.</dd>
+</dl>
+
+<p>Para conferir, a Ana pediu ao Git os atributos de um <code>.psd</code> com esse <code>.gitattributes</code> (saída real; para isso não é preciso ter o LFS):</p>
+
+<pre class="term" data-cwd="~/fotos">$ git check-attr -a -- capa.psd
+capa.psd: diff: lfs
+capa.psd: merge: lfs
+capa.psd: text: unset
+capa.psd: filter: lfs
+</pre>
+
+<div class="try" data-setup="mkdir videos;;cd videos;;git init -q;;echo '# Vídeos de receitas' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit'" data-goal="contains:.gitattributes=*.mp4 filter=lfs diff=lfs merge=lfs -text,rastreado:.gitattributes,limpo" data-solucao="echo '*.mp4 filter=lfs diff=lfs merge=lfs -text' &gt; .gitattributes;;git add .gitattributes;;git commit -m 'Guarda os vídeos no LFS'">
+<p class="try-task"><strong>Missão:</strong> o terminal do guia não tem o LFS, mas você pode escrever à mão a linha que o <code>git lfs track "*.mp4"</code> escreveria. Crie o <code>.gitattributes</code> com a linha <code>*.mp4 filter=lfs diff=lfs merge=lfs -text</code> e faça o commit dele.</p>
+</div>
+
+<hr>
+
+<h2>4. Usando no dia a dia (ilustrativo)</h2>
+<p>Depois do <code>track</code>, o trabalho é o de sempre. Do jeito da documentação do Git LFS:</p>
+
+<pre class="file" data-file="ilustrativo (git-lfs.com)">git add .gitattributes
+git add capa.psd
+git commit -m "Adiciona a capa"
+git push origin main
+</pre>
+
+<p>A única diferença aparece no <code>push</code>: antes de mandar os commits, o LFS envia os arquivos grandes. A documentação do GitHub mostra o progresso assim:</p>
+
+<pre class="file" data-file="ilustrativo (docs.github.com/pt)">&gt; Sending file.psd
+&gt; 44.74 MB / 81.04 MB  55.21 % 14s
+&gt; 64.74 MB / 81.04 MB  79.21 % 3s
+</pre>
+
+<p>Outros comandos úteis do LFS (veja <code>git lfs help</code> depois de instalar):</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git lfs track</code> (sem nada)</td><td>Lista os padrões que o LFS está cuidando</td></tr>
+<tr><td><code>git lfs ls-files</code></td><td>Lista os arquivos que estão no LFS</td></tr>
+<tr><td><code>git lfs pull</code></td><td>Baixa os arquivos grandes que faltam (troca os ponteiros pelos arquivos)</td></tr>
+<tr><td><code>git lfs migrate</code></td><td>Reescreve o histórico para mover para o LFS arquivos que já foram commitados sem ele (cuidado: veja <a href="regra-de-ouro.html">A Regra de Ouro</a>)</td></tr>
+<tr><td><code>git lfs track --lockable "*.psd"</code></td><td>Arquivos que só uma pessoa pode editar por vez (útil para binários, que não dá para mesclar)</td></tr>
+</table>
+</div>
+
+<div class="note">
+<strong>Os limites do GitHub (ilustrativo, de docs.github.com/pt)</strong>
+<ul>
+  <li>Arquivo <strong>maior que 50 MiB</strong>: o push funciona, mas o Git mostra um aviso.</li>
+  <li>Arquivo <strong>maior que 100 MiB</strong>: o GitHub <strong>bloqueia</strong> o push. Para arquivos assim, só com o Git LFS.</li>
+  <li>Pelo site (arrastando o arquivo no navegador), o limite é de 25 MiB.</li>
+  <li>O LFS do GitHub tem uma cota de armazenamento e de download; confira os números atuais na documentação de cobrança do GitHub antes de colocar muitos gigabytes.</li>
+</ul>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer a mesma coisa</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Qual usar</th></tr>
+<tr><td>Imagens pequenas de um site (alguns KB, mudam pouco)</td><td>Git normal, com <code>binary</code> no <code>.gitattributes</code></td></tr>
+<tr><td>Vídeos, PSDs, modelos 3D, áudio, que mudam várias vezes</td><td>Git LFS (<code>git lfs track</code>)</td></tr>
+<tr><td>Arquivos gerados (o programa compilado, o zip do site)</td><td>Nem Git nem LFS: <a href="gitignore.html">.gitignore</a>, e gere de novo quando precisar</td></tr>
+<tr><td>Dados enormes que ninguém edita (backups, bases de dados)</td><td>Fora do Git: um serviço de armazenamento de arquivos, com o link no README</td></tr>
+<tr><td>Um arquivo grande já está no histórico</td><td><code>git lfs migrate</code> (reescreve o histórico; combine com a equipe)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>O <code>.gitattributes</code> diz LFS, mas o LFS não está instalado</strong>
+<pre class="term" data-cwd="~/fotos">$ echo '*.psd filter=lfs diff=lfs merge=lfs -text' &gt; .gitattributes
+$ head -c 1000 /dev/urandom &gt; capa.psd          « um "PSD" de mentira, de 1000 bytes
+$ git add .gitattributes capa.psd
+$ git commit -q -m 'Adiciona capa'
+$ git show --stat HEAD
+commit 8a2e32579478c4fcb9aa88045ae6b306caae8e79
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Adiciona capa
+
+ .gitattributes |   1 +
+ capa.psd       | Bin 0 -&gt; 1000 bytes        « o arquivo inteiro, não o ponteiro
+ 2 files changed, 1 insertion(+)
+</pre>
+<p><strong>O que aconteceu:</strong> o computador não tem o LFS, então o Git não sabe o que é o filtro <code>lfs</code>, <strong>ignora a linha sem avisar</strong> e guarda o arquivo inteiro, como se o LFS não existisse. O <code>Bin 0 -&gt; 1000 bytes</code> mostra o arquivo de verdade (um ponteiro seria texto, com umas 130 letras). <strong>Como resolver:</strong> instale o LFS e rode <code>git lfs install</code> antes de commitar arquivos grandes. Se já commitou, <code>git lfs migrate</code> pode consertar o histórico.</p>
+</div>
+
+<div class="cenario">
+<strong><code>git-lfs: not found</code></strong>
+<pre class="term" data-cwd="~/fotos">$ git add fundo.psd
+git-lfs filter-process: 1: git-lfs: not found
+fatal: the remote end hung up unexpectedly
+</pre>
+<p><strong>O que aconteceu:</strong> aqui a configuração do LFS existe no <code>~/.gitconfig</code> (por exemplo, copiada de outro computador, ou o programa foi desinstalado depois do <code>git lfs install</code>), mas o programa <code>git-lfs</code> não está instalado. O Git tentou chamar o filtro e não achou ("<em>not found</em>" = "não encontrado"); a segunda linha ("a outra ponta desligou inesperadamente") é só o Git percebendo que o filtro morreu. <strong>Como resolver:</strong> instale o <code>git-lfs</code> (no Ubuntu, <code>sudo apt install git-lfs</code>).</p>
+</div>
+
+<div class="cenario">
+<strong>O arquivo abriu e tem só três linhas de texto</strong>
+<p><strong>O que aconteceu:</strong> você clonou sem o LFS instalado (ou o download dos arquivos grandes falhou), e na pasta ficaram os <strong>ponteiros</strong> (<code>version https://git-lfs.github.com/spec/v1</code>…), e não os arquivos. <strong>Como resolver:</strong> instale o LFS, rode <code>git lfs install</code> e depois <code>git lfs pull</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>O push foi recusado por causa de um arquivo grande (ilustrativo)</strong>
+<p>Se um commit tem um arquivo de mais de 100 MiB sem LFS, o GitHub recusa o push inteiro. Não basta apagar o arquivo num commit novo: ele continua nos commits antigos (como os 58 MB da seção 1). <strong>Como resolver:</strong> tire o arquivo dos commits que ainda não foram enviados (com <a href="commit-amend.html">--amend</a>, se for o último, ou <a href="rebase-interativo.html">rebase interativo</a>) ou use <code>git lfs migrate</code>, e envie de novo.</p>
+</div>
+
+<hr>
+
+<h2>Referência</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando / linha</th><th>O que faz</th></tr>
+<tr><td><code>git lfs install</code></td><td>Liga o LFS para o seu usuário (uma vez)</td></tr>
+<tr><td><code>git lfs track "*.mp4"</code></td><td>Manda os <code>.mp4</code> para o LFS (escreve no <code>.gitattributes</code>)</td></tr>
+<tr><td><code>*.mp4 filter=lfs diff=lfs merge=lfs -text</code></td><td>A linha que o <code>track</code> escreve no <code>.gitattributes</code></td></tr>
+<tr><td><code>git lfs ls-files</code></td><td>Arquivos que estão no LFS</td></tr>
+<tr><td><code>git lfs pull</code></td><td>Baixa os arquivos grandes que faltam</td></tr>
+<tr><td><code>git lfs migrate</code></td><td>Move para o LFS arquivos que já estão no histórico</td></tr>
+<tr><td><code>git count-objects -vH</code></td><td>Quanto espaço os objetos do Git ocupam (Git normal)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Rastrear os vídeos</h3>
+<p>Complete para o LFS cuidar de todos os arquivos <code>.mp4</code>:</p>
+<div class="ex-code">git lfs <input data-answer="track" aria-label="subcomando"> "*.mp4"</div>
+</div>
+
+<div class="exercise">
+<h3>2. Ligar uma vez</h3>
+<p>Complete o comando que liga o LFS para o seu usuário, depois de instalar o programa:</p>
+<div class="ex-code">git lfs <input data-answer="install" aria-label="subcomando"></div>
+</div>
+
+<div class="exercise">
+<h3>3. O filtro</h3>
+<p>Complete a linha do <code>.gitattributes</code>:</p>
+<div class="ex-code">*.psd <input data-answer="filter=lfs" aria-label="atributo"> diff=lfs merge=lfs -text</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. A Ana commitou um vídeo de 20 MB, depois o apagou com <code>git rm</code> e commitou de novo. Quanto o <code>.git</code> diminuiu?</p>
+<label><input type="radio" name="q4"> 20 MB.</label>
+<label><input type="radio" name="q4"> Metade.</label>
+<label><input type="radio" name="q4"> Nada: os commits antigos ainda têm o vídeo.</label>
+<label><input type="radio" name="q4"> O <code>.git</code> foi apagado.</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">5. Com o LFS, o que fica guardado no repositório Git no lugar do vídeo?</p>
+<label><input type="radio" name="q5"> O vídeo comprimido.</label>
+<label><input type="radio" name="q5"> Um arquivo ponteiro pequeno, com o hash e o tamanho do vídeo.</label>
+<label><input type="radio" name="q5"> Nada; o vídeo some do repositório.</label>
+<label><input type="radio" name="q5"> Um link para o YouTube.</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">6. O Bruno não tem o LFS instalado e commitou um <code>.psd</code> num repositório cujo <code>.gitattributes</code> tem <code>filter=lfs</code>. O que aconteceu?</p>
+<label><input type="radio" name="q6"> O Git recusou o commit com um erro.</label>
+<label><input type="radio" name="q6"> O Git instalou o LFS sozinho.</label>
+<label><input type="radio" name="q6"> O arquivo foi para o LFS mesmo assim.</label>
+<label><input type="radio" name="q6"> O Git ignorou o filtro sem avisar e guardou o arquivo inteiro.</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O Git guarda todas as versões inteiras: arquivos grandes que mudam incham o repositório para sempre (três versões de 20 MB = 58 MB).</li>
+  <li>O Git LFS guarda os arquivos grandes num servidor à parte e deixa no Git só um <strong>ponteiro</strong> (versão, hash e tamanho).</li>
+  <li><code>git lfs install</code> (uma vez), <code>git lfs track "*.mp4"</code> (por repositório), commit do <code>.gitattributes</code>, e daí em diante <code>add</code>/<code>commit</code>/<code>push</code> normais.</li>
+  <li>No GitHub, arquivos acima de 100 MiB só entram com LFS.</li>
+  <li>Sem o LFS instalado, o Git ignora o <code>filter=lfs</code> em silêncio: todo mundo da equipe precisa instalar.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
