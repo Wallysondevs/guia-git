@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git blame — quem mudou esta linha, e quando | Guia Git</title>
+<meta name="description" content="O git blame para quem está começando: como ler cada coluna (hash, autor, data, número da linha), o ^ do primeiro commit, -L para escolher linhas, -e, -s e --date=short, as linhas Not Committed Yet, blame de uma versão antiga, como ir do blame ao git show para descobrir o porquê, e os erros reais do Git.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">blame: Quem Mudou Esta Linha</span></h1>
+
+<p class="intro">A Ana abre a receita de bolo e leva um susto: "<strong>3 ovos</strong>? Eu tinha certeza de que eram 4!". Quem mudou isso? Quando? Por quê? O <code>git log</code> mostra os commits do arquivo inteiro, mas a Ana quer saber de <strong>uma linha só</strong>. Para isso existe o <code>git blame</code>: ele mostra o arquivo linha por linha e, ao lado de cada linha, <strong>o último commit que mexeu nela</strong>, com o autor e a data.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A ler a saída do <code>git blame</code>: hash, autor, data e número da linha.</li>
+  <li>O que quer dizer o <code>^</code> antes do hash e o <code>Not Committed Yet</code>.</li>
+  <li>A olhar só algumas linhas com <code>-L</code>, e a encurtar a saída com <code>-s</code>, <code>-e</code> e <code>--date=short</code>.</li>
+  <li>A ir do blame para o <code>git show</code>, para descobrir o <strong>porquê</strong> da mudança.</li>
+  <li>A ver o blame de uma versão antiga do arquivo, e os erros mais comuns.</li>
+</ul>
+</div>
+
+<p>As saídas desta aula saíram do Git 2.53 do Ubuntu 26.04 na máquina da Ana.</p>
+
+<hr>
+
+<h2>A ideia: o caderno com a letra de cada um</h2>
+<p>Imagine um caderno de receitas da família em que cada pessoa escreve com uma caneta de cor diferente: a avó de azul, a tia de vermelho, o primo de verde. Olhando uma linha, você sabe na hora quem a escreveu, e pode ir perguntar: "tia, por que você trocou o açúcar por mel?".</p>
+<p>O <code>git blame</code> pinta cada linha do arquivo com a "cor" de quem a escreveu por último. O nome vem do inglês <em>blame</em>, "culpar", mas não se assuste: ninguém usa para brigar. Ele serve para achar a <strong>pessoa certa para perguntar</strong> e o <strong>commit</strong> que explica a mudança. (Existe até um sinônimo mais gentil, <code>git annotate</code>, "anotar".)</p>
+
+<h2>O arquivo desta aula</h2>
+<p>A receita teve 4 commits: a Ana criou o arquivo, o Bruno trocou os ovos, a Ana corrigiu o tempo de forno, e o Bruno acrescentou a cobertura.</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+8e19196 (HEAD -&gt; main) Adiciona a cobertura de chocolate
+e1e63c4 Corrige o tempo de forno do bolo
+7b98d46 Usa 3 ovos no bolo
+66f49f7 Adiciona a receita de bolo de cenoura
+$ cat bolo.txt
+Bolo de cenoura
+
+Ingredientes:
+3 cenouras
+3 ovos
+1 xícara de óleo
+
+Forno: 40 minutos
+Cobertura: 200 g de chocolate
+</pre>
+
+<hr>
+
+<h2>1. O primeiro <code>git blame</code></h2>
+
+<pre class="term" data-cwd="~/receitas">$ git blame bolo.txt
+^66f49f7 (Ana Souza  2026-10-15 10:30:00 -0300 1) Bolo de cenoura
+^66f49f7 (Ana Souza  2026-10-15 10:30:00 -0300 2) 
+^66f49f7 (Ana Souza  2026-10-15 10:30:00 -0300 3) Ingredientes:
+^66f49f7 (Ana Souza  2026-10-15 10:30:00 -0300 4) 3 cenouras
+7b98d460 (Bruno Lima 2026-10-15 10:30:00 -0300 5) 3 ovos     «
+^66f49f7 (Ana Souza  2026-10-15 10:30:00 -0300 6) 1 xícara de óleo
+^66f49f7 (Ana Souza  2026-10-15 10:30:00 -0300 7) 
+e1e63c4d (Ana Souza  2026-10-15 10:30:00 -0300 8) Forno: 40 minutos
+8e191965 (Bruno Lima 2026-10-15 10:30:00 -0300 9) Cobertura: 200 g de chocolate
+</pre>
+
+<p>Cada linha da saída é uma linha do arquivo, com uma "etiqueta" na frente. Pegue a linha 5, a dos ovos:</p>
+
+<dl class="anatomy">
+  <dt>7b98d460</dt><dd>O hash (curto) do <strong>último commit que mudou esta linha</strong>. É o mesmo <code>7b98d46</code> do <code>git log</code>, com um caractere a mais (o blame usa 8).</dd>
+  <dt>Bruno Lima</dt><dd>O <strong>autor</strong> desse commit. Mistério resolvido: foi o Bruno.</dd>
+  <dt>2026-10-15 10:30:00 -0300</dt><dd>A <strong>data e hora</strong> do commit, com o fuso horário (−3 horas, o horário de Brasília). Aqui são todas iguais porque, na máquina da Ana, todos os commits têm a mesma data; no seu repositório, cada linha mostra o seu dia.</dd>
+  <dt>5)</dt><dd>O <strong>número da linha</strong> no arquivo.</dd>
+  <dt>3 ovos</dt><dd>O <strong>conteúdo</strong> da linha, como está hoje.</dd>
+</dl>
+
+<p>Repare nos outros detalhes:</p>
+<ul>
+  <li>As linhas 1 a 4, 6 e 7 ainda são do primeiro commit da Ana (<code>66f49f7</code>): ninguém mexeu nelas desde que o arquivo foi criado. As linhas vazias (2 e 7) também têm dono.</li>
+  <li>O <code>^</code> antes de <code>66f49f7</code> marca um commit de "fronteira": aqui, o <strong>primeiro commit</strong> do repositório, que não tem pai. É o jeito do Git dizer "esta linha está aqui desde o começo".</li>
+  <li>A linha 8 (forno) é da correção da Ana (<code>e1e63c4d</code>), e a 9 (cobertura) é do Bruno (<code>8e191965</code>).</li>
+</ul>
+
+<div class="tip">
+<strong>O blame mostra só a <em>última</em> mudança</strong>
+<p>A linha 8 mostra o commit que trocou 30 por 40 minutos. Que ela já existia antes, com "30 minutos", o blame não diz: ele só aponta quem mexeu <strong>por último</strong>. Para ver a história inteira de uma linha, você vai do blame para o commit (seção 3) ou olha uma versão antiga (seção 4).</p>
+</div>
+
+<hr>
+
+<h2>2. Só as linhas que interessam: <code>-L</code></h2>
+<p>Num arquivo de 500 linhas, a saída inteira não ajuda. A opção <code>-L</code> (de <em>lines</em>, linhas) escolhe um trecho:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git blame -L 5,5 bolo.txt
+7b98d460 (Bruno Lima 2026-10-15 10:30:00 -0300 5) 3 ovos
+$ git blame -L 4,6 bolo.txt
+^66f49f7 (Ana Souza  2026-10-15 10:30:00 -0300 4) 3 cenouras
+7b98d460 (Bruno Lima 2026-10-15 10:30:00 -0300 5) 3 ovos
+^66f49f7 (Ana Souza  2026-10-15 10:30:00 -0300 6) 1 xícara de óleo
+</pre>
+
+<dl class="anatomy">
+  <dt>-L 5,5</dt><dd>Da linha 5 até a linha 5: só ela.</dd>
+  <dt>-L 4,6</dt><dd>Da linha 4 até a 6.</dd>
+</dl>
+
+<p>Há outras formas de dizer o trecho:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git blame -L 8 bolo.txt
+e1e63c4d (Ana Souza  2026-10-15 10:30:00 -0300 8) Forno: 40 minutos
+8e191965 (Bruno Lima 2026-10-15 10:30:00 -0300 9) Cobertura: 200 g de chocolate
+$ git blame -L 5,+2 bolo.txt
+7b98d460 (Bruno Lima 2026-10-15 10:30:00 -0300 5) 3 ovos
+^66f49f7 (Ana Souza  2026-10-15 10:30:00 -0300 6) 1 xícara de óleo
+$ git blame -L /Forno/,+1 bolo.txt
+e1e63c4d (Ana Souza 2026-10-15 10:30:00 -0300 8) Forno: 40 minutos
+</pre>
+
+<dl class="anatomy">
+  <dt>-L 8</dt><dd>Da linha 8 até o fim do arquivo.</dd>
+  <dt>-L 5,+2</dt><dd>A partir da linha 5, <strong>2 linhas</strong> (a 5 e a 6).</dd>
+  <dt>-L /Forno/,+1</dt><dd>A partir da primeira linha que contém <code>Forno</code>, 1 linha. Ótimo quando você não sabe o número, mas sabe um pedaço do texto.</dd>
+</dl>
+
+<p>Repare que, no último, a coluna do autor ficou mais estreita (<code>Ana Souza</code> sem o espaço extra): o Git ajusta a largura ao nome mais comprido que aparece na saída.</p>
+
+<h3>Encurtando a saída</h3>
+
+<pre class="term" data-cwd="~/receitas">$ git blame -s bolo.txt
+^66f49f7 1) Bolo de cenoura
+^66f49f7 2) 
+^66f49f7 3) Ingredientes:
+^66f49f7 4) 3 cenouras
+7b98d460 5) 3 ovos
+^66f49f7 6) 1 xícara de óleo
+^66f49f7 7) 
+e1e63c4d 8) Forno: 40 minutos
+8e191965 9) Cobertura: 200 g de chocolate
+$ git blame -e -L 5,5 bolo.txt
+7b98d460 (&lt;bruno@exemplo.com&gt; 2026-10-15 10:30:00 -0300 5) 3 ovos
+</pre>
+
+<dl class="anatomy">
+  <dt>-s</dt><dd>Sem autor e sem data: só o hash e a linha (de <em>suppress</em>, "esconder").</dd>
+  <dt>-e</dt><dd>O <strong>e-mail</strong> no lugar do nome.</dd>
+</dl>
+
+<p>E o <code>--date=short</code> deixa só o dia, sem a hora:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git blame --date=short bolo.txt
+^66f49f7 (Ana Souza  2026-10-15 1) Bolo de cenoura
+^66f49f7 (Ana Souza  2026-10-15 2) 
+^66f49f7 (Ana Souza  2026-10-15 3) Ingredientes:
+^66f49f7 (Ana Souza  2026-10-15 4) 3 cenouras
+7b98d460 (Bruno Lima 2026-10-15 5) 3 ovos
+^66f49f7 (Ana Souza  2026-10-15 6) 1 xícara de óleo
+^66f49f7 (Ana Souza  2026-10-15 7) 
+e1e63c4d (Ana Souza  2026-10-15 8) Forno: 40 minutos
+8e191965 (Bruno Lima 2026-10-15 9) Cobertura: 200 g de chocolate
+</pre>
+
+<hr>
+
+<h2>3. Do "quem" ao "por quê": <code>git show</code></h2>
+<p>O blame diz <strong>quem</strong> e <strong>quando</strong>. O <strong>porquê</strong> está no commit: na mensagem e na mudança completa. Copie o hash da linha e entregue ao <a href="git-show.html">git show</a>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git show 7b98d46
+commit 7b98d460a27a2d540bcc1a9f48da02e93eea4d45
+Author: Bruno Lima &lt;bruno@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Usa 3 ovos no bolo
+
+diff --git a/bolo.txt b/bolo.txt
+index 61ce905..9d2e9cf 100644
+--- a/bolo.txt
++++ b/bolo.txt
+@@ -2,7 +2,7 @@ Bolo de cenoura
+ 
+ Ingredientes:
+ 3 cenouras
+-4 ovos     «
++3 ovos     «
+ 1 xícara de óleo
+ 
+ Forno: 30 minutos
+</pre>
+
+<p>Agora a Ana tem a história completa: a linha era <code>4 ovos</code> (o <code>-</code> mostra a linha que saiu), o Bruno a trocou por <code>3 ovos</code> (o <code>+</code>, a linha que entrou), e a mensagem do commit diz o que ele fez. Se a mensagem fosse mais completa ("Usa 3 ovos no bolo: com 4, a massa ficava mole"), nem precisaria perguntar. É por isso que <a href="mensagens-commit.html">boas mensagens de commit</a> fazem diferença.</p>
+
+<p>Também dá para usar o hash de 8 caracteres do blame (<code>git show 7b98d460</code>): o Git aceita qualquer começo do hash que não seja ambíguo (veja <a href="hash.html">O Hash do Commit</a>).</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;printf 'Bolo de cenoura\n\nIngredientes:\n3 cenouras\n4 ovos\n1 xícara de óleo\n\nForno: 30 minutos\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona a receita de bolo de cenoura';;sed -i 's/4 ovos/3 ovos/' bolo.txt;;git commit -q --author='Bruno Lima &lt;bruno@exemplo.com&gt;' -am 'Usa 3 ovos no bolo';;sed -i 's/30 minutos/40 minutos/' bolo.txt;;git commit -q -am 'Corrige o tempo de forno do bolo';;echo 'Cobertura: 200 g de chocolate' &gt;&gt; bolo.txt;;git commit -q --author='Bruno Lima &lt;bruno@exemplo.com&gt;' -am 'Adiciona a cobertura de chocolate'" data-goal="ran:git show,out:-4 ovos" data-solucao="git show 7b98d46">
+<p class="try-task"><strong>Missão:</strong> o repositório da receita de bolo já está pronto. Descubra em que commit a linha <code>3 ovos</code> foi mudada (com <code>git blame bolo.txt</code> ou <code>git log --oneline -- bolo.txt</code>) e mostre esse commit com <code>git show</code>, até ver a linha antiga, <code>-4 ovos</code>.</p>
+</div>
+
+<hr>
+
+<h2>4. O blame de uma versão antiga</h2>
+<p>E antes da correção do forno, de quem era a linha 8? Dê ao blame um commit antigo, e ele mostra o arquivo <strong>como estava naquele commit</strong>. Com <code>HEAD~2</code> ("dois commits antes do atual", o commit dos ovos):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git blame HEAD~2 -- bolo.txt
+^66f49f7 (Ana Souza  2026-10-15 10:30:00 -0300 1) Bolo de cenoura
+^66f49f7 (Ana Souza  2026-10-15 10:30:00 -0300 2) 
+^66f49f7 (Ana Souza  2026-10-15 10:30:00 -0300 3) Ingredientes:
+^66f49f7 (Ana Souza  2026-10-15 10:30:00 -0300 4) 3 cenouras
+7b98d460 (Bruno Lima 2026-10-15 10:30:00 -0300 5) 3 ovos
+^66f49f7 (Ana Souza  2026-10-15 10:30:00 -0300 6) 1 xícara de óleo
+^66f49f7 (Ana Souza  2026-10-15 10:30:00 -0300 7) 
+^66f49f7 (Ana Souza  2026-10-15 10:30:00 -0300 8) Forno: 30 minutos
+</pre>
+
+<dl class="anatomy">
+  <dt>HEAD~2</dt><dd>A versão do arquivo dois commits atrás. Pode ser também um hash (<code>git blame e1e63c4 -- bolo.txt</code>) ou um branch.</dd>
+  <dt>--</dt><dd>Separa o commit do nome do arquivo, como no <a href="log-filtros.html">git log</a>.</dd>
+</dl>
+
+<p>Naquela época, o arquivo tinha 8 linhas (a cobertura ainda não existia), e a linha 8 era <code>Forno: 30 minutos</code>, desde o primeiro commit. Seu arquivo de trabalho não mudou: o blame só <strong>lê</strong> o histórico.</p>
+
+<hr>
+
+<h2>5. Linhas que ainda não têm commit: <code>Not Committed Yet</code></h2>
+<p>A Ana acrescentou uma linha no fim da receita e, antes de fazer o commit, rodou o blame:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'Rende 12 fatias' &gt;&gt; bolo.txt
+$ git blame bolo.txt
+^66f49f7 (Ana Souza         2026-10-15 10:30:00 -0300  1) Bolo de cenoura
+^66f49f7 (Ana Souza         2026-10-15 10:30:00 -0300  2) 
+^66f49f7 (Ana Souza         2026-10-15 10:30:00 -0300  3) Ingredientes:
+^66f49f7 (Ana Souza         2026-10-15 10:30:00 -0300  4) 3 cenouras
+7b98d460 (Bruno Lima        2026-10-15 10:30:00 -0300  5) 3 ovos
+^66f49f7 (Ana Souza         2026-10-15 10:30:00 -0300  6) 1 xícara de óleo
+^66f49f7 (Ana Souza         2026-10-15 10:30:00 -0300  7) 
+e1e63c4d (Ana Souza         2026-10-15 10:30:00 -0300  8) Forno: 40 minutos
+8e191965 (Bruno Lima        2026-10-15 10:30:00 -0300  9) Cobertura: 200 g de chocolate
+00000000 (Not Committed Yet 2026-10-15 10:30:00 -0300 10) Rende 12 fatias     «
+</pre>
+
+<p>A linha nova aparece com o hash <code>00000000</code> e o autor <code>Not Committed Yet</code> ("ainda não commitada"; essa parte não é traduzida). Ou seja: o blame lê o arquivo <strong>como está na pasta</strong>, inclusive as mudanças que você ainda não guardou. Assim que a Ana fizer o commit, a linha 10 ganha o hash e o nome dela. (Repare também que a coluna do autor ficou larga, para caber o <code>Not Committed Yet</code>, e o número da linha ganhou um espaço, porque agora são duas casas: <code>10</code>.)</p>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer a mesma coisa</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Pergunta</th><th>Comando</th></tr>
+<tr><td>Quem mudou cada linha deste arquivo, por último?</td><td><code>git blame arquivo</code></td></tr>
+<tr><td>Quem mudou a linha 5?</td><td><code>git blame -L 5,5 arquivo</code></td></tr>
+<tr><td>Por que mudou?</td><td><code>git show HASH</code> (o hash que o blame mostrou)</td></tr>
+<tr><td>Quais commits mexeram no arquivo, em ordem?</td><td><code>git log --oneline -- arquivo</code> (aula <a href="log-filtros.html">git log: Filtros e Formatos</a>)</td></tr>
+<tr><td>Em que commit uma palavra entrou ou saiu do arquivo?</td><td><code>git log -S palavra -- arquivo</code> (aula <a href="buscar-historico.html">Procurando no Histórico</a>)</td></tr>
+<tr><td>O mesmo que o blame, num formato um pouco diferente (com tabs)</td><td><code>git annotate arquivo</code></td></tr>
+</table>
+</div>
+
+<p>Os editores de código e o site do GitHub também mostram o blame de um jeito visual: no GitHub, ao abrir um arquivo, há uma opção para ver o <strong>blame</strong> (descrição ilustrativa; os detalhes da tela estão na documentação do GitHub, em docs.github.com/pt). É a mesma informação do <code>git blame</code>, com links para os commits.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>fatal: no such path 'receita.txt' in HEAD</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git blame receita.txt
+fatal: no such path 'receita.txt' in HEAD
+</pre>
+<p><strong>O que aconteceu:</strong> "não existe o caminho <code>receita.txt</code> no HEAD". O Git não achou esse arquivo no último commit: o nome está errado (aqui, o certo é <code>bolo.txt</code>), ou o arquivo é novo e <strong>nunca foi commitado</strong> (o blame precisa de histórico; um arquivo só na pasta não tem).</p>
+<p><strong>Como resolver:</strong> confira o nome com <code>ls</code> e o <code>git status</code>. Se o arquivo é novo, faça o primeiro commit dele antes.</p>
+</div>
+
+<div class="cenario">
+<strong><code>fatal: file bolo.txt has only 10 lines</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git blame -L 20,21 bolo.txt
+fatal: file bolo.txt has only 10 lines
+</pre>
+<p><strong>O que aconteceu:</strong> "o arquivo <code>bolo.txt</code> só tem 10 linhas", e você pediu as linhas 20 e 21.</p>
+<p><strong>Como resolver:</strong> veja quantas linhas o arquivo tem (<code>wc -l bolo.txt</code>, ou o blame inteiro) e escolha um trecho que exista.</p>
+</div>
+
+<div class="cenario">
+<strong><code>fatal: bad revision 'bolo.txt'</code>: dois arquivos de uma vez</strong>
+<pre class="term" data-cwd="~/receitas">$ git blame bolo.txt receita.txt
+fatal: bad revision 'bolo.txt'
+</pre>
+<p><strong>O que aconteceu:</strong> o <code>git blame</code> trabalha com <strong>um arquivo por vez</strong>. Com dois nomes, ele achou que o primeiro era um commit (<code>git blame COMMIT arquivo</code>, como na seção 4) e reclamou: "revisão inválida: <code>bolo.txt</code>".</p>
+<p><strong>Como resolver:</strong> rode um blame para cada arquivo.</p>
+</div>
+
+<div class="cenario">
+<strong>O blame aponta um commit que "não mudou nada de importante"</strong>
+<p>Às vezes a linha aparece com o hash de um commit que só trocou espaços por tabs, ou reorganizou o arquivo. O blame não sabe o que é importante: ele mostra a última mudança, qualquer que seja.</p>
+<p><strong>Como resolver:</strong> rode o blame <strong>na versão de antes</strong> desse commit, com <code>^</code> depois do hash (<code>git blame e1e63c4^ -- bolo.txt</code> = "o arquivo como estava no pai de <code>e1e63c4</code>"), ou use <code>-w</code>, que ignora mudanças só de espaços em branco.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git blame arquivo</code></td><td>Cada linha com o último commit que a mudou, o autor e a data</td></tr>
+<tr><td><code>git blame -L 5,5 arquivo</code></td><td>Só a linha 5 (<code>-L 4,6</code> = da 4 à 6; <code>-L 8</code> = da 8 ao fim; <code>-L 5,+2</code> = 2 linhas a partir da 5)</td></tr>
+<tr><td><code>git blame -L /texto/,+1 arquivo</code></td><td>A primeira linha que contém o texto</td></tr>
+<tr><td><code>git blame -s arquivo</code></td><td>Sem autor e data</td></tr>
+<tr><td><code>git blame -e arquivo</code></td><td>E-mail no lugar do nome</td></tr>
+<tr><td><code>git blame --date=short arquivo</code></td><td>Só o dia, sem a hora</td></tr>
+<tr><td><code>git blame -w arquivo</code></td><td>Ignora mudanças só de espaços em branco</td></tr>
+<tr><td><code>git blame HASH -- arquivo</code></td><td>O blame do arquivo como estava naquele commit</td></tr>
+<tr><td><code>^66f49f7</code></td><td>Linha que existe desde o primeiro commit</td></tr>
+<tr><td><code>00000000 (Not Committed Yet …)</code></td><td>Linha mudada na pasta, ainda sem commit</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o comando</h3>
+<p>Mostre quem mudou por último as linhas 10 a 12 do arquivo <code>index.html</code>:</p>
+<div class="ex-code">git blame <input data-answer="-L" aria-label="opção de linhas"> 10,12 index.html</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">2. Na saída do blame, o que é o <code>7b98d460</code> no começo da linha?</p>
+<label><input type="radio" name="q2"> O número da linha</label>
+<label><input type="radio" name="q2"> O código do autor no GitHub</label>
+<label><input type="radio" name="q2"> O hash do último commit que mudou aquela linha</label>
+<label><input type="radio" name="q2"> O hash do arquivo</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. O blame mostrou <code>00000000 (Not Committed Yet …)</code> numa linha. O que isso quer dizer?</p>
+<label><input type="radio" name="q3"> A linha foi apagada</label>
+<label><input type="radio" name="q3"> A linha foi mudada na pasta, mas a mudança ainda não está em nenhum commit</label>
+<label><input type="radio" name="q3"> O arquivo não é rastreado pelo Git</label>
+<label><input type="radio" name="q3"> O autor não configurou o nome</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. O blame disse quem mudou a linha. Como ver a mensagem e a mudança completa daquele commit?</p>
+<label><input type="radio" name="q4"> <code>git blame -e</code></label>
+<label><input type="radio" name="q4"> <code>git status</code></label>
+<label><input type="radio" name="q4"> <code>git log --oneline</code></label>
+<label><input type="radio" name="q4"> <code>git show</code> com o hash da linha</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. O que quer dizer o <code>^</code> em <code>^66f49f7</code>?</p>
+<label><input type="radio" name="q5"> Que a linha está ali desde o primeiro commit (um commit de fronteira, sem pai)</label>
+<label><input type="radio" name="q5"> Que a linha tem um erro</label>
+<label><input type="radio" name="q5"> Que o commit foi desfeito</label>
+<label><input type="radio" name="q5"> Que a linha está em negrito</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git blame arquivo</code> mostra, para cada linha, o <strong>último commit</strong> que a mudou: hash, autor, data e número da linha.</li>
+  <li><code>-L 5,5</code> escolhe linhas (também <code>-L 8</code>, <code>-L 5,+2</code> e <code>-L /texto/,+1</code>); <code>-s</code>, <code>-e</code> e <code>--date=short</code> mudam o que aparece.</li>
+  <li>O <code>^</code> marca linhas do primeiro commit; <code>Not Committed Yet</code>, linhas mudadas e ainda não commitadas.</li>
+  <li>O blame diz quem e quando; o <code>git show HASH</code> diz o porquê.</li>
+  <li><code>git blame HASH -- arquivo</code> mostra o arquivo como estava num commit antigo.</li>
+  <li>Use o blame para achar a pessoa certa para perguntar, não para culpar ninguém.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
