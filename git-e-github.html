@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git × GitHub — o programa e o site, qual é a diferença | Guia Git</title>
+<meta name="description" content="Git e GitHub não são a mesma coisa: o Git é o programa que guarda a história no seu computador; o GitHub é um site que hospeda repositórios Git e acrescenta pull requests, issues, Pages e Actions. Alternativas: GitLab, Bitbucket, Codeberg.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Git × GitHub</span></h1>
+
+<p class="intro">"Sobe no Git", "manda pelo GitHub", "me passa o link do Git"… Muita gente usa os dois nomes como se fossem a mesma coisa, mas não são. O <strong>Git</strong> é um programa que roda no seu computador. O <strong>GitHub</strong> é um site, na internet, onde as pessoas guardam e compartilham repositórios Git. Nesta aula você vai separar bem os dois e entender como eles conversam.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é o Git e o que é o GitHub, com uma comparação do dia a dia.</li>
+  <li>O que o GitHub acrescenta ao Git: hospedagem, pull requests, issues, Pages e Actions.</li>
+  <li>Os poucos comandos do Git que conversam com o GitHub.</li>
+  <li>As alternativas ao GitHub: GitLab, Bitbucket, Codeberg.</li>
+</ul>
+</div>
+
+<hr>
+
+<h2>A ideia: a câmera e o álbum na nuvem</h2>
+<p>Lembra do álbum de fotografias da <a href="introducao.html">primeira aula</a>? Continue com ele:</p>
+<ul>
+  <li>O <strong>Git</strong> é a <strong>câmera e o álbum</strong>, que ficam com você. Ele tira as fotos (os commits) e guarda o álbum (o repositório) no seu computador. Funciona sem internet.</li>
+  <li>O <strong>GitHub</strong> é um <strong>serviço de álbuns na nuvem</strong>, como os sites de guardar fotos. Você manda uma cópia do álbum para lá, para ter um backup, para mostrar a outras pessoas e para elas acrescentarem fotos também.</li>
+</ul>
+<p>Dá para usar o Git a vida inteira sem nunca abrir o GitHub (só no seu computador). Mas não dá para usar o GitHub sem o Git: tudo o que está lá dentro são repositórios Git.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th></th><th>Git</th><th>GitHub</th></tr>
+<tr><td>O que é</td><td>Um <strong>programa</strong> de controle de versão</td><td>Um <strong>site</strong> (serviço) que hospeda repositórios Git</td></tr>
+<tr><td>Onde roda</td><td>No seu computador</td><td>Nos servidores da empresa GitHub, na internet</td></tr>
+<tr><td>Como se usa</td><td>Comandos no terminal: <code>git commit</code>, <code>git log</code>…</td><td>No navegador, em <code>github.com</code> (e também pelo terminal)</td></tr>
+<tr><td>Precisa de internet?</td><td>Não</td><td>Sim</td></tr>
+<tr><td>Precisa de conta?</td><td>Não</td><td>Sim, para criar repositórios e participar</td></tr>
+<tr><td>Quem faz</td><td>Projeto de software livre, mantido por voluntários (Junio Hamano coordena)</td><td>A empresa GitHub, que pertence à Microsoft desde 2018</td></tr>
+<tr><td>Quanto custa</td><td>Grátis, sempre</td><td>Plano grátis para repositórios públicos e privados; planos pagos para equipes e empresas</td></tr>
+<tr><td>Ano de nascimento</td><td>2005</td><td>2008</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>O que o GitHub acrescenta</h2>
+<p>Guardar uma cópia do repositório é só o começo. O GitHub junta, em volta dos repositórios, ferramentas para pessoas trabalharem juntas. Nenhuma delas faz parte do Git: são do site.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Recurso do GitHub</th><th>Para que serve</th><th>Aula</th></tr>
+<tr><td><strong>Repositórios hospedados</strong></td><td>Uma cópia do seu repositório na internet: backup e ponto de encontro da equipe.</td><td><a href="github-repositorio.html">Criando um Repositório no GitHub</a></td></tr>
+<tr><td><strong>Pull request</strong></td><td>Um pedido para juntar as suas mudanças ao projeto de alguém, com conversa e revisão.</td><td><a href="pull-request.html">Pull Request</a></td></tr>
+<tr><td><strong>Fork</strong></td><td>Uma cópia de um projeto de outra pessoa, na sua conta, para você propor mudanças.</td><td><a href="fork.html">Fork</a></td></tr>
+<tr><td><strong>Issues</strong></td><td>Uma lista de tarefas, ideias e problemas encontrados no projeto.</td><td><a href="issues.html">Issues</a></td></tr>
+<tr><td><strong>GitHub Pages</strong></td><td>Publicar um site estático direto de um repositório, de graça.</td><td><a href="github-pages.html">GitHub Pages</a></td></tr>
+<tr><td><strong>GitHub Actions</strong></td><td>Rodar tarefas automáticas (testes, publicação) a cada push.</td><td><a href="github-actions.html">GitHub Actions</a></td></tr>
+</table>
+</div>
+
+<div class="tip">
+<strong>"Pull request" é do GitHub, não do Git</strong>
+<p>Não existe um comando <code>git pull-request</code>. O pull request é uma página do site, onde as pessoas comentam e aprovam mudanças. Os outros serviços têm o mesmo recurso com outro nome: no GitLab, ele se chama <em>merge request</em>.</p>
+</div>
+
+<hr>
+
+<h2>Como os dois conversam</h2>
+<p>O seu repositório no computador e a cópia dele no GitHub são <strong>dois repositórios</strong>, cada um com a sua história. Eles não se sincronizam sozinhos: você é quem manda o Git buscar ou enviar commits. Para o Git, a cópia no GitHub é um <strong>remoto</strong> (<em>remote</em>), um outro repositório que ele conhece por um nome curto, quase sempre <code>origin</code> ("origem").</p>
+
+<pre class="syntax">  seu computador                                 github.com
+  ┌──────────────────────┐   git push  ──►   ┌──────────────────────┐
+  │  receitas            │                   │  ana-souza/receitas  │
+  │  (repositório Git)   │   ◄──  git pull   │  (repositório Git)   │
+  └──────────────────────┘                   └──────────────────────┘</pre>
+
+<p>São poucos os comandos que usam a internet. Todo o resto do Git (commit, log, status, branch, merge…) trabalha só no seu computador.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz com o GitHub</th></tr>
+<tr><td><code>git clone</code></td><td>Copia um repositório do GitHub para o seu computador, com toda a história (<a href="git-clone.html">git clone</a>).</td></tr>
+<tr><td><code>git push</code></td><td>Envia ("empurra") os seus commits novos para o GitHub (<a href="git-push.html">git push</a>).</td></tr>
+<tr><td><code>git fetch</code></td><td>Busca os commits novos do GitHub, sem mexer nos seus arquivos (<a href="git-fetch.html">git fetch</a>).</td></tr>
+<tr><td><code>git pull</code></td><td>Busca e já junta ao seu trabalho (<a href="git-pull.html">git pull</a>).</td></tr>
+<tr><td><code>git remote</code></td><td>Lista e configura os remotos que o repositório conhece (<a href="git-remote.html">git remote</a>).</td></tr>
+</table>
+</div>
+
+<h3>Vendo o remoto de um repositório</h3>
+<p>O repositório <code>receitas</code> da Ana já está ligado à cópia dela no GitHub. O comando <code>git remote -v</code> mostra isso:</p>
+
+<dl class="anatomy">
+  <dt>git remote</dt><dd>O subcomando que cuida dos remotos. Sozinho, lista só os nomes.</dd>
+  <dt>-v</dt><dd><em>verbose</em> ("detalhado"): mostra também o endereço de cada remoto.</dd>
+</dl>
+
+<pre class="term" data-cwd="~/receitas">$ git remote
+origin
+$ git remote -v
+origin	https://github.com/ana-souza/receitas.git (fetch)
+origin	https://github.com/ana-souza/receitas.git (push)</pre>
+
+<ul>
+  <li><code>origin</code>: o apelido do remoto. É o nome que o Git dá automaticamente quando você clona um repositório.</li>
+  <li><code>https://github.com/ana-souza/receitas.git</code>: o endereço do repositório no GitHub. Repare no formato: <code>github.com/</code>, o nome de usuário (<code>ana-souza</code>), uma barra e o nome do repositório.</li>
+  <li><code>(fetch)</code> e <code>(push)</code>: o endereço usado para <strong>buscar</strong> e o usado para <strong>enviar</strong>. Quase sempre são o mesmo.</li>
+</ul>
+
+<div class="note">
+<strong>Ilustrativo: o "GitHub" desta aula</strong>
+<p>A conta <code>ana-souza</code> é fictícia. As saídas acima saíram de um Git de verdade, no laboratório deste guia. O <code>git remote</code> só guarda e mostra o endereço: ele não acessa a internet. O que o site do GitHub mostra no navegador é descrito nas aulas do grupo "GitHub", com base na documentação oficial. O <code>push</code> e o <code>pull</code> de verdade aparecem nas aulas do Nível 2.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;git remote add origin https://github.com/ana-souza/receitas.git" data-goal="ran:^\s*git remote -v" data-solucao="git remote -v">
+<p class="try-task"><strong>Missão:</strong> o terminal está no repositório <code>receitas</code> da Ana. Descubra o nome e o endereço do remoto dele com <code>git remote -v</code>.</p>
+</div>
+
+<hr>
+
+<h2>O GitHub não é o único</h2>
+<p>Como tudo o que o GitHub guarda são repositórios Git comuns, existem outros sites que fazem o mesmo trabalho. Os comandos do Git são exatamente iguais em todos: muda só o endereço do remoto.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Serviço</th><th>Quem faz</th><th>Bom saber</th></tr>
+<tr><td><strong>GitHub</strong></td><td>GitHub (Microsoft)</td><td>O mais usado, onde está a maior parte do software livre. É o deste guia.</td></tr>
+<tr><td><strong>GitLab</strong></td><td>GitLab Inc.</td><td>Muito usado por empresas; também pode ser instalado num servidor próprio. Chama o pull request de <em>merge request</em>.</td></tr>
+<tr><td><strong>Bitbucket</strong></td><td>Atlassian</td><td>Comum em empresas que usam o Jira, da mesma fabricante.</td></tr>
+<tr><td><strong>Codeberg</strong></td><td>Associação sem fins lucrativos, na Alemanha</td><td>Alternativa feita para software livre, mantida por doações.</td></tr>
+<tr><td>Servidor próprio</td><td>Você</td><td>Qualquer computador com Git e acesso por SSH pode guardar um repositório remoto.</td></tr>
+</table>
+</div>
+
+<p>Um mesmo repositório pode até ter <strong>vários remotos</strong>: a Ana poderia mandar os mesmos commits para o GitHub e para o Codeberg. Isso aparece em <a href="remotos.html">Repositórios Remotos</a>.</p>
+
+<hr>
+
+<h2>Quando dá errado</h2>
+
+<div class="cenario">
+<strong>"Instalei o GitHub Desktop, então já tenho o Git?"</strong>
+<p><strong>O que aconteceu:</strong> o GitHub Desktop é um programa com janelas para usar Git e GitHub sem terminal. Ele usa um Git próprio, interno, que não fica disponível para o seu terminal. Este guia ensina o Git pela linha de comando, que precisa do Git instalado no sistema.</p>
+<p><strong>Como confirmar:</strong> abra o terminal e rode <code>git --version</code>. Se o terminal disser que o comando não foi encontrado, o Git não está instalado para ele.</p>
+<p><strong>Como resolver:</strong> instale o Git (aula <a href="instalar.html">Instalar o Git</a>). Os dois convivem sem problema. Programas com janelas têm aula própria: <a href="interfaces-graficas.html">Interfaces Gráficas</a>.</p>
+</div>
+
+<div class="cenario">
+<strong>O repositório não tem remoto nenhum</strong>
+<pre class="term" data-cwd="~/tcc">$ git remote -v
+$ echo $?
+0                                  « código de saída 0: deu certo, só não há remotos</pre>
+<p><strong>O que aconteceu:</strong> o <code>git remote -v</code> não mostrou nada. Não é um erro: este repositório foi criado com <code>git init</code> no computador da Ana e nunca foi ligado a nenhum GitHub. Ele vive só no notebook dela, e tudo bem.</p>
+<p><strong>Como resolver:</strong> se ela quiser uma cópia no GitHub, cria o repositório lá e liga com <code>git remote add origin …</code> (aulas <a href="github-repositorio.html">Criando um Repositório no GitHub</a> e <a href="git-remote.html">git remote</a>).</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Termo</th><th>Significado</th></tr>
+<tr><td>Git</td><td>Programa de controle de versão, livre, que roda no seu computador.</td></tr>
+<tr><td>GitHub</td><td>Site que hospeda repositórios Git e acrescenta pull requests, issues, Pages, Actions.</td></tr>
+<tr><td>Remoto (<em>remote</em>)</td><td>Outro repositório que o seu conhece, geralmente no GitHub.</td></tr>
+<tr><td><code>origin</code></td><td>O nome padrão do remoto principal.</td></tr>
+<tr><td><code>git remote -v</code></td><td>Lista os remotos com os endereços.</td></tr>
+<tr><td><code>clone</code>, <code>push</code>, <code>fetch</code>, <code>pull</code></td><td>Os comandos que trocam commits com o remoto.</td></tr>
+<tr><td>GitLab, Bitbucket, Codeberg</td><td>Alternativas ao GitHub; os comandos do Git são os mesmos.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">1. Qual frase está certa?</p>
+<label><input type="radio" name="q1"> O Git é o site e o GitHub é o programa.</label>
+<label><input type="radio" name="q1"> O Git é o programa no seu computador; o GitHub é um site que guarda repositórios Git.</label>
+<label><input type="radio" name="q1"> Os dois são nomes do mesmo programa.</label>
+<label><input type="radio" name="q1"> O GitHub é a versão nova do Git.</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">2. Qual destes recursos é do <strong>GitHub</strong>, e não do Git?</p>
+<label><input type="radio" name="q2"> Commit</label>
+<label><input type="radio" name="q2"> Branch</label>
+<label><input type="radio" name="q2"> Pull request</label>
+<label><input type="radio" name="q2"> <code>git log</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">3. A Ana está sem internet. Qual comando <strong>não</strong> vai funcionar?</p>
+<label><input type="radio" name="q3"> <code>git push</code></label>
+<label><input type="radio" name="q3"> <code>git commit</code></label>
+<label><input type="radio" name="q3"> <code>git log</code></label>
+<label><input type="radio" name="q3"> <code>git status</code></label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. A Ana troca o GitHub pelo Codeberg. O que muda nos comandos do Git que ela usa?</p>
+<label><input type="radio" name="q4"> Ela precisa aprender outros comandos.</label>
+<label><input type="radio" name="q4"> O <code>git commit</code> passa a se chamar <code>codeberg commit</code>.</label>
+<label><input type="radio" name="q4"> Ela perde o histórico.</label>
+<label><input type="radio" name="q4"> Nada: só o endereço do remoto muda.</label>
+</div>
+
+<div class="exercise">
+<h3>5. Mostre os endereços</h3>
+<p>Complete o comando que lista os remotos com os endereços:</p>
+<div class="ex-code">git remote <input data-answer="-v|--verbose" aria-label="opção"></div>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><strong>Git</strong> = o programa, no seu computador, que guarda a história. Livre, grátis, funciona sem internet.</li>
+  <li><strong>GitHub</strong> = um site que hospeda repositórios Git e acrescenta pull requests, forks, issues, Pages e Actions.</li>
+  <li>Para o Git, a cópia no GitHub é um <strong>remoto</strong>, quase sempre chamado <code>origin</code> (<code>git remote -v</code>).</li>
+  <li>Só <code>clone</code>, <code>push</code>, <code>fetch</code> e <code>pull</code> usam a internet; o resto é local.</li>
+  <li>GitLab, Bitbucket e Codeberg fazem o mesmo papel; os comandos do Git não mudam.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
