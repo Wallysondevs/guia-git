@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Projeto: Funcionalidade num Branch — a página de contato da Ana, do branch ao merge | Guia Git</title>
+<meta name="description" content="Projeto passo a passo: a Ana cria a página de contato do site de receitas num branch (git switch -c), faz commits nele, volta ao main para uma correção urgente, junta tudo com git merge e apaga o branch, com as saídas reais do Git 2.53 em português e cinco missões encadeadas no terminal do guia.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Projeto: Uma Funcionalidade num Branch</span></h1>
+
+<p class="intro">O site de receitas da Ana já tem uma página inicial e um README. Agora ela quer uma coisa nova: uma <strong>página de contato</strong>. Ela podia escrever direto no <code>main</code>, mas aprendeu que o <code>main</code> é a versão "boa", a que vai para o ar. Então vai fazer do jeito profissional: criar um <strong>branch</strong> (ramo) só para essa funcionalidade, trabalhar nele com calma, e só no fim juntar tudo no <code>main</code>. No meio do caminho, ainda aparece uma correção urgente. Neste projeto você acompanha cada passo, com as saídas reais do Git, e faz cada etapa você mesmo no terminal do guia.</p>
+
+<div class="note">
+<strong>Você vai aprender (na prática)</strong>
+<ul>
+  <li>Criar um branch para uma funcionalidade e trocar para ele com <code>git switch -c</code>.</li>
+  <li>Fazer commits no branch sem mexer no <code>main</code>, e conferir isso com <code>git log --oneline --graph --all</code>.</li>
+  <li>Largar o trabalho pela metade, voltar ao <code>main</code> para uma correção urgente e depois retomar.</li>
+  <li>Juntar o branch no <code>main</code> com <code>git merge</code> e ler o histórico que se forma.</li>
+  <li>Apagar o branch que já foi juntado com <code>git branch -d</code>, sem medo de perder nada.</li>
+</ul>
+</div>
+
+<p>Este projeto junta o que você viu em <a href="branches.html">O que é um Branch</a>, <a href="git-switch.html">git switch</a>, <a href="git-merge.html">git merge</a> e <a href="apagar-branch.html">Renomeando e Apagando Branches</a>. Se algum comando parecer estranho, a aula dele explica com mais calma. Todas as saídas abaixo saíram do <strong>Git 2.53</strong> do Ubuntu, na máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português.</p>
+
+<div class="note"><strong>Português e inglês misturados?</strong> É assim mesmo. A tradução do Git para o português do Brasil que vem no Ubuntu é <strong>parcial</strong>: algumas mensagens saem traduzidas (<code>No ramo main</code>), outras continuam em inglês (<code>Switched to a new branch</code>, <code>nothing to commit</code>). Ao lado de cada mensagem em inglês, você encontra a tradução.</div>
+
+<hr>
+
+<h2>A ideia: o rascunho fica no caderno de rascunho</h2>
+<p>Pense numa confeiteira que tem um <strong>caderno de receitas passado a limpo</strong>, aquele que ela mostra para as clientes. Quando quer inventar uma receita nova, ela não rabisca nesse caderno: pega um <strong>caderno de rascunho</strong>, testa, risca, testa de novo. Só quando a receita está boa ela copia para o caderno bonito.</p>
+<ul>
+  <li>O caderno passado a limpo é o branch <code>main</code>.</li>
+  <li>O caderno de rascunho é o branch da funcionalidade (aqui, <code>contato</code>).</li>
+  <li>"Copiar a receita pronta para o caderno bonito" é o <code>git merge</code>.</li>
+</ul>
+<p>E se, no meio do rascunho, uma cliente avisa que tem um erro no caderno bonito? A confeiteira deixa o rascunho aberto na mesa, corrige o caderno bonito, e volta ao rascunho. É exatamente o que a Ana vai fazer.</p>
+
+<p>O plano do projeto, em cinco etapas:</p>
+<ol class="passo">
+  <li>Criar o branch <code>contato</code> e entrar nele.</li>
+  <li>Criar a página <code>contato.html</code> e pôr o link na página inicial (dois commits).</li>
+  <li>Voltar ao <code>main</code> e corrigir um erro de digitação urgente no README.</li>
+  <li>Juntar o branch <code>contato</code> no <code>main</code>.</li>
+  <li>Apagar o branch, que já cumpriu o seu papel.</li>
+</ol>
+
+<hr>
+
+<h2>O ponto de partida</h2>
+<p>A pasta <code>~/receitas</code> da Ana já é um repositório com dois commits: o README (com um erro de digitação que ninguém viu ainda: "Recitas") e a página inicial <code>index.html</code>. Antes de começar qualquer coisa nova, a Ana confere duas coisas: se está tudo commitado e onde ela está.</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main
+nothing to commit, working tree clean      « nada pendente: pode começar
+$ git log --oneline
+93f770a (HEAD -&gt; main) Cria a página inicial
+9f0c742 Cria o README</pre>
+
+<ul>
+  <li><code>No ramo main</code>: ela está no branch <code>main</code> ("ramo" é a tradução de <em>branch</em> que o Git usa em português).</li>
+  <li><code>nothing to commit, working tree clean</code>: "nada para commitar, pasta de trabalho limpa". Tudo o que ela mudou já está guardado em commits.</li>
+  <li>O <code>git log --oneline</code> mostra os dois commits, o mais novo em cima. O <code>(HEAD -&gt; main)</code> diz que o <a href="head.html">HEAD</a> (o "você está aqui") aponta para o <code>main</code>.</li>
+</ul>
+
+<div class="tip"><strong>Por que conferir antes?</strong> Começar um branch com mudanças pendentes não é proibido (elas vão junto para o branch novo), mas confunde: depois você não sabe se aquela mudança era do <code>main</code> ou da funcionalidade. Comece sempre com o <code>git status</code> limpo.</div>
+
+<hr>
+
+<h2>Etapa 1: criar o branch e entrar nele</h2>
+<p>Um comando faz as duas coisas:</p>
+
+<dl class="anatomy">
+  <dt>git switch</dt><dd>"Trocar" de branch (<a href="git-switch.html">git switch</a>). <span class="versao">git 2.23+</span></dd>
+  <dt>-c</dt><dd>De <em>create</em>, "criar": cria o branch antes de trocar para ele.</dd>
+  <dt>contato</dt><dd>O nome do branch novo. Escolha um nome curto que diga <strong>o que</strong> vai ser feito nele: <code>contato</code>, <code>pagina-sobre</code>, <code>corrige-menu</code>.</dd>
+</dl>
+
+<pre class="term" data-cwd="~/receitas">$ git switch -c contato
+Switched to a new branch 'contato'      « "trocou para o novo branch 'contato'"
+$ git branch
+* contato
+  main
+$ git status
+No ramo contato
+nothing to commit, working tree clean</pre>
+
+<ul>
+  <li><code>Switched to a new branch 'contato'</code>: "trocou para o novo branch 'contato'". O branch foi criado e a Ana já está nele.</li>
+  <li>O <code>git branch</code> lista os branches; o asterisco <code>*</code> marca o atual.</li>
+  <li>O <code>git status</code> confirma: <code>No ramo contato</code>. A pasta não mudou nada: o branch novo nasce <strong>apontando para o mesmo commit</strong> em que ela estava.</li>
+</ul>
+
+<p>Desenhando o histórico neste momento (cada letra é um commit):</p>
+<pre>A---B   ← main, contato (HEAD)</pre>
+<p>Criar um branch é só colar uma etiqueta nova no commit atual. Não copia arquivos, não gasta espaço, é instantâneo.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Recitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;printf '&lt;h1&gt;Receitas da Ana&lt;/h1&gt;\n&lt;p&gt;Bolo de cenoura&lt;/p&gt;\n' &gt; index.html;;git add index.html;;git commit -q -m 'Cria a página inicial'" data-goal="branch:contato,head:contato" data-solucao="git switch -c contato">
+<p class="try-task"><strong>Missão 1:</strong> você está na pasta <code>receitas</code> da Ana, no <code>main</code>. Crie o branch <code>contato</code> e troque para ele com um comando só. Confira com <code>git branch</code>.</p>
+</div>
+
+<hr>
+
+<h2>Etapa 2: trabalhar no branch</h2>
+<p>Agora a Ana trabalha normalmente: cria arquivos, adiciona, commita. Tudo o que ela commitar vai para o branch <code>contato</code>. Primeiro, a página de contato:</p>
+
+<pre class="term" data-cwd="~/receitas">$ printf '&lt;h1&gt;Contato&lt;/h1&gt;\n&lt;p&gt;Escreva para ana@exemplo.com&lt;/p&gt;\n' &gt; contato.html
+$ git status
+No ramo contato
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	contato.html
+
+nada adicionado ao envio mas arquivos não registrados estão presentes (use "git add" to registrar)
+$ git add contato.html
+$ git commit -m 'Cria a página de contato'
+[contato 92f5aa8] Cria a página de contato      « entrou no branch contato
+ 1 file changed, 2 insertions(+)
+ create mode 100644 contato.html</pre>
+
+<p>Repare na primeira linha da resposta do commit: <code>[contato …]</code>. O Git sempre diz <strong>em qual branch</strong> o commit entrou. Se ali aparecesse <code>[main …]</code>, ela teria esquecido de trocar de branch (veja "Quando dá errado", mais abaixo).</p>
+
+<p>Segundo passo da funcionalidade: um link para o contato na página inicial. A Ana acrescenta uma linha no fim do <code>index.html</code> e confere a diferença antes de commitar:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo '&lt;a href="contato.html"&gt;Contato&lt;/a&gt;' &gt;&gt; index.html
+$ git diff
+diff --git a/index.html b/index.html
+index 9090d6e..04ff494 100644
+--- a/index.html
++++ b/index.html
+@@ -1,2 +1,3 @@
+ &lt;h1&gt;Receitas da Ana&lt;/h1&gt;
+ &lt;p&gt;Bolo de cenoura&lt;/p&gt;
++&lt;a href="contato.html"&gt;Contato&lt;/a&gt;      « a linha nova
+$ git add index.html
+$ git commit -m 'Põe o link do contato na página inicial'
+[contato edd32b4] Põe o link do contato na página inicial
+ 1 file changed, 1 insertion(+)</pre>
+
+<p>O <code>git diff</code> mostra a linha nova com <code>+</code> na frente. Dois commits no branch. E o <code>main</code>? Ficou onde estava. O <code>--all</code> no <code>git log</code> mostra <strong>todos</strong> os branches, não só o atual:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --graph --all
+* edd32b4 (HEAD -&gt; contato) Põe o link do contato na página inicial
+* 92f5aa8 Cria a página de contato
+* 93f770a (main) Cria a página inicial      « o main ficou aqui
+* 9f0c742 Cria o README</pre>
+
+<ul>
+  <li><code>(HEAD -&gt; contato)</code> está no commit mais novo: é ali que a Ana está.</li>
+  <li><code>main</code> continua no commit "Cria a página inicial", dois commits atrás.</li>
+</ul>
+<pre>A---B           ← main
+     \
+      C---D     ← contato (HEAD)</pre>
+<p>(Por enquanto, o <code>--graph</code> desenha tudo numa linha reta, porque <code>contato</code> só "andou na frente" do <code>main</code>. O galho aparece de verdade quando o <code>main</code> também andar, na etapa 3.)</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Recitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;printf '&lt;h1&gt;Receitas da Ana&lt;/h1&gt;\n&lt;p&gt;Bolo de cenoura&lt;/p&gt;\n' &gt; index.html;;git add index.html;;git commit -q -m 'Cria a página inicial';;git switch -q -c contato" data-goal="head:contato,commits:3,rastreado:contato.html,limpo" data-solucao="echo '&lt;h1&gt;Contato&lt;/h1&gt;' &gt; contato.html;;git add contato.html;;git commit -m 'Cria a página de contato'">
+<p class="try-task"><strong>Missão 2:</strong> você já está no branch <code>contato</code>. Crie o arquivo <code>contato.html</code> (por exemplo, com <code>echo '&lt;h1&gt;Contato&lt;/h1&gt;' &gt; contato.html</code>), adicione e faça o commit. No fim, o <code>git status</code> tem de estar limpo. Depois, rode <code>git log --oneline --all</code> e veja que o <code>main</code> não andou.</p>
+</div>
+
+<hr>
+
+<h2>Etapa 3: uma correção urgente no <code>main</code></h2>
+<p>No meio do trabalho, o Bruno manda uma mensagem: "Ana, o título do README está escrito <em>Recitas</em>!". Isso tem de ser corrigido <strong>no <code>main</code></strong>, agora, sem esperar a página de contato ficar pronta. A Ana troca de branch:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch main
+Switched to branch 'main'
+$ ls
+README.md  index.html      « cadê o contato.html?
+$ cat index.html
+&lt;h1&gt;Receitas da Ana&lt;/h1&gt;
+&lt;p&gt;Bolo de cenoura&lt;/p&gt;      « sem o link
+$ cat README.md
+# Recitas da Ana      « o erro de digitação</pre>
+
+<p>Olhe o que aconteceu com a pasta: <strong>o <code>contato.html</code> sumiu</strong>, e o <code>index.html</code> voltou a não ter o link. Calma, nada se perdeu! Ao trocar de branch, o Git deixa a pasta exatamente como ela é no commit para onde o branch aponta. O <code>main</code> ainda não conhece a página de contato; ela está guardada no branch <code>contato</code> e volta quando a Ana voltar para lá.</p>
+
+<p>Agora a correção, com um commit pequeno e uma mensagem clara:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo '# Receitas da Ana' &gt; README.md
+$ git diff
+diff --git a/README.md b/README.md
+index 5658f18..2644316 100644
+--- a/README.md
++++ b/README.md
+@@ -1 +1 @@
+-# Recitas da Ana
++# Receitas da Ana
+$ git add README.md
+$ git commit -m 'Corrige erro de digitação no README'
+[main d9426f7] Corrige erro de digitação no README      « agora no main
+ 1 file changed, 1 insertion(+), 1 deletion(-)</pre>
+
+<p>Agora sim, o histórico tem um galho de verdade: o <code>main</code> andou para um lado (a correção) e o <code>contato</code> para o outro (a página). O <code>--graph</code> desenha isso:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --graph --all
+* edd32b4 (contato) Põe o link do contato na página inicial
+* 92f5aa8 Cria a página de contato
+| * d9426f7 (HEAD -&gt; main) Corrige erro de digitação no README
+|/
+* 93f770a Cria a página inicial      « o ponto onde os galhos se separam
+* 9f0c742 Cria o README</pre>
+
+<ul>
+  <li>Cada <code>*</code> é um commit. As barras <code>|</code> e <code>/</code> mostram de onde cada um saiu.</li>
+  <li>O commit da correção (<code>main</code>) e os dois do contato saem do mesmo pai, "Cria a página inicial".</li>
+</ul>
+<pre>A---B---E           ← main (HEAD)
+     \
+      C---D         ← contato</pre>
+
+<p>A Ana pode voltar ao <code>contato</code> quando quiser. Repare que, lá, o README ainda tem o erro: a correção está só no <code>main</code>, por enquanto.</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch contato
+Switched to branch 'contato'
+$ cat README.md
+# Recitas da Ana      « aqui a correção ainda não chegou
+$ git switch main
+Switched to branch 'main'</pre>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Recitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;printf '&lt;h1&gt;Receitas da Ana&lt;/h1&gt;\n&lt;p&gt;Bolo de cenoura&lt;/p&gt;\n' &gt; index.html;;git add index.html;;git commit -q -m 'Cria a página inicial';;git switch -q -c contato;;printf '&lt;h1&gt;Contato&lt;/h1&gt;\n&lt;p&gt;Escreva para ana@exemplo.com&lt;/p&gt;\n' &gt; contato.html;;git add contato.html;;git commit -q -m 'Cria a página de contato';;echo '&lt;a href=&quot;contato.html&quot;&gt;Contato&lt;/a&gt;' &gt;&gt; index.html;;git add index.html;;git commit -q -m 'Põe o link do contato na página inicial'" data-goal="head:main,commits:3,contem:HEAD:README.md=Receitas da Ana,limpo" data-solucao="git switch main;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -m 'Corrige erro de digitação no README'">
+<p class="try-task"><strong>Missão 3:</strong> você está no branch <code>contato</code>, com a página de contato já commitada. Volte ao <code>main</code>, corrija o título do README para <code># Receitas da Ana</code> (com <code>echo '# Receitas da Ana' &gt; README.md</code>) e faça o commit da correção <strong>no <code>main</code></strong>. Rode <code>ls</code> no <code>main</code> e veja que o <code>contato.html</code> não está lá.</p>
+</div>
+
+<hr>
+
+<h2>Etapa 4: juntar o branch no <code>main</code></h2>
+<p>A página de contato ficou pronta. Hora de passar a limpo. A regra para lembrar: <strong>você vai para o branch que vai receber</strong> e, de lá, pede para juntar o outro.</p>
+
+<dl class="anatomy">
+  <dt>git switch main</dt><dd>Primeiro, ir para quem recebe: o <code>main</code>.</dd>
+  <dt>git merge</dt><dd>"Mesclar": trazer para o branch atual os commits de outro branch (<a href="git-merge.html">git merge</a>).</dd>
+  <dt>contato</dt><dd>O branch que vai ser trazido.</dd>
+</dl>
+
+<pre class="term" data-cwd="~/receitas">$ git merge contato
+Merge made by the 'ort' strategy.      « "merge feito pela estratégia 'ort'"
+ contato.html | 2 ++
+ index.html   | 1 +
+ 2 files changed, 3 insertions(+)
+ create mode 100644 contato.html</pre>
+
+<ul>
+  <li><code>Merge made by the 'ort' strategy.</code> ("merge feito pela estratégia 'ort'"): como os dois branches andaram, o Git fez um <a href="merge-tres-vias.html">merge de três vias</a> e criou um <strong>commit de merge</strong>, que tem dois pais. "ort" é o nome do algoritmo de merge padrão do Git.</li>
+  <li>As linhas seguintes resumem o que entrou no <code>main</code>: o <code>contato.html</code> novo (<code>create mode</code>, "criado") e uma linha a mais no <code>index.html</code>.</li>
+</ul>
+
+<div class="note"><strong>E a mensagem do commit de merge?</strong> No seu terminal, o <code>git merge</code> pode abrir o editor de texto com a mensagem pronta (<code>Merge branch 'contato'</code>). Basta salvar e fechar (no nano: <kbd>Ctrl</kbd>+<kbd>O</kbd>, <kbd>Enter</kbd>, <kbd>Ctrl</kbd>+<kbd>X</kbd>). Para pular o editor e aceitar a mensagem pronta, use <code>git merge --no-edit contato</code>; para escrever a sua, <code>git merge -m 'Junta a página de contato' contato</code>.</div>
+
+<p>O desenho do histórico agora mostra o galho se fechando:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --graph
+*   a8b971a (HEAD -&gt; main) Merge branch 'contato'      « o commit de merge
+|\
+| * edd32b4 (contato) Põe o link do contato na página inicial
+| * 92f5aa8 Cria a página de contato
+* | d9426f7 Corrige erro de digitação no README
+|/
+* 93f770a Cria a página inicial
+* 9f0c742 Cria o README</pre>
+
+<pre>A---B---E-------M     ← main (HEAD)
+     \         /
+      C---D---        ← contato</pre>
+
+<p>E a pasta do <code>main</code> tem as duas coisas: a página de contato <strong>e</strong> a correção do README.</p>
+
+<pre class="term" data-cwd="~/receitas">$ ls
+README.md  contato.html  index.html
+$ cat index.html
+&lt;h1&gt;Receitas da Ana&lt;/h1&gt;
+&lt;p&gt;Bolo de cenoura&lt;/p&gt;
+&lt;a href="contato.html"&gt;Contato&lt;/a&gt;
+$ cat README.md
+# Receitas da Ana</pre>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Recitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;printf '&lt;h1&gt;Receitas da Ana&lt;/h1&gt;\n&lt;p&gt;Bolo de cenoura&lt;/p&gt;\n' &gt; index.html;;git add index.html;;git commit -q -m 'Cria a página inicial';;git switch -q -c contato;;printf '&lt;h1&gt;Contato&lt;/h1&gt;\n&lt;p&gt;Escreva para ana@exemplo.com&lt;/p&gt;\n' &gt; contato.html;;git add contato.html;;git commit -q -m 'Cria a página de contato';;echo '&lt;a href=&quot;contato.html&quot;&gt;Contato&lt;/a&gt;' &gt;&gt; index.html;;git add index.html;;git commit -q -m 'Põe o link do contato na página inicial';;git switch -q main;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Corrige erro de digitação no README'" data-goal="head:main,contem:HEAD:index.html=contato.html,contem:HEAD:README.md=Receitas da Ana,rastreado:contato.html" data-solucao="git merge --no-edit contato">
+<p class="try-task"><strong>Missão 4:</strong> você está no <code>main</code>, que já tem a correção do README. Junte o branch <code>contato</code> no <code>main</code>. No fim, confira com <code>git log --oneline --graph</code> e <code>ls</code>: o <code>main</code> tem de ter o <code>contato.html</code> e o README corrigido.</p>
+</div>
+
+<hr>
+
+<h2>Etapa 5: apagar o branch</h2>
+<p>O branch <code>contato</code> cumpriu o seu papel: tudo o que estava nele agora também está no <code>main</code>. Deixar branches velhos acumulando só atrapalha. Antes de apagar, a Ana confere quais branches já foram juntados no atual:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git branch --merged
+  contato      « já está dentro do main
+* main
+$ git branch -d contato
+Deleted branch contato (was edd32b4).      « "branch contato apagado (era edd32b4)"
+$ git branch
+* main
+$ git log --oneline --graph
+*   a8b971a (HEAD -&gt; main) Merge branch 'contato'
+|\
+| * edd32b4 Põe o link do contato na página inicial      « os commits continuam aqui
+| * 92f5aa8 Cria a página de contato
+* | d9426f7 Corrige erro de digitação no README
+|/
+* 93f770a Cria a página inicial
+* 9f0c742 Cria o README
+$ git status
+No ramo main
+nothing to commit, working tree clean</pre>
+
+<ul>
+  <li><code>git branch --merged</code> lista os branches cujos commits <strong>já estão</strong> no branch atual. O <code>contato</code> aparece: pode apagar sem medo.</li>
+  <li><code>git branch -d contato</code> apaga a etiqueta. A mensagem mostra o hash para onde ela apontava, caso você se arrependa (dá para recriar com <code>git branch contato</code> + esse hash).</li>
+  <li>O histórico continua igual: <strong>apagar um branch não apaga commits</strong>. Os commits C e D continuam lá, agora alcançáveis pelo <code>main</code> através do commit de merge.</li>
+</ul>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Recitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;printf '&lt;h1&gt;Receitas da Ana&lt;/h1&gt;\n&lt;p&gt;Bolo de cenoura&lt;/p&gt;\n' &gt; index.html;;git add index.html;;git commit -q -m 'Cria a página inicial';;git switch -q -c contato;;printf '&lt;h1&gt;Contato&lt;/h1&gt;\n&lt;p&gt;Escreva para ana@exemplo.com&lt;/p&gt;\n' &gt; contato.html;;git add contato.html;;git commit -q -m 'Cria a página de contato';;echo '&lt;a href=&quot;contato.html&quot;&gt;Contato&lt;/a&gt;' &gt;&gt; index.html;;git add index.html;;git commit -q -m 'Põe o link do contato na página inicial';;git switch -q main;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Corrige erro de digitação no README';;git merge -q --no-edit contato" data-goal="head:main,semBranch:contato,rastreado:contato.html" data-solucao="git branch -d contato">
+<p class="try-task"><strong>Missão 5:</strong> o branch <code>contato</code> já foi juntado no <code>main</code>. Confira com <code>git branch --merged</code> e apague o branch com segurança.</p>
+</div>
+
+<hr>
+
+<h2>Formas diferentes de fazer</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Para…</th><th>Jeito moderno</th><th>Jeito antigo (tutoriais antigos)</th><th>Observação</th></tr>
+<tr><td>Criar o branch e entrar nele</td><td><code>git switch -c contato</code></td><td><code>git checkout -b contato</code></td><td>Fazem o mesmo. O <code>switch</code> existe desde o Git 2.23 (<a href="git-checkout.html">git checkout: o Comando Antigo</a>).</td></tr>
+<tr><td>Só criar, sem entrar</td><td><code>git branch contato</code></td><td>(igual)</td><td>Depois, <code>git switch contato</code> para entrar.</td></tr>
+<tr><td>Voltar ao branch anterior</td><td><code>git switch -</code></td><td><code>git checkout -</code></td><td>O <code>-</code> é "o branch onde eu estava antes", como o <code>cd -</code>.</td></tr>
+<tr><td>Juntar</td><td><code>git merge contato</code></td><td>(igual)</td><td><code>--no-edit</code> aceita a mensagem pronta; <code>-m '…'</code> escreve a sua.</td></tr>
+<tr><td>Apagar o branch juntado</td><td><code>git branch -d contato</code></td><td>(igual)</td><td><code>-D</code> (maiúsculo) apaga mesmo sem merge: cuidado.</td></tr>
+</table>
+</div>
+
+<p>Em equipe, no GitHub, a etapa 4 costuma ser feita por um <a href="pull-request.html">pull request</a> em vez de um <code>git merge</code> no seu computador: você envia o branch, alguém revisa, e o merge acontece no site. A ideia de "um branch por funcionalidade" é a mesma (veja <a href="github-flow.html">O GitHub Flow</a>).</p>
+
+<hr>
+
+<h2>Quando dá errado</h2>
+
+<div class="cenario">
+<strong>"Your local changes … would be overwritten by checkout" ao trocar de branch</strong>
+<pre class="term" data-cwd="~/receitas">$ git switch main
+error: Your local changes to the following files would be overwritten by checkout:
+	index.html
+Please commit your changes or stash them before you switch branches.
+Aborting</pre>
+<p><strong>O que aconteceu:</strong> a Ana mudou o <code>index.html</code> no branch <code>contato</code> e não commitou. O <code>index.html</code> do <code>main</code> é diferente; trocar de branch apagaria a mudança dela. O Git recusou ("Aborting" = "desistindo") para proteger o trabalho. A mensagem diz: "as suas mudanças locais nestes arquivos seriam sobrescritas; faça commit ou <em>stash</em> delas antes de trocar de branch".</p>
+<p><strong>Como confirmar:</strong> <code>git status</code> mostra o <code>index.html</code> como modificado.</p>
+<p><strong>Como resolver:</strong> três caminhos. Se a mudança está boa, commite no <code>contato</code> e depois troque. Se ainda está pela metade, guarde-a com <a href="git-stash.html">git stash</a>, troque, e na volta use <code>git stash pop</code>. Se a mudança não presta, descarte com <a href="git-restore.html">git restore index.html</a> (cuidado: não tem volta).</p>
+</div>
+
+<div class="cenario">
+<strong>"fatal: a branch named 'contato' already exists"</strong>
+<pre class="term" data-cwd="~/receitas">$ git switch -c contato
+fatal: a branch named 'contato' already exists</pre>
+<p><strong>O que aconteceu:</strong> o <code>-c</code> pede para <strong>criar</strong> o branch, e ele já existe ("já existe um branch chamado 'contato'").</p>
+<p><strong>Como resolver:</strong> para só entrar num branch que já existe, tire o <code>-c</code>: <code>git switch contato</code>. Se queria um branch novo, escolha outro nome.</p>
+</div>
+
+<div class="cenario">
+<strong>"cannot delete branch 'contato' used by worktree"</strong>
+<pre class="term" data-cwd="~/receitas">$ git branch -d contato
+error: cannot delete branch 'contato' used by worktree at '/home/ana/receitas'</pre>
+<p><strong>O que aconteceu:</strong> a Ana tentou apagar o branch <strong>em que ela está</strong>. A mensagem diz "não dá para apagar o branch 'contato', usado pela pasta de trabalho em /home/ana/receitas".</p>
+<p><strong>Como resolver:</strong> troque para outro branch primeiro (<code>git switch main</code>) e apague de lá.</p>
+</div>
+
+<div class="cenario">
+<strong>"the branch 'contato' is not fully merged"</strong>
+<pre class="term" data-cwd="~/receitas">$ git switch main
+Switched to branch 'main'
+$ git branch -d contato
+error: the branch 'contato' is not fully merged
+hint: If you are sure you want to delete it, run 'git branch -D contato'
+hint: Disable this message with "git config set advice.forceDeleteBranch false"</pre>
+<p><strong>O que aconteceu:</strong> ela tentou apagar o <code>contato</code> <strong>antes</strong> do merge. O branch tem commits que o <code>main</code> não tem ("não foi totalmente juntado"); apagar a etiqueta deixaria esses commits sem nome. O <code>-d</code> minúsculo é seguro justamente por isso: ele se recusa.</p>
+<p><strong>Como confirmar:</strong> <code>git log --oneline main..contato</code> lista os commits que estão no <code>contato</code> e faltam no <code>main</code>.</p>
+<p><strong>Como resolver:</strong> faça o merge primeiro (etapa 4) e apague depois. A dica (<code>hint</code>) sugere o <code>-D</code> maiúsculo, que apaga assim mesmo: use só se você tem <strong>certeza</strong> de que não quer aqueles commits (e, se se arrepender, veja <a href="git-reflog.html">git reflog</a>).</p>
+</div>
+
+<div class="cenario">
+<strong>Esqueci de criar o branch e commitei no <code>main</code></strong>
+<p><strong>O que aconteceu:</strong> a primeira linha da resposta do <code>git commit</code> mostrou <code>[main …]</code> em vez de <code>[contato …]</code>.</p>
+<p><strong>Como resolver:</strong> se ainda não enviou nada para o GitHub, crie o branch <strong>agora</strong>, no ponto em que está (<code>git branch contato</code>: o commit passa a estar nos dois), e depois volte o <code>main</code> um commit com <code>git reset --hard HEAD~1</code>, com o <code>git status</code> limpo (veja <a href="git-reset.html">git reset</a> antes, porque o <code>--hard</code> descarta mudanças não commitadas). Por fim, <code>git switch contato</code> e continue.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida do projeto</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Etapa</th><th>Comando</th><th>O que faz</th></tr>
+<tr><td>Conferir antes</td><td><code>git status</code></td><td>Garante que não há nada pendente.</td></tr>
+<tr><td>1</td><td><code>git switch -c contato</code></td><td>Cria o branch e entra nele.</td></tr>
+<tr><td>2</td><td><code>git add …</code> + <code>git commit -m '…'</code></td><td>Commits entram no branch atual.</td></tr>
+<tr><td>Ver tudo</td><td><code>git log --oneline --graph --all</code></td><td>Desenha todos os branches.</td></tr>
+<tr><td>3</td><td><code>git switch main</code></td><td>Volta ao <code>main</code>; a pasta muda para a versão dele.</td></tr>
+<tr><td>4</td><td><code>git switch main</code> + <code>git merge contato</code></td><td>Junta o branch no <code>main</code>.</td></tr>
+<tr><td>5</td><td><code>git branch --merged</code> + <code>git branch -d contato</code></td><td>Confere e apaga o branch juntado.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Criar e entrar</h3>
+<p>Complete para criar o branch <code>pagina-sobre</code> e já trocar para ele:</p>
+<div class="ex-code">git switch <input data-answer="-c" aria-label="opção"> pagina-sobre</div>
+</div>
+
+<div class="exercise">
+<h3>2. Ver todos os galhos</h3>
+<p>Complete para ver o histórico desenhado de <strong>todos</strong> os branches, não só do atual:</p>
+<div class="ex-code">git log --oneline --graph <input data-answer="--all" aria-label="opção"></div>
+</div>
+
+<div class="exercise">
+<h3>3. Apagar com segurança</h3>
+<p>Complete para apagar o branch <code>pagina-sobre</code>, que já foi juntado (o Git recusa se ainda não foi):</p>
+<div class="ex-code">git branch <input data-answer="-d" aria-label="opção"> pagina-sobre</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. A Ana quer juntar o branch <code>contato</code> no <code>main</code>. Em qual branch ela precisa estar quando rodar <code>git merge</code>?</p>
+<label><input type="radio" name="q4"> No <code>contato</code>, rodando <code>git merge main</code>.</label>
+<label><input type="radio" name="q4"> No <code>main</code>, rodando <code>git merge contato</code>.</label>
+<label><input type="radio" name="q4"> Em qualquer um: o merge sempre vai para o <code>main</code>.</label>
+<label><input type="radio" name="q4"> Em nenhum: primeiro é preciso apagar o <code>contato</code>.</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">5. A Ana está no <code>contato</code>, que tem o arquivo <code>contato.html</code> commitado, e roda <code>git switch main</code>. O arquivo some da pasta. O que aconteceu?</p>
+<label><input type="radio" name="q5"> O Git apagou o arquivo; ela perdeu o trabalho.</label>
+<label><input type="radio" name="q5"> O arquivo foi para a lixeira do sistema.</label>
+<label><input type="radio" name="q5"> Nada se perdeu: o <code>main</code> não tem esse arquivo, e ele volta quando ela voltar ao <code>contato</code>.</label>
+<label><input type="radio" name="q5"> O branch <code>contato</code> foi apagado automaticamente.</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">6. Depois de <code>git branch -d contato</code>, o que acontece com os commits que foram feitos nele (já juntados no <code>main</code>)?</p>
+<label><input type="radio" name="q6"> Continuam no histórico: só a etiqueta <code>contato</code> foi apagada.</label>
+<label><input type="radio" name="q6"> São apagados junto com o branch.</label>
+<label><input type="radio" name="q6"> Viram um único commit.</label>
+<label><input type="radio" name="q6"> Vão para o stash.</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Uma funcionalidade nova = um branch novo: <code>git switch -c nome</code>, sempre partindo de um <code>git status</code> limpo.</li>
+  <li>Os commits entram no branch atual; a primeira linha da resposta do <code>git commit</code> (<code>[contato …]</code>) confirma qual é.</li>
+  <li>Trocar de branch troca os arquivos da pasta. O que sumiu está guardado no outro branch.</li>
+  <li>Correção urgente? Commite (ou guarde) o que está no meio, <code>git switch main</code>, corrija, commite, e volte com <code>git switch contato</code>.</li>
+  <li>Para juntar: vá para quem recebe (<code>git switch main</code>) e rode <code>git merge contato</code>. Se os dois andaram, nasce um commit de merge.</li>
+  <li><code>git log --oneline --graph --all</code> desenha os galhos; <code>git branch --merged</code> mostra o que já pode ser apagado com <code>git branch -d</code>.</li>
+</ul>
+
+<p>Próximo projeto: e quando os dois branches mudam <strong>a mesma linha</strong>? Aí o Git não sabe qual escolher e pede a sua ajuda: veja <a href="projeto-conflito.html">Resolvendo um Conflito de Verdade</a>.</p>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
