@@ -143,13 +143,9 @@ nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git comm
 <pre class="term" data-cwd="~/receitas">$ git clean -fd
 Removing fotos/
 $ ls
-README.md
-forno.log
+README.md  forno.log
 $ ls -A
-.git
-.gitignore
-README.md
-forno.log
+.git  .gitignore  README.md  forno.log
 </pre>
 
 <p>Sobrou o <code>forno.log</code>, que é ignorado. O <code>ls -A</code> mostra também os arquivos que começam com ponto: o <code>.gitignore</code> é rastreado (foi commitado), e a pasta <code>.git</code> é o próprio repositório, que o <code>git clean</code> nunca apaga. Para levar o <code>.log</code> junto:</p>
@@ -157,9 +153,7 @@ forno.log
 <pre class="term" data-cwd="~/receitas">$ git clean -fdx
 Removing forno.log
 $ ls -A
-.git
-.gitignore
-README.md
+.git  .gitignore  README.md
 </pre>
 
 <div class="warning">
