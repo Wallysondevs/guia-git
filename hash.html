@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git hash — o "RG" de cada commit | Guia Git</title>
+<meta name="description" content="O que é o hash do commit (fe996fb…): a impressão digital SHA-1 de 40 caracteres, o hash curto do git log --oneline, git rev-parse, git hash-object, por que uma letra muda o hash inteiro, por que os hashes do guia são iguais aos seus, hash curto ambíguo e repositórios SHA-256. Saídas reais do Git.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">hash</span></h1>
+
+<p class="intro">Todo commit tem um "nome" que parece um código secreto: <code>fe996fb8ecae7fe25026045fd46f15ca756bc19c</code>. É o <strong>hash</strong> do commit (em inglês, <em>hash</em> é "picadinho": o Git "pica" o conteúdo do commit e tira dele um número). Você já usou hashes nas aulas anteriores para apontar commits no <code>git show</code>, no <code>git revert</code> e no <code>git reset</code>. Nesta aula você descobre de onde eles vêm, por que nunca se repetem, e por que os hashes deste guia saem iguais aos que você vê no terminal do guia.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é o hash: a "impressão digital" de 40 caracteres de um commit (ou de qualquer objeto do Git).</li>
+  <li>O hash completo e o hash curto (<code>fe996fb</code>), e como pedir um ou outro (<code>git rev-parse</code>, <code>--abbrev</code>).</li>
+  <li>Como o hash é calculado, conferido com o <code>git hash-object</code> e o <code>sha1sum</code>.</li>
+  <li>Por que mudar uma letra (ou a hora) muda o hash inteiro.</li>
+  <li>O que fazer quando um hash curto é "ambíguo", e o que são os repositórios SHA-256.</li>
+</ul>
+</div>
+
+<p>Todas as saídas desta aula vieram do Git real da máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>).</p>
+
+<hr>
+
+<h2>A ideia: a impressão digital do conteúdo</h2>
+<p>Na aula <a href="como-git-guarda.html">Como o Git Guarda as Coisas</a>, você viu que tudo o que o Git guarda (o conteúdo de cada arquivo, cada pasta, cada commit) vira um <strong>objeto</strong>, e que o nome de cada objeto é um hash. O hash funciona como uma <strong>impressão digital</strong>:</p>
+<ul>
+  <li>o mesmo conteúdo sempre dá a mesma impressão digital, em qualquer computador do mundo;</li>
+  <li>conteúdos diferentes dão impressões digitais diferentes, mesmo que a diferença seja uma vírgula;</li>
+  <li>olhando só a impressão digital, não dá para reconstruir o conteúdo (ela é um resumo, não uma cópia).</li>
+</ul>
+<p>A receita matemática que o Git usa para tirar essa impressão digital se chama <strong>SHA-1</strong> (de <em>Secure Hash Algorithm 1</em>, "algoritmo de hash seguro"). O resultado tem sempre 160 bits, escritos como <strong>40 caracteres hexadecimais</strong>: os algarismos de <code>0</code> a <code>9</code> e as letras de <code>a</code> a <code>f</code>.</p>
+
+<hr>
+
+<h2>1. O hash completo e o hash curto</h2>
+
+<pre class="term" data-cwd="~/receitas">$ git commit -m "Primeiro commit"
+[main (root-commit) fe996fb] Primeiro commit   « o hash curto
+ 1 file changed, 1 insertion(+)
+ create mode 100644 README.md
+$ git log
+commit fe996fb8ecae7fe25026045fd46f15ca756bc19c   « o hash completo
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Primeiro commit
+$ git log --oneline
+fe996fb Primeiro commit
+</pre>
+
+<p>O <code>git log</code> mostra o hash completo, com 40 caracteres. O <code>git commit</code> e o <code>git log --oneline</code> mostram só o começo, <code>fe996fb</code>: o <strong>hash curto</strong> (ou abreviado). Ele tem 7 caracteres no começo de um projeto e o Git o aumenta sozinho quando o repositório cresce tanto que 7 caracteres já não bastam para distinguir os objetos.</p>
+
+<p>Para qualquer comando que pede um commit, os dois servem, e maiúsculas e minúsculas também (<code>FE996FB</code> funciona). Também dá para pedir o hash diretamente:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git rev-parse HEAD
+fe996fb8ecae7fe25026045fd46f15ca756bc19c
+$ git rev-parse --short HEAD
+fe996fb
+$ git log --oneline --abbrev=4
+fe99 Primeiro commit
+$ git log --format='%H %s'
+fe996fb8ecae7fe25026045fd46f15ca756bc19c Primeiro commit
+</pre>
+
+<dl class="anatomy">
+  <dt>git rev-parse HEAD</dt><dd>"Traduza este nome para um hash". O <code>rev-parse</code> aceita qualquer jeito de apontar um commit (<code>HEAD</code>, <code>main</code>, <code>HEAD~1</code>, um hash curto) e devolve o hash completo. Útil em scripts.</dd>
+  <dt>--short</dt><dd>Devolve o hash curto em vez do completo.</dd>
+  <dt>--abbrev=4</dt><dd>No <code>git log</code>, abrevia com no mínimo 4 caracteres (o menor tamanho que o Git aceita).</dd>
+  <dt>--format='%H %s'</dt><dd>Um formato próprio para o log: <code>%H</code> é o hash completo, <code>%s</code> é o título da mensagem (mais em <a href="log-filtros.html">git log: Filtros e Formatos</a>).</dd>
+</dl>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit'" data-goal="ran:rev-parse,out:fe996fb8ecae7fe25026045fd46f15ca756bc19c" data-solucao="git rev-parse HEAD">
+<p class="try-task"><strong>Missão:</strong> o repositório da Ana tem o primeiro commit. Mostre o hash <strong>completo</strong> dele com <code>git rev-parse</code>. Compare com o que aparece no <code>git log --oneline</code>: o curto é o começo do completo.</p>
+</div>
+
+<hr>
+
+<h2>2. Calculando um hash: o <code>git hash-object</code></h2>
+<p>O comando <code>git hash-object</code> calcula o hash que um conteúdo teria como blob, sem precisar de commit. O README da Ana:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git hash-object README.md
+2644316531953179572e7fdf95ede19e1b33c399
+$ echo '# Receitas da Ana' | git hash-object --stdin
+2644316531953179572e7fdf95ede19e1b33c399
+</pre>
+
+<p>O mesmo hash, de dois jeitos: lendo o arquivo, ou lendo o texto pela entrada padrão (<code>--stdin</code>, com o <code>|</code>; veja <a href="terminal-basico.html">O Mínimo de Terminal</a>). Para o Git, o que importa é o <strong>conteúdo</strong>, não o nome do arquivo. Agora, mudando quase nada:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo '# Receitas da ana' | git hash-object --stdin
+235cc22c23c6241506c8a2a6239232ead6d9c707   « só o "A" virou "a"
+$ echo '# Receitas da Ana!' | git hash-object --stdin
+eb8588572260d01a2cbf6ef852a07f3476194d15   « só um "!" a mais
+</pre>
+
+<p>Uma letra minúscula ou um ponto de exclamação, e o hash muda <strong>por completo</strong>: não sobra nenhuma semelhança com <code>2644316…</code>. Isso é proposital. Com um hash assim, é impossível alterar um arquivo (ou um commit) "só um pouquinho" sem que todo mundo perceba.</p>
+
+<h3>Sem mágica: é o SHA-1 de um textinho</h3>
+<p>O Git não calcula o SHA-1 do conteúdo puro: antes, ele põe um cabeçalho com o <strong>tipo</strong> do objeto e o <strong>tamanho</strong> em bytes, separado por um caractere nulo (<code>\0</code>). O comando <code>sha1sum</code>, que existe em todo Linux e não tem nada a ver com o Git, confirma:</p>
+
+<pre class="term" data-cwd="~/receitas">$ printf 'blob 18\0# Receitas da Ana\n' | sha1sum
+2644316531953179572e7fdf95ede19e1b33c399  -
+</pre>
+
+<p><code>blob</code> (o tipo), <code>18</code> (o tamanho do conteúdo, como na aula anterior), o nulo, e o conteúdo com a quebra de linha (<code>\n</code>): o mesmo <code>2644316…</code>. O hash de um commit é calculado do mesmo jeito, a partir do textinho que o <code>git cat-file</code> mostra:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git cat-file commit HEAD
+tree 2266689caa9ea60c127cd9b491dbe117f9699670
+author Ana Souza &lt;ana@exemplo.com&gt; 1792071000 -0300
+committer Ana Souza &lt;ana@exemplo.com&gt; 1792071000 -0300
+
+Primeiro commit
+$ git cat-file commit HEAD | wc -c
+170
+$ (printf 'commit 170\0'; git cat-file commit HEAD) | sha1sum
+fe996fb8ecae7fe25026045fd46f15ca756bc19c  -
+</pre>
+
+<p>O commit tem 170 bytes (o <code>wc -c</code> conta), e o SHA-1 de <code>commit 170</code> + nulo + o texto do commit é exatamente <code>fe996fb8…</code>, o hash do primeiro commit da Ana. Não precisa decorar nada disso; o importante é entender <strong>o que entra</strong> no hash de um commit:</p>
+<ul>
+  <li>a <strong>tree</strong> (que depende do conteúdo e do nome de todos os arquivos);</li>
+  <li>o <strong>pai</strong> (o hash do commit anterior, que por sua vez depende do pai dele, e assim até o primeiro commit);</li>
+  <li>o <strong>autor</strong> e o <strong>committer</strong>, com nome, e-mail, data e hora;</li>
+  <li>a <strong>mensagem</strong>.</li>
+</ul>
+
+<hr>
+
+<h2>3. Por que os hashes deste guia são iguais aos seus</h2>
+<p>Se o hash depende só do conteúdo, dois commits com <strong>exatamente</strong> o mesmo conteúdo têm o mesmo hash, em qualquer computador. Normalmente isso nunca acontece, porque a data e a hora (com os segundos) são diferentes. Mas no laboratório do guia e no terminal do guia, o nome, o e-mail e a data são fixos (Ana Souza, <code>ana@exemplo.com</code>, 15/10/2026 10:30). Por isso, o primeiro commit do README sai <code>fe996fb</code> nesta aula, na aula <a href="como-git-guarda.html">Como o Git Guarda as Coisas</a> e em todas as outras.</p>
+<p>Basta mudar a hora em um minuto para o hash mudar. A Ana refez o commit com outra hora de commit (a variável <code>GIT_COMMITTER_DATE</code> diz ao Git que data usar):</p>
+
+<pre class="term" data-cwd="~/receitas">$ GIT_COMMITTER_DATE='2026-10-15T10:31:00-03:00' git commit --amend --no-edit
+[main c2219b0] Primeiro commit
+ Date: Thu Oct 15 10:30:00 2026 -0300
+ 1 file changed, 1 insertion(+)
+ create mode 100644 README.md
+$ git cat-file -p HEAD
+tree 2266689caa9ea60c127cd9b491dbe117f9699670
+author Ana Souza &lt;ana@exemplo.com&gt; 1792071000 -0300
+committer Ana Souza &lt;ana@exemplo.com&gt; 1792071060 -0300   « 60 segundos depois
+
+Primeiro commit
+</pre>
+
+<p>Mesma tree, mesmo autor, mesma mensagem; só o <code>committer</code> está 60 segundos depois (<code>1792071060</code>). Resultado: <code>c2219b0</code>, um hash totalmente diferente. É por isso que, no seu computador, com o seu nome e o seu relógio, os hashes saem diferentes dos do guia, e é por isso que o <a href="commit-amend.html">--amend</a> sempre gera um hash novo. (Depois do teste, a Ana voltou ao commit original com <code>git reset -q --hard fe996fb</code>; veja <a href="reset-modos.html">os modos do reset</a>.)</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit'" data-goal="ran:hash-object,out:235cc22c23c6241506c8a2a6239232ead6d9c707" data-solucao="echo '# Receitas da ana' | git hash-object --stdin">
+<p class="try-task"><strong>Missão:</strong> calcule com <code>git hash-object --stdin</code> o hash do texto <code># Receitas da ana</code> (com "ana" minúsculo) e veja como ele não tem nada a ver com o hash do README (<code>2644316…</code>). Dica: <code>echo 'texto' | git hash-object --stdin</code>.</p>
+</div>
+
+<hr>
+
+<h2>4. Quantos caracteres digitar?</h2>
+<p>Você pode digitar o hash inteiro, o curto, ou ainda menos: o Git aceita o começo do hash a partir de <strong>4</strong> caracteres, desde que só um objeto comece assim.</p>
+
+<pre class="term" data-cwd="~/receitas">$ git show --stat fe99
+commit fe996fb8ecae7fe25026045fd46f15ca756bc19c
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Primeiro commit
+
+ README.md | 1 +
+ 1 file changed, 1 insertion(+)
+$ git show --stat fe9
+fatal: ambiguous argument 'fe9': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git &lt;command&gt; [&lt;revision&gt;...] -- [&lt;file&gt;...]'
+</pre>
+
+<p>Com 4 caracteres (<code>fe99</code>), funcionou. Com 3 (<code>fe9</code>), o Git nem tenta procurar um hash: acha que pode ser o nome de um arquivo ou de um branch, não encontra nenhum, e reclama de "argumento ambíguo". Na prática, use os 7 do <code>git log --oneline</code>: em projetos pequenos e médios, eles bastam; num projeto enorme, o próprio Git passa a mostrar mais caracteres.</p>
+
+<hr>
+
+<h2>5. SHA-1 e SHA-256</h2>
+<p>O SHA-1 foi criado em 1995 e, em 2017, pesquisadores conseguiram fabricar de propósito dois arquivos diferentes com o mesmo SHA-1. O Git reagiu de dois jeitos: passou a usar uma versão "endurecida" do SHA-1, que detecta esse tipo de ataque, e criou o suporte a <strong>SHA-256</strong>, uma receita mais forte, com hashes de 64 caracteres. Por enquanto, o padrão continua sendo o SHA-1, e é ele que os serviços como o GitHub usam. Dá para ver qual um repositório usa, e criar um SHA-256 para experimentar:</p>
+
+<pre class="term" data-cwd="~">$ cd receitas
+$ git rev-parse --show-object-format
+sha1
+$ cd ..
+$ mkdir receitas2 &amp;&amp; cd receitas2
+$ git init -q --object-format=sha256
+$ echo '# Receitas da Ana' &gt; README.md
+$ git add README.md
+$ git commit -q -m "Primeiro commit"
+$ git log --oneline
+2220c93 Primeiro commit
+$ git rev-parse HEAD
+2220c93091922ec2bbc6bc8e7d52a58e59153aebcdf239d31a7d5f826603112e
+$ git rev-parse --show-object-format
+sha256
+</pre>
+
+<p>O mesmo commit, com o mesmo conteúdo, a mesma autora e a mesma data, ganhou outro hash, agora com 64 caracteres. O hash curto continua com 7. Para o dia a dia, nada muda: você só vai notar hashes mais compridos. Neste guia, todos os repositórios são SHA-1, o padrão.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Hash digitado errado</strong>
+<pre class="term" data-cwd="~/receitas">$ git show --stat fe996fc
+fatal: ambiguous argument 'fe996fc': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git &lt;command&gt; [&lt;revision&gt;...] -- [&lt;file&gt;...]'
+</pre>
+<p>Uma letra trocada (<code>c</code> no lugar do <code>b</code>) e o Git não encontra nada: não há "hash parecido" para o Git, só igual ou diferente. A mensagem é a mesma do hash curto demais: "argumento ambíguo, revisão desconhecida ou caminho fora da árvore de trabalho". <strong>Como resolver:</strong> copie e cole o hash do <code>git log --oneline</code> em vez de digitar.</p>
+</div>
+
+<div class="cenario">
+<strong>Hash curto ambíguo</strong>
+<p>Para provocar este erro, a Ana guardou 400 blobs de teste (os textos <code>receita 1</code> a <code>receita 400</code>, com <code>git hash-object -w</code>) num repositório vazio. Dois deles saíram começando com <code>efd9</code>:</p>
+<pre class="term" data-cwd="~/muitos">$ git cat-file -p efd9
+error: short object ID efd9 is ambiguous
+hint: The candidates are:
+hint:   efd94d7 blob
+hint:   efd9c5e blob
+fatal: Not a valid object name efd9
+</pre>
+<p>"O ID curto de objeto <code>efd9</code> é ambíguo. Os candidatos são: …". O Git não escolhe por você: mostra os objetos que começam assim, com o tipo de cada um. <strong>Como resolver:</strong> digite mais caracteres (<code>efd94d7</code>). É por isso que o Git usa 7 caracteres no hash curto, e não 4.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git log</code></td><td>Mostra o hash completo de cada commit</td></tr>
+<tr><td><code>git log --oneline</code></td><td>Mostra o hash curto (7 caracteres, ou mais em projetos grandes)</td></tr>
+<tr><td><code>git log --oneline --abbrev=N</code></td><td>Hash curto com no mínimo N caracteres</td></tr>
+<tr><td><code>git rev-parse HEAD</code></td><td>O hash completo do commit atual (ou de qualquer nome de commit)</td></tr>
+<tr><td><code>git rev-parse --short HEAD</code></td><td>O hash curto</td></tr>
+<tr><td><code>git hash-object arquivo</code></td><td>O hash que o arquivo teria como blob</td></tr>
+<tr><td><code>echo texto | git hash-object --stdin</code></td><td>O hash de um texto</td></tr>
+<tr><td><code>git rev-parse --show-object-format</code></td><td>Mostra se o repositório usa <code>sha1</code> ou <code>sha256</code></td></tr>
+<tr><td><code>git init --object-format=sha256</code></td><td>Cria um repositório com hashes SHA-256</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Os números</h3>
+<p>Complete: um hash SHA-1 tem <input data-answer="40" aria-label="caracteres do hash completo"> caracteres, e o Git aceita um hash abreviado a partir de <input data-answer="4" aria-label="mínimo de caracteres"> caracteres.</p>
+</div>
+
+<div class="exercise">
+<h3>2. O comando</h3>
+<p>Complete para mostrar o hash completo do commit atual:</p>
+<div class="ex-code">git <input data-answer="rev-parse" aria-label="subcomando"> HEAD</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. A Ana muda uma vírgula num arquivo e calcula o hash de novo. O que acontece?</p>
+<label><input type="radio" name="q3"> O hash muda só no último caractere</label>
+<label><input type="radio" name="q3"> O hash não muda: uma vírgula é pouco</label>
+<label><input type="radio" name="q3"> O hash muda por completo</label>
+<label><input type="radio" name="q3"> O Git dá erro</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. Por que o primeiro commit do README sai <code>fe996fb</code> em todas as aulas do guia?</p>
+<label><input type="radio" name="q4"> Porque o hash é sorteado sempre igual</label>
+<label><input type="radio" name="q4"> Porque o conteúdo, o nome, o e-mail e a data são sempre os mesmos</label>
+<label><input type="radio" name="q4"> Porque o Git guarda o hash num arquivo de configuração</label>
+<label><input type="radio" name="q4"> Porque todo primeiro commit tem esse hash</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. Quais destas coisas <strong>entram</strong> no cálculo do hash de um commit?</p>
+<label><input type="radio" name="q5"> A tree, o pai, o autor, o committer (com data e hora) e a mensagem</label>
+<label><input type="radio" name="q5"> Só a mensagem</label>
+<label><input type="radio" name="q5"> Só os arquivos que mudaram</label>
+<label><input type="radio" name="q5"> O nome do branch</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O hash é a impressão digital de um objeto do Git: 40 caracteres hexadecimais (SHA-1), calculados a partir do conteúdo.</li>
+  <li>O hash curto (<code>fe996fb</code>) é o começo do completo; o Git aceita a partir de 4 caracteres, se não houver ambiguidade.</li>
+  <li><code>git rev-parse</code> traduz nomes em hashes; <code>git hash-object</code> calcula o hash de um conteúdo.</li>
+  <li>O hash de um commit depende da tree, do pai, do autor, do committer (com a hora) e da mensagem: qualquer mudança gera outro hash.</li>
+  <li>Com nome, e-mail e data fixos, os hashes do guia se repetem; no seu computador, com o seu relógio, serão outros.</li>
+  <li>Repositórios novos podem usar SHA-256 (64 caracteres), mas o padrão ainda é SHA-1.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
