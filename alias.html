@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Atalhos (alias) — comandos curtos do seu jeito | Guia Git</title>
+<meta name="description" content="Aliases do Git para quem nunca usou: git config --global alias.st status, um git lg com o desenho dos branches, alias com opções, alias de shell com !, onde eles ficam no ~/.gitconfig, como listar e apagar, por que não dá para trocar um comando do Git e os erros reais.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Atalhos (alias)</span></h1>
+
+<p class="intro">Depois de algumas semanas usando Git, você vai perceber que digita as mesmas coisas o dia inteiro: <code>git status</code>, <code>git log --oneline --graph --all</code>… Um <strong>alias</strong> (em inglês, "apelido") é um <strong>nome curto</strong> que você inventa para um comando do Git. Você ensina uma vez, e daí em diante <code>git st</code> faz o mesmo que <code>git status</code>.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como criar um alias com <code>git config --global alias.NOME</code>.</li>
+  <li>Como guardar um comando comprido, com opções, num nome curto (o famoso <code>git lg</code>).</li>
+  <li>Onde os aliases ficam guardados, como listá-los e apagá-los.</li>
+  <li>Como chamar outros programas com um alias que começa com <code>!</code>.</li>
+  <li>O que acontece quando você digita um alias errado, ou tenta trocar um comando do próprio Git.</li>
+</ul>
+</div>
+
+<p>Todas as saídas desta aula vieram do Git real do Ubuntu na máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português.</p>
+
+<hr>
+
+<h2>A ideia: os contatos do celular</h2>
+<p>Ninguém guarda o telefone da mãe como <code>+55 11 98765-4321</code> e digita tudo toda vez: a gente salva o contato como "Mãe" e toca no nome. O número continua o mesmo; você só ganhou um <strong>nome fácil</strong> para ele.</p>
+<p>Um alias do Git é isso: <code>st</code> é o "contato", e <code>status</code> é o "número". Quando você digita <code>git st</code>, o Git procura na lista de aliases, acha <code>st = status</code> e roda <code>git status</code>. Nada muda no repositório: é só um atalho de digitação.</p>
+
+<hr>
+
+<h2>1. O primeiro alias: <code>git st</code></h2>
+
+<p>A Ana está no repositório do site de receitas, com o <code>bolo.txt</code> modificado. Ela criou o alias e usou na mesma hora:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git config --global alias.st status
+$ git st
+No ramo main
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   bolo.txt
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+</pre>
+<p>(Algumas linhas do <code>git status</code> saem em inglês no Git 2.53 do Ubuntu, mesmo com o sistema em português, porque a tradução não está completa: "<em>Changes not staged for commit</em>" é "mudanças fora da área de preparo", e "<em>modified</em>" é "modificado".)</p>
+
+<dl class="anatomy">
+  <dt>git config</dt><dd>O comando que guarda configurações do Git (o mesmo de <a href="git-config.html">git config</a>, onde a Ana configurou o nome e o e-mail).</dd>
+  <dt>--global</dt><dd>Guarda para <strong>todos</strong> os repositórios da Ana, no arquivo <code>~/.gitconfig</code>. Sem ele, o alias valeria só no repositório atual.</dd>
+  <dt>alias.st</dt><dd>O nome da configuração: a seção <code>alias</code> e, depois do ponto, o nome do atalho, <code>st</code>.</dd>
+  <dt>status</dt><dd>O que o atalho quer dizer: <strong>o comando do Git sem a palavra <code>git</code></strong>.</dd>
+</dl>
+
+<p>O <code>git config</code> não responde nada quando dá certo. Logo depois, <code>git st</code> mostrou exatamente o que o <code>git status</code> mostraria: o branch, e o <code>bolo.txt</code> modificado, com as mesmas dicas.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit'" data-goal="ran:git config.*alias\.st\b,ran:^\s*git st\b" data-solucao="git config --global alias.st status;;git st">
+<p class="try-task"><strong>Missão:</strong> crie o alias <code>st</code> para o <code>status</code> e use-o, digitando <code>git st</code>.</p>
+</div>
+
+<hr>
+
+<h2>2. Atalho com opções: o <code>git lg</code></h2>
+<p>O ganho de verdade aparece nos comandos compridos. Para ver o histórico com o desenho dos branches (veja <a href="log-graph.html">log --graph</a>), a Ana digitava <code>git log --oneline --graph --all</code>. Agora:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git config --global alias.lg 'log --oneline --graph --all'
+$ git lg
+* 7d39e7d Adiciona pudim
+* 6743c4a Adiciona bolo de cenoura
+* fe996fb Primeiro commit
+</pre>
+<p>Três palavras viraram duas letras. O <code>Adiciona pudim</code> está no branch <code>pudim</code>, um passo à frente do <code>main</code>; por isso o desenho ainda é uma linha reta (os galhos aparecem na seção 4, quando o <code>main</code> andar). Outro atalho comum é o <code>ultimo</code>, para ver só o último commit:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git config --global alias.ultimo 'log -1 HEAD'
+$ git ultimo
+commit 6743c4aecca1d7a877b0ea2afc03a524ca18703f
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Adiciona bolo de cenoura
+</pre>
+
+<p>Quando o alias tem mais de uma palavra, ponha entre aspas (<code>'log --oneline --graph --all'</code>): sem elas, o terminal entregaria só <code>log</code> ao <code>git config</code> e o resto viraria outros argumentos.</p>
+
+<h3>Você ainda pode acrescentar opções</h3>
+<p>O que você escreve depois do alias é colado no fim do comando. <code>git lg -2</code> vira <code>git log --oneline --graph --all -2</code>; um alias para desfazer o <code>add</code> (veja <a href="restore-staged.html">Tirando da Área de Preparo</a>) recebe o nome do arquivo no fim:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git config --global alias.despreparar 'restore --staged'
+$ git add bolo.txt
+$ git st -s
+M  bolo.txt                « M na 1ª coluna: preparado
+$ git despreparar bolo.txt
+$ git st -s
+ M bolo.txt                « M na 2ª coluna: fora da área de preparo
+</pre>
+<p>O <code>git st -s</code> virou <code>git status -s</code> (o status curto), e o <code>git despreparar bolo.txt</code> virou <code>git restore --staged bolo.txt</code>.</p>
+
+<p>Os aliases podem ter acento e hífen, mas evite acento: nem todo teclado e nem todo terminal ajudam.</p>
+
+<hr>
+
+<h2>3. Onde os aliases ficam guardados</h2>
+<p>Com <code>--global</code>, tudo vai para o arquivo <code>~/.gitconfig</code>, na pasta pessoal da Ana. Para ver só os aliases, peça as configurações que começam com <code>alias.</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git config --global --get-regexp '^alias\.'
+alias.st status
+alias.lg log --oneline --graph --all
+alias.ultimo log -1 HEAD
+alias.despreparar restore --staged
+$ cat ~/.gitconfig
+[user]
+	name = Ana Souza
+	email = ana@exemplo.com
+[init]
+	defaultBranch = main
+[core]
+	editor = nano
+[alias]                                  « a seção dos atalhos
+	st = status
+	lg = log --oneline --graph --all
+	ultimo = log -1 HEAD
+	despreparar = restore --staged
+</pre>
+<p>Para ver um alias só, pergunte pelo nome: <code>git config --global alias.lg</code> responde <code>log --oneline --graph --all</code>. Se o alias não existe, a resposta é <strong>nada</strong> (e o código de saída é 1).</p>
+
+<div class="note">
+<strong>A forma nova do <code>git config</code> <span class="versao">git 2.46+</span></strong>
+<p>Nos Gits mais novos, o <code>git config</code> ganhou subcomandos com nome: <code>git config set</code>, <code>get</code>, <code>list</code> e <code>unset</code>. Os dois jeitos funcionam; a forma antiga, que você vê nos tutoriais, continua valendo:</p>
+<pre class="term" data-cwd="~/receitas">$ git config set --global alias.br branch
+$ git br
+* main
+  pudim
+$ git config get alias.lg
+log --oneline --graph --all
+</pre>
+</div>
+
+<p>O arquivo é texto comum, numa seção <code>[alias]</code>. Dá para editá-lo direto, com <code>git config --global --edit</code> ou com qualquer editor; o resultado é o mesmo que usar o <code>git config</code>.</p>
+
+<h3>Perguntando ao Git o que um alias faz</h3>
+
+<pre class="term" data-cwd="~/receitas">$ git help st
+'st' is aliased to 'status'
+</pre>
+<p>"<code>st</code> é um apelido de <code>status</code>" (essa mensagem também ainda sai em inglês).</p>
+
+<p>O <code>git help</code> (veja <a href="git-help.html">git help</a>) reconhece o alias e conta o que ele quer dizer, em vez de abrir um manual.</p>
+
+<hr>
+
+<h2>4. Alias que roda outros programas: o <code>!</code></h2>
+<p>Normalmente o alias é um <strong>comando do Git</strong>. Se ele começar com <code>!</code>, o Git entrega o resto para o <strong>shell</strong>, e aí vale qualquer coisa: outros programas, vários comandos, <code>$(…)</code>.</p>
+
+<pre class="term" data-cwd="~/receitas">$ git config --global alias.oi '!echo "Olá, $(git config user.name)! Você está no branch $(git branch --show-current)."'
+$ git oi
+Olá, Ana Souza! Você está no branch main.
+</pre>
+<p>O alias inteiro está entre aspas <strong>simples</strong>, para o terminal não trocar o <code>$(…)</code> na hora de criar o alias: a troca acontece depois, toda vez que a Ana roda <code>git oi</code>.</p>
+
+<p>Com uma pequena função de shell, o alias recebe argumentos onde você quiser (<code>$1</code>, <code>$2</code>…). Este faz o <code>add</code> e o <code>commit</code> de um arquivo de uma vez:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git config --global alias.adiciona-e-commita '!f() { git add "$1" &amp;&amp; git commit -m "$2"; }; f'
+$ echo 'Bolo de chocolate' &gt; chocolate.txt
+$ git adiciona-e-commita chocolate.txt 'Adiciona bolo de chocolate'
+[main 05f49f7] Adiciona bolo de chocolate
+ 1 file changed, 1 insertion(+)
+ create mode 100644 chocolate.txt
+$ git lg
+* 05f49f7 Adiciona bolo de chocolate     « o main andou...
+| * 7d39e7d Adiciona pudim               « ...e o pudim virou um galho
+|/
+* 6743c4a Adiciona bolo de cenoura
+* fe996fb Primeiro commit
+</pre>
+
+<dl class="anatomy">
+  <dt>!</dt><dd>"O que vem depois é um comando de shell, não do Git."</dd>
+  <dt>f() { … }; f</dt><dd>Cria uma função chamada <code>f</code> e a chama em seguida. Os argumentos do alias (<code>chocolate.txt</code> e a mensagem) chegam na função como <code>$1</code> e <code>$2</code>.</dd>
+  <dt>git add "$1" &amp;&amp; git commit -m "$2"</dt><dd>Prepara o arquivo e, se deu certo (<code>&amp;&amp;</code>), commita com a mensagem.</dd>
+</dl>
+
+<div class="warning">
+<strong>Atalho bom não esconde o que faz</strong>
+<p>Um alias que junta <code>add</code> e <code>commit</code> é prático, mas pula a hora de olhar o <code>git status</code>. Para quem está aprendendo, prefira aliases que só <strong>encurtam</strong> (<code>st</code>, <code>lg</code>) e deixe os passos importantes à vista.</p>
+</div>
+
+<hr>
+
+<h2>5. Apagando um alias</h2>
+
+<pre class="term" data-cwd="~/receitas">$ git config --global --unset alias.ultimo
+$ git ultimo
+git: 'ultimo' não é um comando git. Veja 'git --help'.
+
+The most similar command is
+	quiltimport
+</pre>
+
+<p>Depois do <code>--unset</code>, o nome deixa de existir, e o Git reclama como de qualquer comando desconhecido: "<code>ultimo</code> não é um comando git". A sugestão, <code>quiltimport</code> ("o comando mais parecido é…"), é só o nome de comando do Git que mais se parece com <code>ultimo</code>, e não tem nada a ver com o que a Ana queria.</p>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer a mesma coisa</h2>
+<p>Também dá para criar o atalho no <strong>Bash</strong>, em vez de no Git (veja a aula de alias do Guia Bash, em <a href="https://wallysondevs.github.io/guia-bash/alias.html">wallysondevs.github.io/guia-bash/alias.html</a>): <code>alias gs='git status'</code>, guardado no <code>~/.bashrc</code>. A diferença é que o alias do Bash é um comando novo (<code>gs</code>, sem <code>git</code> na frente) e só existe naquele shell; o alias do Git vale em qualquer terminal e em qualquer programa que chame o Git.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Qual usar</th></tr>
+<tr><td>Encurtar um comando do Git</td><td><code>git config --global alias.st status</code></td></tr>
+<tr><td>Guardar um comando com várias opções</td><td><code>git config --global alias.lg 'log --oneline --graph --all'</code></td></tr>
+<tr><td>Vários comandos, outros programas, argumentos no meio</td><td>Alias com <code>!</code> (e uma função <code>f() { …; }; f</code>)</td></tr>
+<tr><td>Um atalho só deste repositório</td><td><code>git config alias.NOME …</code> (sem <code>--global</code>; fica em <code>.git/config</code>)</td></tr>
+<tr><td>Ver ou mudar vários de uma vez</td><td><code>git config --global --edit</code>, seção <code>[alias]</code></td></tr>
+<tr><td>Um comando do terminal sem o <code>git</code> na frente</td><td>Alias do Bash: <code>alias gs='git status'</code> no <code>~/.bashrc</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Digitou o alias errado</strong>
+<pre class="term" data-cwd="~/receitas">$ git stt
+git: 'stt' não é um comando git. Veja 'git --help'.
+
+The most similar commands are
+	st
+	status
+$ git sts
+git: 'sts' não é um comando git. Veja 'git --help'.
+
+The most similar command is
+	stash
+</pre>
+<p><strong>O que aconteceu:</strong> <code>stt</code> e <code>sts</code> não são comandos nem aliases. O Git procura nomes parecidos, <strong>inclusive entre os seus aliases</strong>, e sugere ("<em>The most similar commands are</em>" = "os comandos mais parecidos são"). Cuidado com a sugestão: para <code>sts</code> ele sugeriu <code>stash</code>, que faz uma coisa bem diferente (veja <a href="git-stash.html">git stash</a>). <strong>Como resolver:</strong> digite o nome certo. Se você erra sempre o mesmo, a aula <a href="config-util.html">Configurações Úteis</a> mostra o <code>help.autocorrect</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Tentou trocar um comando do próprio Git</strong>
+<pre class="term" data-cwd="~/receitas">$ git config --global alias.status 'status -s'
+$ git status
+No ramo main
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   bolo.txt
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+</pre>
+<p><strong>O que aconteceu:</strong> um alias <strong>não</strong> pode ter o nome de um comando que já existe no Git. O Git aceitou a configuração sem reclamar, mas a ignora: <code>git status</code> continua sendo o <code>status</code> de sempre. (É de propósito: assim, um alias nunca muda o comportamento de um comando que você conhece.) <strong>Como resolver:</strong> use outro nome (<code>git s</code>, <code>git ss</code>) e apague o que não funciona com <code>git config --global --unset alias.status</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Esqueceu as aspas</strong>
+<pre class="term" data-cwd="~/receitas">$ git config --global alias.lg3 log --oneline --graph
+error: no action specified
+$ git config --global alias.lg4 log --oneline
+$ git config --global alias.lg4
+log
+</pre>
+<p><strong>O que aconteceu:</strong> sem aspas, o terminal entrega ao <code>git config</code> várias palavras soltas. Com três, ele não entendeu o pedido ("<em>no action specified</em>" = "nenhuma ação indicada") e não guardou nada. Com duas, foi pior: ele <strong>não reclamou</strong>, mas guardou só <code>log</code> (o <code>--oneline</code> foi entendido como outra coisa). <strong>Como confirmar:</strong> <code>git config --global alias.lg4</code> mostra o que ficou guardado. <strong>Como resolver:</strong> rode de novo com o comando inteiro entre aspas simples: <code>git config --global alias.lg4 'log --oneline'</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git config --global alias.NOME 'comando opções'</code></td><td>Cria (ou troca) um alias para todos os repositórios</td></tr>
+<tr><td><code>git config --global alias.NOME '!comando de shell'</code></td><td>Alias que roda no shell</td></tr>
+<tr><td><code>git config --global alias.NOME</code></td><td>Mostra o que o alias faz</td></tr>
+<tr><td><code>git config --global --get-regexp '^alias\.'</code></td><td>Lista todos os aliases</td></tr>
+<tr><td><code>git help NOME</code></td><td>Diz de que comando <code>NOME</code> é apelido</td></tr>
+<tr><td><code>git config --global --unset alias.NOME</code></td><td>Apaga o alias</td></tr>
+<tr><td><code>git config --global --edit</code></td><td>Abre o <code>~/.gitconfig</code> no editor</td></tr>
+</table>
+</div>
+
+<p>Aliases populares, para você se inspirar (crie só os que for usar): <code>st = status</code>, <code>sw = switch</code>, <code>br = branch</code>, <code>ci = commit</code>, <code>lg = log --oneline --graph --all</code>, <code>ultimo = log -1 HEAD</code>, <code>despreparar = restore --staged</code>.</p>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Criar um atalho</h3>
+<p>Complete para que <code>git sw</code> faça o mesmo que <code>git switch</code> em todos os repositórios:</p>
+<div class="ex-code">git config --global <input data-answer="alias.sw" aria-label="nome da configuração"> switch</div>
+</div>
+
+<div class="exercise">
+<h3>2. Atalho com opções</h3>
+<p>Complete para criar o <code>git ultimo</code>, que mostra só o último commit:</p>
+<div class="ex-code">git config --global alias.ultimo <input data-answer="'log -1 HEAD'" aria-label="comando entre aspas"></div>
+</div>
+
+<div class="exercise">
+<h3>3. Apagar</h3>
+<p>Complete para apagar o alias <code>lg</code>:</p>
+<div class="ex-code">git config --global <input data-answer="--unset" aria-label="opção"> alias.lg</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. A Ana criou <code>git config --global alias.log 'log --oneline'</code>. O que acontece quando ela digita <code>git log</code>?</p>
+<label><input type="radio" name="q4"> Sai o log em uma linha por commit.</label>
+<label><input type="radio" name="q4"> O Git mostra um erro de alias inválido.</label>
+<label><input type="radio" name="q4"> Sai o <code>git log</code> normal: um alias não substitui um comando que já existe.</label>
+<label><input type="radio" name="q4"> O Git entra num laço infinito.</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">5. Onde fica guardado um alias criado com <code>--global</code>?</p>
+<label><input type="radio" name="q5"> No <code>.git/config</code> do repositório atual.</label>
+<label><input type="radio" name="q5"> No arquivo <code>~/.gitconfig</code>, na pasta pessoal.</label>
+<label><input type="radio" name="q5"> No <code>~/.bashrc</code>.</label>
+<label><input type="radio" name="q5"> No GitHub.</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">6. Para que serve o <code>!</code> no começo de um alias?</p>
+<label><input type="radio" name="q6"> Para o Git entregar o comando ao shell, e não tratá-lo como um comando do Git.</label>
+<label><input type="radio" name="q6"> Para o alias substituir um comando do Git.</label>
+<label><input type="radio" name="q6"> Para o alias valer só no repositório atual.</label>
+<label><input type="radio" name="q6"> Para negar o comando, como no Bash.</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Alias = nome curto para um comando do Git: <code>git config --global alias.st status</code> e depois <code>git st</code>.</li>
+  <li>Comando com opções vai entre aspas; o que você digita depois do alias é colado no fim.</li>
+  <li>Com <code>--global</code>, os aliases ficam na seção <code>[alias]</code> do <code>~/.gitconfig</code>; liste com <code>--get-regexp '^alias\.'</code>, apague com <code>--unset</code>.</li>
+  <li>Começando com <code>!</code>, o alias roda no shell.</li>
+  <li>Um alias nunca substitui um comando do Git que já existe.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
