@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Recuperar Commits — reflog, branch apagado e fsck | Guia Git</title>
+<meta name="description" content="Como recuperar commits perdidos no Git: depois de um reset --hard, de apagar um branch com branch -D, de um commit --amend ou de um stash descartado, usando git reflog, HEAD@{n}, git branch resgate e git fsck, com saídas reais e missões no terminal do guia.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Recuperando Commits Perdidos</span></h1>
+
+<p class="intro">A Ana rodou um <code>git reset --hard</code> no lugar errado e dois commits do site de receitas sumiram do <code>git log</code>. Em outro dia, apagou um branch com <code>-D</code> achando que já tinha juntado tudo. Respire: <strong>quase nada que foi commitado se perde de verdade no Git</strong>. Os commits continuam guardados por semanas; o que se perdeu foi só o "caminho" até eles. Esta aula é o kit de resgate: como achar esse caminho de volta em cada situação.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Por que um commit "sumido" quase sempre ainda existe, e por quanto tempo.</li>
+  <li>A receita de resgate: <strong>achar o hash</strong> (com o <code>git reflog</code>) e <strong>pendurar uma etiqueta</strong> nele (um branch).</li>
+  <li>Como recuperar depois de um <code>reset --hard</code>, de um <code>branch -D</code> e de um <code>commit --amend</code>.</li>
+  <li>Como achar até um <code>stash</code> descartado, com <code>git fsck</code>.</li>
+  <li>O que o Git <strong>não</strong> consegue recuperar.</li>
+</ul>
+</div>
+
+<hr>
+
+<h2>A ideia: a foto não sumiu, sumiu a etiqueta</h2>
+<p>Lembre de <a href="como-git-guarda.html">como o Git guarda as coisas</a>: cada commit é uma fotografia guardada numa caixa, e os <a href="branches.html">branches</a> são <strong>etiquetas</strong> coladas em algumas fotos. O <code>git log</code> começa na etiqueta e vai seguindo as fotos para trás.</p>
+<p>Quando você faz um <code>reset --hard</code> ou apaga um branch, o Git <strong>não joga a foto fora</strong>: ele só descola a etiqueta. A foto fica no fundo da caixa, sem ninguém apontando para ela. Para o <code>git log</code>, ela "sumiu". Para recuperar, basta descobrir o número da foto (o <a href="hash.html">hash</a>) e colar uma etiqueta nova nela.</p>
+<p>E quem lembra o número da foto? O <a href="git-reflog.html">reflog</a>, o diário do HEAD: cada vez que o HEAD ou um branch se move (commit, reset, switch, merge, amend…), o Git anota de onde para onde ele foi.</p>
+
+<div class="note">
+<strong>Por quanto tempo dá para recuperar?</strong>
+<p>Pela documentação oficial do <code>git gc</code> (<a href="https://git-scm.com/docs/git-gc">git-scm.com/docs/git-gc</a>), as anotações do reflog duram, por padrão, <strong>90 dias</strong>, ou <strong>30 dias</strong> quando apontam para commits que nenhum branch alcança mais. Depois disso, a faxina automática (<code>git gc</code>) pode apagar os commits sem etiqueta. Na prática: <strong>resgate logo</strong>, e não rode faxinas "para liberar espaço" enquanto procura algo.</p>
+</div>
+
+<hr>
+
+<h2>Caso 1: o <code>reset --hard</code> levou dois commits</h2>
+<p>O repositório da Ana tinha três commits. Ela queria descartar uma mudança no arquivo, mas digitou <code>HEAD~2</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+42fd4f8 Adiciona pudim
+095ebcf Adiciona bolo de cenoura
+0cea70a Cria o README
+$ git reset --hard HEAD~2
+HEAD is now at 0cea70a Cria o README             « "o HEAD agora está em 0cea70a"
+$ git log --oneline
+0cea70a Cria o README                            « cadê o bolo e o pudim?!
+$ ls
+README.md</pre>
+
+<p>O <code>git log</code> mostra só o primeiro commit, e os arquivos <code>bolo.txt</code> e <code>pudim.txt</code> sumiram da pasta. Agora, o diário:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git reflog
+0cea70a HEAD@{0}: reset: moving to HEAD~2        « o movimento errado
+42fd4f8 HEAD@{1}: commit: Adiciona pudim         « onde a Ana estava antes!
+095ebcf HEAD@{2}: commit: Adiciona bolo de cenoura
+0cea70a HEAD@{3}: commit (initial): Cria o README</pre>
+<p>(As descrições do reflog, como <code>reset: moving to</code>, "reset: movendo para", são sempre em inglês, mesmo com o sistema em português.)</p>
+
+<p>Lendo de cima para baixo (do mais novo para o mais antigo):</p>
+<ul>
+  <li><code>HEAD@{0}</code> é onde o HEAD está <strong>agora</strong>; a anotação diz que ele chegou lá por um <code>reset: moving to HEAD~2</code>.</li>
+  <li><code>HEAD@{1}</code> é onde ele estava <strong>um movimento antes</strong>: o commit "Adiciona pudim". É exatamente o que a Ana perdeu.</li>
+  <li>As linhas de baixo são os commits, na ordem em que foram feitos.</li>
+</ul>
+
+<h3>Resgatando: duas formas</h3>
+<p><strong>Forma segura:</strong> pendure uma etiqueta nova (um branch) no commit perdido. Nada na sua pasta muda, e você olha com calma:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git branch resgate HEAD@{1}                    « nenhuma mensagem = deu certo
+$ git log --oneline resgate
+42fd4f8 Adiciona pudim                           « os commits voltaram a ter etiqueta
+095ebcf Adiciona bolo de cenoura
+0cea70a Cria o README</pre>
+<p>Pronto: os commits estão salvos no branch <code>resgate</code>. Agora você pode olhar com <a href="git-show.html">git show</a>, trazer só um arquivo, ou juntar com <a href="git-merge.html">git merge resgate</a>.</p>
+
+<p><strong>Forma direta:</strong> se você tem certeza de que quer voltar exatamente para onde estava, mova o <code>main</code> de volta com o próprio <code>reset --hard</code>, apontando para a entrada do diário:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main
+nothing to commit, working tree clean           « nada a perder: pode seguir
+$ git reset --hard HEAD@{1}
+HEAD is now at 42fd4f8 Adiciona pudim
+$ git log --oneline
+42fd4f8 Adiciona pudim
+095ebcf Adiciona bolo de cenoura
+0cea70a Cria o README
+$ ls
+README.md  bolo.txt  pudim.txt                   « os arquivos voltaram</pre>
+<p>Como o branch <code>resgate</code> já não é necessário, a Ana o apagou com <code>git branch -d resgate</code> (o Git respondeu <code>Deleted branch resgate (was 42fd4f8).</code>, "branch resgate apagado, era 42fd4f8").</p>
+
+<dl class="anatomy">
+  <dt>git reset --hard</dt><dd>Move o branch atual para o commit indicado e deixa a pasta igual a ele (veja <a href="reset-modos.html">os modos do reset</a>).</dd>
+  <dt>HEAD@{1}</dt><dd>"Onde o HEAD estava um movimento atrás", segundo o reflog. Você também pode usar o hash que aparece na linha (os 7 caracteres do começo).</dd>
+</dl>
+
+<div class="warning">
+<strong>Cuidado: o <code>reset --hard</code> apaga o que não foi commitado</strong>
+<p>Antes de qualquer <code>reset --hard</code> de resgate, rode <code>git status</code>. Se houver mudanças não commitadas, elas se perdem de verdade (essas não vão para o reflog). Na dúvida, prefira a forma segura, com <code>git branch</code>.</p>
+</div>
+
+<div class="tip">
+<strong>Os números mudam a cada movimento</strong>
+<p><code>HEAD@{1}</code> é relativo: depois do resgate, o próprio resgate vira <code>HEAD@{0}</code> e todo o resto desce uma posição. Por isso, sempre rode <code>git reflog</code> de novo antes de usar um <code>HEAD@{n}</code>, ou copie o hash, que nunca muda.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona bolo de cenoura';;echo 'Pudim de leite' &gt; pudim.txt;;git add pudim.txt;;git commit -q -m 'Adiciona pudim';;git reset -q --hard HEAD~2" data-goal="commits:3,msg:pudim,limpo" data-solucao="git reflog;;git reset --hard HEAD@{1}">
+<p class="try-task"><strong>Missão:</strong> um <code>reset --hard</code> fez o <code>main</code> perder os commits do bolo e do pudim. Use o <code>git reflog</code> para achar onde o HEAD estava antes e traga o <code>main</code> de volta para lá (3 commits, o último sendo "Adiciona pudim").</p>
+</div>
+
+<hr>
+
+<h2>Caso 2: apaguei um branch com <code>-D</code></h2>
+<p>A Ana criou o branch <code>sobremesas</code>, fez um commit nele, voltou para o <code>main</code> e apagou o branch sem juntar. O <code>-d</code> minúsculo teria recusado; o <code>-D</code> maiúsculo apaga sem perguntar (veja <a href="apagar-branch.html">Renomeando e Apagando Branches</a>):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch -c sobremesas
+Switched to a new branch 'sobremesas'
+$ echo 'Mousse de maracujá' &gt; mousse.txt
+$ git add mousse.txt
+$ git commit -m 'Adiciona mousse'
+[sobremesas 0b9c470] Adiciona mousse
+ 1 file changed, 1 insertion(+)
+ create mode 100644 mousse.txt
+$ git switch main
+Switched to branch 'main'
+$ git branch -d sobremesas
+error: the branch 'sobremesas' is not fully merged                « o -d avisou!
+hint: If you are sure you want to delete it, run 'git branch -D sobremesas'
+hint: Disable this message with "git config set advice.forceDeleteBranch false"
+$ git branch -D sobremesas
+Deleted branch sobremesas (was 0b9c470).                          « a pista: o hash
+$ git branch
+* main</pre>
+<p>O <code>-d</code> recusou com <code>the branch 'sobremesas' is not fully merged</code> ("o branch não foi totalmente juntado") e a dica sugeriu o <code>-D</code>. A Ana seguiu a dica sem pensar, e o branch se foi.</p>
+
+<p>Repare na própria mensagem do Git: entre parênteses vem o hash do commit para onde o branch apontava (<code>era …</code>). O Git deixou a pista de propósito! Se a mensagem ainda está na tela, o resgate é uma linha:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git branch sobremesas 0b9c470
+$ git log --oneline sobremesas
+0b9c470 Adiciona mousse                          « o branch voltou, com o commit
+42fd4f8 Adiciona pudim
+095ebcf Adiciona bolo de cenoura
+0cea70a Cria o README</pre>
+
+<p>Se a mensagem já sumiu da tela, o reflog também guarda a pista. Logo depois de apagar o branch, as três últimas anotações eram estas (<code>-3</code> limita a três linhas):</p>
+<pre class="term" data-cwd="~/receitas">$ git reflog -3
+42fd4f8 HEAD@{0}: checkout: moving from sobremesas to main     « saiu do branch
+0b9c470 HEAD@{1}: commit: Adiciona mousse                      « a ponta do branch apagado
+42fd4f8 HEAD@{2}: checkout: moving from main to sobremesas</pre>
+<p>Procure a linha <code>checkout: moving from sobremesas to …</code> ("saindo de sobremesas para…"): o commit <strong>logo abaixo</strong> dela é a ponta do branch apagado, aqui o <code>0b9c470</code> (ou <code>HEAD@{1}</code>).</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;git switch -q -c sobremesas;;echo 'Mousse de maracujá' &gt; mousse.txt;;git add mousse.txt;;git commit -q -m 'Adiciona mousse';;git switch -q main;;git branch -q -D sobremesas" data-goal="branch:sobremesas,contem:sobremesas:mousse.txt=Mousse" data-solucao="git reflog;;git branch sobremesas HEAD@{1}">
+<p class="try-task"><strong>Missão:</strong> o branch <code>sobremesas</code> foi apagado com <code>-D</code> antes de ser juntado. Use o <code>git reflog</code> para achar o commit "Adiciona mousse" e crie o branch <code>sobremesas</code> de novo apontando para ele. Confira com <code>git log --oneline sobremesas</code>.</p>
+</div>
+
+<hr>
+
+<h2>Caso 3: o <code>--amend</code> trocou um commit que eu queria</h2>
+<p>O <a href="commit-amend.html">--amend</a> não edita o commit: ele cria um <strong>novo</strong> e move o branch para ele. O antigo fica sem etiqueta, mas o reflog o anota:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'Pudim de leite condensado' &gt; pudim.txt
+$ git commit -q -am 'Muda o pudim'
+$ git commit --amend -m 'Troca o pudim por pudim de leite condensado'
+[main e54a538] Troca o pudim por pudim de leite condensado
+ Date: Thu Oct 15 10:30:00 2026 -0300
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+$ git reflog -3
+e54a538 HEAD@{0}: commit (amend): Troca o pudim por pudim de leite condensado
+deda689 HEAD@{1}: commit: Muda o pudim             « o commit de antes do amend
+42fd4f8 HEAD@{2}: checkout: moving from sobremesas to main
+$ git show HEAD@{1} --stat --oneline
+deda689 Muda o pudim                               « ainda existe, inteiro
+ pudim.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)</pre>
+
+<p>A linha <code>commit (amend)</code> é o commit novo; a de baixo, o antigo. Para ver o conteúdo antigo sem mudar nada, use <a href="git-show.html">git show</a> com <code>HEAD@{1}</code>; para recuperá-lo, o mesmo <code>git branch nome HEAD@{1}</code> do caso 2.</p>
+
+<hr>
+
+<h2>Caso 4: descartei um stash</h2>
+<p>O <a href="git-stash.html">stash</a> também é guardado como commits. Um <code>git stash drop</code> (ou um <code>pop</code> que você desfez sem querer) não fica no reflog do HEAD, mas o Git mostra o hash ao descartar, e o <code>git fsck</code> encontra commits "pendurados", sem etiqueta nenhuma:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo '- 3 ovos' &gt;&gt; bolo.txt
+$ git stash
+Saved working directory and index state WIP on main: e54a538 Troca o pudim por pudim de leite condensado
+$ git stash drop
+Dropped refs/stash@{0} (2e8e399d650d551e3975b74d9adbf5674a03d4bb)      « o hash, de novo!
+$ git stash list
+$ git fsck --unreachable
+unreachable blob d70e7e4c64260a3d2e182ed7abe38fc98980afa2
+unreachable commit ea0090f0554c16b927307c219232fe90aa5f5862
+unreachable commit 2e8e399d650d551e3975b74d9adbf5674a03d4bb          « o stash descartado
+unreachable tree 743c0c7a63803359e227cc1c800a502ba35df18d</pre>
+<p>O <code>git stash drop</code> respondeu <code>Dropped refs/stash@{0} (2e8e399…)</code>, "descartei o stash 0", e entre parênteses veio o hash completo. Na lista do <code>fsck</code>, <code>unreachable</code> quer dizer "inalcançável": ninguém aponta para esses objetos. Há dois commits porque o stash guarda dois: um com a área de preparo (<code>ea0090f…</code>) e o stash propriamente dito (<code>2e8e399…</code>), que é o que aparece na mensagem do <code>drop</code>. O <code>blob</code> é o conteúdo novo do <code>bolo.txt</code> e a <code>tree</code>, a "foto da pasta" do stash. Repare que o commit <code>deda689</code> do caso 3 <strong>não</strong> aparece: o reflog ainda aponta para ele, então ele não é inalcançável.</p>
+<pre class="term" data-cwd="~/receitas">$ git stash apply 2e8e399
+No ramo main
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   bolo.txt                     « a mudança voltou para a pasta
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+$ git diff
+diff --git a/bolo.txt b/bolo.txt
+index 8f830cf..d70e7e4 100644
+--- a/bolo.txt
++++ b/bolo.txt
+@@ -1 +1,2 @@
+ Bolo de cenoura
++- 3 ovos</pre>
+
+<dl class="anatomy">
+  <dt>git fsck</dt><dd>"File system check": confere a integridade do repositório e lista objetos soltos.</dd>
+  <dt>--unreachable</dt><dd>Mostra os objetos que nenhum branch, tag ou reflog alcança. Os de tipo <code>commit</code> são candidatos a resgate. (A opção <code>--lost-found</code> faz algo parecido e ainda copia os achados para <code>.git/lost-found/</code>.)</dd>
+</dl>
+<p>Com o hash na mão, <code>git stash apply HASH</code> devolve as mudanças à pasta, como se o stash nunca tivesse sido descartado.</p>
+
+<hr>
+
+<h2>O que o Git não recupera</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Dá para recuperar?</th><th>Por quê</th></tr>
+<tr><td>Commit depois de <code>reset --hard</code>, <code>branch -D</code>, <code>--amend</code>, <code>rebase</code></td><td>Sim, pelo reflog</td><td>O commit existe; só perdeu a etiqueta.</td></tr>
+<tr><td>Stash descartado</td><td>Sim, pelo hash do <code>drop</code> ou com <code>git fsck</code></td><td>O stash é um commit.</td></tr>
+<tr><td>Arquivo que passou por <code>git add</code>, mas nunca foi commitado</td><td>Às vezes, com <code>git fsck --lost-found</code></td><td>O conteúdo virou um objeto (blob), mas sem nome de arquivo.</td></tr>
+<tr><td>Mudança que <strong>nunca</strong> passou por <code>add</code> nem <code>commit</code>, descartada com <code>restore</code>, <code>reset --hard</code> ou <code>clean</code></td><td><strong>Não</strong></td><td>O Git nunca a viu. (Talvez o seu editor tenha um histórico local.)</td></tr>
+<tr><td>Commit sem etiqueta há meses, depois de um <code>git gc</code></td><td>Provavelmente não</td><td>A faxina apaga o que expirou no reflog.</td></tr>
+</table>
+</div>
+<p>Moral: <strong>commite cedo e com frequência</strong>. O que foi commitado é quase impossível de perder; o que não foi, não tem rede de proteção.</p>
+
+<hr>
+
+<h2>Formas diferentes de resgatar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th><th>Quando usar</th></tr>
+<tr><td><code>git branch resgate HASH</code></td><td>Cria uma etiqueta no commit perdido; nada muda na pasta.</td><td>Sempre que estiver em dúvida: é o resgate mais seguro.</td></tr>
+<tr><td><code>git switch -c resgate HASH</code></td><td>Cria o branch e já vai para ele.</td><td>Quando você quer trabalhar no commit resgatado.</td></tr>
+<tr><td><code>git reset --hard HASH</code></td><td>Move o branch atual de volta para o commit.</td><td>Para desfazer um <code>reset</code> errado, com <code>git status</code> limpo.</td></tr>
+<tr><td><code>git show HASH</code> / <code>git restore --source=HASH arquivo</code></td><td>Só olha / traz um arquivo daquele commit.</td><td>Quando você precisa de um arquivo, não do commit inteiro.</td></tr>
+<tr><td><code>git cherry-pick HASH</code></td><td>Copia o commit para o branch atual.</td><td>Quando o branch atual já andou e você só quer aquele commit (veja <a href="cherry-pick.html">cherry-pick</a>).</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>fatal: log for 'HEAD' only has 11 entries</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git reset --hard HEAD@{50}
+fatal: log for 'HEAD' only has 11 entries</pre>
+<p><strong>O que aconteceu:</strong> você pediu "50 movimentos atrás", mas o diário só tem 11 anotações ("o registro do HEAD só tem 11 entradas"). Nada foi mudado.</p>
+<p><strong>Como resolver:</strong> rode <code>git reflog</code> e escolha uma linha que existe, de preferência pelo hash.</p>
+</div>
+
+<div class="cenario">
+<strong><code>fatal: a branch named 'sobremesas' already exists</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git branch sobremesas HEAD@{1}
+fatal: a branch named 'sobremesas' already exists</pre>
+<p><strong>O que aconteceu:</strong> já existe um branch com esse nome ("um branch chamado 'sobremesas' já existe"); o Git não sobrescreve etiquetas sem você pedir.</p>
+<p><strong>Como resolver:</strong> use outro nome (<code>git branch resgate2 HEAD@{1}</code>). Só use <code>git branch -f</code> (forçar) se tiver certeza de que quer mover a etiqueta existente.</p>
+</div>
+
+<div class="cenario">
+<strong><code>fatal: a branch is expected, got commit</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git switch 0b9c470
+fatal: a branch is expected, got commit '0b9c470'
+hint: If you want to detach HEAD at the commit, try again with the --detach option.</pre>
+<p><strong>O que aconteceu:</strong> o <code>git switch</code> espera um branch, e você deu um hash ("esperava um branch, recebi o commit"). A dica diz que, para só visitar o commit, use <code>--detach</code> (veja <a href="head-destacado.html">HEAD destacado</a>).</p>
+<p><strong>Como resolver:</strong> para resgatar, crie um branch e vá para ele de uma vez: <code>git switch -c resgate 0b9c470</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Não acho o commit no reflog</strong>
+<p><strong>O que aconteceu:</strong> o <code>git reflog</code> sem nada mostra só o diário do <strong>HEAD</strong>. Commits que nunca passaram pelo HEAD (um stash, um commit de outra pasta de <a href="git-worktree.html">worktree</a>) não aparecem ali.</p>
+<p><strong>Como resolver:</strong> tente o diário de um branch (<code>git reflog show main</code>) e, no fim, <code>git fsck --unreachable</code>. Se o commit nunca existiu (a mudança nunca foi commitada), não há o que achar.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>Para quê</th></tr>
+<tr><td><code>git reflog</code></td><td>Diário do HEAD: onde ele esteve, do mais novo ao mais antigo.</td></tr>
+<tr><td><code>git reflog show NOME</code></td><td>Diário de um branch específico.</td></tr>
+<tr><td><code>HEAD@{n}</code></td><td>Onde o HEAD estava n movimentos atrás.</td></tr>
+<tr><td><code>git branch NOME HASH</code></td><td>Pendura uma etiqueta num commit perdido.</td></tr>
+<tr><td><code>git reset --hard HEAD@{1}</code></td><td>Desfaz o último movimento do branch (com cuidado).</td></tr>
+<tr><td><code>git fsck --unreachable</code></td><td>Lista objetos sem etiqueta (stashes descartados, commits órfãos).</td></tr>
+<tr><td><code>git fsck --lost-found</code></td><td>Copia os achados para <code>.git/lost-found/</code>.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. O diário</h3>
+<p>Complete o comando que mostra por onde o HEAD andou:</p>
+<div class="ex-code">git <input data-answer="reflog" aria-label="subcomando"></div>
+</div>
+
+<div class="exercise">
+<h3>2. Um movimento atrás</h3>
+<p>Complete para criar o branch <code>resgate</code> onde o HEAD estava um movimento atrás:</p>
+<div class="ex-code">git branch resgate HEAD@{<input data-answer="1" aria-label="número">}</div>
+</div>
+
+<div class="exercise">
+<h3>3. Objetos sem etiqueta</h3>
+<p>Complete para listar os objetos que nenhum branch alcança:</p>
+<div class="ex-code">git fsck --<input data-answer="unreachable" aria-label="opção"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. Depois de um <code>git reset --hard HEAD~2</code>, o que aconteceu com os dois commits?</p>
+<label><input type="radio" name="q4"> Foram apagados do disco na hora.</label>
+<label><input type="radio" name="q4"> Continuam guardados, só que nenhum branch aponta mais para eles.</label>
+<label><input type="radio" name="q4"> Foram para a área de preparo.</label>
+<label><input type="radio" name="q4"> Foram enviados para o GitHub.</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">5. Qual destas coisas o Git <strong>não</strong> consegue recuperar?</p>
+<label><input type="radio" name="q5"> Um branch apagado com <code>-D</code>.</label>
+<label><input type="radio" name="q5"> O commit antigo depois de um <code>--amend</code>.</label>
+<label><input type="radio" name="q5"> Uma mudança nunca adicionada nem commitada, descartada com <code>git restore</code>.</label>
+<label><input type="radio" name="q5"> Um stash descartado com <code>drop</code>.</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">6. Qual é a forma mais segura de resgatar um commit perdido?</p>
+<label><input type="radio" name="q6"> <code>git branch resgate HASH</code>.</label>
+<label><input type="radio" name="q6"> <code>git reset --hard HASH</code> sem olhar o <code>git status</code>.</label>
+<label><input type="radio" name="q6"> <code>git gc</code>.</label>
+<label><input type="radio" name="q6"> Clonar o repositório de novo.</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Commit "perdido" quase sempre ainda existe: só ficou sem etiqueta.</li>
+  <li>O <code>git reflog</code> mostra o hash; <code>HEAD@{n}</code> é "n movimentos atrás".</li>
+  <li>Resgate seguro: <code>git branch resgate HASH</code>. Direto: <code>git reset --hard HASH</code>, com <code>git status</code> limpo.</li>
+  <li>O <code>branch -D</code> e o <code>stash drop</code> já mostram o hash na mensagem; o <code>git fsck --unreachable</code> acha o resto.</li>
+  <li>O reflog dura 90 dias (30 para commits sem etiqueta) por padrão; resgate logo.</li>
+  <li>O que nunca foi adicionado nem commitado não tem volta: commite cedo.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
