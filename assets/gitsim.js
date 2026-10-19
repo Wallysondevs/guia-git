@@ -2094,7 +2094,7 @@
       else repo.gravar("HEAD", destHash + "\n");
       repo.logar("HEAD", head || ZERO, destHash, "checkout: moving from " + (nomeDe || "HEAD") + " to " + nomePara);
       // mensagens
-      var s = "", e = "";
+      var s = "", e = "", s2 = "";
       var st = repo.estado();
       var mods = st.naoPrep.concat(st.preparado.filter(function (m) { return !st.naoPrep.some(function (x) { return x.para === m.para; }); })).sort(function (a, b) { return cmpCam(a.para, b.para); });
       mods.forEach(function (m) { s += (m.tipo === "R" ? "A" : m.tipo) + "\t" + m.para + "\n"; });
@@ -2102,7 +2102,7 @@
         if (atualRef === "refs/heads/" + alvo.ramo) e += "Already on '" + alvo.ramo + "'\n";
         else e += (opt.novo ? "Switched to a new branch '" : "Switched to branch '") + alvo.ramo + "'\n";
         var up = upstream(repo, alvo.ramo);
-        if (up && destHash) s += textoUpstream(repo, destHash, up).replace(/\n\n$/, "\n");
+        if (up && destHash) s2 += textoUpstream(repo, destHash, up).replace(/\n\n$/, "\n");
       } else {
         if (!atualRef && head === destHash) e += "HEAD is now at " + repo.abrev(destHash) + " " + repo.ler(destHash).msg.split("\n")[0] + "\n";
         else {
@@ -2118,7 +2118,7 @@
           e = "Warning: you are leaving " + plural(perdidos.length, "commit", "commits") + " behind, not connected to\nany of your branches:\n\n" + perdidos.slice(0, 5).map(function (h) { return "  " + repo.abrev(h) + " " + repo.ler(h).msg.split("\n")[0] + "\n"; }).join("") + (perdidos.length > 5 ? " ... and " + (perdidos.length - 5) + " more.\n" : "") + "\nIf you want to keep " + (perdidos.length === 1 ? "it" : "them") + " by creating a new branch, this may be a good time\nto do so with:\n\n git branch <new-branch-name> " + repo.abrev(head) + "\n\n" + e;
         } else if (head !== destHash) e = "Previous HEAD position was " + repo.abrev(head) + " " + repo.ler(head).msg.split("\n")[0] + "\n" + e;
       }
-      io.out(s); io.err(e);
+      io.out(s); io.err(e); io.out(s2);
       return 0;
     }
     function ramoAnterior(repo) {
@@ -2839,6 +2839,425 @@
       if (args.indexOf("--all") >= 0) repo.listarRefs("refs/heads/").forEach(function (x) { incl.push(x.hash); });
       var l = repo.revList(incl, excl, {});
       io.out(cnt ? l.length + "\n" : l.map(function (h) { return h + "\n"; }).join("")); return 0;
+    };
+
+    /* ---------- remotos: o "GitHub" do simulador ----------
+       Os repositórios do "servidor" ficam num sistema de arquivos escondido (sh.k.github), fora da
+       árvore que a Ana vê: /repos/DONO/REPO.git (bare). O Bruno mora no mesmo lugar (/home/bruno). */
+    function raizGithub(k) {
+      if (!k.github) {
+        var r = mkD(0, 493, k.clock);
+        r.c.repos = mkD(UID, 509, k.clock); r.c.home = mkD(0, 493, k.clock); r.c.tmp = mkD(UID, 1023, k.clock);
+        r.c.dev = mkD(0, 493, k.clock); r.c.dev.c["null"] = { t: "c", dev: "null", m: 438, u: 0, g: 0, mt: k.clock, ct: k.clock, at: k.clock, ino: 1, nl: 1 };
+        ["usr", "bin", "sbin", "lib", "etc"].forEach(function (d) { if (k.fs && k.fs.c[d]) r.c[d] = k.fs.c[d]; }); // os programas são os mesmos da máquina da Ana
+        var b = mkD(UID, 488, k.clock); r.c.home.c.bruno = b;
+        b.c[".gitconfig"] = mkF(UID, 420, "[user]\n\tname = Bruno Lima\n\temail = bruno@exemplo.com\n[init]\n\tdefaultBranch = main\n", k.clock);
+        k.github = r;
+      }
+      return k.github;
+    }
+    function shServidor(sh) { var s = Object.create(sh); s.fs = raizGithub(sh.k); s.cwd = "/"; return s; }
+    var RE_GH = /^https:\/\/github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+?)(?:\.git)?\/?$/;
+    // abre o repositório de uma URL (GitHub do simulador ou caminho local). Devolve Repo ou null
+    function abrirUrl(sh, url) {
+      var m = RE_GH.exec(url);
+      if (m) { var s = shServidor(sh), p = "/repos/" + m[1] + "/" + m[2] + ".git", n = noDe(s, p); return n && n.t === "d" && n.c.HEAD ? new Repo(s, p, null) : null; }
+      if (/^(git@|ssh:\/\/)/.test(url)) return { ssh: true };
+      if (/^[a-z]+:\/\//.test(url) && !/^file:\/\//.test(url)) return { semRede: true };
+      var abs = sh.abs(url.replace(/^file:\/\//, ""));
+      var n2 = noDe(sh, abs); if (!n2 || n2.t !== "d") return null;
+      if (n2.c[".git"] && n2.c[".git"].t === "d" && n2.c[".git"].c.HEAD) return new Repo(sh, abs + "/.git", abs);
+      if (n2.c.HEAD && n2.c.objects && n2.c.refs) return new Repo(sh, abs, null);
+      return null;
+    }
+    function urlExibicao(url) { return url.replace(/\/+$/, "").replace(/\.git$/, ""); }
+    function erroUrl(io, url, r) {
+      if (r && r.ssh) { io.err("ssh: connect to host github.com port 22: Connection refused\nfatal: Could not read from remote repository.\n\nPlease make sure you have the correct access rights\nand the repository exists.\n"); return 128; }
+      if (r && r.semRede) { io.err("fatal: unable to access '" + url + "/': Could not resolve host: " + url.replace(/^[a-z]+:\/\/([^/]+).*$/, "$1") + "\n"); return 128; }
+      if (RE_GH.test(url)) { io.err("remote: Repository not found.\nfatal: repository '" + url.replace(/\/?$/, "/") + "' not found\n"); return 128; }
+      io.err("fatal: '" + url + "' does not appear to be a git repository\nfatal: Could not read from remote repository.\n\nPlease make sure you have the correct access rights\nand the repository exists.\n"); return 128;
+    }
+    function copiarObjetos(de, para) {
+      de.todosObjetos().forEach(function (h) {
+        var cam = "objects/" + h.slice(0, 2) + "/" + h.slice(2);
+        if (!para.existe(cam)) escreverTxt(para.sh, para.g + "/" + cam, de.arq(cam), 292);
+      });
+      para._todos = null;
+    }
+    function remotosConfig(repo) { var r = []; repo.configTodas().forEach(function (e) { var m = /^remote\.(.*)\.url$/.exec(e.k); if (m && r.indexOf(m[1]) < 0) r.push(m[1]); }); return r; }
+    // remove ou renomeia uma seção inteira de .git/config
+    function editarSecao(txt, secao, novaSecao) {
+      var linhas = (txt || "").split("\n"), res = [], dentro = false;
+      if (linhas[linhas.length - 1] === "") linhas.pop();
+      linhas.forEach(function (l) {
+        var m = /^\s*\[\s*([A-Za-z0-9.-]+)(?:\s+"((?:[^"\\]|\\.)*)")?\s*\]/.exec(l);
+        if (m) { var nome = m[1].toLowerCase() + (m[2] !== undefined ? "." + m[2] : ""); dentro = nome === secao; if (dentro && novaSecao) { var i = novaSecao.indexOf("."); res.push("[" + novaSecao.slice(0, i) + " \"" + novaSecao.slice(i + 1) + "\"]"); return; } }
+        if (dentro && !novaSecao) return;
+        res.push(l);
+      });
+      return res.length ? res.join("\n") + "\n" : "";
+    }
+    function refsServidor(srv) { var r = {}; srv.listarRefs("refs/heads/").forEach(function (x) { r[x.nome] = x.hash; }); srv.listarRefs("refs/tags/").forEach(function (x) { r[x.nome] = x.hash; }); return r; }
+
+    CMDS.remote = function (args, io, sh) {
+      var repo = precisaRepo(io), sub = args[0], v = false;
+      if (sub === "-v" || sub === "--verbose") { v = true; sub = args[1]; args = args.slice(1); }
+      var nomes = remotosConfig(repo);
+      if (!sub) {
+        io.out(nomes.map(function (n) { return v ? n + "\t" + repo.config("remote." + n + ".url") + " (fetch)\n" + n + "\t" + (repo.config("remote." + n + ".pushurl") || repo.config("remote." + n + ".url")) + " (push)\n" : n + "\n"; }).join(""));
+        return 0;
+      }
+      var a = args.slice(1), cfg = repo.arq("config");
+      if (sub === "add") {
+        var g = opcoes(a, { "-f": true, "-t": "valor", "-m": "valor", "--fetch": "-f" }); if (g.erro) { io.err("error: " + g.erro + "\n"); return 129; }
+        if (g.ops.length !== 2) { io.err("usage: git remote add [<options>] <name> <url>\n"); return 129; }
+        var n = g.ops[0];
+        if (nomes.indexOf(n) >= 0) { io.err("error: remote " + n + " already exists.\n"); return 3; }
+        if (!nomeRefValido(n)) { io.err("error: '" + n + "' is not a valid remote name\n"); return 128; }
+        cfg = gravarConfig(cfg, "remote." + n + ".url", g.ops[1]).txt;
+        cfg = gravarConfig(cfg, "remote." + n + ".fetch", "+refs/heads/*:refs/remotes/" + n + "/*").txt;
+        repo.gravar("config", cfg);
+        if (g.o["-f"]) return CMDS.fetch([n], io, sh);
+        return 0;
+      }
+      if (sub === "remove" || sub === "rm") {
+        var n2 = a[0];
+        if (!n2) { io.err("usage: git remote remove <name>\n"); return 129; }
+        if (nomes.indexOf(n2) < 0) { io.err("error: No such remote: '" + n2 + "'\n"); return 2; }
+        cfg = editarSecao(cfg, "remote." + n2);
+        parseConfig(cfg).forEach(function (e) { var m = /^branch\.(.*)\.remote$/.exec(e.k); if (m && e.v === n2) { cfg = gravarConfig(cfg, "branch." + m[1] + ".remote", null).txt; cfg = gravarConfig(cfg, "branch." + m[1] + ".merge", null).txt; } });
+        repo.gravar("config", cfg);
+        apagarRefsRemoto(repo, n2);
+        return 0;
+      }
+      if (sub === "rename") {
+        var ve = a[0], nv = a[1];
+        if (!ve || !nv) { io.err("usage: git remote rename [--[no-]progress] <old> <new>\n"); return 129; }
+        if (nomes.indexOf(ve) < 0) { io.err("error: No such remote: '" + ve + "'\n"); return 2; }
+        if (nomes.indexOf(nv) >= 0) { io.err("error: remote " + nv + " already exists.\n"); return 3; }
+        cfg = editarSecao(cfg, "remote." + ve, "remote." + nv);
+        cfg = gravarConfig(cfg, "remote." + nv + ".fetch", "+refs/heads/*:refs/remotes/" + nv + "/*").txt;
+        parseConfig(cfg).forEach(function (e) { var m = /^branch\.(.*)\.remote$/.exec(e.k); if (m && e.v === ve) cfg = gravarConfig(cfg, "branch." + m[1] + ".remote", nv).txt; });
+        repo.gravar("config", cfg);
+        repo.listarRefs("refs/remotes/" + ve + "/").forEach(function (r) { var t = repo.lerRef(r.nome); repo.apagarArq(r.nome); repo.gravar(r.nome.replace("refs/remotes/" + ve + "/", "refs/remotes/" + nv + "/"), t && t.simb ? "ref: " + t.simb.replace("refs/remotes/" + ve + "/", "refs/remotes/" + nv + "/") + "\n" : r.hash + "\n"); });
+        return 0;
+      }
+      if (sub === "get-url") { var u = repo.config("remote." + a[0] + ".url"); if (u === null) { io.err("error: No such remote '" + a[0] + "'\n"); return 2; } io.out(u + "\n"); return 0; }
+      if (sub === "set-url") {
+        if (nomes.indexOf(a[0]) < 0) { io.err("error: No such remote '" + a[0] + "'\n"); return 2; }
+        repo.gravar("config", gravarConfig(cfg, "remote." + a[0] + ".url", a[1]).txt); return 0;
+      }
+      if (sub === "show") {
+        var n3 = a[0];
+        if (!n3) { io.out(nomes.map(function (x) { return x + "\n"; }).join("")); return 0; }
+        if (nomes.indexOf(n3) < 0) { var r0 = abrirUrl(sh, n3); if (!r0 || r0.ssh || r0.semRede) return erroUrl(io, n3, r0); }
+        var url = repo.config("remote." + n3 + ".url"), srv = abrirUrl(sh, url);
+        if (!srv || srv.ssh || srv.semRede) return erroUrl(io, url, srv);
+        var rs = refsServidor(srv), ramosS = Object.keys(rs).filter(function (k) { return k.indexOf("refs/heads/") === 0; }).map(function (k) { return k.slice(11); }).sort();
+        var hs = srv.headRef(), s = "* remote " + n3 + "\n  Fetch URL: " + url + "\n  Push  URL: " + url + "\n  HEAD branch: " + (hs && srv.resolverRef(hs) ? hs.slice(11) : "(unknown)") + "\n";
+        if (ramosS.length) {
+          s += "  Remote branch" + (ramosS.length > 1 ? "es" : "") + ":\n";
+          var lw = 0; ramosS.forEach(function (b) { lw = Math.max(lw, b.length); });
+          ramosS.forEach(function (b) { s += "    " + b + rep(" ", lw - b.length) + " " + (repo.resolverRef("refs/remotes/" + n3 + "/" + b) ? "tracked" : "new (next fetch will store in remotes/" + n3 + ")") + "\n"; });
+        }
+        var locais = repo.listarRefs("refs/heads/").map(function (r) { return r.nome.slice(11); }).filter(function (b) { return repo.config("branch." + b + ".remote") === n3; });
+        if (locais.length) {
+          s += "  Local branch" + (locais.length > 1 ? "es" : "") + " configured for 'git pull':\n";
+          var lw2 = 0; locais.forEach(function (b) { lw2 = Math.max(lw2, b.length); });
+          locais.forEach(function (b) { s += "    " + b + rep(" ", lw2 - b.length) + " merges with remote " + repo.config("branch." + b + ".merge").replace(/^refs\/heads\//, "") + "\n"; });
+        }
+        var pushs = repo.listarRefs("refs/heads/").map(function (r) { return r.nome.slice(11); }).filter(function (b) { return rs["refs/heads/" + b]; });
+        if (pushs.length) {
+          s += "  Local ref" + (pushs.length > 1 ? "s" : "") + " configured for 'git push':\n";
+          var lw3 = 0, lw4 = 0; pushs.forEach(function (b) { lw3 = Math.max(lw3, b.length); lw4 = Math.max(lw4, b.length); });
+          pushs.forEach(function (b) {
+            var lh = repo.resolverRef("refs/heads/" + b), rh = rs["refs/heads/" + b];
+            var est = lh === rh ? "up to date" : repo.ehAncestral(rh, lh) ? "fast-forwardable" : srv.ler(lh) && srv.ehAncestral(lh, rh) ? "local out of date" : "local out of date";
+            s += "    " + b + rep(" ", lw3 - b.length) + " pushes to " + b + rep(" ", lw4 - b.length) + " (" + est + ")\n";
+          });
+        }
+        io.out(s); return 0;
+      }
+      if (sub === "prune") return CMDS.fetch(["--prune", a[0]], io, sh);
+      io.err("error: unknown subcommand: `" + sub + "'\nusage: git remote [-v | --verbose]\n   or: git remote add [-t <branch>] [-m <master>] [-f] [--tags | --no-tags] [--mirror=<fetch|push>] <name> <url>\n   or: git remote rename [--[no-]progress] <old> <new>\n   or: git remote remove <name>\n   or: git remote set-head <name> (-a | --auto | -d | --delete | <branch>)\n   or: git remote [-v | --verbose] show [-n] <name>\n   or: git remote prune [-n | --dry-run] <name>\n   or: git remote [-v | --verbose] update [-p | --prune] [(<group> | <remote>)...]\n   or: git remote set-branches [--add] <name> <branch>...\n   or: git remote get-url [--push] [--all] <name>\n   or: git remote set-url [--push] <name> <newurl> [<oldurl>]\n   or: git remote set-url --add <name> <newurl>\n   or: git remote set-url --delete <name> <url>\n");
+      return 129;
+    };
+    function apagarRefsRemoto(repo, n) {
+      repo.listarRefs("refs/remotes/" + n + "/").forEach(function (r) { repo.apagarArq(r.nome); repo.apagarArq("logs/" + r.nome); });
+      var hn = repo.lerRef("refs/remotes/" + n + "/HEAD"); if (hn) repo.apagarArq("refs/remotes/" + n + "/HEAD");
+      apagar(repo.sh, repo.g + "/refs/remotes/" + n);
+    }
+
+    CMDS.clone = function (args, io, sh) {
+      var g = opcoes(args, { "-q": true, "--quiet": "-q", "-b": "valor", "--branch": "-b", "--bare": true, "--depth": "valor", "-o": "valor", "--origin": "-o", "--single-branch": true, "--no-checkout": true, "-n": "--no-checkout", "--recurse-submodules": true });
+      if (g.erro) { io.err("error: " + g.erro + "\n"); return 129; }
+      if (!g.ops.length) { io.err("fatal: You must specify a repository to clone.\n\nusage: git clone [<options>] [--] <repo> [<dir>]\n"); return 129; }
+      var url = g.ops[0], nomeR = g.o["-o"] || "origin";
+      var dir = g.ops[1] || url.replace(/\/+$/, "").replace(/\.git$/, "").replace(/^.*[\/:]/, "") + (g.o["--bare"] ? ".git" : "");
+      var absD = sh.abs(dir), nd = noDe(sh, absD);
+      if (nd && (nd.t !== "d" || Object.keys(nd.c).length)) { io.err("fatal: destination path '" + dir + "' already exists and is not an empty directory.\n"); return 128; }
+      var srv = abrirUrl(sh, url);
+      if (!g.o["-q"]) io.err("Cloning into " + (g.o["--bare"] ? "bare repository " : "") + "'" + dir + "'...\n");
+      if (!srv || srv.ssh || srv.semRede) {
+        if (srv && srv.ssh) return erroUrl(io, url, srv);
+        if (!RE_GH.test(url) && !(srv && srv.semRede)) { io.err("fatal: repository '" + url + "' does not exist\n"); return 128; }
+        return erroUrl(io, url, srv);
+      }
+      var ehUrlLocal = !RE_GH.test(url) && !/^file:/.test(url);
+      var urlCfg = ehUrlLocal ? sh.abs(url).replace(/\/\.git$/, "") : url;
+      if (ehUrlLocal) urlCfg = url[0] === "/" ? url : sh.abs(url);
+      // cria o repositório
+      var r = CMDS.init(g.o["--bare"] ? ["-q", "--bare", dir] : ["-q", dir], { sh: sh, out: function () {}, err: function () {} }, sh);
+      var cwd0 = sh.cwd;
+      var repo = new Repo(sh, g.o["--bare"] ? absD : absD + "/.git", g.o["--bare"] ? null : absD);
+      var cfg = repo.arq("config");
+      if (!g.o["--bare"]) {
+        cfg = gravarConfig(cfg, "remote." + nomeR + ".url", ehUrlLocal ? urlCfg : url).txt;
+        cfg = gravarConfig(cfg, "remote." + nomeR + ".fetch", "+refs/heads/*:refs/remotes/" + nomeR + "/*").txt;
+      }
+      copiarObjetos(srv, repo);
+      var rs = refsServidor(srv), hsRef = srv.headRef(), hs = hsRef && srv.resolverRef(hsRef);
+      var vazio = !Object.keys(rs).length;
+      var ramo = g.o["-b"] || (hsRef ? hsRef.slice(11) : "main");
+      if (g.o["-b"] && !rs["refs/heads/" + ramo] && !rs["refs/tags/" + ramo]) { io.err("warning: Could not find remote branch " + ramo + " to clone.\nfatal: Remote branch " + ramo + " not found in upstream origin\n"); apagar(sh, absD); return 128; }
+      Object.keys(rs).forEach(function (k) {
+        if (g.o["--bare"]) { repo.gravar(k, rs[k] + "\n"); return; }
+        if (k.indexOf("refs/heads/") === 0) repo.gravarRef("refs/remotes/" + nomeR + "/" + k.slice(11), rs[k], "clone: from " + urlCfg, ZERO);
+        else repo.gravar(k, rs[k] + "\n");
+      });
+      if (vazio) { repo.gravar("HEAD", "ref: refs/heads/" + ramo + "\n"); if (!g.o["--bare"]) { cfg = gravarConfig(cfg, "branch." + ramo + ".remote", nomeR).txt; cfg = gravarConfig(cfg, "branch." + ramo + ".merge", "refs/heads/" + ramo).txt; } repo.gravar("config", cfg); io.err("warning: You appear to have cloned an empty repository.\n"); return 0; }
+      if (g.o["--bare"]) { repo.gravar("HEAD", "ref: refs/heads/" + ramo + "\n"); return 0; }
+      if (hsRef && hs) repo.gravar("refs/remotes/" + nomeR + "/HEAD", "ref: refs/remotes/" + nomeR + "/" + hsRef.slice(11) + "\n");
+      var hRamo = rs["refs/heads/" + ramo] || rs["refs/tags/" + ramo];
+      if (rs["refs/heads/" + ramo]) {
+        repo.gravarRef("refs/heads/" + ramo, hRamo, "clone: from " + urlCfg, ZERO);
+        repo.gravar("HEAD", "ref: refs/heads/" + ramo + "\n");
+        cfg = gravarConfig(cfg, "branch." + ramo + ".remote", nomeR).txt;
+        cfg = gravarConfig(cfg, "branch." + ramo + ".merge", "refs/heads/" + ramo).txt;
+      } else repo.gravar("HEAD", repo.descascar(hRamo) + "\n");
+      repo.gravar("config", cfg);
+      repo.logar("HEAD", ZERO, repo.descascar(hRamo), "clone: from " + urlCfg);
+      if (!g.o["--no-checkout"]) {
+        var T = repo.arvoreDe(repo.descascar(hRamo));
+        Object.keys(T).forEach(function (k) { repo.escreverArquivo(k, T[k]); });
+        repo.gravarIndice(Object.keys(T).map(function (k) { return { mode: T[k].mode, hash: T[k].hash, stage: 0, path: k }; }));
+      }
+      return 0;
+    };
+
+    // fetch: traz objetos e atualiza refs/remotes/NOME/*. Devolve {linhas, erro}
+    function buscar(repo, io, sh, nomeR, opt) {
+      opt = opt || {};
+      var url = repo.config("remote." + nomeR + ".url"), urlReal = url || nomeR;
+      var srv = abrirUrl(sh, urlReal);
+      if (!srv || srv.ssh || srv.semRede) return { st: erroUrl(io, urlReal, srv) };
+      copiarObjetos(srv, repo);
+      var rs = refsServidor(srv), linhas = [], fetchHead = [];
+      Object.keys(rs).sort(function (a, b) { var ta = a.indexOf("refs/tags/") === 0, tb = b.indexOf("refs/tags/") === 0; return ta - tb || cmpCam(a, b); }).forEach(function (k) {
+        var h = rs[k];
+        if (k.indexOf("refs/heads/") === 0) {
+          var b = k.slice(11);
+          fetchHead.push(h + "\t\tbranch '" + b + "' of " + urlExibicao(urlReal));
+          if (!url) return;
+          var loc = "refs/remotes/" + nomeR + "/" + b, antigo = repo.resolverRef(loc);
+          if (antigo === h) return;
+          if (!antigo) { linhas.push(" * [new branch]      " + pad(b, 10) + " -> " + nomeR + "/" + b); repo.gravarRef(loc, h, "fetch: storing head", ZERO); }
+          else if (repo.ehAncestral(antigo, h)) { linhas.push("   " + repo.abrev(antigo) + ".." + repo.abrev(h) + "  " + pad(b, 10) + " -> " + nomeR + "/" + b); repo.gravarRef(loc, h, "fetch: fast-forward", antigo); }
+          else { linhas.push(" + " + repo.abrev(antigo) + "..." + repo.abrev(h) + " " + pad(b, 10) + " -> " + nomeR + "/" + b + "  (forced update)"); repo.gravarRef(loc, h, "fetch: forced-update", antigo); }
+        } else if (k.indexOf("refs/tags/") === 0 && !opt.semTags) {
+          var t = k.slice(10);
+          if (repo.resolverRef(k)) return;
+          linhas.push(" * [new tag]         " + pad(t, 10) + " -> " + t); repo.gravar(k, h + "\n");
+        }
+      });
+      if (opt.prune && url) repo.listarRefs("refs/remotes/" + nomeR + "/").forEach(function (r) { var b = r.nome.slice(("refs/remotes/" + nomeR + "/").length); if (b === "HEAD") return; if (!rs["refs/heads/" + b]) { linhas.push(" - [deleted]         " + pad("(none)", 10) + " -> " + nomeR + "/" + b); repo.apagarArq(r.nome); repo.apagarArq("logs/" + r.nome); } });
+      repo.gravar("FETCH_HEAD", fetchHead.join("\n") + (fetchHead.length ? "\n" : ""));
+      var hsRef = srv.headRef();
+      if (url && hsRef && srv.resolverRef(hsRef) && !repo.lerRef("refs/remotes/" + nomeR + "/HEAD") && opt.criarHead) repo.gravar("refs/remotes/" + nomeR + "/HEAD", "ref: refs/remotes/" + nomeR + "/" + hsRef.slice(11) + "\n");
+      return { st: 0, linhas: linhas, url: urlReal, rs: rs, srv: srv };
+    }
+    function pad(s, n) { while (s.length < n) s += " "; return s; }
+    CMDS.fetch = function (args, io, sh) {
+      var g = opcoes(args, { "--all": true, "--prune": true, "-p": "--prune", "-q": true, "--quiet": "-q", "--tags": true, "-t": "--tags", "-v": true, "--dry-run": true });
+      if (g.erro) { io.err("error: " + g.erro + "\n"); return 129; }
+      var repo = precisaRepo(io), nomes = remotosConfig(repo);
+      var alvos = g.o["--all"] ? nomes : [g.ops[0] || (repo.branchAtual() && repo.config("branch." + repo.branchAtual() + ".remote")) || "origin"];
+      if (!g.ops[0] && !g.o["--all"] && !nomes.length) { io.err("fatal: No remote repository specified.  Please, specify either a URL or a\nremote name from which new revisions should be fetched.\n"); return 128; }
+      for (var i = 0; i < alvos.length; i++) {
+        var r = buscar(repo, io, sh, alvos[i], { prune: g.o["--prune"] });
+        if (r.st) return r.st;
+        if (r.linhas.length && !g.o["-q"]) io.err("From " + urlExibicao(r.url) + "\n" + r.linhas.join("\n") + "\n");
+      }
+      return 0;
+    };
+
+    function hintDivergente() {
+      return "hint: You have divergent branches and need to specify how to reconcile them.\nhint: You can do so by running one of the following commands sometime before\nhint: your next pull:\nhint:\nhint:   git config pull.rebase false  # merge\nhint:   git config pull.rebase true   # rebase\nhint:   git config pull.ff only       # fast-forward only\nhint:\nhint: You can replace \"git config\" with \"git config --global\" to set a default\nhint: preference for all repositories. You can also pass --rebase, --no-rebase,\nhint: or --ff-only on the command line to override the configured default per\nhint: invocation.\nfatal: Need to specify how to reconcile divergent branches.\n";
+    }
+    CMDS.pull = function (args, io, sh) {
+      var g = opcoes(args, { "--rebase": "opcional", "-r": "--rebase", "--no-rebase": true, "--ff-only": true, "--ff": true, "--no-ff": true, "-q": true, "--quiet": "-q", "--no-edit": true, "--edit": true, "--allow-unrelated-histories": true });
+      if (g.erro) { io.err("error: " + g.erro + "\n"); return 129; }
+      var repo = precisaRepo(io); precisaArvore(repo);
+      var ramo = repo.branchAtual(), nomeR = g.ops[0], ramoR = g.ops[1];
+      if (!nomeR) {
+        if (!ramo) { io.err("You are not currently on a branch.\nPlease specify which branch you want to merge with.\nSee git-pull(1) for details.\n\n    git pull <remote> <branch>\n\n"); return 1; }
+        nomeR = repo.config("branch." + ramo + ".remote");
+        if (!nomeR) {
+          if (!remotosConfig(repo).length) { io.err("fatal: No remote repository specified.  Please, specify either a URL or a\nremote name from which new revisions should be fetched.\n"); return 128; }
+          io.err("There is no tracking information for the current branch.\nPlease specify which branch you want to merge with.\nSee git-pull(1) for details.\n\n    git pull <remote> <branch>\n\nIf you wish to set tracking information for this branch you can do so with:\n\n    git branch --set-upstream-to=origin/<branch> " + ramo + "\n\n"); return 1;
+        }
+        ramoR = repo.config("branch." + ramo + ".merge").replace(/^refs\/heads\//, "");
+      }
+      var r = buscar(repo, io, sh, nomeR, {});
+      if (r.st) return r.st;
+      if (r.linhas.length && !g.o["-q"]) io.err("From " + urlExibicao(r.url) + "\n" + r.linhas.join("\n") + "\n");
+      if (!ramoR) ramoR = ramo;
+      var ht = r.rs["refs/heads/" + ramoR];
+      if (!ht) { io.err("fatal: couldn't find remote ref " + ramoR + "\n"); return 1; }
+      var head = repo.head();
+      if (!head) { return CMDS.merge([ht], io, sh); }
+      if (repo.ehAncestral(ht, head)) { io.out("Already up to date.\n"); return 0; }
+      var ff = repo.ehAncestral(head, ht);
+      var rebase = g.o["--rebase"] !== undefined && g.o["--rebase"] !== false ? true : g.o["--no-rebase"] ? false : null;
+      if (rebase === null) { var pr = repo.config("pull.rebase"); if (pr !== null) rebase = pr === "true" || pr === "merges" || pr === "interactive"; }
+      var soFF = g.o["--ff-only"] || (rebase === null && repo.config("pull.ff") === "only");
+      if (!ff && soFF) { io.err("hint: Diverging branches can't be fast-forwarded, you need to either:\nhint:\nhint: \tgit merge --no-ff\nhint:\nhint: or:\nhint:\nhint: \tgit rebase\nhint:\nhint: Disable this message with \"git config set advice.diverging false\"\nfatal: Not possible to fast-forward, aborting.\n"); return 128; }
+      if (!ff && rebase === null) { io.err(hintDivergente()); return 128; }
+      var rotulo = (r.url === nomeR || !repo.config("remote." + nomeR + ".url")) ? ramoR : nomeR + "/" + ramoR;
+      if (rebase && !ff) return CMDS.rebase([ht], io, sh);
+      var msg = "Merge branch '" + ramoR + "' of " + urlExibicao(r.url) + (ramo !== "main" && ramo !== "master" ? " into " + ramo : "");
+      var aa = [ht, "-m", msg]; if (g.o["--no-ff"]) aa.push("--no-ff"); if (g.o["-q"]) aa.push("-q");
+      return CMDS.merge(aa, io, sh);
+    };
+
+    CMDS.push = function (args, io, sh) {
+      var g = opcoes(args, { "-u": true, "--set-upstream": "-u", "-f": true, "--force": "-f", "--force-with-lease": "opcional", "--all": true, "--tags": true, "-d": true, "--delete": "-d", "-q": true, "--quiet": "-q", "-v": true, "--dry-run": true, "-n": "--dry-run", "--no-verify": true, "--follow-tags": true });
+      if (g.erro) { io.err("error: " + g.erro + "\n"); return 129; }
+      var repo = precisaRepo(io), ramo = repo.branchAtual(), nomes = remotosConfig(repo);
+      var nomeR = g.ops[0], specs = g.ops.slice(1);
+      if (!nomeR) {
+        nomeR = ramo && repo.config("branch." + ramo + ".remote");
+        if (!nomeR) {
+          if (!nomes.length) { io.err("fatal: No configured push destination.\nEither specify the URL from the command-line or configure a remote repository using\n\n    git remote add <name> <url>\n\nand then push using the remote name\n\n    git push <name>\n\n"); return 128; }
+          if (nomes.length === 1 || nomes.indexOf("origin") >= 0) nomeR = nomes.indexOf("origin") >= 0 ? "origin" : nomes[0];
+        }
+      }
+      var url = repo.config("remote." + nomeR + ".url"), urlReal = url || nomeR;
+      if (!specs.length && !g.o["--all"] && !g.o["--tags"]) {
+        if (!ramo) { io.err("fatal: You are not currently on a branch.\nTo push the history leading to the current (detached HEAD)\nstate now, use\n\n    git push " + nomeR + " HEAD:<name-of-remote-branch>\n\n"); return 128; }
+        var upR = repo.config("branch." + ramo + ".remote"), upM = repo.config("branch." + ramo + ".merge");
+        if (!g.o["-u"] && (!upR || !upM) && url) { io.err("fatal: The current branch " + ramo + " has no upstream branch.\nTo push the current branch and set the remote as upstream, use\n\n    git push --set-upstream " + nomeR + " " + ramo + "\n\nTo have this happen automatically for branches without a tracking\nupstream, see 'push.autoSetupRemote' in 'git help config'.\n\n"); return 128; }
+        specs = [ramo + ":" + (upM && upR === nomeR ? upM.replace(/^refs\/heads\//, "") : ramo)];
+      }
+      var srv = abrirUrl(sh, urlReal);
+      if (!srv || srv.ssh || srv.semRede) return erroUrl(io, urlReal, srv);
+      if (g.o["--all"]) specs = repo.listarRefs("refs/heads/").map(function (r) { return r.nome.slice(11); });
+      var itens = [];
+      specs.forEach(function (sp) {
+        var forca = sp[0] === "+"; if (forca) sp = sp.slice(1);
+        var i = sp.indexOf(":"), src = i < 0 ? sp : sp.slice(0, i), dst = i < 0 ? sp : sp.slice(i + 1);
+        if (g.o["-d"]) { itens.push({ del: true, dst: "refs/heads/" + src, nome: src }); return; }
+        if (src === "" ) { itens.push({ del: true, dst: "refs/heads/" + dst, nome: dst }); return; }
+        if (src === "HEAD") src = ramo || "HEAD";
+        var ehTag = !repo.resolverRef("refs/heads/" + src) && repo.resolverRef("refs/tags/" + src);
+        var h = ehTag ? repo.resolverRef("refs/tags/" + src) : repo.resolverRef("refs/heads/" + src) || repo.commitDe(src);
+        if (!h) { itens.push({ erro: "error: src refspec " + src + " does not match any" }); return; }
+        if (dst === "HEAD") dst = ramo;
+        itens.push({ h: h, src: src, dst: (ehTag ? "refs/tags/" : "refs/heads/") + dst.replace(/^refs\/(heads|tags)\//, ""), nome: dst.replace(/^refs\/(heads|tags)\//, ""), tag: ehTag, forca: forca || g.o["-f"] || g.o["--force-with-lease"] !== undefined });
+      });
+      if (g.o["--tags"] || g.o["--follow-tags"]) repo.listarRefs("refs/tags/").forEach(function (t) { itens.push({ h: t.hash, src: t.nome.slice(10), dst: t.nome, nome: t.nome.slice(10), tag: true }); });
+      var erros = itens.filter(function (x) { return x.erro; });
+      if (erros.length) { io.err(erros.map(function (x) { return x.erro + "\n"; }).join("") + "error: failed to push some refs to '" + urlReal + "'\n"); return 1; }
+      var linhas = [], rejeitado = null, rs = refsServidor(srv), avisoPR = [];
+      if (!g.o["--dry-run"]) copiarObjetos(repo, srv);
+      itens.forEach(function (x) {
+        var antigo = rs[x.dst], seta = x.src === x.nome || x.del ? x.nome : x.src + " -> " + x.nome;
+        if (x.del) {
+          if (!antigo) { linhas.push(" ! [remote rejected] " + x.nome + " (remote ref does not exist)"); rejeitado = rejeitado || "del"; return; }
+          linhas.push(" - [deleted]         " + x.nome); if (!g.o["--dry-run"]) { srv.apagarArq(x.dst); if (url) { repo.apagarArq("refs/remotes/" + nomeR + "/" + x.nome); repo.apagarArq("logs/refs/remotes/" + nomeR + "/" + x.nome); } } return;
+        }
+        var desc = x.src + " -> " + x.nome;
+        if (antigo === x.h) { if (g.o["-v"]) linhas.push(" = [up to date]      " + desc); x.igual = true; return; }
+        if (!antigo) {
+          linhas.push(" * [new " + (x.tag ? "tag" : "branch") + "]" + (x.tag ? "         " : "      ") + desc);
+          if (!x.tag && srv.headRef() !== x.dst) avisoPR.push(x.nome);
+        } else if (x.tag) { if (!x.forca) { linhas.push(" ! [rejected]        " + desc + " (already exists)"); rejeitado = rejeitado || "tag"; return; } linhas.push(" + " + repo.abrev(antigo) + "..." + repo.abrev(x.h) + " " + desc + " (forced update)"); }
+        else if (repo.ler(antigo) && repo.ehAncestral(antigo, x.h)) linhas.push("   " + repo.abrev(antigo) + ".." + repo.abrev(x.h) + "  " + desc);
+        else if (x.forca) {
+          var lease = g.o["--force-with-lease"];
+          if (lease !== undefined) { var esperado = repo.resolverRef("refs/remotes/" + nomeR + "/" + x.nome); if (esperado !== antigo) { linhas.push(" ! [rejected]        " + desc + " (stale info)"); rejeitado = rejeitado || "stale"; return; } }
+          linhas.push(" + " + srv.abrev(antigo) + "..." + repo.abrev(x.h) + " " + desc + " (forced update)");
+        } else { var temLocal = !!repo.ler(antigo); linhas.push(" ! [rejected]        " + desc + (temLocal ? " (non-fast-forward)" : " (fetch first)")); rejeitado = rejeitado || (temLocal ? "nff" : "fetch"); return; }
+        if (!g.o["--dry-run"]) {
+          srv.gravar(x.dst, x.h + "\n");
+          if (url && !x.tag) repo.gravarRef("refs/remotes/" + nomeR + "/" + x.nome, x.h, "update by push", repo.resolverRef("refs/remotes/" + nomeR + "/" + x.nome) || ZERO);
+        }
+      });
+      var todosIguais = itens.length && itens.every(function (x) { return x.igual; });
+      if (todosIguais && !rejeitado) { io.err("Everything up-to-date\n"); }
+      else {
+        var s = "";
+        if (avisoPR.length && RE_GH.test(urlReal) && !g.o["--dry-run"]) {
+          var m = RE_GH.exec(urlReal);
+          avisoPR.forEach(function (b) { s += "remote: \nremote: Create a pull request for '" + b + "' on GitHub by visiting:        \nremote:      https://github.com/" + m[1] + "/" + m[2] + "/pull/new/" + b + "        \nremote: \n"; });
+        }
+        if (!g.o["-q"] || rejeitado) s += "To " + urlReal + "\n" + linhas.join("\n") + (linhas.length ? "\n" : "");
+        if (rejeitado) {
+          s += "error: failed to push some refs to '" + urlReal + "'\n";
+          if (rejeitado === "fetch") s += "hint: Updates were rejected because the remote contains work that you do not\nhint: have locally. This is usually caused by another repository pushing to\nhint: the same ref. If you want to integrate the remote changes, use\nhint: 'git pull' before pushing again.\nhint: See the 'Note about fast-forwards' in 'git push --help' for details.\n";
+          else if (rejeitado === "nff") s += "hint: Updates were rejected because the tip of your current branch is behind\nhint: its remote counterpart. If you want to integrate the remote changes,\nhint: use 'git pull' before pushing again.\nhint: See the 'Note about fast-forwards' in 'git push --help' for details.\n";
+          else if (rejeitado === "tag") s += "hint: Updates were rejected because the tag already exists in the remote.\n";
+        }
+        io.err(s);
+      }
+      if (g.o["-u"] && !rejeitado && url) {
+        var quieto = g.o["-q"];
+        var out = "";
+        itens.forEach(function (x) { if (x.del || x.tag || x.erro || !repo.resolverRef("refs/heads/" + x.src)) return; definirUpstream(repo, x.src, nomeR, x.nome); if (!quieto) out += "branch '" + x.src + "' set up to track '" + nomeR + "/" + x.nome + "'.\n"; });
+        io.out(out);
+      }
+      return rejeitado ? 1 : 0;
+    };
+    CMDS["ls-remote"] = function (args, io, sh) {
+      var repo = achar(sh), alvo = args.filter(function (a) { return a[0] !== "-"; })[0] || "origin";
+      var url = repo && repo.config("remote." + alvo + ".url") || alvo, srv = abrirUrl(sh, url);
+      if (!srv || srv.ssh || srv.semRede) return erroUrl(io, url, srv);
+      var out = "", hr = srv.headRef(), hh = hr && srv.resolverRef(hr);
+      if (hh) out += hh + "\tHEAD\n";
+      srv.listarRefs("refs/").forEach(function (r) { out += r.hash + "\t" + r.nome + "\n"; var o = srv.ler(r.hash); if (o && o.type === "tag") out += o.object + "\t" + r.nome + "^{}\n"; });
+      io.out(out); return 0;
+    };
+
+    /* o comando "github" (só para o data-setup das missões): o lado do site, igual ao ~/guia-git-lab/github */
+    B.EXT.github = function* (args, io) {
+      var sh = io.sh, sub = args[1], alvo = args[2];
+      var raiz = raizGithub(sh.k), srvSh = shServidor(sh);
+      function valida(a) { if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(a || "")) { io.err("github: use DONO/REPO (ex.: ana-souza/receitas)\n"); return false; } return true; }
+      if (sub === "novo") {
+        if (!valida(alvo)) return 2;
+        var p = "/repos/" + alvo.replace(/\.git$/, "") + ".git";
+        if (noDe(srvSh, p)) { io.err("github: " + alvo + " já existe\n"); return 1; }
+        CMDS.init(["-q", "--bare", "-b", "main", p], { sh: srvSh, out: function () {}, err: function () {} }, srvSh);
+        io.out("criado: https://github.com/" + alvo.replace(/\.git$/, "") + ".git\n"); return 0;
+      }
+      if (sub === "lista") { var out = ""; Object.keys(raiz.c.repos.c).sort().forEach(function (d) { Object.keys(raiz.c.repos.c[d].c).sort().forEach(function (r) { out += d + "/" + r.replace(/\.git$/, "") + "\n"; }); }); io.out(out); return 0; }
+      if (sub === "apaga") { if (!valida(alvo)) return 2; apagar(srvSh, "/repos/" + alvo.replace(/\.git$/, "") + ".git"); io.out("apagado: " + alvo + "\n"); return 0; }
+      if (sub === "log") {
+        if (!valida(alvo)) return 2;
+        var cw = srvSh.cwd; srvSh.cwd = "/repos/" + alvo.replace(/\.git$/, "") + ".git";
+        try { var r0 = CMDS.log(["--oneline", "--graph", "--all", "--decorate"], { sh: srvSh, out: function (t) { io.out(t); }, err: function (t) { io.err(t); } }, srvSh); } catch (e) { if (e instanceof GitErro) { io.err(e.msg); return e.st; } throw e; } finally { srvSh.cwd = cw; }
+        return 0;
+      }
+      if (sub === "login") { io.out("login: " + (alvo === "on" ? "on" : "off") + "\n(simulador) no terminal do guia o push nunca pede senha.\n"); return 0; }
+      if (sub === "bruno") {
+        var cmds = args.slice(2).join(" ");
+        var n = sh.fork(); n.fs = raiz; n.cwd = "/home/bruno"; n.cwdLogico = "/home/bruno";
+        ["HOME=/home/bruno", "PWD=/home/bruno", "USER=bruno", "LOGNAME=bruno"].forEach(function (x) { var i = x.indexOf("="); try { n.definirSimples(x.slice(0, i), x.slice(i + 1)); } catch (e) {} });
+        var st = yield* n.rodarFonte("{ " + cmds + "\n} >/dev/null 2>&1\n", {});
+        return st;
+      }
+      io.err("(simulador) github: use  github novo DONO/REPO  |  github bruno 'comandos'  |  github lista  |  github log DONO/REPO  |  github apaga DONO/REPO\n");
+      return 2;
     };
 
     /* ---------- help ---------- */
