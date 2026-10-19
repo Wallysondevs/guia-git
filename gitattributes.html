@@ -190,7 +190,7 @@ produtos.txt: ASCII text
 <p>Num repositório novo, o <code>.gitattributes</code> com <code>* text=auto</code> deveria entrar junto com o <code>.gitignore</code>, antes de qualquer arquivo do Windows. Assim você nunca precisa do <code>--renormalize</code>, que gera um commit grande mexendo em muitos arquivos.</p>
 </div>
 
-<div class="try" data-setup="mkdir loja;;cd loja;;git init -q;;echo 'Caneca' &gt; produtos.txt;;git add produtos.txt;;git commit -q -m 'Primeiro produto'" data-goal="contains:.gitattributes=*.sh text eol=lf,rastreado:.gitattributes,limpo" data-solucao="echo '*.sh text eol=lf' &gt; .gitattributes;;git add .gitattributes;;git commit -m 'Adiciona .gitattributes'">
+<div class="try" data-setup="mkdir loja;;cd loja;;git init -q;;echo 'Caneca' &gt; produtos.txt;;git add produtos.txt;;git commit -q -m 'Primeiro produto'" data-goal="contains:loja/.gitattributes=*.sh text eol=lf,rastreado:.gitattributes,limpo" data-solucao="echo '*.sh text eol=lf' &gt; .gitattributes;;git add .gitattributes;;git commit -m 'Adiciona .gitattributes'">
 <p class="try-task"><strong>Missão:</strong> na lojinha, crie um <code>.gitattributes</code> com a linha <code>*.sh text eol=lf</code> (scripts de shell sempre com LF) e faça o commit dele.</p>
 </div>
 

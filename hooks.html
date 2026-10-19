@@ -166,7 +166,7 @@ fe996fb Primeiro commit
 <p>O <code>pre-commit</code> roda em <strong>todo</strong> commit. Se ele demorar 30 segundos, você vai odiá-lo (e acabar desligando). Quando tudo está certo, não precisa dizer nada; quando barrar, diga <strong>o quê</strong> e <strong>como resolver</strong>, como o da Ana.</p>
 </div>
 
-<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit';;printf '#!/bin/sh\nif git diff --cached | grep -q senha=; then\n  echo pre-commit: commit cancelado\n  exit 1\nfi\nexit 0\n' &gt; .git/hooks/pre-commit" data-goal="exec:.git/hooks/pre-commit" data-solucao="chmod +x .git/hooks/pre-commit">
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit';;printf '#!/bin/sh\nif git diff --cached | grep -q senha=; then\n  echo pre-commit: commit cancelado\n  exit 1\nfi\nexit 0\n' &gt; .git/hooks/pre-commit" data-goal="exec:receitas/.git/hooks/pre-commit" data-solucao="chmod +x .git/hooks/pre-commit">
 <p class="try-task"><strong>Missão:</strong> o repositório <code>receitas</code> já tem o arquivo <code>.git/hooks/pre-commit</code> da Ana, mas ela esqueceu de dar a permissão de execução. Veja o arquivo (<code>cat .git/hooks/pre-commit</code>), confira a permissão com <code>ls -l .git/hooks</code> e deixe o hook executável.</p>
 </div>
 
