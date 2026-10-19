@@ -31,7 +31,7 @@
 </ul>
 </div>
 
-<p>Todas as saídas desta aula vieram do Git real da máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português.</p>
+<p>Todas as saídas desta aula vieram do Git real da máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português. A tradução do Git que vem no Ubuntu é parcial: algumas mensagens saem em português, outras em inglês, outras misturadas. Elas estão aqui exatamente como saíram (no Windows, no macOS ou com o sistema em inglês, as frases podem ser diferentes; o sentido é o mesmo).</p>
 
 <hr>
 
@@ -167,7 +167,7 @@ README.md
 <p>Os arquivos ignorados costumam ser coisas que <strong>dá para recriar</strong> (logs, programas compilados, a pasta <code>node_modules</code>), mas nem sempre: muita gente guarda no <code>.gitignore</code> o arquivo <code>.env</code>, com senhas e configurações que só existem naquele computador. Um <code>git clean -fdx</code> apaga esse arquivo também, e ele não está no Git para voltar. Só use <code>-x</code> depois de ler a lista do <code>-n</code>.</p>
 </div>
 
-<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit';;echo 'rascunho' &gt; rascunho.txt;;echo 'teste' &gt; teste-bolo.txt;;mkdir fotos;;echo 'img' &gt; fotos/bolo.jpg" data-goal="limpo,absent:rascunho.txt,absent:fotos,file:README.md" data-solucao="git clean -n -d;;git clean -f -d">
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit';;echo 'rascunho' &gt; rascunho.txt;;echo 'teste' &gt; teste-bolo.txt;;mkdir fotos;;echo 'img' &gt; fotos/bolo.jpg" data-goal="limpo,absent:receitas/rascunho.txt,absent:receitas/fotos,file:receitas/README.md" data-solucao="git clean -n -d;;git clean -f -d">
 <p class="try-task"><strong>Missão:</strong> limpe a pasta da Ana: apague os arquivos não rastreados <strong>e</strong> a pasta <code>fotos</code>. Faça o ensaio com <code>-n</code> antes. No fim, o <code>git status</code> deve dizer que não há nada a fazer.</p>
 </div>
 
@@ -227,6 +227,8 @@ README.md  forno.log  rascunho.txt
 </dl>
 
 <p>O modo interativo não precisa do <code>-f</code>: as perguntas já são a confirmação. O <code>rascunho.txt</code>, que a Ana respondeu <kbd>n</kbd>, ficou; o <code>forno.log</code>, ignorado, nem entrou na lista (faltou o <code>-x</code>).</p>
+
+<p>O terminal do guia não tem o modo interativo: lá, o <code>git clean -i</code> só avisa e sugere o <code>-n</code> e o <code>-f</code>. Experimente o <code>-i</code> no seu computador.</p>
 
 <hr>
 
@@ -332,8 +334,8 @@ fatal: clean.requireForce is true and -f not given: refusing to clean
 
 <h3>Missão final: limpar sem perder o que importa</h3>
 
-<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;echo '*.log' &gt; .gitignore;;git add README.md .gitignore;;git commit -q -m 'Primeiro commit';;echo 'teste' &gt; teste1.txt;;echo 'teste' &gt; teste2.txt;;echo 'erro' &gt; forno.log;;echo 'Torta de limão' &gt; torta.txt" data-goal="absent:teste1.txt,absent:teste2.txt,absent:forno.log,file:torta.txt,contains:torta.txt=limão" data-solucao="git clean -n -x -e torta.txt;;git clean -f -x -e torta.txt">
-<p class="try-task"><strong>Missão:</strong> apague os testes (<code>teste1.txt</code>, <code>teste2.txt</code>) e o <code>forno.log</code> (que é ignorado), mas <strong>não</strong> a <code>torta.txt</code>, uma receita nova que a Ana ainda vai commitar. Dica: <code>-x</code> para os ignorados e <code>-e</code> para poupar um arquivo; ensaie com <code>-n</code> primeiro.</p>
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;echo '*.log' &gt; .gitignore;;git add README.md .gitignore;;git commit -q -m 'Primeiro commit';;echo 'teste' &gt; teste1.txt;;echo 'teste' &gt; teste2.txt;;echo 'erro' &gt; forno.log;;echo 'Torta de limão' &gt; torta.txt" data-goal="absent:receitas/teste1.txt,absent:receitas/teste2.txt,absent:receitas/forno.log,contains:receitas/torta.txt=limão" data-solucao="git clean -n -X;;git clean -f -X;;git clean -n teste1.txt teste2.txt;;git clean -f teste1.txt teste2.txt">
+<p class="try-task"><strong>Missão:</strong> apague os testes (<code>teste1.txt</code>, <code>teste2.txt</code>) e o <code>forno.log</code> (que é ignorado), mas <strong>não</strong> a <code>torta.txt</code>, uma receita nova que a Ana ainda vai commitar. Dica: <code>-X</code> apaga só os ignorados, e o <code>git clean -f</code> aceita nomes de arquivos no fim; ensaie com <code>-n</code> primeiro. (No seu computador, <code>git clean -f -x -e torta.txt</code> faria tudo de uma vez.)</p>
 </div>
 
 <hr>

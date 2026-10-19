@@ -31,7 +31,7 @@
 </ul>
 </div>
 
-<p>Todas as saídas desta aula vieram do Git real da máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português.</p>
+<p>Todas as saídas desta aula vieram do Git real da máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português. A tradução do Git que vem no Ubuntu é parcial: algumas mensagens saem em português, outras em inglês, outras misturadas. Elas estão aqui exatamente como saíram (no Windows, no macOS ou com o sistema em inglês, as frases podem ser diferentes; o sentido é o mesmo).</p>
 
 <hr>
 
@@ -120,7 +120,7 @@ $ git log --oneline
 fe996fb Primeiro commit
 </pre>
 
-<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit';;echo 'Tempo: 40 minutos' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;echo 'Tempo: 45 minutos' &gt; bolo.txt;;git commit -q -am 'Aumenta tempo do bolo para 45 minutos'" data-goal="commits:2,preparado:bolo.txt,contains:bolo.txt=45 minutos" data-solucao="git reset --soft HEAD~1">
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit';;echo 'Tempo: 40 minutos' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;echo 'Tempo: 45 minutos' &gt; bolo.txt;;git commit -q -am 'Aumenta tempo do bolo para 45 minutos'" data-goal="commits:2,preparado:bolo.txt,contains:receitas/bolo.txt=45 minutos" data-solucao="git reset --soft HEAD~1">
 <p class="try-task"><strong>Missão:</strong> desfaça o último commit da Ana com o modo que deixa a mudança <strong>na área de preparo</strong>. Confira com <code>git status</code> (o <code>bolo.txt</code> deve aparecer em "Mudanças a serem submetidas") e com <code>git show HEAD:bolo.txt</code>.</p>
 </div>
 
@@ -228,7 +228,7 @@ Tempo: 45 minutos   « a cobertura sumiu, e não há reflog que a traga
 <p>O <code>git reset --hard</code> sem commit (o mesmo que <code>git reset --hard HEAD</code>) não muda o histórico: só joga fora todas as mudanças não commitadas, de todos os arquivos rastreados, sem perguntar. Antes de um <code>--hard</code>, rode <code>git status</code> e pergunte-se se há algo ali que você quer guardar (um <a href="git-stash.html">git stash</a> resolve). Arquivos <strong>não rastreados</strong> (novos, nunca adicionados) o <code>--hard</code> não apaga; para eles existe o <a href="git-clean.html">git clean</a>.</p>
 </div>
 
-<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit';;echo 'Tempo: 40 minutos' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;echo 'Tempo: 5 minutos no micro-ondas' &gt; bolo.txt;;git commit -q -am 'Testa bolo de micro-ondas';;echo 'Potência: máxima' &gt;&gt; bolo.txt;;git commit -q -am 'Usa potência máxima'" data-goal="commits:2,limpo,contains:bolo.txt=40 minutos" data-solucao="git reset --hard HEAD~2">
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit';;echo 'Tempo: 40 minutos' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;echo 'Tempo: 5 minutos no micro-ondas' &gt; bolo.txt;;git commit -q -am 'Testa bolo de micro-ondas';;echo 'Potência: máxima' &gt;&gt; bolo.txt;;git commit -q -am 'Usa potência máxima'" data-goal="commits:2,limpo,contains:receitas/bolo.txt=40 minutos" data-solucao="git reset --hard HEAD~2">
 <p class="try-task"><strong>Missão:</strong> a Ana testou um bolo de micro-ondas em dois commits, e ficou horrível. Jogue fora os dois commits <strong>e</strong> as mudanças deles, deixando o projeto exatamente como estava no commit "Adiciona receita de bolo". No fim, <code>cat bolo.txt</code> deve mostrar 40 minutos e o <code>git status</code>, nada a fazer.</p>
 </div>
 

@@ -31,7 +31,7 @@
 </ul>
 </div>
 
-<p>Todas as saídas desta aula vieram do Git real da máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português.</p>
+<p>Todas as saídas desta aula vieram do Git real da máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português. A tradução do Git que vem no Ubuntu é parcial: algumas mensagens saem em português, outras em inglês, outras misturadas. Elas estão aqui exatamente como saíram (no Windows, no macOS ou com o sistema em inglês, as frases podem ser diferentes; o sentido é o mesmo).</p>
 
 <hr>
 
@@ -97,7 +97,7 @@ fe996fb Primeiro commit
 
 <p>(O <code>-q</code>, de <em>quiet</em>, "quieto", só esconde o resumo do commit. E o hash saiu igual ao de antes, <code>a122cf9</code>, porque o conteúdo, a mensagem e o pai são os mesmos e o relógio do laboratório do guia é fixo; no seu computador, a hora mudaria e o hash também.)</p>
 
-<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;echo 'Brigadeiro' &gt; brigadeiro.txt;;git add brigadeiro.txt;;git commit -q -m 'Adiciona receita de brigadeiro'" data-goal="commits:2,file:brigadeiro.txt,msg:bolo" data-solucao="git reset HEAD~1">
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;echo 'Brigadeiro' &gt; brigadeiro.txt;;git add brigadeiro.txt;;git commit -q -m 'Adiciona receita de brigadeiro'" data-goal="commits:2,file:receitas/brigadeiro.txt,msg:bolo" data-solucao="git reset HEAD~1">
 <p class="try-task"><strong>Missão:</strong> desfaça o último commit da Ana ("Adiciona receita de brigadeiro") com <code>git reset</code>, sem perder o arquivo. Confira com <code>git log --oneline</code> (devem sobrar 2 commits) e com <code>git status</code> (o <code>brigadeiro.txt</code> deve aparecer como não rastreado).</p>
 </div>
 

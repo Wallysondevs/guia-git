@@ -31,7 +31,7 @@
 </ul>
 </div>
 
-<p>Todas as saídas desta aula vieram do Git real da máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português.</p>
+<p>Todas as saídas desta aula vieram do Git real da máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português. A tradução do Git que vem no Ubuntu é parcial: algumas mensagens saem em português, outras em inglês, outras misturadas. Elas estão aqui exatamente como saíram (no Windows, no macOS ou com o sistema em inglês, as frases podem ser diferentes; o sentido é o mesmo).</p>
 
 <hr>
 
@@ -418,7 +418,7 @@ fatal: revert failed
 
 <h3>Missão final: o estorno do pudim</h3>
 
-<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit';;echo 'Pudim de leite' &gt; pudim.txt;;git add pudim.txt;;git commit -q -m 'Adiciona receita de pudim';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;echo 'Brigadeiro' &gt; brigadeiro.txt;;git add brigadeiro.txt;;git commit -q -m 'Adiciona receita de brigadeiro'" data-goal="commits:5,limpo,absent:pudim.txt,file:bolo.txt,file:brigadeiro.txt,msg:Revert" data-solucao="git revert --no-edit HEAD~2">
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit';;echo 'Pudim de leite' &gt; pudim.txt;;git add pudim.txt;;git commit -q -m 'Adiciona receita de pudim';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;echo 'Brigadeiro' &gt; brigadeiro.txt;;git add brigadeiro.txt;;git commit -q -m 'Adiciona receita de brigadeiro'" data-goal="commits:5,limpo,absent:receitas/pudim.txt,file:receitas/bolo.txt,file:receitas/brigadeiro.txt,msg:Revert" data-solucao="git revert --no-edit HEAD~2">
 <p class="try-task"><strong>Missão:</strong> a Ana desistiu da receita de pudim. Desfaça o commit "Adiciona receita de pudim" com <code>git revert</code>: o <code>pudim.txt</code> deve sumir da pasta, mas o bolo e o brigadeiro, que vieram depois, ficam. Dica: <code>git log --oneline</code> mostra os hashes.</p>
 </div>
 
