@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git stash — guardando o trabalho pela metade para depois | Guia Git</title>
+<meta name="description" content="O git stash para iniciantes: guardar mudanças não commitadas para trocar de branch, a mensagem Saved working directory and index state WIP, git stash pop, arquivos novos com -u, mensagens com -m, a área de preparo (--index e --staged), e os erros reais (would be overwritten by checkout, No local changes to save, No stash entries found).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">stash</span></h1>
+
+<p class="intro">A Ana está no meio de uma receita nova, num branch, com arquivos mudados e nada commitado. O telefone toca: o site está com um erro de digitação na página inicial, e ela precisa corrigir <strong>agora</strong>, no <code>main</code>. Commitar a receita pela metade? Não, ela não está pronta. Jogar fora? Nem pensar. O <code>git stash</code> ("esconderijo", "guardar num canto") resolve: ele <strong>guarda as mudanças não commitadas numa gaveta</strong>, deixa a pasta limpa para você fazer outra coisa, e depois devolve tudo do jeito que estava.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Quando o Git não deixa trocar de branch, e como o <code>git stash</code> resolve isso.</li>
+  <li>A mensagem <code>Saved working directory and index state WIP on …</code>, linha por linha, e o <code>git status</code> antes e depois.</li>
+  <li>Como trazer as mudanças de volta com <code>git stash pop</code>.</li>
+  <li>Como guardar também os arquivos novos (<code>-u</code>) e dar um nome ao que foi guardado (<code>-m</code>).</li>
+  <li>O que acontece com a área de preparo (<code>--index</code> e <code>--staged</code>), e os erros mais comuns.</li>
+</ul>
+</div>
+
+<p>Todas as saídas desta aula vieram do Git 2.53.0 da máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português. A tradução do Git no Ubuntu é <strong>incompleta</strong>, e quase todas as mensagens do <code>stash</code> saem em inglês: elas estão copiadas como saíram e ganham tradução na explicação.</p>
+
+<hr>
+
+<h2>A ideia: a gaveta da costureira</h2>
+<p>Uma costureira está fazendo um vestido na mesa quando chega uma cliente com uma calça para fazer a barra, com pressa. Ela não joga o vestido fora, e também não o entrega pela metade: ela <strong>guarda o vestido na gaveta</strong>, com os alfinetes no lugar, faz a barra da calça na mesa limpa e, quando termina, <strong>tira o vestido da gaveta</strong> e continua de onde parou.</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Na costura</th><th>No Git</th></tr>
+<tr><td>O vestido pela metade, na mesa</td><td>As mudanças não commitadas na pasta (e na área de preparo)</td></tr>
+<tr><td>Guardar na gaveta</td><td><code>git stash</code></td></tr>
+<tr><td>A mesa limpa</td><td>O <code>git status</code> limpo: a pasta igual ao último commit</td></tr>
+<tr><td>Tirar da gaveta e continuar</td><td><code>git stash pop</code></td></tr>
+</table>
+</div>
+<p>O stash não é um commit do seu branch: ele fica guardado à parte, no repositório local, e não aparece no <code>git log</code> nem vai para o GitHub com o <code>git push</code>.</p>
+
+<hr>
+
+<h2>1. O problema: "would be overwritten by checkout"</h2>
+<p>No branch <code>chocolate</code>, a Ana transformou o bolo de cenoura num bolo de chocolate (já commitado). Agora ela está acrescentando o fermento no <code>bolo.txt</code> e começou uma receita nova, o <code>brigadeiro.txt</code>. Nada disso foi commitado:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo chocolate
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   bolo.txt
+
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	brigadeiro.txt
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+</pre>
+
+<p>O <code>bolo.txt</code> está modificado (<em>Changes not staged for commit</em>, "mudanças não preparadas para commit") e o <code>brigadeiro.txt</code> é um arquivo novo, que o Git ainda não acompanha (<code>Arquivos não monitorados</code>). Ela tenta ir para o <code>main</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch main
+error: Your local changes to the following files would be overwritten by checkout:
+	bolo.txt
+Please commit your changes or stash them before you switch branches.
+Aborting
+</pre>
+
+<p>"Erro: as suas mudanças locais nos arquivos a seguir seriam sobrescritas pela troca de branch: <code>bolo.txt</code>. Por favor, faça commit das suas mudanças ou guarde-as com <strong>stash</strong> antes de trocar de branch. Cancelando." O <code>bolo.txt</code> do <code>main</code> é diferente do <code>bolo.txt</code> do <code>chocolate</code> (no <code>main</code> o bolo ainda é de cenoura). Para trocar de branch, o Git teria de pôr na pasta a versão do <code>main</code>, apagando o fermento que a Ana acabou de escrever. Ele se recusa. O próprio Git sugere as duas saídas: <strong>commit</strong> ou <strong>stash</strong>.</p>
+
+<hr>
+
+<h2>2. Guardando na gaveta: <code>git stash</code></h2>
+
+<pre class="term" data-cwd="~/receitas">$ git stash
+Saved working directory and index state WIP on chocolate: ffcf72f Bolo vira de chocolate
+</pre>
+
+<dl class="anatomy">
+  <dt>git stash</dt><dd>Guarda as mudanças dos arquivos <strong>rastreados</strong> (os que o Git já conhece), da pasta e da área de preparo, e deixa esses arquivos iguais ao último commit. É a forma curta de <code>git stash push</code> ("empurrar para dentro do stash").</dd>
+  <dt>Saved working directory and index state</dt><dd>"Guardei o estado da pasta de trabalho e do índice" (o índice é a área de preparo).</dd>
+  <dt>WIP on chocolate</dt><dd><em>WIP</em> é a sigla de <em>work in progress</em>, "trabalho em andamento", no branch <code>chocolate</code>. É o nome automático do que foi guardado.</dd>
+  <dt>ffcf72f Bolo vira de chocolate</dt><dd>O commit em que você estava quando guardou: o hash e a mensagem. Ajuda a lembrar, dias depois, de onde aquilo veio.</dd>
+</dl>
+
+<p>E agora? O <code>git status</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo chocolate
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	brigadeiro.txt
+
+nada adicionado ao envio mas arquivos não registrados estão presentes (use "git add" to registrar)
+$ cat bolo.txt
+Bolo de cenoura
+- 3 cenouras
+- 3 ovos
+- 1 xícara de chocolate em pó
+$ git stash list
+stash@{0}: WIP on chocolate: ffcf72f Bolo vira de chocolate
+</pre>
+
+<dl class="anatomy">
+  <dt>git status</dt><dd>O <code>bolo.txt</code> saiu da lista de modificados: está igual ao último commit. Mas o <code>brigadeiro.txt</code> <strong>continua aí</strong>! Por padrão, o stash não guarda arquivos novos, que o Git ainda não acompanha. (Como guardá-los também, na seção 4.)</dd>
+  <dt>cat bolo.txt</dt><dd>O bolo de chocolate do último commit, <strong>sem o fermento</strong>. O fermento está na gaveta.</dd>
+  <dt>git stash list</dt><dd>Lista o que está guardado. <code>stash@{0}</code> é o nome do item: o "0" quer dizer "o mais recente". A aula <a href="stash-lista.html">Vários Stashes</a> mostra o que fazer quando há vários.</dd>
+</dl>
+
+<hr>
+
+<h2>3. Fazendo a outra tarefa e voltando: <code>git stash pop</code></h2>
+<p>Com o <code>bolo.txt</code> limpo, a troca de branch funciona. A Ana corrige o README no <code>main</code> e volta:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch main
+Switched to branch 'main'
+$ sed -i 's/recitas/receitas/' README.md
+$ git commit -q -am 'Corrige erro de digitação no README'
+$ git switch chocolate
+Switched to branch 'chocolate'
+</pre>
+
+<p>(O <code>sed</code> trocou <code>recitas</code> por <code>receitas</code> dentro do arquivo, como o "Localizar e substituir" de um editor.) O <code>brigadeiro.txt</code>, que não foi guardado, passeou junto com ela pelos dois branches: arquivos não rastreados não pertencem a branch nenhum. Agora, tirar da gaveta:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git stash pop
+No ramo chocolate
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   bolo.txt
+
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	brigadeiro.txt
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+Dropped refs/stash@{0} (19ca623c5d2a24e6369496b8c8b4b5e529b923ec)
+</pre>
+
+<dl class="anatomy">
+  <dt>git stash pop</dt><dd><em>Pop</em> é "tirar o de cima": aplica de volta as mudanças do stash mais recente e, se deu tudo certo, apaga-o da lista.</dd>
+  <dt>No ramo chocolate … modified: bolo.txt</dt><dd>Depois de aplicar, o <code>pop</code> mostra um <code>git status</code>: o <code>bolo.txt</code> está modificado de novo, como antes do stash.</dd>
+  <dt>Dropped refs/stash@{0} (19ca623…)</dt><dd>"Descartei o <code>stash@{0}</code>": a gaveta foi esvaziada. O número entre parênteses é o hash do stash (sim, por dentro um stash é um tipo de commit). Ele serve para recuperar um stash apagado sem querer, como mostra a aula <a href="stash-lista.html">Vários Stashes</a>.</dd>
+</dl>
+
+<pre class="term" data-cwd="~/receitas">$ cat bolo.txt
+Bolo de cenoura
+- 3 cenouras
+- 3 ovos
+- 1 xícara de chocolate em pó
+- 1 colher de fermento
+$ git stash list
+</pre>
+
+<p>O fermento voltou, e o <code>git stash list</code> não mostra nada: a gaveta está vazia. A Ana continua o trabalho como se nada tivesse acontecido.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Receita de bolo';;git switch -q -c chocolate;;echo 'Bolo de chocolate' &gt; bolo.txt;;git commit -q -am 'Bolo vira de chocolate';;echo '- 1 colher de fermento' &gt;&gt; bolo.txt" data-goal="head:main,stash:1,limpo" data-solucao="git stash;;git switch main">
+<p class="try-task"><strong>Missão:</strong> a Ana está no branch <code>chocolate</code> com o <code>bolo.txt</code> modificado. Tente ir para o <code>main</code> com <code>git switch main</code> e leia o erro. Depois guarde as mudanças na gaveta e vá para o <code>main</code>. Confira com <code>git stash list</code>.</p>
+</div>
+
+<hr>
+
+<h2>4. Arquivos novos também: <code>-u</code></h2>
+<p>Como você viu, o <code>git stash</code> deixa para trás os arquivos não rastreados. Para guardá-los junto, use <code>-u</code> (<code>--include-untracked</code>, "incluir os não rastreados"). E para dar um nome que você vai entender daqui a uma semana, use <code>-m</code> ("mensagem"). Num repositório novo, a Ana acrescentou o fermento ao bolo e criou o <code>brigadeiro.txt</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git stash -u -m 'bolo com fermento e brigadeiro'
+Saved working directory and index state On main: bolo com fermento e brigadeiro
+$ git status
+No ramo main
+nothing to commit, working tree clean
+$ ls
+README.md
+bolo.txt
+$ git stash list
+stash@{0}: On main: bolo com fermento e brigadeiro
+</pre>
+
+<dl class="anatomy">
+  <dt>-u</dt><dd>Guarda também os arquivos novos: o <code>brigadeiro.txt</code> sumiu da pasta (o <code>ls</code> não o mostra) e foi para a gaveta.</dd>
+  <dt>-m 'bolo com fermento e brigadeiro'</dt><dd>A mensagem do stash. Repare na lista: com mensagem, o nome fica <code>On main: bolo com fermento e brigadeiro</code> ("no <code>main</code>: …"); sem ela, era <code>WIP on chocolate: ffcf72f Bolo vira de chocolate</code>.</dd>
+  <dt>nothing to commit, working tree clean</dt><dd>"Nada a commitar, pasta limpa": agora sim, a mesa ficou totalmente vazia.</dd>
+</dl>
+
+<h3>O que tem na gaveta? <code>git stash show</code></h3>
+
+<pre class="term" data-cwd="~/receitas">$ git stash show
+ bolo.txt | 1 +
+ 1 file changed, 1 insertion(+)
+$ git stash show -p --include-untracked
+diff --git a/bolo.txt b/bolo.txt
+index 92e7eaf..84a5a0b 100644
+--- a/bolo.txt
++++ b/bolo.txt
+@@ -1,3 +1,4 @@
+ Bolo de cenoura
+ - 3 cenouras
+ - 3 ovos
++- 1 colher de fermento
+diff --git a/brigadeiro.txt b/brigadeiro.txt
+new file mode 100644
+index 0000000..5aa3544
+--- /dev/null
++++ b/brigadeiro.txt
+@@ -0,0 +1,2 @@
++Brigadeiro
++- 1 lata de leite condensado
+</pre>
+
+<p>O <code>git stash show</code> mostra um resumo (os arquivos e quantas linhas mudaram), mas, sem opções, <strong>não lista os arquivos novos</strong>: o <code>brigadeiro.txt</code> não aparece. Com <code>-p</code> (de <em>patch</em>, as mudanças linha a linha, no formato do <a href="git-diff.html">git diff</a>) e <code>--include-untracked</code>, aparece tudo: o fermento no <code>bolo.txt</code> e o <code>brigadeiro.txt</code> inteiro, como arquivo novo (<code>new file mode</code>).</p>
+
+<pre class="term" data-cwd="~/receitas">$ git stash pop
+No ramo main
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   bolo.txt
+
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	brigadeiro.txt
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+Dropped refs/stash@{0} (c60b7cfbc72befdd5665053dc29cfb73406932c2)
+</pre>
+
+<p>Os dois voltaram: o <code>bolo.txt</code> modificado e o <code>brigadeiro.txt</code>, de novo como arquivo não monitorado.</p>
+
+<hr>
+
+<h2>5. E a área de preparo?</h2>
+<p>O stash guarda também o que estava na área de preparo (o "index state" da mensagem). Mas, ao trazer de volta, o <code>pop</code> <strong>não recoloca</strong> as coisas na área de preparo. Num repositório com o <code>bolo.txt</code> já preparado com <code>git add</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status --short
+M  bolo.txt
+$ git stash
+Saved working directory and index state WIP on main: c448d1f Bolo
+$ git stash pop
+No ramo main
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   bolo.txt
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+Dropped refs/stash@{0} (0402e8c48127681498527d51a78ca9bd8edb27de)
+$ git status --short
+ M bolo.txt
+</pre>
+
+<p>Antes: <code>M  bolo.txt</code>, com o <code>M</code> na primeira coluna (preparado). Depois: <code> M bolo.txt</code>, com o <code>M</code> na segunda coluna (modificado, mas <strong>não</strong> preparado). A mudança voltou inteira, só que fora da área de preparo. Normalmente isso não atrapalha: é só um <code>git add</code> de novo. Quando importa, use <code>git stash pop --index</code>, que tenta recolocar também a área de preparo como estava.</p>
+
+<h3>Guardando só um pedaço</h3>
+<p>Duas variações úteis do <code>git stash push</code> (a forma longa, que aceita opções e nomes de arquivos). A Ana tem o <code>README.md</code> preparado, o <code>bolo.txt</code> modificado e o <code>brigadeiro.txt</code> novo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status --short
+M  README.md
+ M bolo.txt
+?? brigadeiro.txt
+$ git stash push --staged -m 'só o README'
+Saved working directory and index state On main: só o README
+$ git status --short
+ M bolo.txt
+?? brigadeiro.txt
+$ git stash pop --index
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	modified:   README.md
+
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   bolo.txt
+
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	brigadeiro.txt
+
+Dropped refs/stash@{0} (b3b6d6fde772573b613f19b3ef08064d8493de34)
+$ git stash push -m 'só o bolo' bolo.txt
+Saved working directory and index state On main: só o bolo
+$ git status --short
+M  README.md
+?? brigadeiro.txt
+</pre>
+
+<dl class="anatomy">
+  <dt>git stash push --staged <span class="versao">git 2.35+</span></dt><dd>Guarda <strong>só o que está na área de preparo</strong> (o <code>README.md</code>); o <code>bolo.txt</code> modificado fica na pasta.</dd>
+  <dt>git stash pop --index</dt><dd>Traz de volta <strong>recolocando na área de preparo</strong>: o <code>README.md</code> voltou para "Mudanças a serem submetidas".</dd>
+  <dt>git stash push -m 'só o bolo' bolo.txt</dt><dd>Com nomes de arquivo no fim, guarda <strong>só esses arquivos</strong>. O <code>README.md</code> preparado ficou onde estava.</dd>
+</dl>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer a mesma coisa</h2>
+<p>O stash não é o único jeito de "largar o que está fazendo" por um tempo:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Jeito</th><th>Como</th><th>Quando usar</th></tr>
+<tr><td>Stash</td><td><code>git stash</code> … <code>git stash pop</code></td><td>Interrupção rápida (minutos ou horas), para voltar logo ao mesmo branch</td></tr>
+<tr><td>Commit provisório</td><td><code>git commit -am "WIP: fermento"</code>, e depois desfazer com <code>git reset HEAD~1</code> ou completar com <code>git commit --amend</code></td><td>Interrupção longa (vai dormir, vai trocar de computador): um commit não se perde tão fácil quanto um stash esquecido. Veja <a href="git-reset.html">git reset</a> e <a href="commit-amend.html">--amend</a>.</td></tr>
+<tr><td>Outra pasta</td><td><code>git worktree add</code></td><td>Quando você vai trabalhar nos dois branches ao mesmo tempo, por dias (aula <a href="git-worktree.html">git worktree</a>)</td></tr>
+<tr><td>Jogar fora</td><td><code>git restore bolo.txt</code></td><td>Quando a mudança não presta mesmo (aula <a href="git-restore.html">git restore</a>)</td></tr>
+</table>
+</div>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que guarda</th></tr>
+<tr><td><code>git stash</code> (= <code>git stash push</code>)</td><td>Mudanças dos arquivos rastreados (pasta e área de preparo)</td></tr>
+<tr><td><code>git stash -u</code></td><td>Isso e mais os arquivos novos (não rastreados)</td></tr>
+<tr><td><code>git stash -m "mensagem"</code></td><td>O mesmo que <code>git stash</code>, com um nome</td></tr>
+<tr><td><code>git stash push --staged</code></td><td>Só o que está na área de preparo (Git 2.35+)</td></tr>
+<tr><td><code>git stash push arquivo</code></td><td>Só as mudanças desse arquivo</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Nada para guardar: <code>No local changes to save</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git stash
+No local changes to save
+</pre>
+<p>"Não há mudanças locais para guardar." A pasta já está igual ao último commit, ou as únicas mudanças são arquivos novos, que o <code>git stash</code> sem <code>-u</code> ignora. Nenhum stash foi criado. <strong>Como confirmar:</strong> <code>git status</code>. <strong>Como resolver:</strong> se há arquivos novos que você quer guardar, use <code>git stash -u</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Gaveta vazia: <code>No stash entries found.</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git stash pop
+No stash entries found.
+</pre>
+<p>"Nenhum item de stash encontrado." Você já tirou da gaveta (o <code>pop</code> apaga o item), ou guardou em outro repositório. <strong>Como confirmar:</strong> <code>git stash list</code> não mostra nada. Atenção: o stash é <strong>de cada repositório</strong>; um stash feito em <code>~/receitas</code> não aparece em <code>~/tcc</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Repositório sem nenhum commit: <code>You do not have the initial commit yet</code></strong>
+<pre class="term" data-cwd="~/vazio">$ git stash
+You do not have the initial commit yet
+</pre>
+<p>"Você ainda não tem o commit inicial." O stash guarda a diferença em relação ao último commit; sem nenhum commit, não há com o que comparar. <strong>Como resolver:</strong> faça o primeiro commit (aula <a href="primeiro-commit.html">Seu Primeiro Commit</a>).</p>
+</div>
+
+<div class="cenario">
+<strong>"Guardei, mas o arquivo novo continua aí"</strong>
+<p>É o <code>brigadeiro.txt</code> da seção 2: sem <code>-u</code>, arquivos não rastreados ficam na pasta. Se você trocar de branch, eles vão junto; se apagar a pasta achando que estava tudo guardado, eles se perdem. <strong>Como evitar:</strong> confira o <code>git status</code> depois do stash; para guardar tudo, <code>git stash -u</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>O <code>pop</code> deu conflito</strong>
+<p>Se, enquanto as mudanças estavam na gaveta, o branch ganhou um commit que mexe nas <strong>mesmas linhas</strong>, o <code>pop</code> dá conflito, como um merge. Nesse caso, o stash <strong>não é apagado</strong> da lista. Como resolver está na próxima aula, <a href="stash-lista.html">Vários Stashes</a>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git stash</code></td><td>Guarda as mudanças dos arquivos rastreados e limpa a pasta</td></tr>
+<tr><td><code>git stash -u</code></td><td>Guarda também os arquivos novos</td></tr>
+<tr><td><code>git stash -m "texto"</code></td><td>Guarda com um nome</td></tr>
+<tr><td><code>git stash list</code></td><td>Lista o que está guardado (<code>stash@{0}</code> é o mais recente)</td></tr>
+<tr><td><code>git stash show</code> / <code>show -p</code></td><td>Resumo / mudanças linha a linha do stash mais recente</td></tr>
+<tr><td><code>git stash pop</code></td><td>Aplica o stash mais recente e o apaga da lista</td></tr>
+<tr><td><code>git stash pop --index</code></td><td>O mesmo, recolocando também a área de preparo</td></tr>
+<tr><td><code>git stash push --staged</code></td><td>Guarda só o que está preparado (Git 2.35+)</td></tr>
+<tr><td><code>git stash push arquivo</code></td><td>Guarda só esse arquivo</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Guardar e devolver</h3>
+<p>Complete: guardar as mudanças, incluindo arquivos novos, e depois trazê-las de volta.</p>
+<div class="ex-code">git stash <input data-answer="-u" aria-label="opção"><br>git stash <input data-answer="pop" aria-label="subcomando"></div>
+</div>
+
+<div class="exercise">
+<h3>2. O nome do mais recente</h3>
+<p>No <code>git stash list</code>, qual é o nome do stash mais recente?</p>
+<div class="ex-code"><input data-answer="stash@{0}" aria-label="nome do stash"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. A Ana rodou <code>git stash</code> (sem opções) com o <code>bolo.txt</code> modificado e o <code>brigadeiro.txt</code> novo. O que ficou na pasta?</p>
+<label><input type="radio" name="q3"> Nada: os dois foram guardados</label>
+<label><input type="radio" name="q3"> O <code>brigadeiro.txt</code>, e o <code>bolo.txt</code> na versão do último commit</label>
+<label><input type="radio" name="q3"> O <code>bolo.txt</code> modificado</label>
+<label><input type="radio" name="q3"> Os dois, sem mudança</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. O que a linha <code>Dropped refs/stash@{0} (…)</code> quer dizer, no fim do <code>git stash pop</code>?</p>
+<label><input type="radio" name="q4"> Que o stash deu erro e foi perdido</label>
+<label><input type="radio" name="q4"> Que as mudanças foram commitadas</label>
+<label><input type="radio" name="q4"> Que as mudanças foram aplicadas e o item saiu da lista do stash</label>
+<label><input type="radio" name="q4"> Que o branch foi apagado</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. O stash vai para o GitHub com o <code>git push</code>?</p>
+<label><input type="radio" name="q5"> Não: ele fica só no repositório local</label>
+<label><input type="radio" name="q5"> Sim, junto com os commits</label>
+<label><input type="radio" name="q5"> Só se tiver mensagem (<code>-m</code>)</label>
+<label><input type="radio" name="q5"> Só com <code>-u</code></label>
+</div>
+
+<h3>Missão final: a interrupção completa</h3>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Recitas da Ana' &gt; README.md;;echo 'Bolo de cenoura' &gt; bolo.txt;;git add README.md bolo.txt;;git commit -q -m 'Primeiras receitas';;git switch -q -c chocolate;;echo 'Bolo de chocolate' &gt; bolo.txt;;git commit -q -am 'Bolo vira de chocolate';;echo '- 1 colher de fermento' &gt;&gt; bolo.txt" data-goal="head:chocolate,stash:0,naopreparado:bolo.txt,contem:main:README.md=Receitas da Ana,contains:receitas/bolo.txt=fermento" data-solucao="git stash;;git switch main;;echo '# Receitas da Ana' &gt; README.md;;git commit -am 'Corrige erro de digitação no README';;git switch chocolate;;git stash pop">
+<p class="try-task"><strong>Missão:</strong> a Ana está no <code>chocolate</code>, no meio do fermento. O título do README no <code>main</code> está errado (<code>Recitas</code>). Guarde o trabalho, vá para o <code>main</code>, corrija o README (dica: <code>echo '# Receitas da Ana' &gt; README.md</code>) e faça o commit, volte para o <code>chocolate</code> e traga o fermento de volta. No fim, o stash deve estar vazio e o <code>bolo.txt</code> modificado, com o fermento.</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git stash</code> guarda as mudanças não commitadas (da pasta e da área de preparo) e deixa os arquivos rastreados iguais ao último commit; <code>git stash pop</code> traz de volta e apaga o item da lista.</li>
+  <li>Use quando o Git não deixa trocar de branch (<code>would be overwritten by checkout</code>) ou quando precisa da pasta limpa por um momento.</li>
+  <li>Arquivos novos só entram com <code>-u</code>; um nome ajuda a lembrar: <code>-m "texto"</code>.</li>
+  <li><code>git stash list</code> mostra o que está guardado; <code>git stash show -p</code>, o conteúdo.</li>
+  <li>O <code>pop</code> devolve tudo fora da área de preparo; <code>--index</code> recoloca. <code>git stash push --staged</code> e <code>git stash push arquivo</code> guardam só uma parte.</li>
+  <li>O stash é local e fácil de esquecer: para interrupções longas, prefira um commit provisório.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
