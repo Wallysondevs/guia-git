@@ -33,7 +33,7 @@
 
 <div class="warning">
 <strong>O que é real e o que é ilustrativo nesta aula</strong>
-<p>Tudo o que acontece <strong>no site do GitHub</strong> (abrir o pull request, os botões, o merge) é <strong>ilustrativo</strong>: descrito conforme a documentação oficial, em <a href="https://docs.github.com/pt/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork">docs.github.com</a>. O site é em inglês; os nomes aparecem como estão nele, com a tradução ao lado. <strong>Todos os comandos</strong> rodaram de verdade no Git do Ubuntu, com o "GitHub de mentira" do laboratório do guia. Como o laboratório não tem a página do pull request, o merge do Bruno foi imitado com um <code>git merge --no-ff</code> no computador dele, com a mesma mensagem que o botão do GitHub usa.</p>
+<p>Tudo o que acontece <strong>no site do GitHub</strong> (abrir o pull request, os botões, o merge) é <strong>ilustrativo</strong>: descrito conforme a documentação oficial, em <a href="https://docs.github.com/pt/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork">docs.github.com</a>. O site é em inglês; os nomes aparecem como estão nele, com a tradução ao lado. <strong>Todos os comandos</strong> rodaram de verdade no Git do Ubuntu, com o "GitHub de mentira" do laboratório do guia. Como o laboratório não tem a página do pull request, o merge do Bruno foi imitado com um <code>git merge --no-ff</code> no computador dele, com a mesma mensagem que o botão do GitHub usa. As mensagens do Git saem parte em português, parte em inglês: a tradução do Git no Ubuntu é parcial (veja a nota em <a href="primeiro-commit.html">Seu Primeiro Commit</a>).</p>
 </div>
 
 <hr>
@@ -118,7 +118,7 @@ branch 'receita-sexta' set up to track 'origin/receita-sexta'.
 </dl>
 
 <div class="try" data-setup="mkdir cardapio;;cd cardapio;;git init -q;;echo 'Quinta: peixe assado' &gt; cardapio.txt;;git add cardapio.txt;;git commit -q -m 'Cria o cardápio'" data-goal="head:receita-sexta,commits:2,contem:HEAD:cardapio.txt=Sexta,limpo" data-solucao="git switch -c receita-sexta;;echo 'Sexta: pizza de calabresa' &gt;&gt; cardapio.txt;;git commit -am 'Adiciona a sexta-feira'">
-<p class="try-task"><strong>Missão:</strong> prepare uma contribuição do jeito certo: crie o branch <code>receita-sexta</code> a partir do <code>main</code>, acrescente uma linha com a sexta-feira ao <code>cardapio.txt</code> (por exemplo, <code>echo 'Sexta: pizza de calabresa' &gt;&gt; cardapio.txt</code>) e commite. O <code>main</code> tem de continuar sem a sexta. (No terminal do guia não há GitHub: o <code>git push -u origin receita-sexta</code> você faz no seu computador.)</p>
+<p class="try-task"><strong>Missão:</strong> prepare uma contribuição do jeito certo: crie o branch <code>receita-sexta</code> a partir do <code>main</code>, acrescente uma linha com a sexta-feira ao <code>cardapio.txt</code> (por exemplo, <code>echo 'Sexta: pizza de calabresa' &gt;&gt; cardapio.txt</code>) e commite. O <code>main</code> tem de continuar sem a sexta. (O terminal do guia não tem o site do GitHub nem o seu fork: o <code>git push -u origin receita-sexta</code> e o pull request você faz no seu computador.)</p>
 </div>
 
 <hr>
