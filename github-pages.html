@@ -95,6 +95,12 @@ $ git commit -m 'Primeira versão do site'
 
 <pre class="term" data-cwd="~/ana-souza.github.io">$ git remote add origin https://github.com/ana-souza/ana-souza.github.io.git
 $ git push -u origin main
+Enumerating objects: 3, done.                          « o progresso do envio
+Counting objects: 100% (3/3), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (2/2), done.
+Writing objects: 100% (3/3), 377 bytes | 377.00 KiB/s, done.
+Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
 To https://github.com/ana-souza/ana-souza.github.io.git
  * [new branch]      main -&gt; main                      « o branch main foi criado no GitHub
 branch 'main' set up to track 'origin/main'.
@@ -104,7 +110,7 @@ Your branch is up to date with 'origin/main'.          « nada a enviar: o GitHu
 
 nothing to commit, working tree clean
 </pre>
-<p>Algumas linhas saem em inglês mesmo com o sistema em português: a tradução do Git do Ubuntu não cobre todas as mensagens. <code>Your branch is up to date with 'origin/main'</code> quer dizer "o seu branch está igual ao <code>origin/main</code>", e <code>nothing to commit, working tree clean</code>, "nada a commitar, pasta limpa".</p>
+<p>As primeiras linhas do <code>push</code> são o progresso do envio (contar, comprimir e escrever os objetos); o terminal do guia mostra a versão curta, sem elas. Algumas linhas saem em inglês mesmo com o sistema em português: a tradução do Git do Ubuntu não cobre todas as mensagens (veja a nota em <a href="primeiro-commit.html">Seu Primeiro Commit</a>). <code>Your branch is up to date with 'origin/main'</code> quer dizer "o seu branch está igual ao <code>origin/main</code>", e <code>nothing to commit, working tree clean</code>, "nada a commitar, pasta limpa".</p>
 
 <hr>
 
@@ -134,6 +140,12 @@ $ git commit -am 'Atualiza a frase da página inicial'
 [main 64ebfc7] Atualiza a frase da página inicial
  1 file changed, 1 insertion(+), 1 deletion(-)
 $ git push
+Enumerating objects: 5, done.
+Counting objects: 100% (5/5), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (2/2), done.
+Writing objects: 100% (3/3), 319 bytes | 319.00 KiB/s, done.
+Total 3 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)
 To https://github.com/ana-souza/ana-souza.github.io.git
    78bc0b4..64ebfc7  main -&gt; main                     « o main do GitHub andou de 78bc0b4 para 64ebfc7
 </pre>
@@ -164,12 +176,17 @@ $ git commit -m 'Move o site para a pasta docs'
  1 file changed, 0 insertions(+), 0 deletions(-)
  rename index.html =&gt; docs/index.html (100%)
 $ git push
+Enumerating objects: 3, done.
+Counting objects: 100% (3/3), done.
+Writing objects: 100% (2/2), 240 bytes | 240.00 KiB/s, done.
+Total 2 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
 To https://github.com/ana-souza/ana-souza.github.io.git
    64ebfc7..91f2aa6  main -&gt; main
 </pre>
 
 <p>E para o branch <code>gh-pages</code>: dá para criar o branch no GitHub enviando o seu <code>main</code> com outro nome, com <code>git push origin main:gh-pages</code> ("envie o meu <code>main</code> para o branch <code>gh-pages</code> de lá"):</p>
 <pre class="term" data-cwd="~/ana-souza.github.io">$ git push origin main:gh-pages
+Total 0 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
 remote:
 remote: Create a pull request for 'gh-pages' on GitHub by visiting:
 remote:      https://github.com/ana-souza/ana-souza.github.io/pull/new/gh-pages
