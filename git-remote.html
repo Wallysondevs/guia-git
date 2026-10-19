@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git remote — listar, acrescentar, renomear e remover remotos | Guia Git</title>
+<meta name="description" content="O git remote para quem está começando: listar os remotos com -v, ver detalhes com show e get-url, acrescentar um segundo remoto (o do Bruno) e buscar os branches dele, renomear, trocar a URL com set-url e remover, onde isso fica no .git/config, e os erros reais do Git.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">remote</span></h1>
+
+<p class="intro">Na aula <a href="remotos.html">O que é um Repositório Remoto</a>, você viu que o seu repositório conhece outras cópias dele por <strong>nomes</strong>, como o <code>origin</code>. O <code>git remote</code> é o comando que cuida dessa lista: mostra quais remotos existem e para onde apontam, acrescenta remotos novos, troca o endereço de um remoto, renomeia e apaga. Ele é a "agenda de contatos" do seu repositório.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A listar os remotos (<code>git remote</code>, <code>-v</code>) e a ver os detalhes de um deles (<code>get-url</code>, <code>show</code>).</li>
+  <li>A acrescentar um segundo remoto (<code>add</code>) e buscar os branches dele.</li>
+  <li>A renomear (<code>rename</code>), trocar o endereço (<code>set-url</code>) e remover (<code>remove</code>) um remoto.</li>
+  <li>Onde o Git guarda essa lista: o arquivo <code>.git/config</code>.</li>
+  <li>Os erros: <code>remote origin already exists</code> e <code>No such remote</code>.</li>
+</ul>
+</div>
+
+<p>As saídas desta aula saíram do Git 2.53 do Ubuntu 26.04, num terminal de verdade da máquina da Ana, com o "GitHub" do laboratório (uma imitação local do GitHub).</p>
+
+<hr>
+
+<h2>A ideia: a agenda de contatos</h2>
+<p>Na agenda do celular, você não decora números: salva "Mãe", "Bruno", "Pizzaria" e liga pelo nome. Se o Bruno troca de número, você <strong>edita o contato</strong>, e o nome continua o mesmo. Se ele some da sua vida, você <strong>apaga o contato</strong>, e ninguém fica sabendo.</p>
+<p>O <code>git remote</code> é essa agenda: cada remoto é um <strong>nome</strong> (<code>origin</code>, <code>bruno</code>) ligado a um <strong>endereço</strong> (a URL). Mexer na agenda não muda nada no GitHub: só muda como o <strong>seu</strong> repositório chama os outros.</p>
+
+<hr>
+
+<h2>1. Listando: <code>git remote</code> e <code>-v</code></h2>
+<p>O repositório de receitas da Ana está ligado ao GitHub dela:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git remote
+origin
+$ git remote -v
+origin  https://github.com/ana-souza/receitas.git (fetch)
+origin  https://github.com/ana-souza/receitas.git (push)
+</pre>
+
+<dl class="anatomy">
+  <dt>git remote</dt><dd>Sozinho, lista só os <strong>nomes</strong> dos remotos, um por linha.</dd>
+  <dt>-v</dt><dd>De <em>verbose</em> ("falante"): mostra também a URL de cada um, duas vezes, uma para buscar (<code>fetch</code>) e outra para enviar (<code>push</code>).</dd>
+</dl>
+
+<p>Para pegar só o endereço (por exemplo, para colar no navegador ou mandar para alguém):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git remote get-url origin
+https://github.com/ana-souza/receitas.git
+</pre>
+
+<h3>Os detalhes: <code>git remote show</code></h3>
+
+<pre class="term" data-cwd="~/receitas">$ git remote show origin
+* remote origin
+  Fetch URL: https://github.com/ana-souza/receitas.git
+  Push  URL: https://github.com/ana-souza/receitas.git
+  HEAD branch: main
+  Remote branch:
+    main tracked
+  Local branch configured for 'git pull':
+    main merges with remote main
+  Local ref configured for 'git push':
+    main pushes to main (up to date)
+</pre>
+
+<p>O <code>show</code> <strong>conversa com o GitHub</strong> (precisa de internet) e conta, em inglês:</p>
+<dl class="anatomy">
+  <dt>Fetch URL / Push URL</dt><dd>Os dois endereços, os mesmos do <code>-v</code>.</dd>
+  <dt>HEAD branch: main</dt><dd>O branch principal do remoto é o <code>main</code>.</dd>
+  <dt>Remote branch: main tracked</dt><dd>Os branches que existem lá; <code>tracked</code> = o seu repositório acompanha esse branch (tem um <code>origin/main</code>).</dd>
+  <dt>main merges with remote main</dt><dd>O seu <code>main</code>, no <code>git pull</code>, junta as novidades do <code>main</code> do remoto.</dd>
+  <dt>main pushes to main (up to date)</dt><dd>O seu <code>main</code>, no <code>git push</code>, vai para o <code>main</code> de lá, e os dois estão iguais (<code>up to date</code>, "em dia").</dd>
+</dl>
+
+<hr>
+
+<h2>2. Acrescentando um remoto: <code>git remote add</code></h2>
+<p>O Bruno fez uma cópia do repositório da Ana no GitHub dele (um <a href="fork.html">fork</a>): <code>https://github.com/bruno-lima/receitas.git</code>. Lá, ele criou um branch <code>pudim</code> com uma receita nova. A Ana quer ver o pudim sem esperar o Bruno mandar para o repositório dela. Ela acrescenta o GitHub do Bruno como um <strong>segundo remoto</strong>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git remote add bruno https://github.com/bruno-lima/receitas.git
+$ git remote -v
+bruno   https://github.com/bruno-lima/receitas.git (fetch)
+bruno   https://github.com/bruno-lima/receitas.git (push)
+origin  https://github.com/ana-souza/receitas.git (fetch)
+origin  https://github.com/ana-souza/receitas.git (push)
+</pre>
+
+<dl class="anatomy">
+  <dt>git remote add</dt><dd>"Acrescente um remoto".</dd>
+  <dt>bruno</dt><dd>O nome que a Ana escolheu. Pode ser qualquer um, sem espaços. (Para o repositório "original" de um fork, muita gente usa <code>upstream</code>.)</dd>
+  <dt>https://github.com/bruno-lima/receitas.git</dt><dd>O endereço.</dd>
+</dl>
+
+<p>O <code>add</code> não baixa nada: só anota na agenda. Para trazer os branches do Bruno, a Ana busca deste remoto pelo nome:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git fetch bruno
+remote: Enumerating objects: 4, done.
+remote: Counting objects: 100% (4/4), done.
+remote: Compressing objects: 100% (2/2), done.
+remote: Total 3 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (3/3), 272 bytes | 272.00 KiB/s, done.
+From https://github.com/bruno-lima/receitas
+ * [new branch]      main       -&gt; bruno/main
+ * [new branch]      pudim      -&gt; bruno/pudim
+$ git branch -a
+* main
+  remotes/bruno/HEAD -&gt; bruno/main
+  remotes/bruno/main
+  remotes/bruno/pudim
+  remotes/origin/HEAD -&gt; origin/main
+  remotes/origin/main
+$ git log --oneline --graph --all
+* f4412ce (bruno/pudim) Adiciona a receita de pudim
+* 73a019c (HEAD -&gt; main, origin/main, origin/HEAD, bruno/main, bruno/HEAD) Adiciona a receita de pão de queijo
+* c20285a Corrige o tempo de forno do bolo
+* c34349b Adiciona a receita de bolo
+* 700bbd5 Cria o README
+</pre>
+
+<p>Os branches do Bruno chegaram com o prefixo do nome do remoto: <code>bruno/main</code> e <code>bruno/pudim</code>, ao lado dos <code>origin/…</code>. No desenho (veja <a href="log-graph.html">Vendo os Galhos</a>), o <code>bruno/pudim</code> tem um commit a mais que o <code>main</code> da Ana. Ela pode olhar a receita com <code>git show bruno/pudim:pudim.txt</code>, ou juntar o branch com <code>git merge bruno/pudim</code> (veja <a href="git-fetch.html">git fetch</a> e <a href="git-merge.html">git merge</a>).</p>
+
+<div class="try" data-setup="github novo ana-souza/receitas;;github novo bruno-lima/receitas;;mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;printf 'Bolo de cenoura\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona a receita de bolo';;git remote add origin https://github.com/ana-souza/receitas.git;;git push -q -u origin main;;github bruno 'git clone -q https://github.com/ana-souza/receitas.git &amp;&amp; cd receitas &amp;&amp; git remote add meu https://github.com/bruno-lima/receitas.git &amp;&amp; git push -q meu main &amp;&amp; git switch -q -c pudim &amp;&amp; printf &quot;Pudim de leite\n&quot; &gt; pudim.txt &amp;&amp; git add pudim.txt &amp;&amp; git commit -qm &quot;Adiciona a receita de pudim&quot; &amp;&amp; git push -q meu pudim'" data-goal="remoto:bruno,contem:bruno/pudim:pudim.txt=Pudim" data-solucao="git remote add bruno https://github.com/bruno-lima/receitas.git;;git fetch bruno">
+<p class="try-task"><strong>Missão:</strong> acrescente o GitHub do Bruno, <code>https://github.com/bruno-lima/receitas.git</code>, como um remoto chamado <code>bruno</code>, e busque os branches dele com <code>git fetch</code>. Confira com <code>git branch -a</code>.</p>
+</div>
+
+<hr>
+
+<h2>3. Renomeando: <code>git remote rename</code></h2>
+<p>A Ana prefere que o nome seja igual ao usuário do GitHub:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git remote rename bruno bruno-lima
+$ git remote -v
+bruno-lima      https://github.com/bruno-lima/receitas.git (fetch)
+bruno-lima      https://github.com/bruno-lima/receitas.git (push)
+origin  https://github.com/ana-souza/receitas.git (fetch)
+origin  https://github.com/ana-souza/receitas.git (push)
+$ git branch -r
+  bruno-lima/HEAD -&gt; bruno-lima/main
+  bruno-lima/main
+  bruno-lima/pudim
+  origin/HEAD -&gt; origin/main
+  origin/main
+</pre>
+
+<p>O <code>rename</code> troca o nome <strong>e</strong> os branches remotos junto: <code>bruno/pudim</code> virou <code>bruno-lima/pudim</code>, sem baixar nada de novo. (O <code>git branch -r</code>, de <em>remote</em>, lista só os branches remotos.)</p>
+
+<div class="try" data-setup="github novo ana-souza/receitas;;github novo bruno-lima/receitas;;mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;printf 'Bolo de cenoura\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona a receita de bolo';;git remote add origin https://github.com/ana-souza/receitas.git;;git push -q -u origin main;;github bruno 'git clone -q https://github.com/ana-souza/receitas.git &amp;&amp; cd receitas &amp;&amp; git remote add meu https://github.com/bruno-lima/receitas.git &amp;&amp; git push -q meu main &amp;&amp; git switch -q -c pudim &amp;&amp; printf &quot;Pudim de leite\n&quot; &gt; pudim.txt &amp;&amp; git add pudim.txt &amp;&amp; git commit -qm &quot;Adiciona a receita de pudim&quot; &amp;&amp; git push -q meu pudim';;git remote add gitub https://github.com/bruno-lima/receitas.git" data-goal="remoto:github" data-solucao="git remote rename gitub github">
+<p class="try-task"><strong>Missão:</strong> a Ana acrescentou um remoto com erro de digitação: <code>gitub</code>. Confira com <code>git remote -v</code> e renomeie esse remoto para <code>github</code>.</p>
+</div>
+
+<hr>
+
+<h2>4. Trocando o endereço: <code>git remote set-url</code></h2>
+<p>Quando um repositório muda de endereço (a Ana renomeou o repositório no GitHub, ou trocou HTTPS por SSH), o nome do remoto continua, e só a URL muda:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git remote set-url origin https://github.com/ana-souza/receitas-da-ana.git
+$ git remote -v
+bruno-lima      https://github.com/bruno-lima/receitas.git (fetch)
+bruno-lima      https://github.com/bruno-lima/receitas.git (push)
+origin  https://github.com/ana-souza/receitas-da-ana.git (fetch)
+origin  https://github.com/ana-souza/receitas-da-ana.git (push)
+</pre>
+
+<dl class="anatomy">
+  <dt>git remote set-url</dt><dd>"Defina a URL" de um remoto que já existe.</dd>
+  <dt>origin</dt><dd>Qual remoto.</dd>
+  <dt>https://github.com/ana-souza/receitas-da-ana.git</dt><dd>O endereço novo.</dd>
+</dl>
+
+<p>Como o <code>add</code>, o <code>set-url</code> não confere se o endereço existe. Aqui, a Ana só fez um teste: esse repositório não existe no GitHub, e o Git só descobre na próxima conversa:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git fetch origin
+remote: Repository not found.
+fatal: repository 'https://github.com/ana-souza/receitas-da-ana.git/' not found
+$ git remote set-url origin https://github.com/ana-souza/receitas.git
+</pre>
+
+<p>Ela voltou o endereço certo com outro <code>set-url</code>. Para trocar para SSH, seria <code>git remote set-url origin git@github.com:ana-souza/receitas.git</code> (veja <a href="ssh.html">Chaves SSH</a>).</p>
+
+<hr>
+
+<h2>5. Removendo: <code>git remote remove</code></h2>
+<p>A Ana já olhou o pudim e não precisa mais do remoto do Bruno:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git remote remove bruno-lima
+$ git remote -v
+origin  https://github.com/ana-souza/receitas.git (fetch)
+origin  https://github.com/ana-souza/receitas.git (push)
+$ git branch -r
+  origin/HEAD -&gt; origin/main
+  origin/main
+</pre>
+
+<p>Os branches remotos dele (<code>bruno-lima/…</code>) também sumiram. Nada mudou no GitHub do Bruno, nem nos branches <strong>locais</strong> da Ana: só a entrada da agenda. (O nome antigo do <code>remove</code> é <code>rm</code>: <code>git remote rm bruno-lima</code> faz o mesmo.)</p>
+
+<hr>
+
+<h2>6. Onde a agenda fica: <code>.git/config</code></h2>
+<p>Todos esses comandos editam um arquivo de texto, o <code>.git/config</code> do repositório:</p>
+
+<pre class="term" data-cwd="~/receitas">$ cat .git/config
+[core]
+        repositoryformatversion = 0
+        filemode = true
+        bare = false
+        logallrefupdates = true
+[remote "origin"]
+        url = https://github.com/ana-souza/receitas.git
+        fetch = +refs/heads/*:refs/remotes/origin/*
+[branch "main"]
+        remote = origin
+        merge = refs/heads/main
+</pre>
+
+<dl class="anatomy">
+  <dt>[remote "origin"]</dt><dd>A "ficha" do remoto <code>origin</code>.</dd>
+  <dt>url = …</dt><dd>O endereço (o que o <code>set-url</code> muda).</dd>
+  <dt>fetch = +refs/heads/*:refs/remotes/origin/*</dt><dd>A regra do <code>fetch</code>: "os branches de lá (<code>refs/heads/*</code>) viram <code>origin/…</code> aqui". É daí que vem o prefixo <code>origin/</code>.</dd>
+  <dt>[branch "main"]</dt><dd>A ligação do <code>main</code> com o remoto (o "upstream" do <code>git push -u</code>; veja <a href="upstream.html">Upstream</a>).</dd>
+</dl>
+
+<p>Dá para editar esse arquivo à mão, mas o <code>git remote</code> é mais seguro: ele acerta também os branches remotos e as ligações.</p>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer a mesma coisa</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Quero…</th><th>Comando</th><th>Outra forma</th></tr>
+<tr><td>ver as URLs</td><td><code>git remote -v</code></td><td><code>git remote get-url origin</code> (só uma) ou <code>git config --get remote.origin.url</code></td></tr>
+<tr><td>ver tudo sobre um remoto</td><td><code>git remote show origin</code></td><td><code>cat .git/config</code> (sem conversar com o GitHub)</td></tr>
+<tr><td>acrescentar</td><td><code>git remote add nome URL</code></td><td><code>git clone</code> já cria o <code>origin</code></td></tr>
+<tr><td>trocar o endereço</td><td><code>git remote set-url nome URL</code></td><td>remover e acrescentar de novo (perde as ligações dos branches)</td></tr>
+<tr><td>apagar</td><td><code>git remote remove nome</code></td><td><code>git remote rm nome</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>error: remote origin already exists.</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git remote add origin https://github.com/ana-souza/outro.git
+error: remote origin already exists.
+</pre>
+<p><strong>O que aconteceu:</strong> "o remoto <code>origin</code> já existe". Acontece muito quando se segue as instruções do GitHub num repositório que já tinha <code>origin</code> (por exemplo, um que veio de <code>git clone</code>).</p>
+<p><strong>Como confirmar:</strong> <code>git remote -v</code>.</p>
+<p><strong>Como resolver:</strong> se o endereço novo deve <strong>substituir</strong> o antigo, use <code>git remote set-url origin URL</code>. Se é um remoto a <strong>mais</strong>, dê outro nome: <code>git remote add outro URL</code>.</p>
+</div>
+
+<div class="cenario">
+<strong><code>error: No such remote: 'gitub'</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git remote remove gitub
+error: No such remote: 'gitub'
+$ git remote rename gitub github
+error: No such remote: 'gitub'
+</pre>
+<p><strong>O que aconteceu:</strong> "não existe o remoto <code>gitub</code>": o nome está errado (ou o remoto já foi removido).</p>
+<p><strong>Como resolver:</strong> veja os nomes certos com <code>git remote</code> e copie de lá.</p>
+</div>
+
+<div class="cenario">
+<strong><code>remote: Repository not found.</code> depois de um <code>add</code> ou <code>set-url</code></strong>
+<p><strong>O que aconteceu:</strong> o <code>git remote</code> aceita qualquer endereço sem conferir. O erro só aparece no <code>fetch</code>, <code>pull</code> ou <code>push</code> (como na seção 4).</p>
+<p><strong>Como resolver:</strong> confira a URL com <code>git remote get-url NOME</code>, compare com a da página do repositório e corrija com <code>set-url</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git remote</code></td><td>Lista os nomes dos remotos</td></tr>
+<tr><td><code>git remote -v</code></td><td>Lista os nomes com as URLs</td></tr>
+<tr><td><code>git remote get-url NOME</code></td><td>Mostra só a URL de um remoto</td></tr>
+<tr><td><code>git remote show NOME</code></td><td>Detalhes do remoto (conversa com o servidor)</td></tr>
+<tr><td><code>git remote add NOME URL</code></td><td>Acrescenta um remoto</td></tr>
+<tr><td><code>git remote rename VELHO NOVO</code></td><td>Renomeia (e os branches remotos junto)</td></tr>
+<tr><td><code>git remote set-url NOME URL</code></td><td>Troca o endereço</td></tr>
+<tr><td><code>git remote remove NOME</code> (ou <code>rm</code>)</td><td>Apaga o remoto e os branches remotos dele</td></tr>
+<tr><td><code>git fetch NOME</code></td><td>Busca os branches de um remoto específico</td></tr>
+<tr><td><code>git branch -r</code></td><td>Lista os branches remotos (<code>origin/main</code>, <code>bruno/pudim</code>…)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Troque o endereço</h3>
+<p>O repositório mudou para <code>https://github.com/ana-souza/site-receitas.git</code>. Complete:</p>
+<div class="ex-code">git remote <input data-answer="set-url" aria-label="subcomando"> origin https://github.com/ana-souza/site-receitas.git</div>
+</div>
+
+<div class="exercise">
+<h3>2. Apague o remoto</h3>
+<p>Complete para apagar o remoto <code>bruno</code>:</p>
+<div class="ex-code">git remote <input data-answer="remove" aria-label="subcomando"> bruno</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. A Ana rodou <code>git remote add bruno URL</code>. Os branches do Bruno já aparecem no <code>git branch -a</code>?</p>
+<label><input type="radio" name="q3"> Sim, o <code>add</code> baixa tudo</label>
+<label><input type="radio" name="q3"> Sim, mas só o <code>main</code></label>
+<label><input type="radio" name="q3"> Não: o <code>add</code> só anota o endereço; falta um <code>git fetch bruno</code></label>
+<label><input type="radio" name="q3"> Não: é preciso clonar de novo</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. <code>git remote add origin URL</code> deu <code>error: remote origin already exists.</code> A Ana quer que o <code>origin</code> passe a apontar para essa URL. O que fazer?</p>
+<label><input type="radio" name="q4"> <code>git remote set-url origin URL</code></label>
+<label><input type="radio" name="q4"> <code>git remote add origin2 URL</code></label>
+<label><input type="radio" name="q4"> Apagar a pasta <code>.git</code></label>
+<label><input type="radio" name="q4"> <code>git clone URL</code> dentro da pasta</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">5. O que acontece no GitHub do Bruno quando a Ana roda <code>git remote remove bruno</code>?</p>
+<label><input type="radio" name="q5"> O repositório do Bruno é apagado</label>
+<label><input type="radio" name="q5"> O Bruno perde o acesso ao repositório da Ana</label>
+<label><input type="radio" name="q5"> Os branches do Bruno são apagados</label>
+<label><input type="radio" name="q5"> Nada: só a "agenda" do repositório da Ana muda</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git remote</code> cuida da "agenda" de remotos: cada um é um nome ligado a uma URL.</li>
+  <li><code>-v</code> lista com as URLs; <code>get-url</code> mostra uma; <code>show</code> dá os detalhes (conversando com o servidor).</li>
+  <li><code>add</code> acrescenta (e o <code>git fetch NOME</code> traz os branches como <code>NOME/branch</code>); <code>rename</code> renomeia; <code>set-url</code> troca o endereço; <code>remove</code> apaga.</li>
+  <li>Nenhum desses comandos muda nada no GitHub; eles editam o <code>.git/config</code> do seu repositório.</li>
+  <li><code>remote origin already exists</code> → use <code>set-url</code> ou outro nome; <code>No such remote</code> → confira o nome com <code>git remote</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
