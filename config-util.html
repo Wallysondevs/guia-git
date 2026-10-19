@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Configurações Úteis — deixando o Git do seu jeito | Guia Git</title>
+<meta name="description" content="As configurações do Git que valem a pena para quem está começando: onde ficam (--show-origin e --show-scope), core.editor, help.autocorrect, push.autoSetupRemote, merge.conflictstyle zdiff3, rerere, pull.rebase, fetch.prune e outras, com um ~/.gitconfig pronto, saídas reais e os erros mais comuns.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Configurações Úteis</span></h1>
+
+<p class="intro">Na aula <a href="git-config.html">git config</a>, a Ana ensinou ao Git o nome e o e-mail dela. Mas o Git tem centenas de outras configurações, e algumas poucas deixam o dia a dia bem mais confortável: um editor que você sabe usar, o Git corrigindo um comando digitado errado, o <code>push</code> de um branch novo sem aquele erro chato, conflitos mais fáceis de entender. Esta aula mostra as que valem a pena, uma por uma, com o efeito real de cada uma.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Onde cada configuração fica guardada e como descobrir de onde ela veio (<code>--show-origin</code>, <code>--show-scope</code>).</li>
+  <li>Como escolher o editor (<code>core.editor</code>) e fazer o Git corrigir comandos digitados errado (<code>help.autocorrect</code>).</li>
+  <li>Como mandar um branch novo para o GitHub com um simples <code>git push</code> (<code>push.autoSetupRemote</code>).</li>
+  <li>Como ver, num conflito, também como o texto era antes (<code>merge.conflictstyle zdiff3</code>).</li>
+  <li>Um <code>~/.gitconfig</code> pronto para começar, e os erros que o <code>git config</code> deixa passar em silêncio.</li>
+</ul>
+</div>
+
+<p>Todas as saídas desta aula vieram do Git 2.53 do Ubuntu na máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português. Algumas mensagens do Git ainda saem em inglês nessa versão, porque a tradução não está completa: a aula traduz cada uma.</p>
+
+<hr>
+
+<h2>A ideia: as preferências do celular novo</h2>
+<p>Quando a Ana compra um celular novo, ele funciona de fábrica. Mas ela logo muda meia dúzia de coisas: o teclado, o toque, o brilho automático. Não é obrigatório, mas o celular fica do jeito dela. E algumas preferências são <strong>do aparelho todo</strong> (o idioma), enquanto outras são <strong>de um aplicativo só</strong> (as notificações do banco).</p>
+<p>O Git é igual. Ele funciona sem nada, e cada configuração tem um <strong>alcance</strong>:</p>
+<ul>
+  <li><strong>global</strong> (<code>--global</code>): vale para todos os repositórios da Ana. Fica no arquivo <code>~/.gitconfig</code>.</li>
+  <li><strong>local</strong> (o padrão, ou <code>--local</code>): vale só para um repositório. Fica em <code>.git/config</code>, dentro dele.</li>
+  <li><strong>system</strong> (<code>--system</code>): vale para todos os usuários do computador. Quase ninguém usa.</li>
+</ul>
+<p>Quando a mesma configuração aparece em dois lugares, <strong>a mais perto ganha</strong>: a local passa na frente da global, que passa na frente da do sistema.</p>
+
+<hr>
+
+<h2>1. Vendo o que está configurado, e de onde veio</h2>
+
+<pre class="term">$ git config --list --show-origin
+file:/home/ana/.gitconfig	user.name=Ana Souza
+file:/home/ana/.gitconfig	user.email=ana@exemplo.com
+file:/home/ana/.gitconfig	init.defaultbranch=main
+file:/home/ana/.gitconfig	core.editor=nano
+</pre>
+
+<dl class="anatomy">
+  <dt>--list</dt><dd>Lista todas as configurações que valem aqui, no formato <code>seção.nome=valor</code>.</dd>
+  <dt>--show-origin</dt><dd>Mostra, na frente de cada uma, o <strong>arquivo</strong> de onde ela veio. Aqui, tudo veio do <code>~/.gitconfig</code> da Ana.</dd>
+  <dt>init.defaultbranch</dt><dd>Repare: o nome sai em minúsculas. O Git não diferencia maiúsculas no nome das configurações (<code>init.defaultBranch</code> e <code>init.defaultbranch</code> são a mesma coisa), e a documentação escreve com maiúsculas no meio para ficar legível.</dd>
+</dl>
+
+<p>Dentro de um repositório, aparecem também as configurações locais. Com <code>--show-scope</code>, o Git mostra o <strong>alcance</strong> em vez do arquivo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git config --list --show-scope
+global	user.name=Ana Souza
+global	user.email=ana@exemplo.com
+global	init.defaultbranch=main
+global	core.editor=nano
+local	core.repositoryformatversion=0         « estas quatro o git init criou
+local	core.filemode=true
+local	core.bare=false
+local	core.logallrefupdates=true
+</pre>
+
+<h3>Uma configuração só para um repositório</h3>
+<p>A Ana usa o e-mail pessoal em tudo, menos no repositório do trabalho. Sem <code>--global</code>, a configuração fica só no repositório atual e passa na frente da global:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git config --local user.email ana.trabalho@exemplo.com
+$ git config user.email
+ana.trabalho@exemplo.com                 « a local ganhou
+$ git config --show-origin user.email
+file:.git/config	ana.trabalho@exemplo.com
+$ cat .git/config
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+[user]
+	email = ana.trabalho@exemplo.com
+</pre>
+
+<p>Quando uma configuração "não pega", o <code>--show-origin</code> é a primeira coisa a olhar: muitas vezes existe outra, mais perto, passando na frente.</p>
+
+<hr>
+
+<h2>2. O editor: <code>core.editor</code></h2>
+<p>Quando você roda <code>git commit</code> sem <code>-m</code>, um <code>git rebase -i</code> ou um merge com mensagem, o Git abre um <strong>editor de texto</strong>. Se ninguém escolheu, ele usa o padrão do sistema, que muitas vezes é o <code>vim</code>, e muita gente fica presa nele sem saber sair. A Ana já tinha escolhido o <code>nano</code>, que mostra os atalhos na parte de baixo da tela:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git config --global core.editor nano
+$ git config --global core.editor
+nano
+</pre>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Editor</th><th>Valor do <code>core.editor</code></th></tr>
+<tr><td>nano (simples, no terminal)</td><td><code>nano</code></td></tr>
+<tr><td>vim</td><td><code>vim</code></td></tr>
+<tr><td>VS Code</td><td><code>"code --wait"</code></td></tr>
+</table>
+</div>
+
+<p>No VS Code, o <code>--wait</code> é obrigatório: ele faz o terminal <strong>esperar</strong> você fechar a aba da mensagem. Sem ele, o VS Code abre, o Git acha que você já terminou, recebe uma mensagem vazia e cancela o commit. Mais sobre o VS Code em <a href="interfaces-graficas.html">Git no VS Code e em Outros Programas</a>.</p>
+
+<hr>
+
+<h2>3. O Git corrige o que você digitou errado: <code>help.autocorrect</code></h2>
+<p>Sem configuração nenhuma, o Git só <strong>sugere</strong>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git stauts
+git: 'stauts' não é um comando git. Veja 'git --help'.
+
+The most similar command is
+	status
+</pre>
+
+<p>"O comando mais parecido é <code>status</code>." Com o <code>help.autocorrect</code>, ele pode fazer mais que sugerir. Há três jeitos úteis:</p>
+
+<p><strong>Perguntar antes</strong> (<code>prompt</code>). O Git pergunta e espera você responder <code>y</code> (sim) ou <code>n</code> (não):</p>
+<pre class="term" data-cwd="~/receitas">$ git config --global help.autocorrect prompt
+$ git stauts
+WARNING: You called a Git command named 'stauts', which does not exist.
+Run 'status' instead [y/N]? n
+</pre>
+<p>"Aviso: você chamou um comando do Git chamado <code>stauts</code>, que não existe. Rodar <code>status</code> no lugar? [s/N]". O <code>N</code> maiúsculo quer dizer que, se você só apertar <kbd>Enter</kbd>, a resposta é "não".</p>
+
+<p><strong>Esperar um pouco e corrigir</strong> (um número, em <strong>décimos</strong> de segundo). Com <code>30</code>, o Git espera 3 segundos, tempo para você apertar <kbd>Ctrl</kbd>+<kbd>C</kbd> se não era isso:</p>
+<pre class="term" data-cwd="~/lojinha">$ git config --global help.autocorrect 30
+$ git stauts
+WARNING: You called a Git command named 'stauts', which does not exist.
+Continuing in 3.0 seconds, assuming that you meant 'status'.
+No ramo promocao
+Your branch is up to date with 'origin/promocao'.
+
+nothing to commit, working tree clean
+</pre>
+<p>"Continuando em 3 segundos, supondo que você quis dizer <code>status</code>." E o <code>status</code> rodou.</p>
+
+<p><strong>Corrigir na hora</strong> (<code>immediate</code>), sem esperar:</p>
+<pre class="term" data-cwd="~/receitas">$ git config --global help.autocorrect immediate
+$ git stauts
+WARNING: You called a Git command named 'stauts', which does not exist.
+Continuing under the assumption that you meant 'status'.
+No ramo main
+nothing to commit, working tree clean
+</pre>
+
+<div class="warning">
+<strong>Prefira <code>prompt</code></strong>
+<p>Corrigir sozinho é cômodo com o <code>status</code>, mas o Git pode adivinhar errado: na aula <a href="alias.html">Atalhos</a>, um <code>git sts</code> foi "corrigido" para <code>stash</code>, que guarda as suas mudanças e limpa a pasta. Com <code>prompt</code>, você sempre vê o palpite antes.</p>
+</div>
+
+<hr>
+
+<h2>4. <code>git push</code> num branch novo: <code>push.autoSetupRemote</code></h2>
+<p>A Ana criou o branch <code>promocao</code> na lojinha e fez um commit. Na hora de enviar (veja <a href="git-push.html">git push</a> e <a href="upstream.html">Branch de Rastreamento</a>), o primeiro <code>push</code> de um branch novo sempre dava este erro:</p>
+
+<pre class="term" data-cwd="~/lojinha">$ git push
+fatal: The current branch promocao has no upstream branch.
+To push the current branch and set the remote as upstream, use
+
+    git push --set-upstream origin promocao
+
+To have this happen automatically for branches without a tracking
+upstream, see 'push.autoSetupRemote' in 'git help config'.
+
+</pre>
+
+<p>"O branch atual, <code>promocao</code>, não tem branch de rastreamento (<em>upstream</em>). Para enviar e ligar os dois, use <code>git push --set-upstream origin promocao</code>. Para isso acontecer <strong>automaticamente</strong>, veja <code>push.autoSetupRemote</code>." O próprio Git sugere a configuração. Com ela ligada <span class="versao">git 2.37+</span>, o mesmo <code>git push</code> funciona de primeira:</p>
+
+<pre class="term" data-cwd="~/lojinha">$ git config --global push.autoSetupRemote true
+$ git push
+To /home/ana/servidor/lojinha.git
+ * [new branch]      promocao -&gt; promocao
+branch 'promocao' set up to track 'origin/promocao'.
+$ git status
+No ramo promocao
+Your branch is up to date with 'origin/promocao'.
+
+nothing to commit, working tree clean
+</pre>
+
+<dl class="anatomy">
+  <dt>To /home/ana/servidor/lojinha.git</dt><dd>Para onde foi. Neste exemplo, o "servidor" da lojinha é uma pasta no próprio computador da Ana; com o GitHub, aparece o endereço <code>https://github.com/…</code>.</dd>
+  <dt>* [new branch] promocao -&gt; promocao</dt><dd>"Branch novo": o <code>promocao</code> da Ana virou o <code>promocao</code> do servidor.</dd>
+  <dt>branch 'promocao' set up to track 'origin/promocao'.</dt><dd>"O branch <code>promocao</code> foi configurado para rastrear <code>origin/promocao</code>": exatamente o que o <code>--set-upstream</code> faria. Daqui para a frente, <code>git push</code> e <code>git pull</code> sabem para onde ir.</dd>
+  <dt>Your branch is up to date with 'origin/promocao'.</dt><dd>"O seu branch está igual ao <code>origin/promocao</code>": o <code>git status</code> agora compara com o servidor.</dd>
+</dl>
+
+<hr>
+
+<h2>5. Conflitos mais fáceis de ler: <code>merge.conflictstyle zdiff3</code></h2>
+<p>Num conflito (veja <a href="conflitos.html">Conflitos de Merge</a>), o Git mostra as duas versões, a sua e a do outro branch. A Ana tinha trocado o açúcar por "3 xícaras de açúcar mascavo"; no branch <code>menos-acucar</code>, a linha virou "1 xícara de açúcar". No estilo padrão (<code>merge</code>), o arquivo ficou assim:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git merge menos-acucar
+Mesclagem automática de bolo.txt
+CONFLITO (conteúdo): conflito de mesclagem em bolo.txt
+Recorded preimage for 'bolo.txt'
+Automatic merge failed; fix conflicts and then commit the result.
+$ cat bolo.txt
+Bolo de cenoura
+3 cenouras
+&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+3 xícaras de açúcar mascavo
+=======
+1 xícara de açúcar
+&gt;&gt;&gt;&gt;&gt;&gt;&gt; menos-acucar
+</pre>
+
+<p>Dá para ver as duas versões, mas não <strong>o que cada lado mudou</strong>: as duas pessoas mexeram na quantidade? Só uma? Com o estilo <code>zdiff3</code> <span class="versao">git 2.35+</span>, o Git mostra também como a linha era <strong>antes</strong> dos dois mexerem (a base):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git merge --abort
+$ git config --global merge.conflictstyle zdiff3
+$ git merge menos-acucar
+Mesclagem automática de bolo.txt
+CONFLITO (conteúdo): conflito de mesclagem em bolo.txt
+Recorded preimage for 'bolo.txt'
+Automatic merge failed; fix conflicts and then commit the result.
+$ cat bolo.txt
+Bolo de cenoura
+3 cenouras
+&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+3 xícaras de açúcar mascavo      « a versão da Ana
+||||||| eed6175
+2 xícaras de açúcar              « como era antes (a base, no commit eed6175)
+=======
+1 xícara de açúcar               « a versão do branch menos-acucar
+&gt;&gt;&gt;&gt;&gt;&gt;&gt; menos-acucar
+</pre>
+
+<p>Agora a história fica clara: era "2 xícaras de açúcar"; a Ana mudou a quantidade <strong>e</strong> o tipo (mascavo); o outro branch só diminuiu a quantidade. Com isso a Ana resolve com segurança: "1 xícara de açúcar mascavo", juntando as duas intenções. O "z" do nome quer dizer que, quando o começo ou o fim das duas versões são iguais, o Git tira essas linhas iguais de dentro do conflito, para ele ficar menor.</p>
+
+<p>As mensagens do merge: "<em>Automatic merge failed; fix conflicts and then commit the result</em>" = "o merge automático falhou; resolva os conflitos e faça o commit do resultado". A linha "<em>Recorded preimage</em>" aparece por causa da próxima configuração.</p>
+
+<h3>Lembrando como você resolveu: <code>rerere.enabled</code></h3>
+<p><code>rerere</code> vem de <em>reuse recorded resolution</em>: "reutilizar a resolução gravada". Com <code>git config --global rerere.enabled true</code>, o Git <strong>grava</strong> cada conflito ("<em>Recorded preimage for 'bolo.txt'</em>" = "registrei como o conflito de <code>bolo.txt</code> começou") e, depois, como você o resolveu. Se o mesmo conflito aparecer de novo (comum quando você desiste de um merge e tenta outra vez, ou num <a href="git-rebase.html">rebase</a> repetido), o Git aplica a mesma resolução sozinho. Você ainda confere e faz o commit.</p>
+
+<hr>
+
+<h2>6. Outras configurações que valem a pena</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Configuração</th><th>O que faz</th><th>Aula</th></tr>
+<tr><td><code>init.defaultBranch main</code></td><td>O primeiro branch de um <code>git init</code> se chama <code>main</code></td><td><a href="git-init.html">git init</a></td></tr>
+<tr><td><code>pull.rebase false</code> (ou <code>true</code>)</td><td>Decide o que o <code>git pull</code> faz quando os dois lados andaram: merge (<code>false</code>) ou rebase (<code>true</code>). Escolher tira o aviso de "branches divergentes"</td><td><a href="git-pull.html">git pull</a></td></tr>
+<tr><td><code>fetch.prune true</code></td><td>No <code>fetch</code>/<code>pull</code>, apaga as cópias locais (<code>origin/…</code>) de branches que já foram apagados no servidor</td><td><a href="git-fetch.html">git fetch</a></td></tr>
+<tr><td><code>branch.sort -committerdate</code></td><td>O <code>git branch</code> lista primeiro os branches com commit mais recente (o <code>-</code> inverte a ordem)</td><td><a href="git-branch.html">git branch</a></td></tr>
+<tr><td><code>column.ui auto</code></td><td>Listas longas (como a do <code>git branch</code>) em colunas, no terminal</td><td></td></tr>
+<tr><td><code>diff.algorithm histogram</code></td><td>Um jeito de comparar arquivos que costuma dar diffs mais fáceis de ler quando blocos mudam de lugar</td><td><a href="git-diff.html">git diff</a></td></tr>
+<tr><td><code>commit.verbose true</code></td><td>No editor da mensagem do commit, mostra o diff do que vai entrar, para você escrever olhando</td><td><a href="git-commit.html">git commit</a></td></tr>
+<tr><td><code>core.autocrlf</code></td><td>Fim de linha Windows × Linux</td><td><a href="gitattributes.html">.gitattributes</a></td></tr>
+<tr><td><code>alias.*</code></td><td>Atalhos para comandos</td><td><a href="alias.html">alias</a></td></tr>
+</table>
+</div>
+
+<h3>O <code>~/.gitconfig</code> da Ana, pronto</h3>
+<p>Depois de ligar tudo isso com <code>git config --global …</code>, o arquivo dela ficou assim (é texto comum: dá para copiar as partes que você quiser para o seu, com <code>git config --global --edit</code>):</p>
+
+<pre class="term">$ cat ~/.gitconfig
+[user]
+	name = Ana Souza
+	email = ana@exemplo.com
+[init]
+	defaultBranch = main
+[core]
+	editor = nano
+[push]
+	autoSetupRemote = true
+[pull]
+	rebase = false
+[fetch]
+	prune = true
+[branch]
+	sort = -committerdate
+[column]
+	ui = auto
+[merge]
+	conflictstyle = zdiff3
+[diff]
+	algorithm = histogram
+[rerere]
+	enabled = true
+[commit]
+	verbose = true
+</pre>
+
+<p>Cada <code>[seção]</code> agrupa as configurações com o mesmo começo: <code>push.autoSetupRemote</code> virou <code>autoSetupRemote = true</code> dentro de <code>[push]</code>.</p>
+
+<div class="try" data-setup="mkdir lojinha;;cd lojinha;;git init -q;;echo 'Caneca' &gt; produtos.txt;;git add produtos.txt;;git commit -q -m 'Primeiro produto'" data-goal="ran:git config --global push\.autoSetupRemote true,ran:git config --global merge\.conflictstyle zdiff3" data-solucao="git config --global push.autoSetupRemote true;;git config --global merge.conflictstyle zdiff3;;git config --global --list">
+<p class="try-task"><strong>Missão:</strong> ligue, para todos os repositórios, o <code>push.autoSetupRemote</code> (valor <code>true</code>) e o estilo de conflito <code>zdiff3</code>. Depois confira com <code>git config --global --list</code>.</p>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer a mesma coisa</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Qual usar</th></tr>
+<tr><td>Ligar uma configuração</td><td><code>git config --global nome valor</code> (ou, no Git 2.46+, <code>git config set --global nome valor</code>)</td></tr>
+<tr><td>Mudar várias de uma vez, ou copiar de alguém</td><td><code>git config --global --edit</code> (abre o <code>~/.gitconfig</code> no editor)</td></tr>
+<tr><td>Ver o valor de uma</td><td><code>git config nome</code> (ou <code>git config get nome</code>)</td></tr>
+<tr><td>Descobrir de onde veio</td><td><code>git config --show-origin nome</code></td></tr>
+<tr><td>Desligar (voltar ao padrão)</td><td><code>git config --global --unset nome</code></td></tr>
+<tr><td>Só para um repositório</td><td>Sem <code>--global</code>: <code>git config nome valor</code>, dentro dele</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Esqueceu a seção</strong>
+<pre class="term" data-cwd="~/receitas">$ git config --global editor vim
+error: key does not contain a section: editor
+</pre>
+<p>"A chave não contém uma seção." Toda configuração tem a forma <code>seção.nome</code>. <strong>Como resolver:</strong> <code>git config --global core.editor vim</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Errou o nome, e o Git aceitou</strong>
+<pre class="term" data-cwd="~/receitas">$ git config --global corre.editor vim
+$ git config --global core.editor
+nano
+</pre>
+<p><strong>O que aconteceu:</strong> a Ana digitou <code>corre</code> em vez de <code>core</code>. O Git <strong>não confere</strong> se a configuração existe: ele guardou um <code>corre.editor</code> que ninguém nunca vai ler, sem reclamar, e o editor continuou o <code>nano</code>. <strong>Como confirmar:</strong> <code>git config --global --list</code> mostra a linha errada. <strong>Como resolver:</strong> apague a errada (<code>git config --global --unset corre.editor</code>) e grave a certa. Na dúvida sobre um nome, consulte <code>git help config</code> ou a <a href="ref-config.html">referência de configurações</a>.</p>
+</div>
+
+<div class="cenario">
+<strong>O <code>--unset</code> não fez nada</strong>
+<pre class="term" data-cwd="~/receitas">$ git config --global --unset nao.existe
+$ echo $?
+5
+</pre>
+<p>Não há mensagem nenhuma, mas o código de saída 5 quer dizer "essa configuração não existia". Confira o nome e o alcance: uma configuração local (<code>.git/config</code>) não sai com <code>--global --unset</code>; use <code>git config --show-origin nome</code> para ver onde ela está.</p>
+</div>
+
+<div class="cenario">
+<strong>"Mudei a configuração e nada aconteceu"</strong>
+<p>Quase sempre é uma configuração <strong>local</strong> passando na frente da global, como o e-mail do trabalho da Ana na seção 1. <strong>Como confirmar:</strong> <code>git config --show-origin nome</code>. <strong>Como resolver:</strong> mude no arquivo que aparece ali, ou apague a local com <code>git config --local --unset nome</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git config --list --show-origin</code></td><td>Todas as configurações, com o arquivo de origem</td></tr>
+<tr><td><code>git config --list --show-scope</code></td><td>Todas, com o alcance (<code>global</code>, <code>local</code>, <code>system</code>)</td></tr>
+<tr><td><code>git config --global nome valor</code></td><td>Grava em <code>~/.gitconfig</code></td></tr>
+<tr><td><code>git config nome valor</code></td><td>Grava em <code>.git/config</code> (só este repositório)</td></tr>
+<tr><td><code>git config --global --unset nome</code></td><td>Apaga</td></tr>
+<tr><td><code>git config --global --edit</code></td><td>Abre o arquivo no editor</td></tr>
+<tr><td><code>git help config</code></td><td>O manual com todas as configurações</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Usar o VS Code</h3>
+<p>Complete para o Git abrir o VS Code e esperar você fechar a aba:</p>
+<div class="ex-code">git config --global core.editor "code <input data-answer="--wait" aria-label="opção">"</div>
+</div>
+
+<div class="exercise">
+<h3>2. Push de branch novo</h3>
+<p>Complete para o primeiro <code>git push</code> de um branch novo criar o rastreamento sozinho:</p>
+<div class="ex-code">git config --global <input data-answer="push.autoSetupRemote" aria-label="configuração"> true</div>
+</div>
+
+<div class="exercise">
+<h3>3. De onde veio?</h3>
+<p>Complete para descobrir de que arquivo vem o <code>user.email</code> que está valendo:</p>
+<div class="ex-code">git config <input data-answer="--show-origin" aria-label="opção"> user.email</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. O <code>~/.gitconfig</code> da Ana tem <code>user.email = ana@exemplo.com</code>, e o <code>.git/config</code> do repositório do trabalho tem <code>user.email = ana.trabalho@exemplo.com</code>. Qual e-mail vai nos commits desse repositório?</p>
+<label><input type="radio" name="q4"> <code>ana@exemplo.com</code>, porque a global vale para tudo.</label>
+<label><input type="radio" name="q4"> <code>ana.trabalho@exemplo.com</code>, porque a local passa na frente.</label>
+<label><input type="radio" name="q4"> Os dois.</label>
+<label><input type="radio" name="q4"> O Git dá erro de configuração duplicada.</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">5. O que o estilo de conflito <code>zdiff3</code> mostra a mais que o estilo padrão?</p>
+<label><input type="radio" name="q5"> O nome de quem fez cada mudança.</label>
+<label><input type="radio" name="q5"> Só a versão do outro branch.</label>
+<label><input type="radio" name="q5"> Como o trecho era antes dos dois lados mexerem (a base).</label>
+<label><input type="radio" name="q5"> A data de cada commit.</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">6. A Ana digitou <code>git config --global corre.editor vim</code> (com o erro em <code>corre</code>). O que o Git fez?</p>
+<label><input type="radio" name="q6"> Mostrou um erro de configuração desconhecida.</label>
+<label><input type="radio" name="q6"> Corrigiu sozinho para <code>core.editor</code>.</label>
+<label><input type="radio" name="q6"> Perguntou se ela quis dizer <code>core.editor</code>.</label>
+<label><input type="radio" name="q6"> Gravou <code>corre.editor</code> sem reclamar, e o editor não mudou.</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Configuração global fica em <code>~/.gitconfig</code>; local, em <code>.git/config</code>; a local passa na frente. <code>--show-origin</code> mostra de onde veio.</li>
+  <li><code>core.editor</code>: o editor das mensagens (<code>nano</code>, <code>"code --wait"</code>…).</li>
+  <li><code>help.autocorrect prompt</code>: o Git pergunta antes de corrigir um comando digitado errado.</li>
+  <li><code>push.autoSetupRemote true</code>: o primeiro <code>git push</code> de um branch novo já cria o rastreamento.</li>
+  <li><code>merge.conflictstyle zdiff3</code>: o conflito mostra também a base; <code>rerere.enabled</code> reaproveita resoluções.</li>
+  <li>O <code>git config</code> aceita nomes errados sem reclamar: confira com <code>--list</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
