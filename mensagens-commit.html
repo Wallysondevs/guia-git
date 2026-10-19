@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Mensagens de Commit — como escrever boas mensagens | Guia Git</title>
+<meta name="description" content="Boas mensagens de commit para quem nunca usou Git: por que elas importam (um histórico bagunçado e um arrumado, lado a lado, com git log real), título curto, verbo no começo, sem ponto final, linha em branco e corpo que explica o porquê, um assunto por commit, o que evitar (update, ajustes, asdf) e os enganos com aspas e apóstrofo.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Boas Mensagens de Commit</span></h1>
+
+<p class="intro">Todo commit leva uma mensagem, e é muito tentador escrever qualquer coisa: "update", "ajustes", "agora vai". Hoje você lembra o que fez; daqui a três meses, não. A mensagem é a <strong>legenda</strong> da foto: é ela que vai fazer você (ou o seu colega) achar o commit certo quando precisar saber <strong>quando</strong> e <strong>por que</strong> algo mudou. Esta aula mostra as regras que quase todo projeto segue, com o porquê de cada uma.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Por que a mensagem importa, comparando um histórico bagunçado com um arrumado.</li>
+  <li>As partes de uma mensagem: <strong>título</strong> e <strong>corpo</strong>.</li>
+  <li>As regras do título: curto, começando com um verbo, sem ponto final.</li>
+  <li>O que pôr no corpo: o <strong>porquê</strong> da mudança.</li>
+  <li>O que evitar, e os enganos com aspas e apóstrofo no terminal.</li>
+</ul>
+</div>
+
+<p>As saídas são <strong>reais</strong>, do Git 2.53 da máquina da Ana (Ubuntu 26.04). Como fazer o commit com título e corpo (dois <code>-m</code> ou o editor) está em <a href="git-commit.html">git commit</a>.</p>
+
+<hr>
+
+<h2>A ideia: o caderno de receitas da família</h2>
+<p>Imagine o caderno de receitas da sua avó, com anotações na margem. Uma diz "mais 1 ovo, porque com 3 a massa fica seca (Natal de 2019)". Outra diz só "mudei". Qual das duas ajuda quem vai fazer o bolo daqui a dez anos? A primeira conta <strong>o que</strong> mudou e <strong>por quê</strong>. A segunda não diz nada.</p>
+<p>O histórico do Git é esse caderno. Ele já guarda sozinho <strong>o que</strong> mudou em cada linha (você vê com o <a href="git-show.html">git show</a>). O que só você pode escrever é o <strong>resumo</strong> e o <strong>motivo</strong>.</p>
+
+<hr>
+
+<h2>1. A diferença na prática</h2>
+<p>A Ana fez o mesmo trabalho em dois repositórios. No primeiro, escreveu as mensagens com pressa:</p>
+
+<pre class="term" data-cwd="~/bagunca">$ git log --oneline
+f0805dc (HEAD -&gt; main) Adicionei a receita de pudim, corrigi a quantidade de ovos do bolo que estava errada e também coloquei o tempo de forno.
+3defcaf agora vai
+c0e0d74 asdf
+395d6f2 ajustes
+b7eab1a update
+ed580b3 first
+</pre>
+
+<p>Tente responder: em qual commit entrou a receita de bolo? Quando a quantidade de ovos mudou, e por quê? Não dá para saber sem abrir commit por commit. E o último commit mistura três assuntos numa frase que nem cabe na tela.</p>
+<p>No segundo repositório, com mensagens cuidadosas:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+eda7fc5 (HEAD -&gt; main) Adiciona o e-mail de contato no README
+349c6ed Corrige a quantidade de ovos do bolo
+d0238d9 Adiciona a receita de pudim
+06fa6a3 Adiciona a receita de bolo de cenoura
+d84dc97 Adiciona o README
+</pre>
+
+<p>Dá para ler como uma história. E o commit dos ovos ainda tem um <strong>corpo</strong> explicando o motivo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log -2
+commit eda7fc595fd033ee810d945cb3076c696e306d11 (HEAD -&gt; main)
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Adiciona o e-mail de contato no README
+
+commit 349c6ed9d316ee972fac07a8ceaabbba561a48a4
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Corrige a quantidade de ovos do bolo                       « título
+
+    A receita da vó leva 4 ovos, não 3. Com 3 a massa fica seca.   « corpo: o porquê
+</pre>
+
+<hr>
+
+<h2>2. As partes de uma mensagem</h2>
+
+<pre class="file" data-file="mensagem de commit">Corrige a quantidade de ovos do bolo
+
+A receita da vó leva 4 ovos, não 3. Com 3 a massa fica seca.
+</pre>
+
+<dl class="anatomy">
+  <dt>1ª linha: o título</dt><dd>Um resumo curto do que o commit faz. É o que aparece no <code>git log --oneline</code>, na resposta do <code>git commit</code> e nas listas de commits do GitHub. Obrigatório.</dd>
+  <dt>2ª linha: em branco</dt><dd>Separa o título do corpo. O Git e as outras ferramentas usam essa linha vazia para saber onde o título termina. Com dois <code>-m</code>, o Git a põe sozinho.</dd>
+  <dt>3ª linha em diante: o corpo</dt><dd>Opcional. Explica <strong>por que</strong> a mudança foi feita, o que estava errado antes, o que alguém precisa saber. Pode ter vários parágrafos.</dd>
+</dl>
+
+<hr>
+
+<h2>3. As regras do título</h2>
+
+<h3>Curto: até uns 50 caracteres</h3>
+<p>O título deve caber numa olhada. A recomendação mais comum é <strong>até 50 caracteres</strong>, e nunca passar de 72. Viu o primeiro <code>git log --oneline</code> da Ana? Um título longo quebra a linha e esconde o resumo. Se você não consegue resumir em 50 caracteres, talvez o commit esteja fazendo coisas demais (regra 6).</p>
+
+<h3>Começa com um verbo que diz o que o commit faz</h3>
+<p>Um bom título completa a frase <strong>"Este commit…"</strong>:</p>
+<ul>
+  <li>"Este commit… <strong>adiciona</strong> a receita de pudim" → <code>Adiciona a receita de pudim</code></li>
+  <li>"Este commit… <strong>corrige</strong> a quantidade de ovos do bolo" → <code>Corrige a quantidade de ovos do bolo</code></li>
+  <li>"Este commit… <strong>remove</strong> a receita repetida de brigadeiro" → <code>Remove a receita repetida de brigadeiro</code></li>
+</ul>
+<p>Em projetos em português, os dois costumes mais comuns são esse (<code>Adiciona</code>, <code>Corrige</code>) e o imperativo (<code>Adicione</code>, <code>Corrija</code>, como uma ordem). Em projetos em inglês, a regra do próprio Git é o imperativo: <code>Add pudim recipe</code>, <code>Fix egg amount</code>. O importante é escolher um jeito e <strong>usar sempre o mesmo</strong> no projeto. Evite o passado (<code>Adicionei</code>, <code>Corrigido</code>): o título descreve o que o commit faz, não o que você fez ontem.</p>
+
+<h3>Sem ponto final, com letra maiúscula no começo</h3>
+<p>O título é como o título de um livro: <code>Adiciona a receita de pudim</code>, sem ponto no fim. É só um costume, mas deixa o histórico uniforme.</p>
+
+<h3>Diz o que mudou, não só onde</h3>
+<p><code>Muda bolo.txt</code> não ajuda: o Git já sabe qual arquivo mudou. <code>Corrige a quantidade de ovos do bolo</code> diz <strong>o que</strong> mudou.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Evite</th><th>Prefira</th><th>Por quê</th></tr>
+<tr><td><code>update</code></td><td><code>Adiciona a receita de bolo de cenoura</code></td><td>"Atualização" de quê?</td></tr>
+<tr><td><code>ajustes</code></td><td><code>Corrige o tempo de forno do pudim</code></td><td>Diz qual ajuste.</td></tr>
+<tr><td><code>asdf</code>, <code>.</code>, <code>teste</code></td><td>Qualquer frase que descreva a mudança</td><td>Mensagem sem sentido é igual a nenhuma mensagem.</td></tr>
+<tr><td><code>agora vai</code></td><td><code>Corrige o link quebrado da página inicial</code></td><td>O histórico não é diário de desabafo.</td></tr>
+<tr><td><code>Muda bolo.txt</code></td><td><code>Troca o açúcar refinado por mascavo no bolo</code></td><td>O arquivo o Git já mostra.</td></tr>
+<tr><td><code>Adicionei a receita.</code></td><td><code>Adiciona a receita de pudim</code></td><td>Verbo no presente, sem ponto, e qual receita.</td></tr>
+<tr><td><code>Adiciona pudim, corrige ovos e põe forno</code></td><td>Três commits, um para cada coisa</td><td>Um commit, um assunto.</td></tr>
+</table>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;printf 'Pudim de leite\nForno: 30 minutos\n' &gt; pudim.txt;;git add .;;git commit -q -m 'Primeira versão';;sed -i 's/30 minutos/50 minutos/' pudim.txt" data-goal="commits:2,limpo,logre:^[0-9a-f]+ Corrige .*pudim[^.]*$" data-solucao="git add pudim.txt;;git commit -m 'Corrige o tempo de forno do pudim'">
+<p class="try-task"><strong>Missão:</strong> a Ana corrigiu o tempo de forno do pudim (de 30 para 50 minutos; confira com <code>git diff</code>). Faça o commit com um título que comece com <code>Corrige</code>, fale do <strong>pudim</strong> e não tenha ponto final.</p>
+</div>
+
+<hr>
+
+<h2>4. O corpo: o porquê</h2>
+<p>Nem todo commit precisa de corpo: <code>Adiciona a receita de pudim</code> já diz tudo. O corpo vale ouro quando o motivo <strong>não é óbvio</strong>:</p>
+<ul>
+  <li>por que a mudança foi necessária (o que estava errado, quem pediu);</li>
+  <li>por que você escolheu esse jeito, e não outro;</li>
+  <li>o que alguém precisa saber depois (um efeito colateral, um "não mexa nisso porque…").</li>
+</ul>
+<p>Não descreva linha por linha o que mudou: isso o <a href="git-show.html">git show</a> e o <a href="git-diff.html">git diff</a> já mostram. Quebre as linhas do corpo em <strong>até uns 72 caracteres</strong>, para ele ficar legível no terminal (no editor, aperte <kbd>Enter</kbd>; o Git não quebra sozinho).</p>
+
+<p>Um corpo com mais de um parágrafo fica mais fácil no editor (<code>git commit</code> sem <code>-m</code>). Por exemplo:</p>
+
+<pre class="file" data-file="mensagem de commit">Troca o açúcar refinado por mascavo no bolo
+
+A Carla é diabética e pediu uma versão com menos açúcar refinado.
+O mascavo deixa a massa mais escura, então a foto do site também
+precisa ser trocada (fica para outro commit).
+</pre>
+
+<hr>
+
+<h2>5. Mensagem no terminal: cuidado com as aspas</h2>
+<p>Com o <code>-m</code>, a mensagem passa pelo terminal antes de chegar ao Git, e o terminal tem as suas regras de aspas. A pegadinha mais comum em português é o <strong>apóstrofo</strong> dentro de aspas simples:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git commit -m 'Adiciona o copo d'água'
+&gt; ^C
+
+</pre>
+
+<p>O apóstrofo de <code>d'água</code> <strong>fechou</strong> as aspas simples, e o último <code>'</code> abriu outras, que nunca fecham. O terminal mostrou <code>&gt;</code>, esperando o resto. A Ana cancelou com <kbd>Ctrl</kbd>+<kbd>C</kbd> (o <code>^C</code>), e nenhum commit foi feito. <strong>Como evitar:</strong> use aspas duplas quando a mensagem tiver apóstrofo: <code>git commit -m "Adiciona o copo d'água"</code>. E, se a mensagem tiver aspas duplas dentro, use aspas simples por fora: <code>git commit -m 'Adiciona a seção "Dicas"'</code>. Na dúvida, use o editor: lá não há regra de aspas.</p>
+
+<hr>
+
+<h2>6. Um commit, um assunto</h2>
+<p>A mensagem boa começa antes de você escrevê-la: no tamanho do commit. Se o título precisa de um "e" ("Adiciona o pudim <strong>e</strong> corrige os ovos"), separe em dois commits com a <a href="area-de-preparo.html">área de preparo</a>. Commits pequenos têm mensagens fáceis, e são fáceis de desfazer (<a href="git-revert.html">git revert</a>) sem levar junto o que estava certo.</p>
+
+<hr>
+
+<h2 id="formas">Formas diferentes</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Estilo</th><th>Exemplo</th><th>Onde aparece</th></tr>
+<tr><td>Verbo no presente (português)</td><td><code>Adiciona a receita de pudim</code></td><td>Este guia, muitos projetos brasileiros</td></tr>
+<tr><td>Imperativo (português)</td><td><code>Adicione a receita de pudim</code></td><td>Alguns projetos brasileiros</td></tr>
+<tr><td>Imperativo (inglês)</td><td><code>Add pudim recipe</code></td><td>O próprio Git e a maioria dos projetos internacionais</td></tr>
+<tr><td>Conventional Commits</td><td><code>feat: adiciona a receita de pudim</code></td><td>Projetos que geram versões e listas de novidades automaticamente: aula <a href="conventional-commits.html">Conventional Commits</a></td></tr>
+</table>
+</div>
+<p><strong>Qual usar?</strong> O que o projeto já usa (olhe o <code>git log --oneline</code> antes do primeiro commit num projeto dos outros). Num projeto seu, escolha um e mantenha.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Errei a mensagem do último commit</strong>
+<p>Se o commit ainda <strong>não foi enviado</strong> ao GitHub, dá para trocar a mensagem com <code>git commit --amend -m "mensagem nova"</code>. Isso cria um commit novo no lugar do antigo (com outro hash). Os detalhes, e por que não fazer isso com um commit já enviado, estão em <a href="commit-amend.html">Corrigindo o Último Commit</a>.</p>
+</div>
+
+<div class="cenario">
+<strong>O terminal mostrou <code>&gt;</code> e não sai</strong>
+<p>Você abriu aspas e não fechou (seção 5). Feche as aspas e aperte <kbd>Enter</kbd> (a quebra de linha entra na mensagem), ou cancele com <kbd>Ctrl</kbd>+<kbd>C</kbd> e digite de novo.</p>
+</div>
+
+<div class="cenario">
+<strong>Mensagem vazia</strong>
+<p>Com <code>-m ""</code> ou fechando o editor sem escrever nada, o Git cancela o commit com <code>Aborting commit due to empty commit message.</code>. O Git não aceita commit sem mensagem (aula <a href="git-commit.html#errado">git commit</a>).</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Regra</th><th>Exemplo</th></tr>
+<tr><td>Título curto (até ~50 caracteres, nunca mais de 72)</td><td><code>Corrige a quantidade de ovos do bolo</code></td></tr>
+<tr><td>Começa com um verbo: "Este commit…"</td><td><code>Adiciona</code>, <code>Corrige</code>, <code>Remove</code>, <code>Troca</code>, <code>Atualiza</code></td></tr>
+<tr><td>Letra maiúscula no começo, sem ponto final</td><td><code>Remove a receita repetida</code></td></tr>
+<tr><td>Linha em branco entre título e corpo</td><td><code>-m "título" -m "corpo"</code> ou o editor</td></tr>
+<tr><td>Corpo explica o porquê, linhas de até ~72 caracteres</td><td><code>A receita da vó leva 4 ovos…</code></td></tr>
+<tr><td>Um commit, um assunto</td><td>Sem "e" no título</td></tr>
+<tr><td>Apóstrofo na mensagem</td><td>Aspas duplas: <code>-m "Adiciona o copo d'água"</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">1. Qual é a melhor mensagem para o commit que muda o tempo de forno do bolo de 40 para 35 minutos?</p>
+<label><input type="radio" name="q1"> <code>update bolo</code></label>
+<label><input type="radio" name="q1"> <code>Mudei o tempo.</code></label>
+<label><input type="radio" name="q1"> <code>Corrige o tempo de forno do bolo</code></label>
+<label><input type="radio" name="q1"> <code>bolo.txt</code></label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. O que deve ir no <strong>corpo</strong> da mensagem?</p>
+<label><input type="radio" name="q2"> A lista de todas as linhas que mudaram</label>
+<label><input type="radio" name="q2"> O motivo da mudança, o que não está óbvio no código</label>
+<label><input type="radio" name="q2"> O nome e o e-mail do autor</label>
+<label><input type="radio" name="q2"> A data do commit</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">3. O título "Adiciona o pudim e corrige o bolo e atualiza o README" indica o quê?</p>
+<label><input type="radio" name="q3"> Uma mensagem perfeita, bem completa</label>
+<label><input type="radio" name="q3"> Que falta o ponto final</label>
+<label><input type="radio" name="q3"> Que o verbo deveria estar no passado</label>
+<label><input type="radio" name="q3"> Que o commit tem três assuntos e deveria ser três commits</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. A Ana quer a mensagem <code>Adiciona o pão d'água</code>. Qual comando funciona?</p>
+<label><input type="radio" name="q4"> <code>git commit -m "Adiciona o pão d'água"</code></label>
+<label><input type="radio" name="q4"> <code>git commit -m 'Adiciona o pão d'água'</code></label>
+<label><input type="radio" name="q4"> <code>git commit -m Adiciona o pão d'água</code></label>
+<label><input type="radio" name="q4"> Nenhum: o Git não aceita apóstrofo</label>
+</div>
+
+<h3>Missão final: dois commits, duas boas mensagens</h3>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;printf 'Bolo de cenoura\n3 ovos\n' &gt; bolo.txt;;git add .;;git commit -q -m 'Primeira versão';;sed -i 's/3 ovos/4 ovos/' bolo.txt;;echo 'Brigadeiro' &gt; brigadeiro.txt" data-goal="commits:3,limpo,logre:brigadeiro,logre:ovos,ran:commit .*-m .*-m " data-solucao="git add brigadeiro.txt;;git commit -m 'Adiciona a receita de brigadeiro';;git add bolo.txt;;git commit -m 'Corrige a quantidade de ovos do bolo' -m 'A receita da vó leva 4 ovos, não 3.'">
+<p class="try-task"><strong>Missão:</strong> há duas mudanças sem relação: o brigadeiro novo e a correção dos ovos do bolo. Faça <strong>dois</strong> commits: um que fale do <strong>brigadeiro</strong> e outro que fale dos <strong>ovos</strong>. O <strong>último</strong> commit deve ter título e corpo (use dois <code>-m</code>), com o corpo explicando o motivo.</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>A mensagem é a legenda do commit: ela diz <strong>o que</strong> mudou (resumo) e <strong>por quê</strong> (corpo). O Git já guarda os detalhes linha por linha.</li>
+  <li>Título: curto (até ~50 caracteres), começando com um verbo que completa "Este commit…", maiúscula no começo, sem ponto final.</li>
+  <li>Linha em branco, depois o corpo (opcional), explicando o motivo, com linhas de até ~72 caracteres.</li>
+  <li>Evite <code>update</code>, <code>ajustes</code>, <code>asdf</code>: mensagem vaga é o mesmo que nenhuma.</li>
+  <li>Um commit, um assunto. Se o título precisa de um "e", são dois commits.</li>
+  <li>Apóstrofo na mensagem: use aspas duplas. Na dúvida, escreva no editor.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
