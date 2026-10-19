@@ -1515,13 +1515,14 @@
         case "raw": return ts + " " + tz;
         case "unix": return String(ts);
         case "local": return dataPadrao(ts, tz).replace(/ [+-]\d{4}$/, "");
+        case "human": if (Math.abs(agora - ts) < 12 * 3600) return dataRelativa(ts, agora); var pa = partesData(agora, tz); return pa.Y === p.Y ? DIAS_EN[p.w] + " " + MESES_EN[p.M] + " " + p.D + " " + d2(p.h) + ":" + d2(p.m) : DIAS_EN[p.w] + " " + MESES_EN[p.M] + " " + p.D + " " + p.Y;
         default:
           if (/^format(-local)?:/.test(modo)) return modo.replace(/^format(-local)?:/, "").replace(/%([a-zA-Z%])/g, function (m, k) {
             switch (k) {
               case "d": return d2(p.D); case "e": return (p.D < 10 ? " " : "") + p.D; case "m": return d2(p.M + 1); case "Y": return String(p.Y); case "y": return d2(p.Y % 100);
               case "H": return d2(p.h); case "M": return d2(p.m); case "S": return d2(p.s); case "I": return d2(p.h % 12 || 12); case "p": return p.h < 12 ? "" : "";
               case "a": return DIAS_PT[p.w]; case "A": return DIAS_PT_L[p.w]; case "b": case "h": return MESES_PT[p.M]; case "B": return MESES_PT_L[p.M];
-              case "z": return tz; case "Z": return "-03"; case "j": var ini = Date.UTC(p.Y, 0, 1), atual = Date.UTC(p.Y, p.M, p.D); return ("00" + (Math.round((atual - ini) / 864e5) + 1)).slice(-3);
+              case "z": return tz; case "Z": return ""; case "j": var ini = Date.UTC(p.Y, 0, 1), atual = Date.UTC(p.Y, p.M, p.D); return ("00" + (Math.round((atual - ini) / 864e5) + 1)).slice(-3);
               case "F": return p.Y + "-" + d2(p.M + 1) + "-" + d2(p.D); case "T": return d2(p.h) + ":" + d2(p.m) + ":" + d2(p.s); case "R": return d2(p.h) + ":" + d2(p.m);
               case "s": return String(ts); case "%": return "%";
               default: return m;
