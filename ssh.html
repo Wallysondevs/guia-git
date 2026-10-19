@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git SSH — criando a chave e usando no GitHub | Guia Git</title>
+<meta name="description" content="Chave SSH para o GitHub para quem nunca usou: o que é o par de chaves (privada e pública), ssh-keygen -t ed25519, a frase secreta, o ssh-agent e o ssh-add, cadastrar a chave pública no GitHub, testar com ssh -T git@github.com, trocar o remoto de HTTPS para SSH e os erros comuns (Permission denied (publickey), Host key verification failed).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Chave SSH para o GitHub</span></h1>
+
+<p class="intro">Para o <code>git push</code> chegar ao GitHub, o GitHub precisa ter certeza de que é <strong>você</strong> quem está enviando. A senha da conta não serve no terminal. Uma das duas formas aceitas é a <strong>chave SSH</strong>: você cria um par de chaves no seu computador, entrega uma delas ao GitHub, e a partir daí cada <code>push</code> e <code>pull</code> se identifica sozinho, sem pedir senha.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é um par de chaves: a <strong>privada</strong> (só sua) e a <strong>pública</strong> (a que você entrega).</li>
+  <li>Como criar a chave com <code>ssh-keygen -t ed25519</code> e o que é a frase secreta.</li>
+  <li>Como guardar a chave no <code>ssh-agent</code> para não digitar a frase toda hora.</li>
+  <li>Como cadastrar a chave pública no GitHub e testar a conexão.</li>
+  <li>Como trocar o endereço do remoto de HTTPS para SSH.</li>
+</ul>
+</div>
+
+<div class="warning">
+<strong>As chaves desta aula são de exemplo.</strong> A chave que aparece nas saídas foi gerada no laboratório do guia só para ilustrar: não está cadastrada em lugar nenhum e não dá acesso a nada. Nunca publique a sua chave <strong>privada</strong>, nem em print. Os passos no site do GitHub e a conversa com o <code>github.com</code> são <strong>ilustrativos</strong>, baseados na documentação oficial (<a href="https://docs.github.com/pt/authentication/connecting-to-github-with-ssh">Conectar-se ao GitHub com SSH</a>).
+</div>
+
+<hr>
+
+<h2>A ideia antes do comando: cadeado e chave</h2>
+<p>Imagine que você manda fazer um <strong>cadeado</strong> e a <strong>única chave</strong> que o abre. Você dá cópias do cadeado para quem quiser (o GitHub, o servidor do trabalho): elas não abrem nada sozinhas. A chave fica no seu bolso. Quando você chega no GitHub, ele fecha uma caixinha com o seu cadeado e diz "abra". Só quem tem a chave consegue. Pronto: é você.</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Peça</th><th>No exemplo</th><th>Arquivo</th><th>Pode mostrar?</th></tr>
+<tr><td><strong>Chave pública</strong></td><td>O cadeado</td><td><code>~/.ssh/id_ed25519.pub</code></td><td>Sim: é ela que vai para o GitHub</td></tr>
+<tr><td><strong>Chave privada</strong></td><td>A chave do cadeado</td><td><code>~/.ssh/id_ed25519</code></td><td><strong>Nunca.</strong> Não sai do seu computador</td></tr>
+</table>
+</div>
+<p>SSH quer dizer <em>Secure Shell</em> ("concha segura"): é um jeito de conectar dois computadores com tudo criptografado. O Git usa o SSH como "estrada" para levar e trazer commits.</p>
+
+<hr>
+
+<h2>Passo 0: você já tem uma chave?</h2>
+<p>As chaves ficam na pasta <code>.ssh</code>, dentro da sua pasta pessoal. Antes de criar uma nova, confira se já não existe uma (de outro programa, ou de uma tentativa anterior):</p>
+<pre class="term">$ ls -al ~/.ssh
+ls: não é possível acessar '/home/ana/.ssh': Arquivo ou diretório inexistente      « nenhuma chave ainda</pre>
+<p>A Ana não tem nenhuma. Se aparecer uma lista com <code>id_ed25519</code> e <code>id_ed25519.pub</code>, você já tem um par: pode pular para o Passo 2.</p>
+
+<hr>
+
+<h2>Passo 1: criar a chave com <code>ssh-keygen</code></h2>
+<dl class="anatomy">
+  <dt>ssh-keygen</dt><dd>O programa que gera chaves SSH (vem com o OpenSSH, já instalado junto com o Git na maioria dos sistemas).</dd>
+  <dt>-t ed25519</dt><dd>O <strong>tipo</strong> da chave. Ed25519 é o tipo moderno que a documentação do GitHub recomenda: curto, rápido e seguro.</dd>
+  <dt>-C "ana@exemplo.com"</dt><dd>Um <strong>comentário</strong> grudado no fim da chave pública, só para você reconhecê-la depois. Costuma-se usar o e-mail.</dd>
+</dl>
+
+<p>O programa faz três perguntas. Na primeira, a Ana só aperta <kbd>Enter</kbd> (aceita o lugar padrão). Nas duas seguintes, digita uma <strong>frase secreta</strong> (<em>passphrase</em>), que não aparece na tela enquanto é digitada:</p>
+<pre class="term">$ ssh-keygen -t ed25519 -C "ana@exemplo.com"
+Generating public/private ed25519 key pair.                       « gerando o par
+Enter file in which to save the key (/home/ana/.ssh/id_ed25519):   « Enter = lugar padrão
+Created directory '/home/ana/.ssh'.
+Enter passphrase for "/home/ana/.ssh/id_ed25519" (empty for no passphrase):   « a frase (invisível)
+Enter same passphrase again:                                       « de novo, para conferir
+Your identification has been saved in /home/ana/.ssh/id_ed25519     « a PRIVADA
+Your public key has been saved in /home/ana/.ssh/id_ed25519.pub     « a PÚBLICA
+The key fingerprint is:
+SHA256:VoKPqP6eTKJ7cotQm3+xYXIs6UohMDtuu1mqCm0XE10 ana@exemplo.com    « a "impressão digital"
+The key's randomart image is:
++--[ED25519 256]--+
+|        E        |
+|     . o         |
+|o   . o . .      |
+|.o   o o o       |
+|+ o +o. S        |
+|.= =+o*.         |
+|ooOoo= +         |
+|=*B*..o          |
+|OX==*.           |
++----[SHA256]-----+</pre>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Linha</th><th>Em português</th></tr>
+<tr><td><code>Generating public/private ed25519 key pair.</code></td><td>"Gerando o par de chaves pública/privada ed25519."</td></tr>
+<tr><td><code>Enter file in which to save the key (…)</code></td><td>"Arquivo onde salvar a chave". O que está entre parênteses é o padrão: aperte <kbd>Enter</kbd>.</td></tr>
+<tr><td><code>Enter passphrase … (empty for no passphrase)</code></td><td>"Digite a frase secreta (vazio = sem frase)". A frase <strong>tranca</strong> a chave privada: se alguém copiar o arquivo, não consegue usá-lo sem a frase.</td></tr>
+<tr><td><code>Your identification has been saved in …</code></td><td>A chave <strong>privada</strong> foi salva em <code>id_ed25519</code> (sem extensão).</td></tr>
+<tr><td><code>Your public key has been saved in ….pub</code></td><td>A chave <strong>pública</strong> foi salva em <code>id_ed25519.pub</code> (<em>pub</em> de <em>public</em>).</td></tr>
+<tr><td><code>The key fingerprint is: SHA256:…</code></td><td>A impressão digital: um resumo curto da chave, para conferir que é a mesma em lugares diferentes.</td></tr>
+<tr><td>O desenho (<em>randomart</em>)</td><td>A mesma impressão digital, em forma de desenho. Pode ignorar.</td></tr>
+</table>
+</div>
+
+<p>Cada vez que você roda o <code>ssh-keygen</code>, sai uma chave <strong>diferente</strong> (e um desenho diferente): a sua não vai ser igual à da Ana. Veja os arquivos criados:</p>
+<pre class="term">$ ls -al ~/.ssh
+total 16
+drwx------  2 ana ana 4096 Oct 15 10:30 .
+drwxr-x--- 12 ana ana 4096 Oct 15 10:30 ..
+-rw-------  1 ana ana  464 Oct 15 10:30 id_ed25519          « privada: só a Ana lê (rw-------)
+-rw-r--r--  1 ana ana   97 Oct 15 10:30 id_ed25519.pub      « pública: qualquer um pode ler</pre>
+<p>Repare nas permissões: a privada é <code>-rw-------</code>, "só a dona lê e escreve". O SSH exige isso (veja "Quando dá errado").</p>
+
+<div class="tip">
+<strong>Use uma frase secreta.</strong> Sem frase, quem copiar o arquivo <code>id_ed25519</code> (de um backup, de um notebook roubado) entra no seu GitHub. Com frase, o arquivo sozinho não serve para nada. E o <code>ssh-agent</code>, do próximo passo, evita que você tenha de digitá-la toda hora.
+</div>
+
+<hr>
+
+<h2>Passo 2: guardar a chave no <code>ssh-agent</code></h2>
+<p>O <code>ssh-agent</code> ("agente SSH") é um programa que fica rodando e <strong>guarda a chave destrancada na memória</strong>. Você digita a frase secreta uma vez, ao adicionar a chave, e ele cuida do resto até você desligar o computador.</p>
+<pre class="term">$ eval "$(ssh-agent -s)"
+Agent pid 17                                                  « o agente está rodando
+$ ssh-add ~/.ssh/id_ed25519
+Enter passphrase for /home/ana/.ssh/id_ed25519:               « a frase (invisível)
+Identity added: /home/ana/.ssh/id_ed25519 (ana@exemplo.com)   « chave guardada no agente
+$ ssh-add -l
+256 SHA256:VoKPqP6eTKJ7cotQm3+xYXIs6UohMDtuu1mqCm0XE10 ana@exemplo.com (ED25519)   « lista as chaves do agente</pre>
+<dl class="anatomy">
+  <dt>ssh-agent -s</dt><dd>Inicia o agente e imprime os comandos de shell que dizem aos outros programas onde encontrá-lo.</dd>
+  <dt>eval "$( … )"</dt><dd>Roda esses comandos no terminal atual (sem o <code>eval</code>, eles só seriam mostrados). O número em <code>Agent pid</code> muda a cada vez.</dd>
+  <dt>ssh-add ARQUIVO</dt><dd>Adiciona a chave privada ao agente; pede a frase secreta uma vez.</dd>
+  <dt>ssh-add -l</dt><dd>Lista (<em>list</em>) as chaves guardadas, pela impressão digital.</dd>
+</dl>
+<p>Em muitos ambientes de área de trabalho (como o do Ubuntu), um agente já é iniciado junto com a sessão e você pode pular o <code>eval</code>. Se o <code>ssh-add -l</code> responder com a lista (ou com <code>The agent has no identities.</code>, "o agente não tem nenhuma chave"), o agente está lá.</p>
+
+<hr>
+
+<h2>Passo 3: cadastrar a chave pública no GitHub</h2>
+<p>Mostre a chave <strong>pública</strong> (o arquivo <code>.pub</code>!) e copie:</p>
+<pre class="term">$ cat ~/.ssh/id_ed25519.pub
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJBcnvIchQP9bX77S/d699jzKAZIaYhhK/kQ5mYmGEMk ana@exemplo.com</pre>
+<p>Uma linha só, com três partes: o tipo (<code>ssh-ed25519</code>), a chave em si (o texto que começa com <code>AAAA</code>) e o comentário (<code>ana@exemplo.com</code>). <strong>Esta chave é de exemplo</strong>: foi gerada no laboratório do guia e não está cadastrada em lugar nenhum.</p>
+<div class="warning">
+<strong>Copie o <code>.pub</code>, nunca o outro.</strong> O arquivo sem extensão (<code>id_ed25519</code>) é a chave privada: começa com <code>-----BEGIN OPENSSH PRIVATE KEY-----</code>. Se você colou isso em algum lugar (site, chat, print), considere a chave perdida: apague-a, gere outra e troque no GitHub.
+</div>
+
+<ol class="passo">
+  <li>Copie <strong>a linha inteira</strong> do <code>.pub</code>, do <code>ssh-ed25519</code> até o e-mail.</li>
+  <li>No GitHub, clique na sua <strong>imagem de perfil</strong> (canto superior direito) e em <strong>Configurações</strong>.</li>
+  <li>Na barra lateral, na seção <strong>Access</strong>, clique em <strong>SSH and GPG keys</strong>.</li>
+  <li>Clique em <strong>Nova chave SSH</strong> (ou <strong>Adicionar chave SSH</strong>).</li>
+  <li>Em <strong>Title</strong>, dê um nome que diga de que computador ela é: "Notebook da Ana".</li>
+  <li>No tipo de chave, deixe <strong>autenticação</strong>.</li>
+  <li>No campo <strong>Chave</strong>, cole a linha que você copiou.</li>
+  <li>Clique em <strong>Adicionar chave SSH</strong> e, se o GitHub pedir, confirme a sua senha ou o 2FA.</li>
+</ol>
+<p class="small">(Passos ilustrativos, conforme <a href="https://docs.github.com/pt/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account">Adicionar uma nova chave SSH à sua conta do GitHub</a>.)</p>
+
+<hr>
+
+<h2>Passo 4: testar a conexão (ilustrativo)</h2>
+<p>O teste é <code>ssh -T git@github.com</code>. O <code>-T</code> diz "não quero um terminal lá": o GitHub não dá terminal a ninguém, só responde quem você é. Na <strong>primeira</strong> conexão, o SSH ainda não conhece o GitHub e pergunta se pode confiar nele. Segundo a documentação do GitHub (<a href="https://docs.github.com/pt/authentication/connecting-to-github-with-ssh/testing-your-ssh-connection">Testar a conexão SSH</a>), a conversa é assim:</p>
+
+<pre class="term">$ ssh -T git@github.com
+The authenticity of host 'github.com (IP ADDRESS)' can't be established.
+ED25519 key fingerprint is SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU.
+Are you sure you want to continue connecting (yes/no)? yes
+Hi ana-souza! You've successfully authenticated, but GitHub does not provide shell access.</pre>
+<ul>
+  <li><code>The authenticity of host 'github.com (…)' can't be established.</code>: "não foi possível confirmar a autenticidade do servidor github.com". É a primeira vez que o seu computador fala com ele.</li>
+  <li><code>ED25519 key fingerprint is SHA256:+DiY3…</code>: a impressão digital do <strong>servidor</strong> do GitHub. Antes de responder, confira se é igual à publicada pelo GitHub em <a href="https://docs.github.com/pt/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints">Impressões digitais da chave SSH do GitHub</a>. Isso garante que você está falando com o GitHub de verdade.</li>
+  <li><code>Are you sure you want to continue connecting (yes/no)?</code>: "tem certeza de que quer continuar?" Digite <code>yes</code> por extenso. O SSH anota o servidor no arquivo <code>~/.ssh/known_hosts</code> e não pergunta mais.</li>
+  <li><code>Hi ana-souza! You've successfully authenticated, but GitHub does not provide shell access.</code>: "Oi, ana-souza! Você se autenticou com sucesso, mas o GitHub não oferece acesso ao terminal". <strong>É a mensagem de sucesso</strong>: o GitHub reconheceu a chave e sabe de quem ela é. O "não oferece terminal" é normal.</li>
+</ul>
+
+<hr>
+
+<h2>Passo 5: usar o endereço SSH no repositório</h2>
+<p>A chave só é usada quando o endereço do remoto é do tipo <strong>SSH</strong>: <code>git@github.com:USUARIO/REPO.git</code> (repare no <code>:</code> no lugar da <code>/</code> depois de <code>github.com</code>). Se o repositório foi clonado com o endereço <code>https://</code>, troque:</p>
+<pre class="term" data-cwd="~/receitas">$ git remote -v
+origin  https://github.com/ana-souza/receitas.git (fetch)          « endereço HTTPS
+origin  https://github.com/ana-souza/receitas.git (push)
+$ git remote set-url origin git@github.com:ana-souza/receitas.git
+$ git remote -v
+origin  git@github.com:ana-souza/receitas.git (fetch)              « agora SSH
+origin  git@github.com:ana-souza/receitas.git (push)</pre>
+<dl class="anatomy">
+  <dt>git</dt><dd>Antes do <code>@</code>: o usuário da conexão. É sempre <code>git</code>, para todo mundo (não é o seu nome de usuário). Quem você é, o GitHub descobre pela chave.</dd>
+  <dt>github.com</dt><dd>O servidor.</dd>
+  <dt>:ana-souza/receitas.git</dt><dd>Depois dos dois-pontos: o dono e o repositório.</dd>
+</dl>
+<p>Para um repositório novo, já clone com o endereço SSH: <code>git clone git@github.com:ana-souza/receitas.git</code>. Na página do repositório no GitHub, o botão de copiar o endereço oferece as duas versões, HTTPS e SSH. Daí em diante, <code>git push</code>, <code>git pull</code> e <code>git fetch</code> funcionam sem pedir senha (ilustrativo: o servidor de treino do guia não aceita SSH).</p>
+
+<hr>
+
+<h2>Experimente</h2>
+<p>No terminal do guia não dá para falar com o GitHub, mas dá para preparar o repositório. O <code>receitas</code> abaixo foi clonado com o endereço HTTPS.</p>
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;git remote add origin https://github.com/ana-souza/receitas.git" data-goal="ran:set-url,out:git@github.com:ana-souza/receitas.git (push)" data-solucao="git remote set-url origin git@github.com:ana-souza/receitas.git;;git remote -v">
+<p class="try-task"><strong>Missão:</strong> troque o endereço do <code>origin</code> para o endereço SSH do mesmo repositório (<code>git@github.com:ana-souza/receitas.git</code>) e confira com <code>git remote -v</code>.</p>
+</div>
+
+<hr>
+
+<h2>Formas diferentes</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Forma</th><th>Como</th><th>Quando usar</th></tr>
+<tr><td>Ed25519 (recomendada)</td><td><code>ssh-keygen -t ed25519 -C "email"</code></td><td>Sempre que possível</td></tr>
+<tr><td>RSA 4096</td><td><code>ssh-keygen -t rsa -b 4096 -C "email"</code></td><td>Só em sistemas antigos sem suporte a Ed25519 (a documentação do GitHub sugere esta)</td></tr>
+<tr><td>Sem frase secreta</td><td>Enter vazio na frase</td><td>Mais prático, menos seguro: quem copiar o arquivo usa a chave</td></tr>
+<tr><td>HTTPS + token</td><td>Endereço <code>https://</code> e um token no lugar da senha</td><td>Redes que bloqueiam SSH; veja <a href="https-token.html">HTTPS e Token</a></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Quando dá errado</h2>
+<div class="cenario">
+<strong>"Permission denied (publickey)." (ilustrativo)</strong>
+<pre class="term">$ ssh -T git@github.com
+git@github.com: Permission denied (publickey).</pre>
+<p><strong>O que aconteceu:</strong> "permissão negada (chave pública)": o GitHub não reconheceu nenhuma chave sua. No <code>git push</code>, a mesma recusa vem acompanhada de <code>fatal: Could not read from remote repository.</code></p>
+<p><strong>Como confirmar e resolver</strong> (segundo <a href="https://docs.github.com/pt/authentication/troubleshooting-ssh/error-permission-denied-publickey">Erro: Permission denied (publickey)</a>):</p>
+<ul>
+  <li><code>ssh-add -l</code>: a chave está no agente? Se não, <code>ssh-add ~/.ssh/id_ed25519</code>.</li>
+  <li>A chave <strong>pública</strong> está cadastrada em <strong>Configurações</strong> &gt; <strong>SSH and GPG keys</strong>? Compare a impressão digital mostrada lá com a do <code>ssh-add -l</code>.</li>
+  <li>O endereço usa o usuário <code>git@</code> (e não o seu nome)?</li>
+  <li>Não rode o Git com <code>sudo</code>: com <code>sudo</code>, o SSH procura as chaves do administrador, não as suas.</li>
+  <li>Para ver em detalhe o que está acontecendo: <code>ssh -vT git@github.com</code> (<code>-v</code> = <em>verbose</em>).</li>
+</ul>
+</div>
+
+<div class="cenario">
+<strong>"UNPROTECTED PRIVATE KEY FILE!"</strong>
+<pre class="term">$ chmod 644 ~/.ssh/id_ed25519
+$ ssh-add ~/.ssh/id_ed25519
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@         WARNING: UNPROTECTED PRIVATE KEY FILE!          @
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+Permissions 0644 for '/home/ana/.ssh/id_ed25519' are too open.
+It is required that your private key files are NOT accessible by others.
+This private key will be ignored.</pre>
+<p><strong>O que aconteceu:</strong> "arquivo de chave privada desprotegido! As permissões 0644 são abertas demais. É obrigatório que a chave privada NÃO possa ser lida por outros. Esta chave será ignorada." Acontece quando a chave foi copiada de outro lugar (pendrive, backup) e perdeu as permissões. Aqui, a Ana provocou o erro de propósito com <code>chmod 644</code>.</p>
+<p><strong>Como resolver:</strong> devolva a permissão "só a dona lê": <code>chmod 600 ~/.ssh/id_ed25519</code> (veja <a href="https://wallysondevs.github.io/guia-ubuntu/chmod.html">chmod, no Guia Ubuntu</a>).</p>
+</div>
+
+<div class="cenario">
+<strong>"Bad passphrase, try again"</strong>
+<pre class="term">$ ssh-add ~/.ssh/id_ed25519
+Enter passphrase for /home/ana/.ssh/id_ed25519:
+Bad passphrase, try again for /home/ana/.ssh/id_ed25519:          « frase errada
+Identity added: /home/ana/.ssh/id_ed25519 (ana@exemplo.com)       « na segunda, certa</pre>
+<p><strong>O que aconteceu:</strong> "frase errada, tente de novo". Lembre que nada aparece enquanto você digita, nem asteriscos.</p>
+<p><strong>Esqueci a frase:</strong> não há como recuperá-la. Gere uma chave nova, cadastre-a no GitHub e apague a antiga de lá.</p>
+</div>
+
+<div class="cenario">
+<strong>"already exists. Overwrite (y/n)?"</strong>
+<pre class="term">$ ssh-keygen -t ed25519 -C "ana@exemplo.com"
+Generating public/private ed25519 key pair.
+Enter file in which to save the key (/home/ana/.ssh/id_ed25519):
+/home/ana/.ssh/id_ed25519 already exists.
+Overwrite (y/n)? n                                                « n = não apaga a chave atual</pre>
+<p><strong>O que aconteceu:</strong> já existe uma chave com esse nome. Responder <code>y</code> <strong>apaga a chave antiga para sempre</strong>, e tudo o que dependia dela (GitHub, servidores) para de funcionar.</p>
+<p><strong>Como resolver:</strong> responda <code>n</code> e use a chave que já existe. Se quiser mesmo uma segunda chave, digite outro nome de arquivo na primeira pergunta (por exemplo, <code>/home/ana/.ssh/id_ed25519_trabalho</code>).</p>
+</div>
+
+<div class="cenario">
+<strong>"Host key verification failed." (ilustrativo)</strong>
+<p><strong>O que aconteceu:</strong> o SSH não pôde confirmar a identidade do servidor: você respondeu <code>no</code> (ou não respondeu) à pergunta da primeira conexão, ou a chave do servidor anotada no <code>~/.ssh/known_hosts</code> não confere mais.</p>
+<p><strong>Como resolver:</strong> rode <code>ssh -T git@github.com</code> de novo, confira a impressão digital com a publicada pelo GitHub e responda <code>yes</code>. Se o aviso falar em chave <strong>mudada</strong>, não aceite às cegas: confira a página de impressões digitais do GitHub primeiro.</p>
+</div>
+
+<hr>
+
+<h2>Referência</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>ls -al ~/.ssh</code></td><td>Lista as chaves que você já tem</td></tr>
+<tr><td><code>ssh-keygen -t ed25519 -C "email"</code></td><td>Cria um par de chaves Ed25519</td></tr>
+<tr><td><code>cat ~/.ssh/id_ed25519.pub</code></td><td>Mostra a chave <strong>pública</strong> (para copiar)</td></tr>
+<tr><td><code>ssh-keygen -lf ~/.ssh/id_ed25519.pub</code></td><td>Mostra a impressão digital da chave</td></tr>
+<tr><td><code>eval "$(ssh-agent -s)"</code></td><td>Liga o ssh-agent neste terminal</td></tr>
+<tr><td><code>ssh-add ~/.ssh/id_ed25519</code></td><td>Guarda a chave no agente (pede a frase uma vez)</td></tr>
+<tr><td><code>ssh-add -l</code></td><td>Lista as chaves guardadas no agente</td></tr>
+<tr><td><code>ssh -T git@github.com</code></td><td>Testa a conexão com o GitHub</td></tr>
+<tr><td><code>git remote set-url origin git@github.com:USUARIO/REPO.git</code></td><td>Troca o remoto para SSH</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+<div class="exercise">
+<h3>1. O tipo da chave</h3>
+<p>Complete para gerar uma chave do tipo recomendado pelo GitHub:</p>
+<div class="ex-code">ssh-keygen -t <input data-answer="ed25519" aria-label="tipo"> -C "ana@exemplo.com"</div>
+</div>
+
+<div class="exercise">
+<h3>2. Qual arquivo copiar</h3>
+<p>Complete o nome do arquivo que vai para o GitHub:</p>
+<div class="ex-code">cat ~/.ssh/<input data-answer="id_ed25519.pub" aria-label="arquivo"></div>
+</div>
+
+<div class="exercise">
+<h3>3. Endereço SSH</h3>
+<p>Complete o endereço SSH do repositório <code>lojinha</code> do Bruno (<code>bruno-lima</code>):</p>
+<div class="ex-code">git clone <input data-answer="git@github.com:bruno-lima/lojinha.git" aria-label="endereço"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. Qual das chaves pode ser colada no GitHub (ou mostrada a qualquer pessoa)?</p>
+<label><input type="radio" name="q4"> A privada, <code>id_ed25519</code>.</label>
+<label><input type="radio" name="q4"> A pública, <code>id_ed25519.pub</code>.</label>
+<label><input type="radio" name="q4"> As duas.</label>
+<label><input type="radio" name="q4"> Nenhuma: o GitHub gera a chave para você.</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">5. O <code>ssh -T git@github.com</code> respondeu <code>Hi ana-souza! You've successfully authenticated, but GitHub does not provide shell access.</code> O que isso quer dizer?</p>
+<label><input type="radio" name="q5"> Deu erro: o GitHub recusou o acesso.</label>
+<label><input type="radio" name="q5"> A chave precisa ser cadastrada de novo.</label>
+<label><input type="radio" name="q5"> A Ana precisa digitar a senha da conta.</label>
+<label><input type="radio" name="q5"> Deu certo: o GitHub reconheceu a chave da Ana.</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">6. Para que serve o <code>ssh-agent</code>?</p>
+<label><input type="radio" name="q6"> Guardar a chave destrancada na memória, para não digitar a frase secreta a cada push.</label>
+<label><input type="radio" name="q6"> Gerar a chave.</label>
+<label><input type="radio" name="q6"> Cadastrar a chave no GitHub.</label>
+<label><input type="radio" name="q6"> Trocar o remoto de HTTPS para SSH.</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>A chave SSH é um par: a <strong>pública</strong> (<code>.pub</code>) vai para o GitHub; a <strong>privada</strong> nunca sai do seu computador.</li>
+  <li>Crie com <code>ssh-keygen -t ed25519 -C "seu@email"</code>; use uma frase secreta e guarde a chave no agente com <code>ssh-add</code>.</li>
+  <li>Cadastre a pública em <strong>Configurações</strong> &gt; <strong>SSH and GPG keys</strong> e teste com <code>ssh -T git@github.com</code>.</li>
+  <li>Use o endereço <code>git@github.com:USUARIO/REPO.git</code> (no <code>clone</code> ou com <code>git remote set-url</code>).</li>
+  <li><code>Permission denied (publickey)</code> = o GitHub não reconheceu nenhuma chave sua: confira o cadastro e o <code>ssh-add -l</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
