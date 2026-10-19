@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Configurações — referência do git config: níveis, comandos e as opções mais úteis | Guia Git</title>
+<meta name="description" content="Referência do git config: os níveis system, global e local, os comandos para ler, gravar e apagar, e as configurações mais úteis (identidade, editor, branch padrão, pull, push, merge, fim de linha, alias), conferidas no Git do Ubuntu 26.04.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Configurações (git config)</span></h1>
+
+<p class="intro">O Git tem centenas de configurações, mas quem está começando usa umas vinte. Esta página junta as que você vai encontrar nas aulas e em tutoriais: onde elas ficam guardadas, os comandos para ler, gravar e apagar, e as opções mais úteis, cada uma com o comando pronto para copiar. Tudo foi conferido no Git 2.53.0 da máquina da Ana (Ubuntu 26.04).</p>
+
+<div class="note">
+<strong>Como ler esta página</strong>
+<ul>
+  <li>Toda configuração tem um nome em duas partes: <strong>seção.chave</strong> (<code>user.name</code> = a chave <code>name</code> da seção <code>user</code>). Maiúsculas e minúsculas no nome não importam: <code>core.autocrlf</code> e <code>core.autoCRLF</code> são a mesma coisa.</li>
+  <li>Na coluna "Comando", troque <code>--global</code> por nada (só aquele repositório) quando quiser que valha só num projeto.</li>
+  <li>Para entender cada assunto com calma, siga o link da coluna "Aula". A aula principal é <a href="git-config.html">Configurando Nome e E-mail</a>; as dicas de dia a dia estão em <a href="config-util.html">Configurações Úteis</a>.</li>
+</ul>
+</div>
+
+<p class="indice-letras"><a href="#niveis">Onde fica</a> · <a href="#comandos">Comandos</a> · <a href="#identidade">Identidade</a> · <a href="#basico">Editor e aparência</a> · <a href="#remotos">Branches, pull e push</a> · <a href="#merge">Merge, rebase e diff</a> · <a href="#arquivos">Arquivos e fim de linha</a> · <a href="#alias">Atalhos</a> · <a href="#modelo">Um .gitconfig pronto</a></p>
+
+<hr>
+
+<h2 id="niveis">Onde as configurações ficam (os níveis)</h2>
+<p>A mesma configuração pode estar em vários arquivos. O Git lê todos, do mais geral para o mais específico, e <strong>o último a falar vence</strong>: o que está no repositório passa por cima do que está na sua pasta pessoal, que passa por cima do que vale para o computador inteiro. É como as regras de uma escola: a regra da sala (local) vale mais que a da escola (global), que vale mais que a da prefeitura (sistema).</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Nível</th><th>Opção</th><th>Arquivo</th><th>Vale para</th><th>Prioridade</th></tr>
+<tr><td>Sistema</td><td><code>--system</code></td><td><code>/etc/gitconfig</code></td><td>Todos os usuários do computador (gravar exige <code>sudo</code>).</td><td>a mais fraca</td></tr>
+<tr><td>Global (do usuário)</td><td><code>--global</code></td><td><code>~/.gitconfig</code> (ou <code>~/.config/git/config</code>)</td><td>Todos os repositórios da Ana.</td><td>média</td></tr>
+<tr><td>Local (do repositório)</td><td><code>--local</code> (o padrão ao gravar)</td><td><code>.git/config</code>, dentro do projeto</td><td>Só aquele repositório.</td><td>forte</td></tr>
+<tr><td>Da pasta de trabalho</td><td><code>--worktree</code></td><td><code>.git/config.worktree</code></td><td>Só uma pasta de trabalho extra (<a href="git-worktree.html">git worktree</a>); raro.</td><td>mais forte</td></tr>
+<tr><td>Só neste comando</td><td><code>git -c chave=valor …</code></td><td>nenhum (não grava)</td><td>Só aquela execução.</td><td>a mais forte de todas</td></tr>
+</table>
+</div>
+<p>Para ver de onde veio cada valor, peça a origem e o nível. Saída real, dentro do repositório <code>receitas</code> da Ana:</p>
+<pre class="term" data-cwd="~/receitas">$ git config --list --show-origin
+file:/home/ana/.gitconfig	user.name=Ana Souza          « do ~/.gitconfig (global)
+file:/home/ana/.gitconfig	user.email=ana@exemplo.com
+file:/home/ana/.gitconfig	init.defaultbranch=main     « o nome sai todo em minúsculas na lista
+file:/home/ana/.gitconfig	core.editor=nano
+file:.git/config	core.repositoryformatversion=0  « do .git/config (local): o git init escreveu estas
+file:.git/config	core.filemode=true
+file:.git/config	core.bare=false
+file:.git/config	core.logallrefupdates=true
+$ git config --list --show-scope
+global	user.name=Ana Souza                       « o nível, em vez do arquivo
+global	user.email=ana@exemplo.com
+global	init.defaultbranch=main
+global	core.editor=nano
+local	core.repositoryformatversion=0
+local	core.filemode=true
+local	core.bare=false
+local	core.logallrefupdates=true
+</pre>
+<p>Se a mesma chave aparecer duas vezes na lista (uma <code>global</code>, outra <code>local</code>), vale a <strong>última</strong>. Para perguntar só por uma chave e ver quem venceu: <code>git config --show-scope user.email</code>.</p>
+
+<h2 id="comandos">Comandos para ler, gravar e apagar</h2>
+<p>O <code>git config</code> tem duas formas de escrever. A <strong>clássica</strong> (opções como <code>--get</code> e <code>--unset</code>) funciona em qualquer Git e é a que você vai ver em quase todo tutorial. A <strong>nova</strong>, com subcomandos (<code>git config get</code>, <code>git config set</code>…), chegou no Git 2.46 e é mais fácil de ler. As duas fazem a mesma coisa; as aulas do guia usam a clássica.</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Para</th><th>Forma clássica</th><th>Forma nova <span class="versao">git 2.46+</span></th></tr>
+<tr><td>Ler um valor</td><td><code>git config user.email</code></td><td><code>git config get user.email</code></td></tr>
+<tr><td>Ler e ver de que arquivo veio</td><td><code>git config --show-origin user.name</code></td><td><code>git config get --show-origin user.name</code></td></tr>
+<tr><td>Ler e ver de que nível veio</td><td><code>git config --show-scope user.email</code></td><td><code>git config get --show-scope user.email</code></td></tr>
+<tr><td>Gravar só neste repositório</td><td><code>git config user.email "ana@empresa.exemplo"</code></td><td><code>git config set user.email "ana@empresa.exemplo"</code></td></tr>
+<tr><td>Gravar para todos os seus repositórios</td><td><code>git config --global core.editor nano</code></td><td><code>git config set --global core.editor nano</code></td></tr>
+<tr><td>Listar tudo</td><td><code>git config --list</code> (ou <code>-l</code>)</td><td><code>git config list</code></td></tr>
+<tr><td>Listar um nível só</td><td><code>git config --global --list</code></td><td><code>git config list --global</code></td></tr>
+<tr><td>Listar com arquivo e nível</td><td><code>git config --list --show-origin --show-scope</code></td><td><code>git config list --show-origin --show-scope</code></td></tr>
+<tr><td>Procurar pelo nome (expressão regular)</td><td><code>git config --get-regexp '^user'</code></td><td><code>git config get --all --show-names --regexp '^user'</code></td></tr>
+<tr><td>Apagar</td><td><code>git config --global --unset core.editor</code></td><td><code>git config unset --global core.editor</code></td></tr>
+<tr><td>Acrescentar mais um valor à mesma chave</td><td><code>git config --global --add safe.directory /srv/site</code></td><td><code>git config set --global --append safe.directory /srv/site</code></td></tr>
+<tr><td>Ler todos os valores de uma chave repetida</td><td><code>git config --get-all safe.directory</code></td><td><code>git config get --all safe.directory</code></td></tr>
+<tr><td>Abrir o arquivo no editor</td><td><code>git config --global --edit</code> (ou <code>-e</code>)</td><td><code>git config edit --global</code></td></tr>
+<tr><td>Usar um valor só uma vez, sem gravar</td><td colspan="2"><code>git -c core.pager=cat log</code> (o <code>-c</code> vem <strong>antes</strong> do subcomando)</td></tr>
+</table>
+</div>
+<p>Saída real das duas formas, lado a lado. Repare que gravar e apagar não mostram nada quando dá certo: o silêncio é o sucesso.</p>
+<pre class="term" data-cwd="~/receitas">$ git config user.email
+ana@exemplo.com
+$ git config get user.email                « a forma nova: mesma resposta
+ana@exemplo.com
+$ git config --show-origin user.name
+file:/home/ana/.gitconfig	Ana Souza
+$ git config set user.email ana@empresa.exemplo   « grava no .git/config (local)
+$ git config user.email
+ana@empresa.exemplo                        « o local venceu o global
+$ git config --show-scope user.email
+local	ana@empresa.exemplo
+$ git config --unset user.email            « apaga do local: volta a valer o global
+$ git config user.email
+ana@exemplo.com
+$ git -c user.name="Teste" config user.name
+Teste                                      « só nesta execução
+$ git config get --all --show-names --regexp '^user'
+user.name Ana Souza
+user.email ana@exemplo.com
+</pre>
+<p>Quando a chave não existe, a leitura não escreve nada e termina com código de saída <code>1</code>; apagar algo que não existe termina com <code>5</code>. Isso é útil em scripts (<code>$?</code>):</p>
+<pre class="term" data-cwd="~/receitas">$ git config pull.rebase
+$ echo $?
+1                                          « 1 = essa chave não está configurada
+$ git config --global --unset core.pager
+$ echo $?
+5                                          « 5 = não havia o que apagar
+</pre>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q" data-goal="ran:git config,out:ana@exemplo.com" data-solucao="git config user.email">
+<p class="try-task"><strong>Missão:</strong> descubra, com o <code>git config</code>, qual e-mail a Ana configurou (é ele que vai aparecer nos commits dela).</p>
+</div>
+
+<h2 id="identidade">Identidade: quem fez o commit</h2>
+<p>Sem estas duas, o Git se recusa a fazer o primeiro commit (veja a mensagem <code>Please tell me who you are</code> em <a href="ref-erros.html">Mensagens de Erro</a>). Veja <a href="git-config.html">Configurando Nome e E-mail</a>.</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Configuração</th><th>O que faz</th><th>Comando</th></tr>
+<tr><td><code>user.name</code></td><td>O nome que aparece como autor dos commits.</td><td><code>git config --global user.name "Ana Souza"</code></td></tr>
+<tr><td><code>user.email</code></td><td>O e-mail do autor. Para o GitHub ligar o commit à sua conta, use o e-mail cadastrado lá (ou o e-mail <code>…@users.noreply.github.com</code> que o GitHub oferece para esconder o seu).</td><td><code>git config --global user.email "ana@exemplo.com"</code></td></tr>
+<tr><td><code>user.useConfigOnly</code></td><td><code>true</code> = nunca "adivinhar" nome e e-mail pelo computador: sem configuração, o commit falha. Útil para quem usa e-mails diferentes em cada projeto.</td><td><code>git config --global user.useConfigOnly true</code></td></tr>
+<tr><td>(num projeto só)</td><td>Outro e-mail só neste repositório (o do trabalho, por exemplo): sem <code>--global</code>.</td><td><code>git config user.email "ana@empresa.exemplo"</code></td></tr>
+</table>
+</div>
+
+<h2 id="basico">Branch padrão, editor e aparência</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Configuração</th><th>O que faz</th><th>Comando</th><th>Aula</th></tr>
+<tr><td><code>init.defaultBranch</code></td><td>O nome do primeiro branch de todo <code>git init</code>. Sem ela, o Git ainda cria <code>master</code> e mostra uma dica.</td><td><code>git config --global init.defaultBranch main</code></td><td><a href="git-init.html">git init</a></td></tr>
+<tr><td><code>core.editor</code></td><td>O editor que o Git abre para a mensagem do commit, o rebase interativo etc. Sem ela, o Git usa a variável <code>EDITOR</code> ou o <code>vi</code>.</td><td><code>git config --global core.editor nano</code><br>VS Code: <code>"code --wait"</code></td><td><a href="git-commit.html">git commit</a></td></tr>
+<tr><td><code>color.ui</code></td><td>Cores na saída (<code>auto</code> = só quando é um terminal; é o padrão).</td><td><code>git config --global color.ui auto</code></td><td><a href="config-util.html">Configurações Úteis</a></td></tr>
+<tr><td><code>core.pager</code></td><td>O programa que pagina saídas longas (<code>git log</code>, <code>git diff</code>). Padrão: <code>less</code>. Vazio ou <code>cat</code> = mostra tudo de uma vez.</td><td><code>git config --global core.pager "less -FRX"</code></td><td><a href="git-log.html">git log</a></td></tr>
+<tr><td><code>pager.branch</code></td><td>Liga/desliga o paginador só para um comando.</td><td><code>git config --global pager.branch false</code></td><td><a href="git-branch.html">git branch</a></td></tr>
+<tr><td><code>help.autocorrect</code></td><td>Quando você erra o nome de um comando (<code>git stauts</code>): <code>prompt</code> pergunta se pode rodar o certo; um número (em décimos de segundo) espera e roda sozinho.</td><td><code>git config --global help.autocorrect prompt</code></td><td><a href="git-help.html">git help</a></td></tr>
+<tr><td><code>column.ui</code></td><td>Lista branches e tags em colunas, como o <code>ls</code>.</td><td><code>git config --global column.ui auto</code></td><td><a href="config-util.html">Configurações Úteis</a></td></tr>
+<tr><td><code>branch.sort</code></td><td>Ordem do <code>git branch</code>. <code>-committerdate</code> = os branches mexidos por último primeiro.</td><td><code>git config --global branch.sort -committerdate</code></td><td><a href="git-branch.html">git branch</a></td></tr>
+<tr><td><code>tag.sort</code></td><td>Ordem do <code>git tag</code>. <code>version:refname</code> põe <code>v1.10</code> depois de <code>v1.9</code>.</td><td><code>git config --global tag.sort version:refname</code></td><td><a href="git-tag.html">git tag</a></td></tr>
+<tr><td><code>log.date</code></td><td>Formato das datas no <code>git log</code> (<code>iso</code>, <code>relative</code>, <code>short</code>…). Veja <a href="ref-log.html">Formatos do git log</a>.</td><td><code>git config --global log.date iso</code></td><td><a href="log-filtros.html">log: Filtros e Formatos</a></td></tr>
+<tr><td><code>commit.verbose</code></td><td>Mostra o diff do que vai entrar no commit dentro do editor da mensagem.</td><td><code>git config --global commit.verbose true</code></td><td><a href="git-commit.html">git commit</a></td></tr>
+</table>
+</div>
+
+<h2 id="remotos">Branches, pull e push</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Configuração</th><th>O que faz</th><th>Comando</th><th>Aula</th></tr>
+<tr><td><code>pull.rebase</code></td><td>Como o <code>git pull</code> junta o que veio do servidor: <code>false</code> = merge; <code>true</code> = rebase (histórico em linha reta).</td><td><code>git config --global pull.rebase false</code></td><td><a href="git-pull.html">git pull</a></td></tr>
+<tr><td><code>pull.ff</code></td><td><code>only</code> = o <code>pull</code> só avança se der fast-forward; se os dois lados mudaram, ele para e deixa você decidir.</td><td><code>git config --global pull.ff only</code></td><td><a href="fast-forward.html">Fast-forward</a></td></tr>
+<tr><td><code>push.default</code></td><td>O que o <code>git push</code> sem argumentos envia. Padrão: <code>simple</code> (só o branch atual, para o branch de mesmo nome).</td><td><code>git config --global push.default simple</code></td><td><a href="git-push.html">git push</a></td></tr>
+<tr><td><code>push.autoSetupRemote</code></td><td><code>true</code> = o primeiro <code>git push</code> de um branch novo já cria o rastreamento, sem precisar do <code>-u origin nome</code>.</td><td><code>git config --global push.autoSetupRemote true</code></td><td><a href="upstream.html">upstream</a></td></tr>
+<tr><td><code>fetch.prune</code></td><td>Todo <code>fetch</code>/<code>pull</code> apaga as cópias locais (<code>origin/…</code>) de branches que já foram apagados no servidor.</td><td><code>git config --global fetch.prune true</code></td><td><a href="git-fetch.html">git fetch</a></td></tr>
+<tr><td><code>remote.origin.url</code></td><td>(local, criada pelo <code>clone</code>/<code>remote add</code>) o endereço do remoto <code>origin</code>.</td><td><code>git config remote.origin.url</code> (ler)</td><td><a href="git-remote.html">git remote</a></td></tr>
+<tr><td><code>branch.main.remote</code><br><code>branch.main.merge</code></td><td>(local, criadas pelo <code>push -u</code>) qual remoto e qual branch de lá o <code>main</code> acompanha.</td><td><code>git config branch.main.remote</code> (ler)</td><td><a href="upstream.html">upstream</a></td></tr>
+</table>
+</div>
+
+<h2 id="merge">Merge, rebase e diff</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Configuração</th><th>O que faz</th><th>Comando</th><th>Aula</th></tr>
+<tr><td><code>merge.conflictStyle</code></td><td>Como o conflito aparece no arquivo. <code>zdiff3</code> mostra também a versão original (do ancestral comum), entre <code>|||||||</code> e <code>=======</code>: ajuda a entender o que cada lado mudou.</td><td><code>git config --global merge.conflictStyle zdiff3</code></td><td><a href="resolver-conflitos.html">Resolvendo Conflitos</a></td></tr>
+<tr><td><code>rerere.enabled</code></td><td>"Reuse recorded resolution": o Git lembra como você resolveu um conflito e repete a solução se o mesmo conflito voltar.</td><td><code>git config --global rerere.enabled true</code></td><td><a href="rebase-conflitos.html">Conflitos no Rebase</a></td></tr>
+<tr><td><code>rebase.autoStash</code></td><td>Guarda as mudanças não commitadas num stash antes do rebase e as devolve depois.</td><td><code>git config --global rebase.autoStash true</code></td><td><a href="git-rebase.html">git rebase</a></td></tr>
+<tr><td><code>rebase.autoSquash</code></td><td>No <code>rebase -i</code>, já posiciona os commits <code>fixup!</code>/<code>squash!</code>.</td><td><code>git config --global rebase.autoSquash true</code></td><td><a href="squash.html">squash</a></td></tr>
+<tr><td><code>diff.algorithm</code></td><td>O jeito de calcular o diff. <code>histogram</code> costuma dar diffs mais fáceis de ler que o padrão (<code>myers</code>).</td><td><code>git config --global diff.algorithm histogram</code></td><td><a href="git-diff.html">git diff</a></td></tr>
+<tr><td><code>diff.colorMoved</code></td><td>Pinta de outra cor as linhas que só mudaram de lugar.</td><td><code>git config --global diff.colorMoved default</code></td><td><a href="git-diff.html">git diff</a></td></tr>
+<tr><td><code>merge.ff</code></td><td><code>false</code> = todo <code>git merge</code> cria um commit de merge, mesmo quando daria fast-forward.</td><td><code>git config merge.ff false</code></td><td><a href="fast-forward.html">Fast-forward</a></td></tr>
+</table>
+</div>
+
+<h2 id="arquivos">Arquivos, fim de linha e segurança</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Configuração</th><th>O que faz</th><th>Comando</th><th>Aula</th></tr>
+<tr><td><code>core.autocrlf</code></td><td>Converte o fim de linha. No Windows: <code>true</code> (CRLF na pasta, LF no repositório). No Linux e no macOS: <code>input</code> (só converte CRLF → LF ao commitar) ou deixe sem.</td><td><code>git config --global core.autocrlf input</code></td><td><a href="gitattributes.html">Fim de Linha</a></td></tr>
+<tr><td><code>core.excludesFile</code></td><td>Um <code>.gitignore</code> pessoal, que vale para todos os seus repositórios (lixo do seu editor e do seu sistema). Sem ela, o Git procura <code>~/.config/git/ignore</code>.</td><td><code>git config --global core.excludesFile ~/.gitignore_global</code></td><td><a href="ref-gitignore.html">Modelos de .gitignore</a></td></tr>
+<tr><td><code>core.ignoreCase</code></td><td>(local, o <code>git init</code> decide) se o sistema de arquivos não diferencia <code>Foto.png</code> de <code>foto.png</code> (Windows, macOS). Não mude à mão.</td><td><code>git config core.ignoreCase</code> (ler)</td><td><a href="git-mv.html">git mv</a></td></tr>
+<tr><td><code>core.fileMode</code></td><td>(local) se o Git presta atenção à permissão de execução (<code>chmod +x</code>). <code>false</code> em pastas de pendrive/Windows, onde ela muda sozinha.</td><td><code>git config core.fileMode false</code></td><td><a href="git-diff.html">git diff</a></td></tr>
+<tr><td><code>safe.directory</code></td><td>Libera um repositório que pertence a outro usuário (o Git recusa por segurança: <code>detected dubious ownership</code>). Só para pastas em que você confia.</td><td><code>git config --global --add safe.directory /caminho/do/repo</code></td><td><a href="ref-erros.html">Mensagens de Erro</a></td></tr>
+<tr><td><code>credential.helper</code></td><td>Onde o Git guarda o token do HTTPS para não pedir toda vez (<code>cache</code> = na memória por um tempo; <code>store</code> = num arquivo, sem criptografia).</td><td><code>git config --global credential.helper "cache --timeout=3600"</code></td><td><a href="https-token.html">HTTPS e Token</a></td></tr>
+</table>
+</div>
+
+<h2 id="alias">Atalhos (alias.*)</h2>
+<p>Cada <code>alias.NOME</code> cria um comando <code>git NOME</code>. Começando com <code>!</code>, o atalho roda um comando do terminal. Veja <a href="alias.html">Atalhos (alias)</a>.</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Atalho</th><th>Comando para criar</th><th>Uso</th></tr>
+<tr><td><code>git st</code></td><td><code>git config --global alias.st status</code></td><td><code>git st</code> = <code>git status</code></td></tr>
+<tr><td><code>git sw</code></td><td><code>git config --global alias.sw switch</code></td><td><code>git sw main</code></td></tr>
+<tr><td><code>git unstage</code></td><td><code>git config --global alias.unstage "restore --staged"</code></td><td><code>git unstage receita.txt</code></td></tr>
+<tr><td><code>git ultimo</code></td><td><code>git config --global alias.ultimo "log -1 HEAD"</code></td><td>mostra o último commit</td></tr>
+<tr><td><code>git arvore</code></td><td><code>git config --global alias.arvore "log --oneline --graph --all"</code></td><td>o histórico desenhado</td></tr>
+</table>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit'" data-goal="ran:git config.*alias\.st,ran:^git st$" data-solucao="git config --global alias.st status;;git st">
+<p class="try-task"><strong>Missão:</strong> crie o atalho <code>git st</code> para o <code>git status</code> e use-o.</p>
+</div>
+
+<h2 id="modelo">Um .gitconfig pronto para começar</h2>
+<p>Depois de rodar os comandos acima com <code>--global</code>, o arquivo <code>~/.gitconfig</code> da Ana fica assim (o Git escreve com TAB no começo das linhas). Você pode abrir e editar o arquivo direto, com <code>git config --global --edit</code>: é texto simples.</p>
+<pre class="term">$ git config --global pull.rebase false
+$ git config --global push.autoSetupRemote true
+$ git config --global fetch.prune true
+$ git config --global merge.conflictStyle zdiff3
+$ git config --global core.autocrlf input
+$ git config --global alias.st status
+$ git config --global alias.arvore "log --oneline --graph --all"
+$ git config --global color.ui auto
+$ cat ~/.gitconfig
+[user]                                     « [seção]
+	name = Ana Souza                       « chave = valor
+	email = ana@exemplo.com
+[init]
+	defaultBranch = main
+[core]
+	editor = nano
+	autocrlf = input                       « mesma seção: o Git junta embaixo dela
+[pull]
+	rebase = false
+[push]
+	autoSetupRemote = true
+[fetch]
+	prune = true
+[merge]
+	conflictStyle = zdiff3
+[alias]
+	st = status
+	arvore = log --oneline --graph --all
+[color]
+	ui = auto
+</pre>
+<p>Uma configuração de três partes, como <code>branch.main.remote</code>, vira uma seção com o nome do meio entre aspas: <code>[branch "main"]</code> e, embaixo, <code>remote = origin</code>.</p>
+
+<div class="warning">
+<strong>Cuidado com o que vai para o .gitconfig</strong>
+<p>Nunca grave senha ou token numa configuração (por exemplo, dentro de <code>remote.origin.url</code>, como <code>https://usuario:token@…</code>): o <code>.git/config</code> e o <code>~/.gitconfig</code> são texto puro e vão parar em backups e capturas de tela. Use um <code>credential.helper</code> ou SSH. Veja <a href="https-token.html">HTTPS e Token</a> e <a href="senha-commitada.html">Commitei uma Senha!</a>.</p>
+</div>
+
+<h2>Quando dá errado</h2>
+<div class="cenario">
+<h3>O nome ficou só "Ana"</h3>
+<pre class="term" data-cwd="~/receitas">$ git config user.name Ana Souza
+$ git config --list --show-scope
+…
+local	user.name=Ana                      « cadê o "Souza"?
+</pre>
+<p><strong>O que aconteceu:</strong> sem aspas, o terminal separou <code>Ana</code> e <code>Souza</code> em duas palavras. O Git gravou <code>Ana</code> como valor e entendeu <code>Souza</code> como outra coisa (um filtro de valor antigo, da forma clássica), sem reclamar.</p>
+<p><strong>Como resolver:</strong> grave de novo, <strong>com aspas</strong>: <code>git config user.name "Ana Souza"</code>. Regra: valor com espaço vai sempre entre aspas.</p>
+</div>
+
+<div class="cenario">
+<h3>error: key does not contain a section</h3>
+<pre class="term" data-cwd="~/receitas">$ git config nome
+error: key does not contain a section: nome
+</pre>
+<p><strong>O que aconteceu:</strong> toda chave tem a forma <code>seção.chave</code>; <code>nome</code> não tem o ponto. ("key does not contain a section" = "a chave não contém uma seção".)</p>
+<p><strong>Como resolver:</strong> use o nome completo: <code>user.name</code>, <code>core.editor</code>… Na dúvida, liste: <code>git config --list</code>.</p>
+</div>
+
+<div class="cenario">
+<h3>fatal: bad boolean config value</h3>
+<pre class="term" data-cwd="~/receitas">$ git config core.autocrlf banana
+$ git status
+fatal: bad boolean config value 'banana' for 'core.autocrlf'
+</pre>
+<p><strong>O que aconteceu:</strong> o <code>git config</code> grava qualquer valor sem conferir. O erro só aparece depois, quando algum comando precisa ler a configuração ("bad boolean config value" = "valor de configuração verdadeiro/falso inválido"). Até corrigir, o <code>git status</code>, o <code>git log</code> e outros comandos param com a mesma mensagem.</p>
+<p><strong>Como resolver:</strong> apague a chave com <code>git config --unset core.autocrlf</code> (o <code>git config</code> continua funcionando) ou grave um valor válido (<code>true</code>, <code>false</code> ou <code>input</code>). A mensagem diz o nome da chave; o <code>git config --list --show-origin</code> diz em que arquivo ela está.</p>
+</div>
+
+<div class="cenario">
+<h3>error: no action specified</h3>
+<pre class="term" data-cwd="~/receitas">$ git config
+error: no action specified
+</pre>
+<p><strong>O que aconteceu:</strong> faltou dizer o que fazer ("nenhuma ação especificada"). <strong>Como resolver:</strong> diga a chave, ou <code>--list</code>, ou um subcomando (<code>get</code>, <code>set</code>, <code>list</code>…).</p>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Valendo para todos os projetos</h3>
+<p>Complete para gravar o seu nome em <strong>todos</strong> os seus repositórios:</p>
+<div class="ex-code">git config <input data-answer="--global" aria-label="opção"> user.name "Ana Souza"</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">2. O <code>~/.gitconfig</code> da Ana diz <code>user.email = ana@exemplo.com</code>, e o <code>.git/config</code> do projeto da empresa diz <code>user.email = ana@empresa.exemplo</code>. Com que e-mail sai um commit nesse projeto?</p>
+<label><input type="radio" name="q2"> <code>ana@exemplo.com</code>, porque o global vale para tudo.</label>
+<label><input type="radio" name="q2"> O Git pergunta qual usar.</label>
+<label><input type="radio" name="q2"> <code>ana@empresa.exemplo</code>, porque o nível local vence o global.</label>
+<label><input type="radio" name="q2"> Dá erro, porque há dois valores.</label>
+</div>
+
+<div class="exercise">
+<h3>3. De onde veio?</h3>
+<p>Complete para listar as configurações mostrando o arquivo de onde cada uma veio:</p>
+<div class="ex-code">git config --list <input data-answer="--show-origin" aria-label="opção"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. Qual configuração faz o primeiro <code>git push</code> de um branch novo funcionar sem o <code>-u origin nome</code>?</p>
+<label><input type="radio" name="q4"> <code>core.autocrlf=true</code></label>
+<label><input type="radio" name="q4"> <code>push.autoSetupRemote=true</code></label>
+<label><input type="radio" name="q4"> <code>fetch.prune=true</code></label>
+<label><input type="radio" name="q4"> <code>pull.rebase=true</code></label>
+</div>
+
+<div class="exercise">
+<h3>5. Desfazendo uma configuração</h3>
+<p>Complete para apagar o <code>core.editor</code> do nível global (o Git volta ao editor padrão):</p>
+<div class="ex-code">git config --global <input data-answer="--unset" aria-label="opção"> core.editor</div>
+</div>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
