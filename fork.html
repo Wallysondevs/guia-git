@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Fork — sua cópia de um repositório no GitHub | Guia Git</title>
+<meta name="description" content="O que é um fork no GitHub e para que serve: contribuir com um projeto em que você não tem permissão de escrita. Como criar o fork no site (ilustrativo, conforme docs.github.com), clonar o fork, configurar o remoto upstream com git remote add, manter o fork atualizado com git fetch upstream e git merge, e o erro 403 de quem tenta enviar direto ao original.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Fork</span></h1>
+
+<p class="intro">Até aqui, a Ana e o Bruno trabalharam num repositório em que os dois podiam enviar commits. Mas e quando você quer contribuir com o projeto de <strong>outra pessoa</strong>, que não te deu permissão para escrever lá? É o caso de quase todo projeto de código aberto. A resposta do GitHub é o <strong>fork</strong> (em inglês, "garfo", ou "bifurcação", como uma estrada que se divide): uma <strong>cópia do repositório na sua conta</strong>, onde você pode fazer o que quiser, e de onde você depois propõe as suas mudanças ao original.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é um fork e como ele se diferencia de um clone e de um branch.</li>
+  <li>Como criar o fork no site do GitHub (passo a passo da documentação oficial).</li>
+  <li>Como clonar o seu fork e ligar o repositório original como o remoto <code>upstream</code>.</li>
+  <li>Como trazer para o seu fork as novidades do original (<code>git fetch upstream</code> + <code>git merge</code>).</li>
+  <li>Por que enviar direto para o repositório original dá erro <code>403</code>.</li>
+</ul>
+</div>
+
+<div class="warning">
+<strong>O que é real e o que é ilustrativo nesta aula</strong>
+<p>Os passos <strong>no site do GitHub</strong> (o botão de fork, os campos da página) são <strong>ilustrativos</strong>: estão descritos conforme a documentação oficial, em <a href="https://docs.github.com/pt/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo">docs.github.com</a>, e o site pode mudar de aparência. O site do GitHub é em inglês; os nomes dos botões aparecem aqui como estão no site, com a tradução ao lado. Já <strong>todos os comandos</strong> (<code>git clone</code>, <code>git remote</code>, <code>git fetch</code>, <code>git push</code>…) rodaram de verdade no Git do Ubuntu, na máquina da Ana, com o "GitHub de mentira" do laboratório do guia. Lá, o fork foi imitado: o repositório <code>ana-souza/cardapio</code> foi criado com o mesmo conteúdo do original, que é o que o botão de fork faz.</p>
+</div>
+
+<hr>
+
+<h2>A ideia: o caderno de receitas da cantina</h2>
+<p>O Bruno mantém o cardápio da cantina num caderno. Todo mundo pode ler, mas só ele escreve. A Ana tem uma receita ótima para a sexta-feira e quer sugerir. Ela não pode escrever no caderno do Bruno. Então:</p>
+<ol class="passo">
+  <li>Tira uma <strong>fotocópia</strong> do caderno inteiro e leva para casa. A cópia é dela: pode riscar, escrever, colar folhas. (<strong>Fork.</strong>)</li>
+  <li>Escreve a receita de sexta na cópia dela.</li>
+  <li>Leva a página para o Bruno e diz: "olha, que tal pôr isto no seu caderno?". Ele lê, comenta, pede um ajuste, e, se gostar, copia para o caderno oficial. (<strong>Pull request</strong>, a próxima aula.)</li>
+  <li>De vez em quando, ela copia para a cópia dela as páginas novas que o Bruno escreveu, para não ficar desatualizada. (<strong>Sincronizar o fork.</strong>)</li>
+</ol>
+<p>No GitHub, o caderno do Bruno é o repositório <code>bruno-lima/cardapio</code>; a fotocópia da Ana é o <code>ana-souza/cardapio</code>.</p>
+
+<h3>Fork, clone e branch: qual é qual</h3>
+<div class="table-wrap">
+<table class="ref">
+<tr><th></th><th>Onde fica</th><th>Quem cria</th><th>Para quê</th></tr>
+<tr><td><strong>Fork</strong></td><td>No <strong>GitHub</strong>, na sua conta</td><td>O site do GitHub (botão <strong>Fork</strong>)</td><td>Ter um repositório seu, copiado do de outra pessoa, para onde você pode enviar commits</td></tr>
+<tr><td><strong>Clone</strong></td><td>No <strong>seu computador</strong></td><td><code>git clone</code> (veja <a href="git-clone.html">git clone</a>)</td><td>Trabalhar localmente num repositório (seu, de outra pessoa ou o seu fork)</td></tr>
+<tr><td><strong>Branch</strong></td><td>Dentro de um repositório</td><td><code>git branch</code>/<code>git switch -c</code></td><td>Uma linha de trabalho separada (veja <a href="branches.html">O que é um Branch</a>)</td></tr>
+</table>
+</div>
+<p>"Fork" é coisa do <strong>GitHub</strong> (e de sites parecidos, como GitLab e Codeberg), não do Git: não existe <code>git fork</code>. Na prática, você usa os três juntos: faz o fork no site, clona o fork no computador e trabalha num branch.</p>
+
+<hr>
+
+<h2>1. Criando o fork no site (ilustrativo)</h2>
+<p>Segundo a documentação do GitHub, com a sua conta aberta no site:</p>
+<ol class="passo">
+  <li>Abra a página do repositório original (aqui, <code>github.com/bruno-lima/cardapio</code>).</li>
+  <li>No canto superior direito, clique em <strong>Fork</strong>.</li>
+  <li>Na página de criação do fork:
+    <ul>
+      <li><strong>Owner</strong> ("Proprietário"): escolha a sua conta (ou uma organização em que você pode criar repositórios);</li>
+      <li><strong>Repository name</strong> ("Nome do repositório"): por padrão, o mesmo do original; pode trocar se quiser;</li>
+      <li><strong>Description</strong> ("Descrição"): opcional;</li>
+      <li><strong>Copy the DEFAULT branch only</strong> ("Copiar somente o branch PADRÃO"): marcado, copia só o <code>main</code>; desmarcado, copia todos os branches.</li>
+    </ul>
+  </li>
+  <li>Clique em <strong>Create fork</strong> ("Criar fork").</li>
+</ol>
+<p>Em instantes, aparece <code>github.com/ana-souza/cardapio</code>: um repositório da Ana, com todos os commits do original. Nada mudou no repositório do Bruno.</p>
+
+<div class="tip">
+<strong>Pela linha de comando, com o GitHub CLI</strong>
+<p>Quem usa o <a href="github-cli.html">GitHub CLI</a> (<code>gh</code>) pode criar o fork sem abrir o site: <code>gh repo fork bruno-lima/cardapio --clone=true</code> cria o fork e já o clona (conforme a documentação; o <code>gh</code> não roda no laboratório do guia).</p>
+</div>
+
+<hr>
+
+<h2>2. Clonando o fork</h2>
+<p>Agora é Git de verdade. A Ana clona <strong>o fork dela</strong> (e não o do Bruno), porque é para lá que ela vai poder enviar:</p>
+
+<pre class="term">$ git clone https://github.com/ana-souza/cardapio.git
+Cloning into 'cardapio'...
+remote: Enumerating objects: 7, done.
+remote: Counting objects: 100% (7/7), done.
+remote: Compressing objects: 100% (7/7), done.
+remote: Total 7 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)
+Receiving objects: 100% (7/7), done.
+Resolving deltas: 100% (1/1), done.
+$ cd cardapio
+$ git remote -v
+origin  https://github.com/ana-souza/cardapio.git (fetch)
+origin  https://github.com/ana-souza/cardapio.git (push)
+$ git log --oneline
+396f305 (HEAD -&gt; main, origin/main, origin/HEAD) Adiciona a quarta-feira
+2bc3f14 Cria o cardápio
+</pre>
+<p>O clone já está explicado em <a href="git-clone.html">git clone</a>. O que importa aqui: o <code>git remote -v</code> mostra um só remoto, <code>origin</code>, apontando para o <strong>fork da Ana</strong>. Os commits são os do Bruno (o fork copiou o histórico inteiro, com os mesmos hashes).</p>
+
+<hr>
+
+<h2>3. Ligando o original: o remoto <code>upstream</code></h2>
+<p>O clone sabe do fork, mas não sabe nada do repositório do Bruno. Para receber as novidades dele, a Ana acrescenta um <strong>segundo remoto</strong> (veja <a href="git-remote.html">git remote</a>). O nome tradicional é <code>upstream</code> ("rio acima", de onde a água vem):</p>
+
+<pre class="term" data-cwd="~/cardapio">$ git remote add upstream https://github.com/bruno-lima/cardapio.git
+$ git remote -v
+origin  https://github.com/ana-souza/cardapio.git (fetch)
+origin  https://github.com/ana-souza/cardapio.git (push)
+upstream        https://github.com/bruno-lima/cardapio.git (fetch)
+upstream        https://github.com/bruno-lima/cardapio.git (push)
+$ git fetch upstream
+From https://github.com/bruno-lima/cardapio
+ * [new branch]      main       -&gt; upstream/main
+$ git branch -a
+* main
+  remotes/origin/HEAD -&gt; origin/main
+  remotes/origin/main
+  remotes/upstream/HEAD -&gt; upstream/main
+  remotes/upstream/main
+</pre>
+
+<dl class="anatomy">
+  <dt>git remote add upstream URL</dt><dd>"Acrescente um remoto chamado <code>upstream</code> com este endereço." Não mostra nada quando dá certo.</dd>
+  <dt>origin … / upstream …</dt><dd>Agora são dois: <code>origin</code> = o <strong>fork da Ana</strong> (onde ela envia); <code>upstream</code> = o <strong>original do Bruno</strong> (de onde ela busca). Cada um aparece duas vezes, uma para buscar (<code>fetch</code>) e outra para enviar (<code>push</code>).</dd>
+  <dt>git fetch upstream</dt><dd>Busca o que o repositório do Bruno tem. Não mostrou progresso de download porque os commits já estavam no computador (vieram com o clone do fork).</dd>
+  <dt>* [new branch] main -&gt; upstream/main</dt><dd>"Branch novo": o Git criou o <code>upstream/main</code>, a anotação de onde está o <code>main</code> do Bruno.</dd>
+  <dt>git branch -a</dt><dd>Lista todos os branches, os locais e os dos remotos (<code>remotes/…</code>). O <code>remotes/upstream/HEAD -&gt; upstream/main</code> diz qual é o branch principal do <code>upstream</code>.</dd>
+</dl>
+
+<div class="note">
+<strong><code>origin</code> e <code>upstream</code> são só nomes</strong>
+<p>O Git não dá significado especial a nenhum dos dois: são apelidos para endereços. O <code>origin</code> é o nome que o <code>git clone</code> dá ao repositório de onde clonou; o <code>upstream</code> é uma convenção de quem usa forks (a própria documentação do GitHub usa esse nome). Seguir a convenção ajuda: qualquer tutorial vai falar em <code>upstream</code>.</p>
+</div>
+
+<div class="try" data-setup="mkdir cardapio;;cd cardapio;;git init -q;;echo 'Segunda: arroz, feijão e frango' &gt; cardapio.txt;;git add cardapio.txt;;git commit -q -m 'Cria o cardápio';;git remote add origin https://github.com/ana-souza/cardapio.git" data-goal="remoto:origin,remoto:upstream,ran:bruno-lima/cardapio" data-solucao="git remote -v;;git remote add upstream https://github.com/bruno-lima/cardapio.git;;git remote -v">
+<p class="try-task"><strong>Missão:</strong> o clone do fork da Ana já está pronto (com o <code>origin</code> apontando para <code>https://github.com/ana-souza/cardapio.git</code>). Confira com <code>git remote -v</code> e acrescente o repositório original do Bruno, <code>https://github.com/bruno-lima/cardapio.git</code>, como o remoto <code>upstream</code>. Confira de novo no fim.</p>
+</div>
+
+<hr>
+
+<h2>4. Mantendo o fork atualizado</h2>
+<p>O fork é uma cópia tirada <strong>num momento</strong>. Depois disso, o Bruno continua trabalhando: acrescentou a quinta-feira no cardápio. O fork da Ana <strong>não</strong> recebe isso sozinho. E o <code>git status</code> da Ana não sabe de nada:</p>
+
+<pre class="term" data-cwd="~/cardapio">$ git status
+No ramo main
+Your branch is up to date with 'origin/main'.
+
+nothing to commit, working tree clean
+</pre>
+<p>"O seu branch está atualizado com <code>origin/main</code>": é verdade, mas o <code>origin</code> é o <strong>fork</strong>, que também está atrasado. O <code>status</code> compara com o branch de rastreamento (veja <a href="upstream.html">Branch de Rastreamento</a>), e nunca com o repositório do Bruno. Para saber, é preciso buscar no <code>upstream</code>:</p>
+
+<pre class="term" data-cwd="~/cardapio">$ git fetch upstream
+remote: Enumerating objects: 5, done.
+remote: Counting objects: 100% (5/5), done.
+remote: Compressing objects: 100% (3/3), done.
+remote: Total 3 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (3/3), 311 bytes | 311.00 KiB/s, done.
+From https://github.com/bruno-lima/cardapio
+   396f305..3e097d6  main       -&gt; upstream/main
+$ git log --oneline --graph --all
+* 3e097d6 (upstream/main, upstream/HEAD) Adiciona a quinta-feira
+* 396f305 (HEAD -&gt; main, origin/main, origin/HEAD) Adiciona a quarta-feira
+* 2bc3f14 Cria o cardápio
+$ git merge upstream/main
+Updating 396f305..3e097d6
+Fast-forward
+ cardapio.txt | 1 +
+ 1 file changed, 1 insertion(+)
+$ git push origin main
+Enumerating objects: 5, done.
+Counting objects: 100% (5/5), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (3/3), done.
+Writing objects: 100% (3/3), 331 bytes | 331.00 KiB/s, done.
+Total 3 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/cardapio.git
+   396f305..3e097d6  main -&gt; main
+</pre>
+
+<ol class="passo">
+  <li><code>git fetch upstream</code>: baixa o commit novo do Bruno (<code>3e097d6</code>) para o <code>upstream/main</code>. O <code>main</code> da Ana ainda não mudou.</li>
+  <li>O <code>log --graph --all</code> mostra a situação: o <code>upstream/main</code> está um commit à frente do <code>main</code> da Ana e do <code>origin/main</code> (o fork).</li>
+  <li><code>git merge upstream/main</code>: traz o commit para o <code>main</code> da Ana. Como ela não tinha commits próprios no <code>main</code>, foi um <a href="fast-forward.html">fast-forward</a>.</li>
+  <li><code>git push origin main</code>: atualiza o <strong>fork</strong> no GitHub. Sem este passo, só o computador da Ana estaria em dia.</li>
+</ol>
+
+<p>Os dois primeiros passos podem ser um só: <code>git pull upstream main</code> (busca e junta). E o site também oferece um atalho (ilustrativo, conforme a <a href="https://docs.github.com/pt/pull-requests/collaborating-with-pull-requests/working-with-forks/syncing-a-fork">documentação</a>): na página do fork, acima da lista de arquivos, o menu <strong>Sync fork</strong> ("Sincronizar fork") e o botão <strong>Update branch</strong> ("Atualizar branch") atualizam o fork direto no GitHub. Depois disso, no computador, basta um <code>git pull</code> do <code>origin</code>.</p>
+
+<div class="tip">
+<strong>Deixe o <code>main</code> do fork sempre igual ao original</strong>
+<p>Nunca commite direto no <code>main</code> do seu fork. Faça o seu trabalho em branches (<code>git switch -c receita-sexta</code>). Assim, o <code>main</code> sempre recebe as novidades do <code>upstream</code> por fast-forward, sem conflitos, e cada contribuição fica no seu branch, pronta para virar um <a href="pull-request.html">pull request</a>.</p>
+</div>
+
+<hr>
+
+<h2>5. O caminho completo de uma contribuição</h2>
+<pre>
+   bruno-lima/cardapio  (upstream)  ◀──── 5. pull request ────┐
+          │                                                    │
+          │ 1. Fork (no site)                                  │
+          ▼                                                    │
+   ana-souza/cardapio   (origin)    ◀──── 4. git push ─────┐   │
+          │                                                │   │
+          │ 2. git clone                                   │   │
+          ▼                                                │   │
+   ~/cardapio  (computador da Ana) ── 3. branch + commits ─┘───┘
+</pre>
+<ol class="passo">
+  <li><strong>Fork</strong> no site: <code>bruno-lima/cardapio</code> → <code>ana-souza/cardapio</code>.</li>
+  <li><strong>Clone</strong> do fork e <code>git remote add upstream …</code>.</li>
+  <li><strong>Branch</strong> novo, commits.</li>
+  <li><strong>Push</strong> do branch para o fork: <code>git push -u origin receita-sexta</code>.</li>
+  <li><strong>Pull request</strong> do branch do fork para o <code>main</code> do original: <a href="pull-request.html">próxima aula</a>.</li>
+</ol>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer a mesma coisa</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Tarefa</th><th>No terminal</th><th>No site (ilustrativo)</th></tr>
+<tr><td>Criar o fork</td><td><code>gh repo fork DONO/REPO</code> (GitHub CLI)</td><td>Botão <strong>Fork</strong> → <strong>Create fork</strong></td></tr>
+<tr><td>Clonar o fork</td><td><code>git clone https://github.com/SEU-USUARIO/REPO.git</code></td><td>Botão <strong>Code</strong>, copiar o endereço</td></tr>
+<tr><td>Ligar o original</td><td><code>git remote add upstream URL-DO-ORIGINAL</code></td><td>—</td></tr>
+<tr><td>Atualizar o fork</td><td><code>git fetch upstream</code> + <code>git merge upstream/main</code> + <code>git push origin main</code> (ou <code>git pull upstream main</code> + push)</td><td><strong>Sync fork</strong> → <strong>Update branch</strong>, depois <code>git pull</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Tentou enviar direto para o repositório original: erro 403</strong>
+<p>A Ana commitou a sexta-feira no <code>main</code> e, por engano, mandou para o <code>upstream</code>. Nesta sessão o "GitHub de mentira" estava pedindo login (o token mostrado aqui é um <strong>exemplo inventado</strong>, e o terminal não mostra o que se digita na senha):</p>
+<pre class="term" data-cwd="~/cardapio">$ git push upstream main
+Username for 'https://github.com': ana-souza
+Password for 'https://ana-souza@github.com':
+remote: Permission to bruno-lima/cardapio.git denied to ana-souza.
+fatal: não foi possível acessar 'https://github.com/bruno-lima/cardapio.git/': The requested URL returned error: 403
+</pre>
+<p>"Permissão para <code>bruno-lima/cardapio.git</code> negada para <code>ana-souza</code>" e "não foi possível acessar …: o endereço pedido devolveu o erro 403" (403 é o código da web para "proibido"). A Ana é ela mesma, a senha (o token) está certa, mas o repositório é do Bruno e ele não deu permissão de escrita. <strong>É exatamente para isso que o fork existe.</strong> <strong>Como resolver:</strong> envie para o seu fork (<code>git push origin …</code>, de preferência num branch) e abra um pull request.</p>
+</div>
+
+<div class="cenario">
+<strong><code>error: remote upstream already exists.</code></strong>
+<pre class="term" data-cwd="~/cardapio">$ git remote add upstream https://github.com/bruno-lima/cardapio.git
+error: remote upstream already exists.
+</pre>
+<p>"O remoto <code>upstream</code> já existe": aparece se você rodar o <code>git remote add upstream …</code> duas vezes. Nada foi mudado. <strong>Como confirmar:</strong> <code>git remote -v</code>. <strong>Como resolver:</strong> se o endereço estiver errado, troque com <code>git remote set-url upstream URL-CERTA</code> (veja <a href="git-remote.html">git remote</a>).</p>
+</div>
+
+<div class="cenario">
+<strong>"Meu fork está desatualizado, mas o <code>git status</code> diz que está tudo em dia"</strong>
+<p><strong>O que aconteceu:</strong> o <code>status</code> compara com o <code>origin/main</code> (o fork), e não com o original (seção 4). <strong>Como resolver:</strong> <code>git fetch upstream</code> e <code>git log --oneline --graph --all</code> para ver a distância; depois <code>git merge upstream/main</code> e <code>git push origin main</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Clonou o original em vez do fork</strong>
+<p>Se a Ana tivesse clonado <code>bruno-lima/cardapio</code>, o <code>origin</code> seria o repositório do Bruno, e o push daria o mesmo <code>403</code>. <strong>Como resolver sem clonar de novo:</strong> renomeie os remotos: <code>git remote rename origin upstream</code> e <code>git remote add origin https://github.com/ana-souza/cardapio.git</code>. Confira com <code>git remote -v</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git clone https://github.com/SEU-USUARIO/REPO.git</code></td><td>Clona o seu fork (vira o <code>origin</code>)</td></tr>
+<tr><td><code>git remote add upstream URL</code></td><td>Liga o repositório original com o nome <code>upstream</code></td></tr>
+<tr><td><code>git remote -v</code></td><td>Lista os remotos e os endereços</td></tr>
+<tr><td><code>git fetch upstream</code></td><td>Baixa as novidades do original para <code>upstream/…</code></td></tr>
+<tr><td><code>git merge upstream/main</code></td><td>Junta as novidades do original no branch atual</td></tr>
+<tr><td><code>git push origin main</code></td><td>Atualiza o fork no GitHub</td></tr>
+<tr><td><code>git push -u origin BRANCH</code></td><td>Envia um branch de trabalho para o fork (para o pull request)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Ligue o original</h3>
+<p>Complete o comando que acrescenta o repositório original com o nome tradicional:</p>
+<div class="ex-code">git remote <input data-answer="add" aria-label="subcomando do remote"> <input data-answer="upstream" aria-label="nome do remoto"> https://github.com/bruno-lima/cardapio.git</div>
+</div>
+
+<div class="exercise">
+<h3>2. Atualize o fork</h3>
+<p>Complete a sequência para trazer as novidades do original e atualizar o fork no GitHub:</p>
+<div class="ex-code">git fetch <input data-answer="upstream" aria-label="remoto"><br>git merge upstream/main<br>git push <input data-answer="origin" aria-label="remoto"> main</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. Onde fica um fork?</p>
+<label><input type="radio" name="q3"> No seu computador, numa pasta escondida</label>
+<label><input type="radio" name="q3"> Dentro do repositório original, como um branch</label>
+<label><input type="radio" name="q3"> No GitHub, na sua conta</label>
+<label><input type="radio" name="q3"> Em lugar nenhum: é só um comando do Git</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. Depois de clonar o seu fork e acrescentar o <code>upstream</code>, para onde aponta o <code>origin</code>?</p>
+<label><input type="radio" name="q4"> Para o seu fork</label>
+<label><input type="radio" name="q4"> Para o repositório original</label>
+<label><input type="radio" name="q4"> Para os dois</label>
+<label><input type="radio" name="q4"> Para o seu computador</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">5. A Ana tentou <code>git push upstream main</code> e recebeu <code>error: 403</code>. Por quê?</p>
+<label><input type="radio" name="q5"> O token dela estava errado</label>
+<label><input type="radio" name="q5"> Ela não tem permissão de escrita no repositório do Bruno</label>
+<label><input type="radio" name="q5"> O repositório do Bruno não existe</label>
+<label><input type="radio" name="q5"> Faltou um <code>git pull</code></label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">6. O Bruno fez commits novos no original. O que acontece com o fork da Ana?</p>
+<label><input type="radio" name="q6"> Recebe os commits na hora, sozinho</label>
+<label><input type="radio" name="q6"> É apagado</label>
+<label><input type="radio" name="q6"> Fica com conflito</label>
+<label><input type="radio" name="q6"> Nada: ele só recebe se a Ana sincronizar (site ou <code>fetch upstream</code> + <code>merge</code> + <code>push</code>)</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Um <strong>fork</strong> é uma cópia de um repositório de outra pessoa <strong>na sua conta do GitHub</strong>. Serve para contribuir quando você não tem permissão de escrita no original.</li>
+  <li>Fork é coisa do site (botão <strong>Fork</strong>); clone é a cópia no seu computador; branch é uma linha de trabalho dentro do repositório.</li>
+  <li>Clone o <strong>seu fork</strong> (<code>origin</code>) e ligue o original com <code>git remote add upstream URL</code>.</li>
+  <li>O fork não se atualiza sozinho: <code>git fetch upstream</code>, <code>git merge upstream/main</code>, <code>git push origin main</code> (ou <strong>Sync fork</strong> no site).</li>
+  <li>Enviar direto ao original dá <code>403</code>: envie ao fork, num branch, e abra um pull request.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
