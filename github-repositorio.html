@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git GitHub: criando um repositório — e enviando o seu projeto | Guia Git</title>
+<meta name="description" content="Como criar um repositório no GitHub (Novo repositório, nome, descrição, público ou privado, README, .gitignore e licença) e ligar a ele o projeto que já está no seu computador com git remote add origin e git push -u origin main, com as saídas reais do Git e os erros comuns.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">GitHub: Criando um Repositório</span></h1>
+
+<p class="intro">A Ana já tem a <a href="github-conta.html">conta no GitHub</a> e, no notebook, o repositório <code>receitas</code> com alguns commits. Falta o lugar no GitHub para onde esses commits vão. Nesta aula ela cria esse lugar, um <strong>repositório no GitHub</strong>, e envia o projeto para lá.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como criar um repositório no site do GitHub e o que significa cada opção (nome, descrição, público/privado, README, <code>.gitignore</code>, licença).</li>
+  <li>Por que, para um projeto que já existe no computador, o repositório no GitHub deve nascer <strong>vazio</strong>.</li>
+  <li>Como ligar o projeto local ao GitHub com <code>git remote add origin</code> e enviar com <code>git push -u origin main</code>.</li>
+  <li>O outro caminho: criar no GitHub primeiro e fazer <code>git clone</code>.</li>
+</ul>
+</div>
+
+<div class="warning">
+<strong>A parte do site é ilustrativa.</strong> O site do GitHub não roda no laboratório do guia: os passos seguem a documentação oficial (<a href="https://docs.github.com/pt/repositories/creating-and-managing-repositories/creating-a-new-repository">Criar um repositório</a>). Já as saídas do <strong>terminal</strong> são reais, colhidas num servidor de treino que faz o papel do GitHub.
+</div>
+
+<hr>
+
+<h2>A ideia antes dos cliques</h2>
+<p>Criar o repositório no GitHub é como <strong>reservar uma gaveta</strong> com o seu nome num arquivo da biblioteca. A gaveta vem vazia. Depois, você leva seus papéis (os commits) do caderno de casa para lá. São dois passos diferentes:</p>
+<ol>
+  <li><strong>Reservar a gaveta</strong>: no site, criar o repositório (uma vez só).</li>
+  <li><strong>Levar os papéis</strong>: no terminal, <code>git remote add</code> (anotar o endereço da gaveta) e <code>git push</code> (levar os commits).</li>
+</ol>
+
+<hr>
+
+<h2>Passo 1: criar o repositório no site</h2>
+<ol class="passo">
+  <li>No canto superior direito de qualquer página do GitHub, clique no ícone <strong>+</strong> e escolha <strong>Novo repositório</strong>.</li>
+  <li><strong>Proprietário</strong>: a conta dona do repositório. Para a Ana, <code>ana-souza</code>.</li>
+  <li><strong>Nome do repositório</strong>: <code>receitas</code>. Use o mesmo nome da pasta, para não se confundir. Segundo a documentação, o nome tem até 100 caracteres, com letras sem acento, números, <code>.</code>, <code>-</code> e <code>_</code>.</li>
+  <li><strong>Descrição</strong> (opcional): uma frase, como "Site de receitas da família".</li>
+  <li><strong>Visibilidade</strong>: público (qualquer pessoa vê; só você e quem você convidar alteram) ou privado (só você e quem você convidar veem).</li>
+  <li><strong>README, <code>.gitignore</code> e licença</strong>: <strong>deixe tudo desmarcado</strong>, porque a Ana já tem o projeto no notebook (veja o aviso abaixo).</li>
+  <li>Clique em <strong>Criar repositório</strong>.</li>
+</ol>
+
+<div class="warning">
+<strong>Projeto que já existe? Repositório vazio.</strong> Se você marcar o README (ou a licença, ou o <code>.gitignore</code>), o GitHub cria um <strong>commit</strong> lá. Esse commit não existe no seu notebook, e o seu primeiro <code>git push</code> é <strong>rejeitado</strong>, porque os dois históricos não têm nada em comum. A documentação avisa exatamente isso. Marque essas opções só quando for começar do zero e clonar (o outro caminho, mais abaixo).
+</div>
+
+<p>Com o repositório vazio, o GitHub mostra uma página de <strong>Configuração rápida</strong>, com o endereço do repositório e um botão para copiá-lo. Há dois tipos de endereço:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Tipo</th><th>Endereço da Ana</th><th>Precisa de</th></tr>
+<tr><td>HTTPS</td><td><code>https://github.com/ana-souza/receitas.git</code></td><td>Um <a href="https-token.html">token de acesso</a> na hora do push</td></tr>
+<tr><td>SSH</td><td><code>git@github.com:ana-souza/receitas.git</code></td><td>Uma <a href="ssh.html">chave SSH</a> cadastrada na conta</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Passo 2: ligar o projeto do computador ao GitHub</h2>
+<p>Agora é no terminal, dentro da pasta do projeto. Primeiro a Ana confere que o repositório local tem commits e ainda não tem nenhum remoto:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+4f68d0e (HEAD -&gt; main) Adiciona receita de bolo          « dois commits, só no notebook
+0e8cf93 Adiciona README
+$ git remote -v
+                                                        « nenhuma linha: nenhum remoto ainda</pre>
+<p>O <code>git remote -v</code> não respondeu nada: o repositório ainda não sabe que o GitHub existe.</p>
+
+<h3><code>git remote add origin ENDEREÇO</code></h3>
+<dl class="anatomy">
+  <dt>git remote add</dt><dd>"Cadastre um remoto": anote um apelido para um endereço (aula completa em <a href="git-remote.html">git remote</a>).</dd>
+  <dt>origin</dt><dd>O apelido. <code>origin</code> é o nome tradicional do remoto principal.</dd>
+  <dt>ENDEREÇO</dt><dd>O endereço copiado da página do GitHub.</dd>
+</dl>
+
+<pre class="term" data-cwd="~/receitas">$ git remote add origin https://github.com/ana-souza/receitas.git
+$ git remote -v
+origin  https://github.com/ana-souza/receitas.git (fetch)      « de onde buscar
+origin  https://github.com/ana-souza/receitas.git (push)       « para onde enviar</pre>
+<p>O <code>git remote add</code> não mostra nada quando dá certo, e <strong>não envia nada</strong>: só anota o endereço. O <code>-v</code> (<em>verbose</em>) mostra o endereço duas vezes, uma para buscar (<code>fetch</code>) e outra para enviar (<code>push</code>); normalmente são iguais.</p>
+
+<h3><code>git push -u origin main</code></h3>
+<p>Agora sim, os commits vão para o GitHub. O <code>-u</code> liga o <code>main</code> do notebook ao <code>main</code> do GitHub, para que os próximos envios sejam só <code>git push</code> (detalhes em <a href="git-push.html">git push</a>):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git push -u origin main
+Enumerating objects: 6, done.
+Counting objects: 100% (6/6), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (3/3), done.
+Writing objects: 100% (6/6), 504 bytes | 504.00 KiB/s, done.
+Total 6 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/receitas.git
+ * [new branch]      main -&gt; main                          « o main foi criado no GitHub
+branch 'main' set up to track 'origin/main'.                « e ligado ao do notebook
+$ git status
+No ramo main
+Your branch is up to date with 'origin/main'.               « em dia com o GitHub
+
+nothing to commit, working tree clean</pre>
+<p>No GitHub de verdade, antes dessa saída o Git pede para você provar quem é. Com endereço HTTPS, entra o <a href="https-token.html">token</a>; com endereço SSH, a <a href="ssh.html">chave SSH</a>. (O servidor de treino do guia não pede.)</p>
+
+<p>No site, ao recarregar a página do repositório, a Ana vê os arquivos, o número de commits e, se houver um <code>README.md</code>, o conteúdo dele formatado logo abaixo da lista de arquivos (veja <a href="readme.html">O README e o Markdown</a>).</p>
+
+<hr>
+
+<h2>Experimente</h2>
+<p>No terminal abaixo, a Ana já tem o repositório <code>receitas</code> com dois commits. Um repositório vazio de treino, na pasta <code>~/servidor/receitas.git</code>, faz o papel do repositório recém-criado no GitHub: use esse caminho no lugar do endereço <code>https://…</code>.</p>
+
+<div class="try" data-setup="git init -q --bare ~/servidor/receitas.git;;mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -qm 'Adiciona README';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -qm 'Adiciona receita de bolo'" data-goal="remoto:origin,contem:origin/main:bolo.txt=cenoura,ran:git push" data-solucao="git remote add origin ~/servidor/receitas.git;;git push -u origin main">
+<p class="try-task"><strong>Missão:</strong> cadastre o remoto <code>origin</code> apontando para <code>~/servidor/receitas.git</code>, confira com <code>git remote -v</code> e envie o <code>main</code> já criando o par. Termine com <code>git status</code>.</p>
+</div>
+
+<hr>
+
+<h2>O outro caminho: criar no GitHub e clonar</h2>
+<p>Se você <strong>ainda não começou</strong> o projeto, é mais simples fazer ao contrário: criar o repositório no site <strong>com</strong> o README marcado e depois cloná-lo. O <code>git clone</code> já traz o remoto <code>origin</code> configurado e o <code>main</code> ligado a ele:</p>
+
+<pre class="term" data-cwd="~">$ git clone https://github.com/ana-souza/tcc.git
+Cloning into 'tcc'...                                       « "clonando em tcc"
+remote: Enumerating objects: 3, done.
+remote: Counting objects: 100% (3/3), done.
+remote: Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+Receiving objects: 100% (3/3), done.
+$ cd tcc
+$ ls
+README.md                                                   « o README que o GitHub criou
+$ git log --oneline
+6339aaa (HEAD -&gt; main, origin/main, origin/HEAD) Initial commit
+$ git branch -vv
+* main 6339aaa [origin/main] Initial commit                 « já ligado ao origin/main
+$ git remote -v
+origin  https://github.com/ana-souza/tcc.git (fetch)
+origin  https://github.com/ana-souza/tcc.git (push)</pre>
+<p>O repositório do TCC da Ana foi criado com o README marcado: o GitHub fez o primeiro commit, com a mensagem <code>Initial commit</code>. O clone trouxe esse commit, cadastrou o <code>origin</code> e ligou o <code>main</code> a ele. A partir daqui é só trabalhar e dar <code>git push</code> (veja <a href="git-clone.html">git clone</a>).</p>
+
+<h2>Formas diferentes de fazer</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>No site</th><th>No terminal</th></tr>
+<tr><td>O projeto <strong>já existe</strong> no computador</td><td>Criar <strong>vazio</strong> (sem README, licença, <code>.gitignore</code>)</td><td><code>git remote add origin URL</code> e <code>git push -u origin main</code></td></tr>
+<tr><td>Projeto <strong>novo</strong>, do zero</td><td>Criar <strong>com</strong> README (e <code>.gitignore</code>/licença, se quiser)</td><td><code>git clone URL</code></td></tr>
+<tr><td>Prefere não sair do terminal</td><td>—</td><td>A ferramenta oficial <code>gh</code> (GitHub CLI) cria o repositório pelo terminal: <code>gh repo create</code> (instalação à parte; veja a documentação do GitHub CLI)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Quando dá errado</h2>
+<div class="cenario">
+<strong>"Repository not found" (endereço errado)</strong>
+<pre class="term" data-cwd="~/lojinha">$ git remote add origin https://github.com/ana-souza/lojnha.git
+$ git push -u origin main
+remote: Repository not found.
+fatal: repository 'https://github.com/ana-souza/lojnha.git/' not found</pre>
+<p><strong>O que aconteceu:</strong> o endereço tem um erro de digitação (<code>lojnha</code>). Repare que o <code>git remote add</code> aceitou sem reclamar: ele não confere se o endereço existe. Só o push descobre. A mesma mensagem aparece se o repositório ainda não foi criado no site, ou se é privado e a sua conta não tem acesso.</p>
+<p><strong>Como resolver:</strong> copie de novo o endereço na página do repositório e corrija com <code>git remote set-url</code>:</p>
+<pre class="term" data-cwd="~/lojinha">$ git remote set-url origin https://github.com/ana-souza/lojinha.git
+$ git remote -v
+origin  https://github.com/ana-souza/lojinha.git (fetch)
+origin  https://github.com/ana-souza/lojinha.git (push)
+$ git push -u origin main
+Enumerating objects: 3, done.
+Counting objects: 100% (3/3), done.
+Writing objects: 100% (3/3), 237 bytes | 237.00 KiB/s, done.
+Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/lojinha.git
+ * [new branch]      main -&gt; main
+branch 'main' set up to track 'origin/main'.</pre>
+</div>
+
+<div class="cenario">
+<strong>"remote origin already exists"</strong>
+<pre class="term" data-cwd="~/receitas">$ git remote add origin https://github.com/ana-souza/receitas.git
+error: remote origin already exists.</pre>
+<p><strong>O que aconteceu:</strong> "o remoto origin já existe": você já tinha cadastrado (ou o repositório veio de um <code>git clone</code>).</p>
+<p><strong>Como resolver:</strong> confira com <code>git remote -v</code>. Se o endereço está certo, não precisa fazer nada. Se quer trocar, use <code>git remote set-url origin URL-NOVA</code> (veja <a href="git-remote.html">git remote</a>).</p>
+</div>
+
+<div class="cenario">
+<strong>Push rejeitado logo no primeiro envio <code>(fetch first)</code></strong>
+<p><strong>O que aconteceu:</strong> o repositório foi criado no site <strong>com</strong> README (ou licença, ou <code>.gitignore</code>): o GitHub tem um commit que o seu notebook não tem.</p>
+<p><strong>Como resolver:</strong> traga o commit com <code>git pull --no-rebase --allow-unrelated-histories origin main</code> e envie de novo. O passo a passo, com as saídas, está em <a href="push-rejeitado.html">Push Rejeitado</a>. Outra saída, se o repositório ainda está vazio de conteúdo seu: apague-o no site e crie de novo, sem marcar nada.</p>
+</div>
+
+<div class="cenario">
+<strong>"src refspec main does not match any"</strong>
+<p><strong>O que aconteceu:</strong> o repositório local ainda não tem commit (ou o branch tem outro nome, como <code>master</code>).</p>
+<p><strong>Como resolver:</strong> faça o primeiro commit; confira o nome com <code>git branch</code>. Veja <a href="git-push.html">git push</a>.</p>
+</div>
+
+<div class="cenario">
+<strong>O nome do repositório já existe na sua conta</strong>
+<p><strong>O que aconteceu:</strong> a sua conta já tem um repositório com esse nome, e o formulário não deixa criar outro igual: os nomes são únicos dentro de cada conta.</p>
+<p><strong>Como resolver:</strong> escolha outro nome, ou use o repositório que já existe.</p>
+</div>
+
+<hr>
+
+<h2>Referência</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>O quê</th><th>Como</th></tr>
+<tr><td>Criar no site</td><td>Ícone <strong>+</strong> &gt; <strong>Novo repositório</strong> &gt; preencher &gt; <strong>Criar repositório</strong></td></tr>
+<tr><td>Cadastrar o remoto</td><td><code>git remote add origin URL</code></td></tr>
+<tr><td>Conferir o remoto</td><td><code>git remote -v</code></td></tr>
+<tr><td>Corrigir o endereço</td><td><code>git remote set-url origin URL-CERTA</code></td></tr>
+<tr><td>Primeiro envio</td><td><code>git push -u origin main</code></td></tr>
+<tr><td>Começar do zero pelo site</td><td><code>git clone URL</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+<div class="exercise">
+<h3>1. Anotar o endereço</h3>
+<p>Complete para cadastrar o remoto <code>origin</code> do repositório <code>lojinha</code> da Ana:</p>
+<div class="ex-code">git remote <input data-answer="add" aria-label="subcomando"> origin https://github.com/ana-souza/lojinha.git</div>
+</div>
+
+<div class="exercise">
+<h3>2. O primeiro envio</h3>
+<p>Complete para enviar o <code>main</code> e ligá-lo ao do GitHub:</p>
+<div class="ex-code">git push <input data-answer="-u" aria-label="opção"> origin main</div>
+</div>
+
+<div class="exercise">
+<h3>3. Corrigir o endereço</h3>
+<p>A Ana cadastrou o endereço errado. Complete:</p>
+<div class="ex-code">git remote <input data-answer="set-url" aria-label="subcomando"> origin https://github.com/ana-souza/lojinha.git</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. A Ana já tem o projeto com 10 commits no notebook. Como ela deve criar o repositório no GitHub?</p>
+<label><input type="radio" name="q4"> Com README, <code>.gitignore</code> e licença marcados.</label>
+<label><input type="radio" name="q4"> Vazio, sem marcar README, <code>.gitignore</code> nem licença.</label>
+<label><input type="radio" name="q4"> Tanto faz.</label>
+<label><input type="radio" name="q4"> Com README marcado, e depois <code>git push --force</code>.</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">5. O que o <code>git remote add origin URL</code> envia para o GitHub?</p>
+<label><input type="radio" name="q5"> Todos os commits.</label>
+<label><input type="radio" name="q5"> Só o último commit.</label>
+<label><input type="radio" name="q5"> Nada: ele só anota o endereço no repositório local.</label>
+<label><input type="radio" name="q5"> O README.</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">6. O Bruno vai começar um projeto do zero. Qual é o caminho mais simples?</p>
+<label><input type="radio" name="q6"> Criar no GitHub com README e fazer <code>git clone</code>.</label>
+<label><input type="radio" name="q6"> Criar vazio no GitHub e fazer <code>git clone</code>, depois <code>git init</code>.</label>
+<label><input type="radio" name="q6"> Fazer <code>git push</code> antes de criar o repositório.</label>
+<label><input type="radio" name="q6"> Usar <code>git remote add</code> sem criar nada no site.</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Criar o repositório no GitHub = reservar o lugar; enviar os commits é outro passo, no terminal.</li>
+  <li>Projeto que já existe no computador: crie o repositório <strong>vazio</strong>, depois <code>git remote add origin URL</code> e <code>git push -u origin main</code>.</li>
+  <li>Projeto novo: crie com README e faça <code>git clone</code>.</li>
+  <li>Marcou o README sem querer? O push é rejeitado; traga o commit do GitHub com <code>git pull --allow-unrelated-histories</code> (ou recrie o repositório vazio).</li>
+  <li>Errou o endereço? <code>git remote set-url origin URL-CERTA</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
