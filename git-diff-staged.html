@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git diff --staged — o que vai entrar no próximo commit | Guia Git</title>
+<meta name="description" content="O git diff --staged (ou --cached) para quem nunca usou Git: ver o que já está na área de preparo antes do commit, a diferença para o git diff, o git diff HEAD (tudo desde o último commit), o mesmo arquivo com partes preparadas e não preparadas, arquivo novo, git status -v e as saídas reais do Git em português.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">diff --staged</span></h1>
+
+<p class="intro">Na aula <a href="git-diff.html">git diff</a> você viu que, depois do <code>git add</code>, o diff "some". As mudanças não sumiram: foram para a <strong>área de preparo</strong>. Para enxergá-las existe o <code>git diff --staged</code> (<em>staged</em> = "preparado"): ele mostra <strong>exatamente o que vai entrar no próximo commit</strong>. É a última conferência antes de fotografar.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que o <code>git diff --staged</code> compara: a área de preparo com o último commit.</li>
+  <li>Que <code>--staged</code> e <code>--cached</code> são a mesma coisa.</li>
+  <li>A ler o caso em que o <strong>mesmo arquivo</strong> tem uma parte preparada e outra não.</li>
+  <li>O <code>git diff HEAD</code>: tudo o que mudou desde o último commit, preparado ou não.</li>
+  <li>Como um arquivo novo aparece (<code>new file mode</code>, <code>/dev/null</code>, <code>@@ -0,0 +1 @@</code>).</li>
+</ul>
+</div>
+
+<p>Todas as saídas desta aula saíram do Git do Ubuntu 26.04, na máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português.</p>
+
+<hr>
+
+<h2>A ideia: conferir a mala antes de fechar</h2>
+<p>Antes de uma viagem, a Ana separa as roupas na cama (a pasta de trabalho), põe na mala o que vai levar (a área de preparo) e fecha a mala (o commit). Antes de fechar, vale abrir a mala e olhar: "pus mesmo o carregador? Não pus o casaco errado?". O <code>git diff --staged</code> é esse olhar dentro da mala.</p>
+<pre>   último commit        área de preparo         sua pasta
+  ┌─────────────┐      ┌──────────────┐      ┌─────────────┐
+  │  bolo.txt   │      │   bolo.txt   │      │  bolo.txt   │
+  └─────────────┘      └──────────────┘      └─────────────┘
+         └── git diff --staged ──┘└────── git diff ─────┘
+         "o que vai no commit"     "o que ainda não preparei"
+
+         └──────────────── git diff HEAD ─────────────────┘
+                   "tudo desde o último commit"</pre>
+<p>Guarde este desenho: os três comandos olham pares diferentes das mesmas três "caixas".</p>
+
+<hr>
+
+<h2>1. O primeiro <code>git diff --staged</code></h2>
+<p>A Ana tem a receita de bolo commitada com <code>4 ovos</code>. Ela muda para <code>3 ovos</code> e já prepara o arquivo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ printf 'Bolo de cenoura\n3 cenouras\n3 ovos\n' &gt; bolo.txt
+$ git add bolo.txt
+$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	modified:   bolo.txt
+
+$ git diff
+$
+</pre>
+
+<p>O <code>git status</code> diz que o arquivo está pronto para o commit (<code>Mudanças a serem submetidas</code>; "submeter" é como a tradução do Git chama o commit), com a dica, ainda em inglês, <code>(use "git restore --staged &lt;file&gt;..." to unstage)</code>: "use <code>git restore --staged</code> para tirar da área de preparo". E o <code>git diff</code> não mostra nada: a pasta e a área de preparo estão iguais. Agora, o comando desta aula:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git diff --staged
+diff --git a/bolo.txt b/bolo.txt
+index 10a5c6d..29056e1 100644
+--- a/bolo.txt
++++ b/bolo.txt
+@@ -1,3 +1,3 @@
+ Bolo de cenoura
+ 3 cenouras
+-4 ovos
++3 ovos
+</pre>
+
+<dl class="anatomy">
+  <dt>git diff</dt><dd>O comando de comparar.</dd>
+  <dt>--staged</dt><dd>"Compare a <strong>área de preparo</strong> com o <strong>último commit</strong>", em vez de comparar a pasta com a área de preparo.</dd>
+</dl>
+
+<p>O formato é o mesmo diff unificado da aula anterior: o <code>a/</code> é a versão do último commit, o <code>b/</code> é a versão preparada, <code>-4 ovos</code> saiu e <code>+3 ovos</code> entrou. Se você ainda não sabe ler cada linha, volte em <a href="git-diff.html">git diff</a>.</p>
+
+<h3><code>--cached</code>: o nome antigo</h3>
+<pre class="term" data-cwd="~/receitas">$ git diff --cached
+diff --git a/bolo.txt b/bolo.txt
+index 10a5c6d..29056e1 100644
+--- a/bolo.txt
++++ b/bolo.txt
+@@ -1,3 +1,3 @@
+ Bolo de cenoura
+ 3 cenouras
+-4 ovos
++3 ovos
+</pre>
+<p>Saída idêntica. <code>--cached</code> é o nome original da opção (a área de preparo já foi chamada de <em>cache</em> e de <em>index</em>); <code>--staged</code> chegou depois, como sinônimo mais fácil de lembrar. Você vai ver os dois em tutoriais.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;printf 'Bolo de cenoura\n3 cenouras\n4 ovos\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;printf 'Bolo de cenoura\n3 cenouras\n3 ovos\n' &gt; bolo.txt;;git add bolo.txt" data-goal="ran:^git diff (--staged|--cached)" data-solucao="git diff --staged">
+<p class="try-task"><strong>Missão:</strong> o <code>bolo.txt</code> já foi preparado. Rode <code>git diff</code> (vazio!) e depois <code>git diff --staged</code> para ver o que vai entrar no commit.</p>
+</div>
+
+<hr>
+
+<h2>2. O mesmo arquivo, preparado e não preparado</h2>
+<p>Agora o caso que confunde todo iniciante. Depois do <code>git add</code>, a Ana lembrou da farinha e acrescentou mais uma linha, <strong>sem</strong> dar <code>git add</code> de novo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo '2 xícaras de farinha' &gt;&gt; bolo.txt
+$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	modified:   bolo.txt
+
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   bolo.txt
+</pre>
+
+<p>O <code>bolo.txt</code> aparece <strong>duas vezes</strong>: uma em <code>Mudanças a serem submetidas</code> e outra em <code>Changes not staged for commit</code> ("mudanças não preparadas para o commit"; essa parte da tradução ainda não existe e sai em inglês). Não é defeito: o Git guardou na área de preparo a versão do momento do <code>git add</code> (com <code>3 ovos</code>), e a pasta já tem uma versão mais nova (com a farinha). Os três diffs mostram isso com clareza:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git diff --staged
+diff --git a/bolo.txt b/bolo.txt
+index 10a5c6d..29056e1 100644
+--- a/bolo.txt
++++ b/bolo.txt
+@@ -1,3 +1,3 @@
+ Bolo de cenoura
+ 3 cenouras
+-4 ovos
++3 ovos
+</pre>
+<p>O que vai no commit: <strong>só</strong> a troca dos ovos. A farinha ainda não está na mala.</p>
+
+<pre class="term" data-cwd="~/receitas">$ git diff
+diff --git a/bolo.txt b/bolo.txt
+index 29056e1..c8726b3 100644
+--- a/bolo.txt
++++ b/bolo.txt
+@@ -1,3 +1,4 @@
+ Bolo de cenoura
+ 3 cenouras
+ 3 ovos
++2 xícaras de farinha
+</pre>
+<p>O que está na pasta e ainda não foi preparado: <strong>só</strong> a farinha. Repare que, aqui, a linha de contexto já é <code>3 ovos</code>: a comparação parte da versão preparada, não do commit.</p>
+
+<pre class="term" data-cwd="~/receitas">$ git diff HEAD
+diff --git a/bolo.txt b/bolo.txt
+index 10a5c6d..c8726b3 100644
+--- a/bolo.txt
++++ b/bolo.txt
+@@ -1,3 +1,4 @@
+ Bolo de cenoura
+ 3 cenouras
+-4 ovos
++3 ovos
++2 xícaras de farinha
+</pre>
+<p>Tudo desde o último commit: os ovos <strong>e</strong> a farinha. <code>HEAD</code> é o nome do último commit do branch atual (veja <a href="head.html">O que é HEAD</a>); <code>git diff HEAD</code> compara a <strong>pasta</strong> com ele, passando por cima da área de preparo.</p>
+
+<div class="warning">
+<strong>Se a Ana fizer o commit agora…</strong>
+<p>…o commit leva só os ovos. A farinha fica de fora, ainda como mudança não preparada. Quem esquece disso acha que "o Git perdeu uma mudança". Por isso o hábito: <code>git diff --staged</code> logo antes de <code>git commit</code>. Se faltou algo, mais um <code>git add bolo.txt</code> resolve.</p>
+</div>
+
+<h3>Os três resumos lado a lado</h3>
+<pre class="term" data-cwd="~/receitas">$ git diff --staged --stat
+ bolo.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+$ git diff --stat
+ bolo.txt | 1 +
+ 1 file changed, 1 insertion(+)
+$ git diff HEAD --stat
+ bolo.txt | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+</pre>
+<p>O <code>--stat</code> (e as outras opções da aula anterior, como <code>--name-only</code> e <code>--word-diff</code>) funciona do mesmo jeito com <code>--staged</code> e com <code>HEAD</code>.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;printf 'Bolo de cenoura\n3 cenouras\n4 ovos\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;printf 'Bolo de cenoura\n3 cenouras\n3 ovos\n' &gt; bolo.txt;;git add bolo.txt;;echo '2 xícaras de farinha' &gt;&gt; bolo.txt" data-goal="commits:2,limpo,contem:HEAD:bolo.txt=farinha" data-solucao="git add bolo.txt;;git commit -m 'Menos ovos e farinha no bolo'">
+<p class="try-task"><strong>Missão:</strong> o <code>bolo.txt</code> está meio preparado (os ovos sim, a farinha não). Compare <code>git diff --staged</code> com <code>git diff</code>, prepare o resto e faça um commit que leve <strong>as duas</strong> mudanças. No fim, o <code>git status</code> deve dizer que não há nada a submeter.</p>
+</div>
+
+<hr>
+
+<h2>3. Arquivo novo na área de preparo</h2>
+<p>Um arquivo que nunca foi commitado não aparece no <code>git diff</code> (aula anterior), mas aparece no <code>--staged</code> assim que recebe <code>git add</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'Pudim de leite' &gt; pudim.txt
+$ git add pudim.txt
+$ git diff --staged
+diff --git a/bolo.txt b/bolo.txt
+index 10a5c6d..29056e1 100644
+--- a/bolo.txt
++++ b/bolo.txt
+@@ -1,3 +1,3 @@
+ Bolo de cenoura
+ 3 cenouras
+-4 ovos
++3 ovos
+diff --git a/pudim.txt b/pudim.txt
+new file mode 100644
+index 0000000..8499e03
+--- /dev/null
++++ b/pudim.txt
+@@ -0,0 +1 @@
++Pudim de leite
+</pre>
+
+<dl class="anatomy">
+  <dt>new file mode 100644</dt><dd>"Arquivo novo, do tipo arquivo comum". Aparece no lugar da informação de tipo do <code>index</code>.</dd>
+  <dt>index 0000000..8499e03</dt><dd>O hash "antes" é só zeros: antes, não existia conteúdo.</dd>
+  <dt>--- /dev/null</dt><dd><code>/dev/null</code> é o "arquivo vazio" do Linux, o nada. A versão antiga desse arquivo é... nada.</dd>
+  <dt>@@ -0,0 +1 @@</dt><dd>Antes: zero linhas a partir da linha 0. Depois: a partir da linha 1, com 1 linha (quando o número de linhas é 1, o Git omite o <code>,1</code>).</dd>
+  <dt>+Pudim de leite</dt><dd>Todas as linhas de um arquivo novo começam com <code>+</code>.</dd>
+</dl>
+
+<pre class="term" data-cwd="~/receitas">$ git diff --staged --name-status
+M	bolo.txt
+A	pudim.txt
+</pre>
+<p>Com <code>--name-status</code>: <code>M</code> de modificado (o bolo) e <code>A</code> de <em>added</em>, adicionado (o pudim).</p>
+
+<h3>Depois do commit</h3>
+<pre class="term" data-cwd="~/receitas">$ git commit -q -m 'Menos ovos e receita de pudim'
+$ git diff --staged
+$ git diff
+diff --git a/bolo.txt b/bolo.txt
+index 29056e1..c8726b3 100644
+--- a/bolo.txt
++++ b/bolo.txt
+@@ -1,3 +1,4 @@
+ Bolo de cenoura
+ 3 cenouras
+ 3 ovos
++2 xícaras de farinha
+$ git status --short
+ M bolo.txt
+</pre>
+<p>O commit levou o que estava na área de preparo, e agora ela está igual ao novo <code>HEAD</code>: o <code>--staged</code> fica vazio. A farinha, que nunca foi preparada, continua lá, no <code>git diff</code> e no <code>git status</code> (o <code>M</code> na <strong>segunda</strong> coluna do <code>--short</code> quer dizer "modificado e não preparado").</p>
+
+<hr>
+
+<h2>4. Outra forma: <code>git status -v</code></h2>
+<p>O <code>-v</code> (de <em>verbose</em>, "detalhado") faz o <code>git status</code> mostrar, embaixo do relatório de sempre, o diff do que está <strong>preparado</strong>, o mesmo do <code>git diff --staged</code>. Veja como fica no momento da seção 1, com só a troca dos ovos preparada:</p>
+<pre class="term" data-cwd="~/receitas">$ git status -v
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	modified:   bolo.txt
+
+diff --git a/bolo.txt b/bolo.txt
+index 10a5c6d..29056e1 100644
+--- a/bolo.txt
++++ b/bolo.txt
+@@ -1,3 +1,3 @@
+ Bolo de cenoura
+ 3 cenouras
+-4 ovos
++3 ovos
+</pre>
+<p>Com <code>git commit -v</code> acontece algo parecido: o diff aparece no editor onde você escreve a mensagem do commit, como lembrete (essas linhas não entram na mensagem). Veja <a href="git-commit.html">git commit</a>.</p>
+
+<hr>
+
+<h2 id="formas">Formas diferentes, e qual usar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>Compara</th><th>Responde</th></tr>
+<tr><td><code>git diff</code></td><td>pasta × área de preparo</td><td>"O que eu mudei e ainda não preparei?"</td></tr>
+<tr><td><code>git diff --staged</code> ou <code>--cached</code></td><td>área de preparo × último commit</td><td>"O que vai entrar no próximo commit?"</td></tr>
+<tr><td><code>git diff HEAD</code></td><td>pasta × último commit</td><td>"O que mudou desde o último commit, ao todo?"</td></tr>
+<tr><td><code>git status -v</code></td><td>o mesmo do <code>--staged</code>, junto com o status</td><td>"Status e o que vai no commit, de uma vez"</td></tr>
+<tr><td><code>git show</code></td><td>um commit × o commit anterior</td><td>"O que o último commit mudou?" (aula <a href="git-show.html">git show</a>)</td></tr>
+</table>
+</div>
+<p>O ritual de todo commit fica assim: <code>git status</code> → <code>git diff</code> → <code>git add</code> → <code>git diff --staged</code> → <code>git commit</code>.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>"O <code>--staged</code> não mostra a mudança que eu acabei de fazer"</strong>
+<p>Você mudou o arquivo <strong>depois</strong> do <code>git add</code> (seção 2). A área de preparo guarda a versão do momento do <code>add</code>. <strong>Como confirmar:</strong> o <code>git status</code> mostra o arquivo nas duas listas. <strong>Como resolver:</strong> <code>git add arquivo</code> de novo.</p>
+</div>
+
+<div class="cenario">
+<strong>Errou o nome da opção</strong>
+<pre class="term" data-cwd="~/receitas">$ git diff --stage
+error: invalid option: --stage
+usage: git diff [&lt;options&gt;] [&lt;commit&gt;] [--] [&lt;path&gt;...]
+   or: git diff [&lt;options&gt;] --cached [--merge-base] [&lt;commit&gt;] [--] [&lt;path&gt;...]
+   or: git diff [&lt;options&gt;] [--merge-base] &lt;commit&gt; [&lt;commit&gt;...] &lt;commit&gt; [--] [&lt;path&gt;...]
+   or: git diff [&lt;options&gt;] &lt;commit&gt;...&lt;commit&gt; [--] [&lt;path&gt;...]
+   or: git diff [&lt;options&gt;] &lt;blob&gt; &lt;blob&gt;
+   or: git diff [&lt;options&gt;] --no-index [--] &lt;path&gt; &lt;path&gt; [&lt;pathspec&gt;...]
+
+common diff options:
+  -z            output diff-raw with lines terminated with NUL.
+…  (mais umas 25 linhas com opções)
+</pre>
+<p><code>error: invalid option: --stage</code> = "erro: opção inválida". Faltou o <code>d</code>: é <code>--staged</code>. Depois do erro, o Git mostra o modo de usar (<code>usage</code>) do <code>git diff</code>, em inglês. Repare na segunda linha: ali aparece o <code>--cached</code>, o outro nome da opção. O mesmo acontece com <code>--cache</code> (sem o <code>d</code>) e <code>--stagged</code> (com dois <code>g</code>). <strong>Como resolver:</strong> digite <code>--staged</code> ou <code>--cached</code>, com o <code>d</code> no fim.</p>
+</div>
+
+<div class="cenario">
+<strong><code>git diff HEAD</code> num repositório sem commits</strong>
+<pre class="term" data-cwd="~/vazio">$ git diff HEAD
+fatal: ambiguous argument 'HEAD': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git &lt;command&gt; [&lt;revision&gt;...] -- [&lt;file&gt;...]'
+$ git diff --staged
+diff --git a/a.txt b/a.txt
+new file mode 100644
+index 0000000..c09fc3c
+--- /dev/null
++++ b/a.txt
+@@ -0,0 +1 @@
++oi
+</pre>
+<p>Num repositório recém-criado, que ainda não tem nenhum commit, o <code>HEAD</code> ainda não aponta para commit nenhum. O Git procura algo chamado <code>HEAD</code>, não acha nem um commit nem um arquivo com esse nome e reclama: "argumento ambíguo 'HEAD': versão desconhecida ou caminho fora da árvore de trabalho". Já o <code>git diff --staged</code> funciona: sem commit anterior, ele compara a área de preparo com "nada", e todo arquivo preparado aparece como novo. <strong>Como resolver:</strong> faça o primeiro commit (aula <a href="primeiro-commit.html">Seu Primeiro Commit</a>); antes disso, use <code>git diff --staged</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Preparei uma coisa que não devia</strong>
+<p>O <code>git diff --staged</code> mostrou uma mudança que você não queria no commit (uma senha, um arquivo de teste)? Tire-a da área de preparo com <code>git restore --staged arquivo</code>: as mudanças continuam na pasta, só saem da "mala". É o assunto da aula <a href="restore-staged.html">Tirando da Área de Preparo</a>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git diff --staged</code></td><td>Mostra o que está preparado: o que vai no próximo commit</td></tr>
+<tr><td><code>git diff --cached</code></td><td>O mesmo (nome antigo)</td></tr>
+<tr><td><code>git diff --staged arquivo</code></td><td>Só esse arquivo</td></tr>
+<tr><td><code>git diff --staged --stat</code></td><td>Resumo do que está preparado</td></tr>
+<tr><td><code>git diff --staged --name-status</code></td><td>Nomes com <code>M</code> (modificado), <code>A</code> (novo), <code>D</code> (apagado)</td></tr>
+<tr><td><code>git diff HEAD</code></td><td>Tudo desde o último commit (preparado e não preparado)</td></tr>
+<tr><td><code>git status -v</code></td><td>Status com o diff do que está preparado</td></tr>
+<tr><td><code>new file mode</code> / <code>--- /dev/null</code></td><td>No diff: arquivo novo</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Qual opção?</h3>
+<p>Complete o comando que mostra o que vai entrar no próximo commit:</p>
+<div class="ex-code">git diff --<input data-answer="staged|cached" aria-label="opção"></div>
+</div>
+
+<div class="exercise">
+<h3>2. O nome do último commit</h3>
+<p>Complete o comando que mostra tudo o que mudou desde o último commit, preparado ou não:</p>
+<div class="ex-code">git diff <input data-answer="HEAD" aria-label="nome do último commit"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. A Ana deu <code>git add bolo.txt</code> e depois mudou mais uma linha do <code>bolo.txt</code>. O que o <code>git diff --staged</code> mostra?</p>
+<label><input type="radio" name="q3"> As duas mudanças</label>
+<label><input type="radio" name="q3"> Só a mudança feita antes do <code>git add</code></label>
+<label><input type="radio" name="q3"> Só a mudança feita depois do <code>git add</code></label>
+<label><input type="radio" name="q3"> Nada</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. No diff de um arquivo novo, o que aparece na linha <code>---</code>?</p>
+<label><input type="radio" name="q4"> <code>--- a/arquivo</code></label>
+<label><input type="radio" name="q4"> <code>--- novo</code></label>
+<label><input type="radio" name="q4"> Nada: a linha não aparece</label>
+<label><input type="radio" name="q4"> <code>--- /dev/null</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. Logo depois de um <code>git commit</code>, o que o <code>git diff --staged</code> mostra?</p>
+<label><input type="radio" name="q5"> Nada: a área de preparo está igual ao último commit</label>
+<label><input type="radio" name="q5"> O diff do commit que acabou de ser feito</label>
+<label><input type="radio" name="q5"> Um erro</label>
+<label><input type="radio" name="q5"> Todos os arquivos do repositório</label>
+</div>
+
+<h3>Missão final: só o que deve ir</h3>
+
+<div class="try" data-setup="mkdir loja;;cd loja;;git init -q;;printf 'Caneca: R$ 25\nCamiseta: R$ 40\n' &gt; precos.txt;;git add precos.txt;;git commit -q -m 'Precos';;printf 'Caneca: R$ 28\nCamiseta: R$ 40\n' &gt; precos.txt;;echo 'anotações soltas' &gt; rascunho.txt;;git add precos.txt rascunho.txt" data-goal="commits:2,contem:HEAD:precos.txt=R$ 28,ran:^git diff (--staged|--cached),ran:restore --staged rascunho" data-solucao="git diff --staged;;git restore --staged rascunho.txt;;git commit -m 'Aumenta o preço da caneca'">
+<p class="try-task"><strong>Missão:</strong> a Ana preparou dois arquivos, mas só quer commitar o aumento da caneca. Use <code>git diff --staged</code> (ou <code>--staged --name-status</code>) para ver o que está na "mala", tire o <code>rascunho.txt</code> dela com <code>git restore --staged rascunho.txt</code> e faça o commit só do <code>precos.txt</code>.</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git diff --staged</code> (ou <code>--cached</code>) mostra o que está na área de preparo, comparado com o último commit: é o que vai entrar no próximo commit.</li>
+  <li><code>git diff</code> mostra o que ainda não foi preparado; <code>git diff HEAD</code> mostra tudo desde o último commit.</li>
+  <li>O mesmo arquivo pode ter uma parte preparada e outra não: o <code>git add</code> guarda a versão daquele momento. Mudou depois? <code>git add</code> de novo.</li>
+  <li>Arquivo novo no diff: <code>new file mode</code>, <code>--- /dev/null</code> e todas as linhas com <code>+</code>.</li>
+  <li>Ritual antes de cada commit: <code>git diff --staged</code>. E, para tirar algo da mala, <a href="restore-staged.html">git restore --staged</a>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
