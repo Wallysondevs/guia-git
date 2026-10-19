@@ -43,7 +43,7 @@
 <p>A Ana e o Bruno estão fazendo juntos o site de receitas. Este é o histórico completo, uma linha por commit (o <code>--oneline</code> que você já viu em <a href="git-log.html">git log</a>):</p>
 
 <pre class="term" data-cwd="~/receitas">$ git log --oneline
-c0ecf77 Adiciona a receita de brigadeiro
+c0ecf77 (HEAD -&gt; main) Adiciona a receita de brigadeiro
 b70de85 Corrige erro de digitação no pão de queijo
 9d984ae Adiciona a cobertura de chocolate ao bolo
 cbe9c2c Cria a página inicial
@@ -53,7 +53,7 @@ e2542b6 Adiciona a receita de pão de queijo
 700bbd5 Cria o README
 </pre>
 
-<p>São 8 commits, do mais novo (em cima) para o mais antigo (embaixo). Três deles foram feitos pelo Bruno, mas o <code>--oneline</code> não mostra o autor. Vamos descobrir quais são.</p>
+<p>São 8 commits, do mais novo (em cima) para o mais antigo (embaixo). O <code>(HEAD -&gt; main)</code> no primeiro é uma etiqueta que o Git mostra no terminal: "você está no branch <code>main</code>, e este é o último commit dele" (mais sobre ela em <a href="log-graph.html">Vendo os Galhos</a>). Três deles foram feitos pelo Bruno, mas o <code>--oneline</code> não mostra o autor. Vamos descobrir quais são.</p>
 
 <hr>
 
@@ -61,7 +61,7 @@ e2542b6 Adiciona a receita de pão de queijo
 <p>O jeito mais simples de "filtrar" é pedir só os últimos commits. A opção <code>-n</code> recebe um número:</p>
 
 <pre class="term" data-cwd="~/receitas">$ git log --oneline -n 2
-c0ecf77 Adiciona a receita de brigadeiro
+c0ecf77 (HEAD -&gt; main) Adiciona a receita de brigadeiro
 b70de85 Corrige erro de digitação no pão de queijo
 </pre>
 
@@ -74,7 +74,7 @@ b70de85 Corrige erro de digitação no pão de queijo
 <p>As três formas dão o mesmo resultado: <code>-n 2</code>, <code>-2</code> e <code>--max-count=2</code>. O atalho com o número grudado no traço é o mais usado. Sem o <code>--oneline</code>, você vê os commits completos, no formato normal:</p>
 
 <pre class="term" data-cwd="~/receitas">$ git log -3
-commit c0ecf7737a483172e7e6d40cc08e6129be2ef0a6
+commit c0ecf7737a483172e7e6d40cc08e6129be2ef0a6 (HEAD -&gt; main)
 Author: Ana Souza &lt;ana@exemplo.com&gt;
 Date:   Thu Oct 15 10:30:00 2026 -0300
 
@@ -106,7 +106,7 @@ b97da56 Corrige o tempo de forno do bolo
 cbe9c2c Cria a página inicial
 9d984ae Adiciona a cobertura de chocolate ao bolo
 b70de85 Corrige erro de digitação no pão de queijo
-c0ecf77 Adiciona a receita de brigadeiro
+c0ecf77 (HEAD -&gt; main) Adiciona a receita de brigadeiro
 </pre>
 </div>
 
@@ -122,7 +122,7 @@ c0ecf77 Adiciona a receita de brigadeiro
 
 <h3>Quais arquivos cada commit mexeu: <code>--stat</code> e <code>--name-only</code></h3>
 <pre class="term" data-cwd="~/receitas">$ git log --oneline --stat -2
-c0ecf77 Adiciona a receita de brigadeiro
+c0ecf77 (HEAD -&gt; main) Adiciona a receita de brigadeiro
  brigadeiro.txt | 2 ++
  1 file changed, 2 insertions(+)
 b70de85 Corrige erro de digitação no pão de queijo
@@ -139,7 +139,7 @@ b70de85 Corrige erro de digitação no pão de queijo
 <p>Se você só quer os nomes dos arquivos, sem as contas, use <code>--name-only</code>:</p>
 
 <pre class="term" data-cwd="~/receitas">$ git log --name-only --oneline -3
-c0ecf77 Adiciona a receita de brigadeiro
+c0ecf77 (HEAD -&gt; main) Adiciona a receita de brigadeiro
 brigadeiro.txt
 b70de85 Corrige erro de digitação no pão de queijo
 pao-de-queijo.txt
@@ -235,7 +235,7 @@ e2542b6 Adiciona a receita de pão de queijo
 <p>E dá para juntar com o <code>-n</code>: "os 2 últimos commits da Ana":</p>
 
 <pre class="term" data-cwd="~/receitas">$ git log --oneline -2 --author=Ana
-c0ecf77 Adiciona a receita de brigadeiro
+c0ecf77 (HEAD -&gt; main) Adiciona a receita de brigadeiro
 9d984ae Adiciona a cobertura de chocolate ao bolo
 </pre>
 
@@ -275,7 +275,7 @@ b97da56 Corrige o tempo de forno do bolo
 <p>Com dois <code>--grep</code>, o Git mostra os commits que têm <strong>uma ou outra</strong> palavra:</p>
 
 <pre class="term" data-cwd="~/receitas">$ git log --oneline --grep=bolo --grep=brigadeiro
-c0ecf77 Adiciona a receita de brigadeiro
+c0ecf77 (HEAD -&gt; main) Adiciona a receita de brigadeiro
 9d984ae Adiciona a cobertura de chocolate ao bolo
 b97da56 Corrige o tempo de forno do bolo
 906c89d Adiciona a receita de bolo de cenoura
@@ -335,13 +335,13 @@ b97da56 Corrige o tempo de forno do bolo
 <p>Primeiro, no repositório das receitas. Lembre-se: os 8 commits foram feitos em 15/10/2026, às 10:30. Veja o que cada filtro devolve:</p>
 
 <pre class="term" data-cwd="~/receitas">$ git log --oneline --since="2026-10-15 00:00" -2
-c0ecf77 Adiciona a receita de brigadeiro
+c0ecf77 (HEAD -&gt; main) Adiciona a receita de brigadeiro
 b70de85 Corrige erro de digitação no pão de queijo
 $ git log --oneline --since="2026-10-15 11:00"
 $ git log --oneline --since=2026-10-16
 $ git log --oneline --until="2026-10-14 23:59"
 $ git log --oneline --after=2026-10-01 --before=2026-10-31 -2
-c0ecf77 Adiciona a receita de brigadeiro
+c0ecf77 (HEAD -&gt; main) Adiciona a receita de brigadeiro
 b70de85 Corrige erro de digitação no pão de queijo
 </pre>
 
@@ -364,7 +364,7 @@ b70de85 Corrige erro de digitação no pão de queijo
 <p>O Git também entende datas contadas a partir de agora, <strong>em inglês</strong>: <code>"2 weeks ago"</code> (2 semanas atrás), <code>"3 days ago"</code>, <code>"1 hour ago"</code>, <code>yesterday</code> (ontem). Na máquina da Ana, com o relógio em 15/10 às 10:30:</p>
 
 <pre class="term" data-cwd="~/receitas">$ git log --oneline --since="1 hour ago" -2
-c0ecf77 Adiciona a receita de brigadeiro
+c0ecf77 (HEAD -&gt; main) Adiciona a receita de brigadeiro
 b70de85 Corrige erro de digitação no pão de queijo
 $ git log --oneline --until="1 hour ago"
 $ git log --oneline --until=yesterday
@@ -390,7 +390,7 @@ b0e25d9 2026-10-03 Adiciona a metodologia
 7320fc7 2026-10-02 Escreve a introdução
 abeba2a 2026-10-01 Cria o sumário
 $ git log --oneline --since="2026-10-06 00:00"
-5de2ba1 Corrige a formatação
+5de2ba1 (HEAD -&gt; main) Corrige a formatação
 d4c1dbc Escreve a conclusão
 edf9e22 Adiciona as referências
 $ git log --oneline --until="2026-10-03 23:59"
@@ -410,7 +410,7 @@ b0e25d9 Adiciona a metodologia
 d4c1dbc 8 days ago Escreve a conclusão
 edf9e22 9 days ago Adiciona as referências
 $ git log --oneline --since="1 week ago"
-5de2ba1 Corrige a formatação
+5de2ba1 (HEAD -&gt; main) Corrige a formatação
 </pre>
 
 <p>"1 semana atrás" é 08/10 às 10:30. O commit do dia 8 foi feito à noite, depois disso, e entrou; o do dia 7 ficou de fora. O <code>%ar</code> mostra a idade de cada commit, em inglês (<code>7 days ago</code> = "7 dias atrás").</p>
