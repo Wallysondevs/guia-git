@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git git config — configurando nome e e-mail | Guia Git</title>
+<meta name="description" content="git config: dizer ao Git o seu nome e e-mail (user.name e user.email) antes do primeiro commit, o erro real 'Please tell me who you are', as configurações --global e do repositório, o arquivo ~/.gitconfig, init.defaultBranch, core.editor e como conferir e desfazer.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Configurando Nome e E-mail (git config)</span></h1>
+
+<p class="intro">Cada commit leva o nome e o e-mail de quem o fez. Por isso, a primeira coisa a fazer num Git recém-instalado é se apresentar a ele. Sem isso, o primeiro commit falha com um "Please tell me who you are" ("por favor, me diga quem você é"). Nesta aula você vai ver esse erro de verdade, configurar o Git uma vez para sempre com <code>git config</code> e saber onde essa configuração fica guardada.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Configurar o nome (<code>user.name</code>) e o e-mail (<code>user.email</code>) com <code>git config --global</code>.</li>
+  <li>Ler a mensagem "Please tell me who you are" e resolvê-la.</li>
+  <li>Conferir a configuração e saber onde ela fica (<code>~/.gitconfig</code>).</li>
+  <li>A diferença entre a configuração <strong>global</strong> (sua) e a <strong>do repositório</strong>.</li>
+  <li>Duas configurações úteis desde o começo: <code>init.defaultBranch</code> e <code>core.editor</code>.</li>
+</ul>
+</div>
+
+<hr>
+
+<h2>A ideia: assinar o caderno do laboratório</h2>
+<p>No caderno de um laboratório, cada anotação tem a assinatura de quem a fez. O Git é igual: cada commit guarda um <strong>autor</strong>, com nome e e-mail. Quando a Ana e o Bruno trabalharem juntos, é assim que se sabe quem fez o quê. O Git não inventa a sua assinatura: você precisa dizê-la uma vez, e ele a usa em todos os commits dali em diante.</p>
+
+<hr>
+
+<h2>O erro de quem ainda não se apresentou</h2>
+<p>A Ana acabou de instalar o Git. Ela cria um repositório, um arquivo e tenta o primeiro commit (os comandos <code>git init</code>, <code>git add</code> e <code>git commit</code> têm aulas próprias; aqui, olhe só a resposta):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git add README.md
+$ git commit -m 'Cria o README'
+Author identity unknown
+
+*** Please tell me who you are.
+
+Run
+
+  git config --global user.email "you@example.com"
+  git config --global user.name "Your Name"
+
+to set your account's default identity.
+Omit --global to set the identity only in this repository.
+
+fatal: unable to auto-detect email address (got 'ana@notebook.(none)')</pre>
+
+<p>Esta mensagem sai em inglês mesmo com o sistema em português. Linha por linha:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Linha</th><th>Em português</th></tr>
+<tr><td><code>Author identity unknown</code></td><td>"Identidade do autor desconhecida."</td></tr>
+<tr><td><code>*** Please tell me who you are.</code></td><td>"Por favor, me diga quem você é."</td></tr>
+<tr><td><code>Run … git config --global user.email "you@example.com"</code> <code>git config --global user.name "Your Name"</code></td><td>"Rode estes dois comandos", com um e-mail e um nome de exemplo (<em>you@example.com</em> = "você@exemplo.com", <em>Your Name</em> = "Seu Nome"). É exatamente a solução: troque pelos seus dados.</td></tr>
+<tr><td><code>to set your account's default identity.</code></td><td>"para definir a identidade padrão da sua conta."</td></tr>
+<tr><td><code>Omit --global to set the identity only in this repository.</code></td><td>"Tire o <code>--global</code> para definir a identidade só neste repositório."</td></tr>
+<tr><td><code>fatal: unable to auto-detect email address (got 'ana@notebook.(none)')</code></td><td>"fatal: não consegui descobrir o e-mail sozinho (consegui <code>ana@notebook.(none)</code>)". O Git tentou montar um e-mail com o nome da usuária e do computador, viu que não era um e-mail de verdade e desistiu. O commit <strong>não</strong> foi feito.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Configurando nome e e-mail</h2>
+<p>A Ana segue a dica do próprio Git:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git config --global user.name "Ana Souza"
+$ git config --global user.email ana@exemplo.com</pre>
+
+<dl class="anatomy">
+  <dt>git config</dt><dd>O subcomando que lê e grava configurações do Git.</dd>
+  <dt>--global</dt><dd>"Para mim, em todos os repositórios": grava no arquivo de configuração da sua usuária.</dd>
+  <dt>user.name</dt><dd>O nome da configuração: seção <code>user</code> ("usuário"), chave <code>name</code> ("nome").</dd>
+  <dt>"Ana Souza"</dt><dd>O valor. As <strong>aspas são obrigatórias</strong> quando o valor tem espaço (veja "Quando dá errado").</dd>
+</dl>
+
+<p>Nada aparece: no terminal, silêncio quase sempre quer dizer "deu certo". Para conferir, rode o mesmo comando <strong>sem o valor</strong>: ele mostra o que está gravado.</p>
+
+<pre class="term" data-cwd="~/receitas">$ git config --global user.name
+Ana Souza
+$ git config user.email
+ana@exemplo.com</pre>
+
+<p>Agora o mesmo commit funciona:</p>
+<pre class="term" data-cwd="~/receitas">$ git commit -m 'Cria o README'
+[master (root-commit) 700bbd5] Cria o README
+ 1 file changed, 1 insertion(+)
+ create mode 100644 README.md
+$ git log
+commit 700bbd5eb7964a024ce4076aeeb11c490e1bac2e
+Author: Ana Souza &lt;ana@exemplo.com&gt;          « o nome e o e-mail que ela configurou
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Cria o README</pre>
+
+<p>O <code>master</code> na primeira linha é o nome do ramo: como este Git ainda não tinha a configuração <code>init.defaultBranch</code> quando o repositório foi criado, ele usou o nome antigo. Você vai configurar isso daqui a pouco.</p>
+
+<div class="warning">
+<strong>Que e-mail usar?</strong>
+<p>O e-mail vai dentro de cada commit, e quem puder ver o repositório pode ler. Se o repositório for público no GitHub, ele fica público. Use o mesmo e-mail da sua conta do GitHub (assim ele liga os commits ao seu perfil) ou o endereço <code>noreply</code> que o GitHub oferece para manter o seu e-mail privado (aula <a href="github-conta.html">Criando a Conta no GitHub</a>).</p>
+</div>
+
+<div class="try" data-setup="git config --global user.name Ana" data-goal="ran:^\s*git config --global user\.name ['&quot;]Ana Souza['&quot;],out:Ana Souza" data-solucao="git config --global user.name 'Ana Souza';;git config --global user.name">
+<p class="try-task"><strong>Missão:</strong> alguém configurou o nome da Ana só como "Ana". Confira com <code>git config --global user.name</code>, corrija para <code>"Ana Souza"</code> (com aspas!) e confira de novo.</p>
+</div>
+
+<hr>
+
+<h2>Onde a configuração fica guardada</h2>
+<p>O <code>--global</code> grava num arquivo de texto comum, na sua pasta pessoal: <code>~/.gitconfig</code> (oculto, porque começa com ponto). Dá para ver com o <code>cat</code>:</p>
+
+<pre class="term">$ cat ~/.gitconfig
+[user]
+	name = Ana Souza
+	email = ana@exemplo.com</pre>
+
+<p>Entre colchetes fica a <strong>seção</strong> (<code>[user]</code>); embaixo, as chaves com os valores. Por isso o nome completo da configuração é <code>user.name</code>: seção, ponto, chave. Para ver tudo de uma vez, no formato <code>seção.chave=valor</code>:</p>
+
+<pre class="term">$ git config --global --list
+user.name=Ana Souza
+user.email=ana@exemplo.com</pre>
+
+<h3>Os três níveis</h3>
+<p>O Git lê configurações de três lugares. Quando o mesmo nome aparece em mais de um, vale o <strong>mais específico</strong> (o de baixo na tabela):</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Nível</th><th>Opção</th><th>Arquivo</th><th>Vale para</th></tr>
+<tr><td>Sistema</td><td><code>--system</code></td><td><code>/etc/gitconfig</code></td><td>Todos os usuários do computador (raro mexer).</td></tr>
+<tr><td><strong>Global</strong></td><td><code>--global</code></td><td><code>~/.gitconfig</code></td><td>Você, em todos os seus repositórios. <strong>O mais usado.</strong></td></tr>
+<tr><td>Repositório</td><td><code>--local</code> (ou nada)</td><td><code>.git/config</code>, dentro do repositório</td><td>Só aquele repositório.</td></tr>
+</table>
+</div>
+
+<p>Um caso real: a Ana usa o e-mail pessoal em tudo, mas no repositório do trabalho quer o e-mail da empresa. Dentro da pasta desse repositório, ela grava <strong>sem</strong> <code>--global</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git config user.email ana@empresa.exemplo
+$ git config user.email
+ana@empresa.exemplo                « aqui vale o do repositório
+$ cat .git/config
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+[user]
+	email = ana@empresa.exemplo        « gravado só neste repositório</pre>
+
+<p>A opção <code>--show-origin</code> ("mostrar a origem") diz de que arquivo vem cada valor. (As linhas <code>init.defaultbranch</code> e <code>core.editor</code> vêm de duas configurações que você vai ver mais abaixo.) Repare que <code>user.email</code> aparece duas vezes; vale a última, a do repositório:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git config --list --show-origin
+file:/home/ana/.gitconfig	user.name=Ana Souza
+file:/home/ana/.gitconfig	user.email=ana@exemplo.com
+file:/home/ana/.gitconfig	init.defaultbranch=main
+file:/home/ana/.gitconfig	core.editor=nano
+file:.git/config	core.repositoryformatversion=0
+file:.git/config	core.filemode=true
+file:.git/config	core.bare=false
+file:.git/config	core.logallrefupdates=true
+file:.git/config	user.email=ana@empresa.exemplo</pre>
+
+<p>As quatro linhas <code>core.…</code> do <code>.git/config</code> foram escritas pelo próprio <code>git init</code>; não mexa nelas. Para desfazer a configuração do repositório e voltar a valer a global, use <code>--unset</code> ("apagar o valor"):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git config --unset user.email
+$ git config user.email
+ana@exemplo.com                    « voltou a valer o global</pre>
+
+<div class="try" data-setup="mkdir trabalho;;cd trabalho;;git init -q" data-goal="ran:^\s*git config (--local )?user\.email \S+@,out:ana@empresa.exemplo" data-solucao="git config user.email ana@empresa.exemplo;;git config user.email">
+<p class="try-task"><strong>Missão:</strong> o terminal está no repositório <code>trabalho</code>. Configure, <strong>só neste repositório</strong>, o e-mail <code>ana@empresa.exemplo</code>. Depois confira com <code>git config user.email</code>.</p>
+</div>
+
+<hr>
+
+<h2>Duas configurações úteis desde o começo</h2>
+
+<h3>O nome do ramo inicial: <code>init.defaultBranch</code></h3>
+<p>Quando você cria um repositório, o Git cria um primeiro ramo (<em>branch</em>). O nome antigo, que o Git ainda usa se você não disser nada, é <code>master</code>; o GitHub e este guia usam <code>main</code>. Para todos os seus repositórios novos começarem com <code>main</code>:</p>
+<pre class="term">$ git config --global init.defaultBranch main</pre>
+<p>Sem essa configuração, o <code>git init</code> mostra uma dica comprida a cada repositório novo. A aula <a href="git-init.html">git init</a> mostra essa dica e explica a história.</p>
+
+<h3>O editor: <code>core.editor</code></h3>
+<p>Alguns comandos do Git abrem um editor de texto para você escrever (por exemplo, um <code>git commit</code> sem <code>-m</code>). Se você não disser qual, o Git usa o editor padrão do sistema. No Ubuntu, costuma ser o <code>nano</code>; em outros sistemas, muitas vezes é o <strong>Vim</strong>, que confunde muita gente na primeira vez. Escolha um editor que você saiba usar:</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Editor</th><th>Comando</th></tr>
+<tr><td>nano (no terminal, simples)</td><td><code>git config --global core.editor nano</code></td></tr>
+<tr><td>VS Code (precisa do comando <code>code</code> no terminal)</td><td><code>git config --global core.editor "code --wait"</code></td></tr>
+<tr><td>Vim</td><td><code>git config --global core.editor vim</code></td></tr>
+</table>
+</div>
+<p>No VS Code, o <code>--wait</code> ("esperar") é essencial: faz o Git esperar você fechar a aba antes de continuar. Depois das duas configurações, o arquivo da Ana ficou assim:</p>
+
+<pre class="term">$ git config --global init.defaultBranch main
+$ git config --global core.editor nano
+$ cat ~/.gitconfig
+[user]
+	name = Ana Souza
+	email = ana@exemplo.com
+[init]
+	defaultBranch = main
+[core]
+	editor = nano</pre>
+
+<hr>
+
+<h2>Formas diferentes de fazer a mesma coisa</h2>
+<p>O Git 2.46 ganhou uma forma nova, com verbos (<code>get</code>, <code>set</code>, <code>list</code>, <code>unset</code>), mais fácil de ler. As duas funcionam; a antiga é a que você vai encontrar na maioria dos tutoriais (e na própria dica do "Please tell me who you are").</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Quero…</th><th>Forma clássica</th><th>Forma nova <span class="versao">git 2.46+</span></th></tr>
+<tr><td>Ler um valor</td><td><code>git config user.name</code></td><td><code>git config get user.name</code></td></tr>
+<tr><td>Gravar um valor</td><td><code>git config --global user.name "Ana Souza"</code></td><td><code>git config set --global user.name "Ana Souza"</code></td></tr>
+<tr><td>Listar</td><td><code>git config --global --list</code></td><td><code>git config list --global</code></td></tr>
+<tr><td>Apagar</td><td><code>git config --global --unset chave</code></td><td><code>git config unset --global chave</code></td></tr>
+<tr><td>Editar o arquivo inteiro</td><td><code>git config --global --edit</code> (abre no editor)</td><td><code>git config edit --global</code></td></tr>
+</table>
+</div>
+
+<pre class="term">$ git config get user.name
+Ana Souza
+$ git config list --global
+user.name=Ana Souza
+user.email=ana@exemplo.com
+init.defaultbranch=main
+core.editor=nano</pre>
+
+<p>Repare que o Git mostrou <code>init.defaultbranch</code> em minúsculas: os nomes de seção e de chave não diferenciam maiúsculas de minúsculas. <code>init.defaultBranch</code> e <code>init.defaultbranch</code> são a mesma configuração.</p>
+
+<hr>
+
+<h2>Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Esqueci as aspas no nome</strong>
+<pre class="term">$ git config --global user.name Ana Souza
+$ git config --global user.name
+Ana                                « só o primeiro nome!</pre>
+<p><strong>O que aconteceu:</strong> sem aspas, o terminal separou <code>Ana</code> e <code>Souza</code> em duas palavras. O Git gravou <code>Ana</code> como valor e entendeu <code>Souza</code> como um terceiro argumento, de uso avançado, sem avisar nada.</p>
+<p><strong>Como resolver:</strong> grave de novo, com aspas: <code>git config --global user.name "Ana Souza"</code>. O valor novo substitui o antigo.</p>
+</div>
+
+<div class="cenario">
+<strong>Errei o nome da configuração</strong>
+<pre class="term">$ git config --global nome
+error: key does not contain a section: nome</pre>
+<p><strong>O que aconteceu:</strong> "a chave não contém uma seção". Toda configuração tem a forma <code>seção.chave</code>, e <code>nome</code> não tem ponto. Cuidado com o erro silencioso: <code>git config --global user.nome "Ana"</code> (com ponto, mas em português) é aceito sem reclamar, grava uma configuração que o Git nunca vai usar, e o erro do "Please tell me who you are" continua.</p>
+<p><strong>Como resolver:</strong> confira com <code>git config --global --list</code>, apague a chave errada com <code>git config --global --unset user.nome</code> e grave a certa, <code>user.name</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Ler o arquivo que ainda não existe</strong>
+<pre class="term">$ git config --global --list
+fatal: unable to read config file '/home/ana/.gitconfig': Arquivo ou diretório inexistente</pre>
+<p><strong>O que aconteceu:</strong> num Git recém-instalado, o <code>~/.gitconfig</code> ainda não existe: ele só é criado na primeira vez que você grava algo com <code>--global</code>. A mensagem mistura inglês ("não consegui ler o arquivo de configuração") com o motivo dado pelo sistema, em português.</p>
+<p><strong>Como resolver:</strong> nada a consertar: configure o nome e o e-mail, e o arquivo aparece.</p>
+</div>
+
+<div class="cenario">
+<strong>Fiz commits com o nome errado</strong>
+<p><strong>O que aconteceu:</strong> o <code>git config</code> vale para os commits <strong>daqui para a frente</strong>. Os commits já feitos guardam o autor que estava configurado na hora.</p>
+<p><strong>Como resolver:</strong> se foi só o último commit, dá para corrigir o autor dele (aula <a href="commit-amend.html">Corrigindo o Último Commit</a>). Para os outros, em geral, não vale a pena mexer na história.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git config --global user.name "Nome"</code></td><td>Grava o seu nome para todos os repositórios.</td></tr>
+<tr><td><code>git config --global user.email email</code></td><td>Grava o seu e-mail para todos os repositórios.</td></tr>
+<tr><td><code>git config user.email email</code></td><td>Grava só no repositório atual (<code>.git/config</code>).</td></tr>
+<tr><td><code>git config user.name</code></td><td>Mostra o valor que está valendo.</td></tr>
+<tr><td><code>git config --global --list</code></td><td>Lista a sua configuração global.</td></tr>
+<tr><td><code>git config --list --show-origin</code></td><td>Lista tudo, com o arquivo de onde vem cada valor.</td></tr>
+<tr><td><code>git config --unset chave</code></td><td>Apaga uma configuração.</td></tr>
+<tr><td><code>git config --global init.defaultBranch main</code></td><td>Repositórios novos começam no ramo <code>main</code>.</td></tr>
+<tr><td><code>git config --global core.editor nano</code></td><td>Escolhe o editor que o Git abre.</td></tr>
+</table>
+</div>
+<p>Outras configurações (cores, apelidos, finais de linha) ficam em <a href="config-util.html">Configurações Úteis</a> e <a href="ref-config.html">Referência: Configurações</a>.</p>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">1. O que o <code>--global</code> faz em <code>git config --global user.name "Ana Souza"</code>?</p>
+<label><input type="radio" name="q1"> Publica o nome no GitHub.</label>
+<label><input type="radio" name="q1"> Grava o nome para todos os repositórios da usuária, no <code>~/.gitconfig</code>.</label>
+<label><input type="radio" name="q1"> Grava o nome só no repositório atual.</label>
+<label><input type="radio" name="q1"> Grava para todos os usuários do computador.</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">2. A Ana tem <code>user.email</code> no <code>~/.gitconfig</code> e outro no <code>.git/config</code> do repositório do trabalho. Qual vale nesse repositório?</p>
+<label><input type="radio" name="q2"> O global, sempre.</label>
+<label><input type="radio" name="q2"> Nenhum: o Git dá erro.</label>
+<label><input type="radio" name="q2"> O que foi gravado primeiro.</label>
+<label><input type="radio" name="q2"> O do repositório, o mais específico.</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. O commit falhou com "Please tell me who you are". O que fazer?</p>
+<label><input type="radio" name="q3"> Reinstalar o Git.</label>
+<label><input type="radio" name="q3"> Criar uma conta no GitHub.</label>
+<label><input type="radio" name="q3"> Configurar <code>user.name</code> e <code>user.email</code> e repetir o commit.</label>
+<label><input type="radio" name="q3"> Apagar a pasta <code>.git</code>.</label>
+</div>
+
+<div class="exercise">
+<h3>4. O e-mail</h3>
+<p>Complete para gravar o e-mail da Ana em todos os repositórios:</p>
+<div class="ex-code">git config <input data-answer="--global" aria-label="opção"> user.email ana@exemplo.com</div>
+</div>
+
+<div class="exercise">
+<h3>5. O ramo inicial</h3>
+<p>Complete para os repositórios novos começarem no ramo <code>main</code>:</p>
+<div class="ex-code">git config --global <input data-answer="init.defaultBranch|init.defaultbranch" aria-label="configuração"> main</div>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Cada commit leva nome e e-mail; configure-os uma vez com <code>git config --global user.name "…"</code> e <code>git config --global user.email …</code>.</li>
+  <li>Sem eles, o commit falha com "Please tell me who you are": a própria mensagem mostra os comandos que resolvem.</li>
+  <li>A configuração global fica em <code>~/.gitconfig</code>; a do repositório, em <code>.git/config</code>, e vence a global.</li>
+  <li>Para ler um valor, rode o comando sem o valor; <code>--list</code> e <code>--show-origin</code> mostram tudo.</li>
+  <li>Configure também <code>init.defaultBranch main</code> e um <code>core.editor</code> que você saiba usar.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
