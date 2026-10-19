@@ -263,6 +263,7 @@
     h.c["Modelos"] = mkD(UID, 509, d12);
     h.c[".profile"] = mkF(UID, 420, TXT.profile, T0);
     h.c[".bash_history"] = mkF(UID, 384, "", dataT(2026, 10, 15, 8, 40));
+    h.c[".gitconfig"] = mkF(UID, 420, "[user]\n\tname = Ana Souza\n\temail = ana@exemplo.com\n[init]\n\tdefaultBranch = main\n", dataT(2026, 10, 15, 8, 40)); // Git da Ana já configurado
     h.c["Público"] = mkD(UID, 509, d12);
     h.c["Vídeos"] = mkD(UID, 509, d12);
     h.c["Imagens"] = mkD(UID, 509, d12);
@@ -10850,11 +10851,14 @@
     Sessao: Sessao, Shell: Shell, Kernel: Kernel, Parser: Parser,
     checarMeta: checarMeta, dividirMetas: dividirMetas, semCor: semCor,
     incompleta: incompleta, BUILTINS: BUILTINS, EXT: EXT, versao: BASH_VERSION,
-    _internos: { compilarSed: compilarSed, casaPadrao: casaPadrao, ereParaJs: ereParaJs, imprimirCmd: imprimirCmd, Arith: Arith }
+    _internos: { mkF: mkF, mkD: mkD, utf8bytes: utf8bytes, compilarSed: compilarSed, casaPadrao: casaPadrao, ereParaJs: ereParaJs, imprimirCmd: imprimirCmd, Arith: Arith }
   };
   global.BashSim = BashSim;
   if (typeof document !== "undefined" && typeof montarTudo === "function") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", montarTudo); else montarTudo();
   }
-  if (typeof module !== "undefined" && module.exports) module.exports = BashSim;
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = BashSim;
+    try { require("./gitsim.js")(BashSim); } catch (e) { if (!/Cannot find module/.test(e.message)) throw e; } // o Git simulado
+  }
 })(typeof window !== "undefined" ? window : globalThis);
