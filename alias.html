@@ -77,15 +77,15 @@ nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git comm
 
 <pre class="term" data-cwd="~/receitas">$ git config --global alias.lg 'log --oneline --graph --all'
 $ git lg
-* 7d39e7d Adiciona pudim
-* 6743c4a Adiciona bolo de cenoura
+* 7d39e7d (pudim) Adiciona pudim
+* 6743c4a (HEAD -&gt; main) Adiciona bolo de cenoura
 * fe996fb Primeiro commit
 </pre>
-<p>Três palavras viraram duas letras. O <code>Adiciona pudim</code> está no branch <code>pudim</code>, um passo à frente do <code>main</code>; por isso o desenho ainda é uma linha reta (os galhos aparecem na seção 4, quando o <code>main</code> andar). Outro atalho comum é o <code>ultimo</code>, para ver só o último commit:</p>
+<p>Três palavras viraram duas letras. O <code>Adiciona pudim</code> está no branch <code>pudim</code>, um passo à frente do <code>main</code>; os nomes entre parênteses mostram onde cada branch está (e o <code>HEAD -&gt; main</code>, onde você está). Por isso o desenho ainda é uma linha reta (os galhos aparecem na seção 4, quando o <code>main</code> andar). Outro atalho comum é o <code>ultimo</code>, para ver só o último commit:</p>
 
 <pre class="term" data-cwd="~/receitas">$ git config --global alias.ultimo 'log -1 HEAD'
 $ git ultimo
-commit 6743c4aecca1d7a877b0ea2afc03a524ca18703f
+commit 6743c4aecca1d7a877b0ea2afc03a524ca18703f (HEAD -&gt; main)
 Author: Ana Souza &lt;ana@exemplo.com&gt;
 Date:   Thu Oct 15 10:30:00 2026 -0300
 
@@ -178,8 +178,8 @@ $ git adiciona-e-commita chocolate.txt 'Adiciona bolo de chocolate'
  1 file changed, 1 insertion(+)
  create mode 100644 chocolate.txt
 $ git lg
-* 05f49f7 Adiciona bolo de chocolate     « o main andou...
-| * 7d39e7d Adiciona pudim               « ...e o pudim virou um galho
+* 05f49f7 (HEAD -&gt; main) Adiciona bolo de chocolate     « o main andou...
+| * 7d39e7d (pudim) Adiciona pudim       « ...e o pudim virou um galho
 |/
 * 6743c4a Adiciona bolo de cenoura
 * fe996fb Primeiro commit
