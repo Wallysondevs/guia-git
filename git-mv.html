@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git mv — renomeando e movendo arquivos | Guia Git</title>
+<meta name="description" content="O git mv para quem nunca usou Git: renomear e mover arquivos e pastas registrando a mudança, renamed no git status, como o Git detecta renomeações (similarity index), o mv comum seguido de git add, git log --follow, -n, -v, -f, -k e os erros reais (bad source, destination exists, destination directory does not exist), com saídas do Git em português.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">mv</span></h1>
+
+<p class="intro">O nome <code>bolo.txt</code> ficou vago: a Ana já tem três bolos em mente. Ela quer chamá-lo de <code>bolo-de-cenoura.txt</code> e, mais tarde, guardar todos os doces numa pasta <code>doces</code>. O <code>git mv</code> (de <em>move</em>, "mover") renomeia ou move um arquivo <strong>e</strong> já prepara a mudança para o próximo commit, como o <a href="git-rm.html">git rm</a> faz com as remoções.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como renomear e mover arquivos e pastas com <code>git mv</code>.</li>
+  <li>A ler o <code>renamed</code> do <code>git status</code> e o <code>R</code> do <code>--short</code>.</li>
+  <li>Um segredo do Git: ele não guarda "renomeações"; ele as <strong>deduz</strong> comparando conteúdos (o <code>similarity index</code>).</li>
+  <li>Por que <code>mv</code> + <code>git add</code> dá no mesmo, e como seguir a história de um arquivo renomeado (<code>git log --follow</code>).</li>
+  <li>As opções <code>-n</code>, <code>-v</code>, <code>-f</code>, <code>-k</code> e os erros reais do Git.</li>
+</ul>
+</div>
+
+<p>Todas as saídas desta aula saíram do Git do Ubuntu 26.04, na máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português. Algumas mensagens do Git ainda não têm tradução e saem em inglês.</p>
+
+<hr>
+
+<h2>A ideia: trocar a etiqueta da pasta do arquivo</h2>
+<p>Num arquivo de aço de escritório, renomear uma pasta é trocar a etiqueta; mover é tirá-la de uma gaveta e pôr em outra. O conteúdo não muda. No Git é igual: o conteúdo do arquivo continua o mesmo; o que muda é o <strong>caminho</strong> (o nome e a pasta). E, como toda mudança, ela precisa ser preparada e commitada.</p>
+
+<hr>
+
+<h2>1. Renomeando um arquivo</h2>
+
+<pre class="term" data-cwd="~/receitas">$ git mv bolo.txt bolo-de-cenoura.txt
+$ ls
+LEIAME.txt  bolo-de-cenoura.txt  pudim.txt
+</pre>
+
+<dl class="anatomy">
+  <dt>git mv</dt><dd>O comando: "mova (ou renomeie) e registre no Git".</dd>
+  <dt>bolo.txt</dt><dd>A <strong>origem</strong> (em inglês, <em>source</em>): o arquivo como ele se chama agora. Precisa ser um arquivo que o Git rastreia.</dd>
+  <dt>bolo-de-cenoura.txt</dt><dd>O <strong>destino</strong> (<em>destination</em>): o nome novo.</dd>
+</dl>
+
+<p>O <code>git mv</code> não mostra nada quando dá certo. O <code>ls</code> confirma: o arquivo já tem o nome novo na pasta. E o <code>git status</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	renamed:    bolo.txt -&gt; bolo-de-cenoura.txt
+
+</pre>
+
+<p><code>renamed</code> = "renomeado", com a seta <code>-&gt;</code> indo do nome antigo para o novo. A renomeação já está em <code>Mudanças a serem submetidas</code> (preparada). Falta o commit:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git commit -q -m 'Renomeia bolo.txt para bolo-de-cenoura.txt'
+$ git log --oneline --stat -1
+3f91a55 Renomeia bolo.txt para bolo-de-cenoura.txt
+ bolo.txt =&gt; bolo-de-cenoura.txt | 0
+ 1 file changed, 0 insertions(+), 0 deletions(-)
+</pre>
+
+<p>No <code>--stat</code>, a renomeação aparece com <code>=&gt;</code>, e o <code>0</code> diz que nenhuma linha do conteúdo mudou: só o nome.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; LEIAME.txt;;echo 'Bolo de cenoura' &gt; bolo.txt;;git add .;;git commit -q -m 'Receitas iniciais'" data-goal="file:~/receitas/README.md,absent:~/receitas/LEIAME.txt,commits:2,limpo,ran:^git mv" data-solucao="git mv LEIAME.txt README.md;;git commit -m 'Renomeia LEIAME.txt para README.md'">
+<p class="try-task"><strong>Missão:</strong> o GitHub mostra na página do repositório um arquivo chamado <code>README.md</code> (aula <a href="readme.html">O README e o Markdown</a>). Renomeie o <code>LEIAME.txt</code> para <code>README.md</code> com <code>git mv</code>, confira o <code>renamed</code> no <code>git status</code> e faça o commit.</p>
+</div>
+
+<hr>
+
+<h2>2. Movendo para outra pasta</h2>
+<p>Agora a Ana quer os doces numa pasta <code>doces</code>. Quando o destino é uma pasta que já existe, o arquivo vai para dentro dela, com o mesmo nome:</p>
+
+<pre class="term" data-cwd="~/receitas">$ mkdir doces
+$ git mv pudim.txt doces/
+$ git mv bolo-de-cenoura.txt doces
+$ ls doces
+bolo-de-cenoura.txt  pudim.txt
+$ git status --short
+R  bolo-de-cenoura.txt -&gt; doces/bolo-de-cenoura.txt
+R  pudim.txt -&gt; doces/pudim.txt
+$ git commit -q -m 'Move os doces para a pasta doces'
+</pre>
+
+<p>Com ou sem a barra no fim (<code>doces/</code> ou <code>doces</code>), o resultado é o mesmo, porque a pasta existe. No <code>git status --short</code>, o <code>R</code> (de <em>renamed</em>) na primeira coluna quer dizer "renomeado e preparado". Para o Git, mover é renomear: o "nome completo" do arquivo passou de <code>pudim.txt</code> para <code>doces/pudim.txt</code>.</p>
+
+<div class="note">
+<strong>A pasta precisa existir</strong>
+<p>O <code>git mv</code> não cria pastas. Por isso o <code>mkdir doces</code> veio antes (veja o erro em <a href="#errado">Quando dá errado</a>). Você também pode mover vários arquivos de uma vez para uma pasta: <code>git mv pudim.txt bolo.txt doces/</code>.</p>
+</div>
+
+<h3>Renomeando uma pasta inteira</h3>
+<p>Uma pasta também pode ser renomeada. Todos os arquivos de dentro mudam de caminho:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git mv doces sobremesas
+$ git status --short
+R  doces/bolo-de-cenoura.txt -&gt; sobremesas/bolo-de-cenoura.txt
+R  doces/pudim.txt -&gt; sobremesas/pudim.txt
+</pre>
+<p>(A Ana preferiu o nome <code>doces</code> e desfez, antes do commit, com o mesmo comando ao contrário: <code>git mv sobremesas doces</code>.)</p>
+
+<hr>
+
+<h2>3. O segredo: o Git <strong>deduz</strong> as renomeações</h2>
+<p>Aqui está uma coisa que surpreende: o Git <strong>não guarda</strong> a informação "este arquivo foi renomeado". Um commit só guarda uma fotografia dos arquivos com os seus nomes (veja <a href="como-git-guarda.html">Como o Git Guarda as Coisas</a>). Quando o Git compara duas fotografias e vê que sumiu um <code>bolo.txt</code> e apareceu um <code>bolo-de-cenoura.txt</code> com conteúdo igual ou <strong>muito parecido</strong>, ele conclui: "isto foi uma renomeação". O <code>git diff --staged</code> mostra essa conclusão (num repositório de testes, com uma receita de bolo de 7 linhas):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git mv bolo.txt bolo-de-cenoura.txt
+$ git diff --staged
+diff --git a/bolo.txt b/bolo-de-cenoura.txt
+similarity index 100%
+rename from bolo.txt
+rename to bolo-de-cenoura.txt
+</pre>
+
+<dl class="anatomy">
+  <dt>diff --git a/bolo.txt b/bolo-de-cenoura.txt</dt><dd>Agora o <code>a/</code> (antes) e o <code>b/</code> (depois) têm nomes diferentes.</dd>
+  <dt>similarity index 100%</dt><dd>"Índice de semelhança": o quanto o conteúdo novo se parece com o antigo. 100% = idêntico.</dd>
+  <dt>rename from / rename to</dt><dd>"Renomeado de" / "renomeado para".</dd>
+</dl>
+
+<p>E se a Ana renomear <strong>e</strong> mudar o conteúdo antes do commit? Neste exemplo, o bolo tem 7 linhas e ela trocou uma (<code>4 ovos</code> por <code>3 ovos</code>):</p>
+
+<pre class="term" data-cwd="~/receitas">$ sed -i 's/4 ovos/3 ovos/' bolo-de-cenoura.txt
+$ git add bolo-de-cenoura.txt
+$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	renamed:    bolo.txt -&gt; bolo-de-cenoura.txt
+
+$ git diff --staged
+diff --git a/bolo.txt b/bolo-de-cenoura.txt
+similarity index 94%
+rename from bolo.txt
+rename to bolo-de-cenoura.txt
+index ad2414d..73b54e6 100644
+--- a/bolo.txt
++++ b/bolo-de-cenoura.txt
+@@ -1,6 +1,6 @@
+ Bolo de cenoura
+ 3 cenouras
+-4 ovos
++3 ovos
+ 2 xícaras de farinha
+ 1 xícara de óleo
+ 2 xícaras de açúcar
+</pre>
+
+<p>Continua sendo <code>renamed</code>, agora com <code>similarity index 94%</code>, e o diff mostra a linha que mudou (o <code>sed -i</code> só fez a troca no arquivo, como a Ana faria no editor). Depois do commit, o <code>git show --stat</code> resume assim: <code>bolo.txt =&gt; bolo-de-cenoura.txt | 2 +-</code>. O Git considera renomeação quando a semelhança é de <strong>50% ou mais</strong> (o padrão). Se o conteúdo mudar quase todo, a "renomeação" vira duas coisas separadas: um arquivo apagado e um novo. Foi o que aconteceu quando a Ana trocou o pudim por um flan:</p>
+
+<pre class="term" data-cwd="~/receitas">$ mv Pudim.txt flan.txt
+$ echo 'Calda de caramelo' &gt; flan.txt
+$ git add -A
+$ git status --short
+D  Pudim.txt
+A  flan.txt
+</pre>
+
+<p>Nenhuma linha em comum: o Git vê um <code>D</code> (apagado) e um <code>A</code> (novo). Moral: <strong>renomeie num commit e mude o conteúdo em outro</strong>. Assim a história do arquivo fica fácil de seguir.</p>
+
+<hr>
+
+<h2>4. Renomeei com o <code>mv</code> comum. E agora?</h2>
+<p>Como a renomeação é deduzida, não importa <strong>como</strong> você renomeou: o <code>mv</code> do terminal, o gerenciador de arquivos, o VS Code. Mas, sem o <code>git mv</code>, o Git primeiro enxerga duas coisas soltas:</p>
+
+<pre class="term" data-cwd="~/receitas">$ mv LEIAME.txt README.md
+$ git status
+No ramo main
+Changes not staged for commit:
+  (utilize "git add/rm &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	deleted:    LEIAME.txt
+
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	README.md
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+</pre>
+
+<p>Um <code>LEIAME.txt</code> apagado (<code>deleted</code>) e um <code>README.md</code> novo, não monitorado. É só preparar <strong>os dois</strong> (o antigo, para registrar que saiu, e o novo):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git add LEIAME.txt README.md
+$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	renamed:    LEIAME.txt -&gt; README.md
+
+</pre>
+
+<p>Na área de preparo, o Git juntou as duas metades e reconheceu a renomeação. Ou seja: <strong><code>git mv a b</code> = <code>mv a b</code> + <code>git add a b</code></strong>. O <code>git mv</code> só economiza passos (e o risco de esquecer uma das metades).</p>
+
+<div class="warning">
+<strong>Não prepare só a metade</strong>
+<p>Se a Ana desse só <code>git add README.md</code> e fizesse o commit, o repositório ficaria com os <strong>dois</strong> arquivos: o <code>README.md</code> novo e o <code>LEIAME.txt</code> antigo (cuja remoção ficou sem preparar). Confira sempre com o <code>git status</code> que aparece <code>renamed</code>.</p>
+</div>
+
+<hr>
+
+<h2>5. A história de um arquivo renomeado: <code>git log --follow</code></h2>
+<p>Ao pedir o histórico de um arquivo só, o <code>git log</code> procura por aquele <strong>nome</strong>. O <code>doces/pudim.txt</code> só tem esse nome desde o commit que o moveu:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+868d7c4 LEIAME vira README
+7b21503 Move os doces para a pasta doces
+3f91a55 Renomeia bolo.txt para bolo-de-cenoura.txt
+1921d35 Receitas iniciais
+$ git log --oneline -- doces/pudim.txt
+7b21503 Move os doces para a pasta doces
+$ git log --oneline --follow -- doces/pudim.txt
+7b21503 Move os doces para a pasta doces
+1921d35 Receitas iniciais
+</pre>
+
+<p>Sem <code>--follow</code>, a história parece começar na mudança de pasta. Com o <code>--follow</code> ("seguir"), o Git detecta a renomeação e continua procurando pelo nome antigo (<code>pudim.txt</code>), achando o commit em que o arquivo nasceu. O <code>--</code> separa as opções do nome do arquivo (veja <a href="git-log.html">git log</a>).</p>
+
+<hr>
+
+<h2>6. Opções úteis: <code>-n</code>, <code>-v</code>, <code>-f</code> e <code>-k</code></h2>
+
+<pre class="term" data-cwd="~/receitas">$ git mv -n README.md LEIA.md
+Checking rename of 'README.md' to 'LEIA.md'
+Renaming README.md to LEIA.md
+$ git mv -v README.md Leia-me.md
+Renaming README.md to Leia-me.md
+</pre>
+
+<dl class="anatomy">
+  <dt>-n</dt><dd><em>Dry run</em>, ensaio: mostra o que faria ("verificando a renomeação de… para…", "renomeando… para…") sem fazer nada. O <code>README.md</code> continuou com o mesmo nome.</dd>
+  <dt>-v</dt><dd><em>Verbose</em>, detalhado: faz de verdade e conta o que fez.</dd>
+  <dt>-f</dt><dd><em>Force</em>: renomeia mesmo que o destino já exista, <strong>substituindo</strong> o arquivo de destino (veja o erro abaixo).</dd>
+  <dt>-k</dt><dd>Pula, em silêncio, os arquivos que dariam erro (útil ao mover muitos de uma vez): <code>git mv -k nada.txt outro.txt</code> não reclama e termina com código 0, sem mover nada.</dd>
+</dl>
+
+<hr>
+
+<h2 id="formas">Formas diferentes, e qual usar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Você quer…</th><th>Use</th></tr>
+<tr><td>Renomear ou mover e já preparar</td><td><code>git mv origem destino</code></td></tr>
+<tr><td>Já renomeou com <code>mv</code>, no gerenciador ou no editor</td><td><code>git add nome-antigo nome-novo</code> (ou <code>git add -A</code>)</td></tr>
+<tr><td>Mover vários arquivos para uma pasta</td><td><code>git mv a.txt b.txt pasta/</code> (a pasta precisa existir)</td></tr>
+<tr><td>Renomear uma pasta</td><td><code>git mv pasta-velha pasta-nova</code></td></tr>
+<tr><td>Ver o histórico de um arquivo, antes e depois da renomeação</td><td><code>git log --follow -- arquivo</code></td></tr>
+<tr><td>Desfazer uma renomeação ainda não commitada</td><td><code>git mv nome-novo nome-antigo</code> (o mesmo comando, ao contrário)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>fatal: bad source</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git mv nada.txt outro.txt
+fatal: bad source, source=nada.txt, destination=outro.txt
+$ git mv Readme.md README.md
+fatal: bad source, source=Readme.md, destination=README.md
+</pre>
+<p>"Origem ruim": o Git não achou a <strong>origem</strong> entre os arquivos que ele rastreia. Causas: nome errado (maiúsculas contam: <code>Readme.md</code> não é <code>README.md</code>), o arquivo já foi renomeado, ou é um arquivo novo que nunca recebeu <code>git add</code>. <strong>Como resolver:</strong> confira com <code>ls</code> e <code>git status</code>; para um arquivo não rastreado, use o <code>mv</code> comum.</p>
+</div>
+
+<div class="cenario">
+<strong><code>fatal: destination exists</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git mv README.md doces/pudim.txt
+fatal: destination exists, source=README.md, destination=doces/pudim.txt
+</pre>
+<p>"O destino já existe": já há um <code>doces/pudim.txt</code>, e o Git se recusa a escrever por cima dele. <strong>Como resolver:</strong> escolha outro nome. Só use <code>-f</code> se quiser mesmo <strong>substituir</strong> o destino: com <code>git mv -f README.md doces/pudim.txt</code>, a receita de pudim é trocada pelo conteúdo do README, e o <code>git status --short</code> mostra <code>D  README.md</code> e <code>M  doces/pudim.txt</code> (a Ana desfez com <code>git restore --staged --worktree doces/pudim.txt README.md</code>, da aula <a href="git-restore.html">git restore</a>).</p>
+</div>
+
+<div class="cenario">
+<strong><code>fatal: destination directory does not exist</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git mv pudim.txt naoexiste/
+fatal: destination directory does not exist, source=pudim.txt, destination=naoexiste/
+$ git mv pudim.txt naoexiste/pudim.txt
+fatal: renaming 'pudim.txt' failed: Arquivo ou diretório inexistente
+</pre>
+<p>"A pasta de destino não existe". Sem a barra, com o nome completo, a mensagem é outra: "falhou ao renomear: arquivo ou diretório inexistente". <strong>Como resolver:</strong> crie a pasta antes: <code>mkdir naoexiste</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Faltou o destino</strong>
+<pre class="term" data-cwd="~/receitas">$ git mv pudim.txt
+uso: git mv [-v] [-f] [-n] [-k] &lt;source&gt; &lt;destination&gt;
+   ou: git mv [-v] [-f] [-n] [-k] &lt;source&gt;... &lt;destination-directory&gt;
+
+    -v, --[no-]verbose    detalhado
+    -n, --[no-]dry-run    dry run
+    -f, --[no-]force      force move/rename even if target exists
+    -k                    skip move/rename errors
+    --[no-]sparse         allow updating entries outside of the sparse-checkout cone
+
+</pre>
+<p>Com um nome só, o Git mostra o modo de usar: <code>git mv</code> sempre precisa de uma origem <strong>e</strong> um destino (ou várias origens e uma pasta de destino).</p>
+</div>
+
+<div class="cenario">
+<strong>Só mudar maiúsculas no Windows e no macOS</strong>
+<p>No Linux, <code>pudim.txt</code> e <code>Pudim.txt</code> são nomes diferentes, e <code>git mv pudim.txt Pudim.txt</code> funciona normalmente (no lab, deu <code>R  pudim.txt -&gt; Pudim.txt</code>). No Windows e no macOS, que normalmente tratam os dois nomes como o mesmo arquivo, renomear pelo gerenciador de arquivos pode não ser percebido pelo Git. Use sempre o <code>git mv</code> para isso (ilustrativo: não testado nesses sistemas).</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git mv velho novo</code></td><td>Renomeia e prepara a renomeação</td></tr>
+<tr><td><code>git mv arquivo pasta/</code></td><td>Move para dentro da pasta (que precisa existir)</td></tr>
+<tr><td><code>git mv a b pasta/</code></td><td>Move vários para a pasta</td></tr>
+<tr><td><code>git mv pasta-velha pasta-nova</code></td><td>Renomeia uma pasta</td></tr>
+<tr><td><code>git mv -n …</code> / <code>-v</code></td><td>Ensaio / conta o que fez</td></tr>
+<tr><td><code>git mv -f velho existente</code></td><td>Substitui um destino que já existe</td></tr>
+<tr><td><code>git mv -k …</code></td><td>Pula os que dariam erro</td></tr>
+<tr><td><code>mv a b</code> + <code>git add a b</code></td><td>O mesmo que <code>git mv a b</code></td></tr>
+<tr><td><code>git log --follow -- arquivo</code></td><td>Histórico do arquivo, atravessando renomeações</td></tr>
+<tr><td><code>renamed: a -&gt; b</code> / <code>R</code></td><td>No <code>status</code>: renomeado e preparado</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete</h3>
+<div class="ex-code">Renomear <code>notas.txt</code> para <code>anotacoes.txt</code>: git <input data-answer="mv" aria-label="subcomando"> notas.txt anotacoes.txt<br>Histórico atravessando renomeações: git log <input data-answer="--follow" aria-label="opção"> -- anotacoes.txt</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. A Ana renomeou <code>a.txt</code> para <code>b.txt</code> no gerenciador de arquivos. O que ela deve fazer para o Git registrar a renomeação?</p>
+<label><input type="radio" name="q2"> Nada: o Git registra sozinho no próximo commit</label>
+<label><input type="radio" name="q2"> <code>git add a.txt b.txt</code> e depois <code>git commit</code></label>
+<label><input type="radio" name="q2"> Só <code>git add b.txt</code></label>
+<label><input type="radio" name="q2"> Desfazer e renomear de novo com <code>git mv</code>, que é o único jeito</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. O que quer dizer <code>similarity index 94%</code> num diff?</p>
+<label><input type="radio" name="q3"> Que 94% dos commits têm esse arquivo</label>
+<label><input type="radio" name="q3"> Que o arquivo foi 94% apagado</label>
+<label><input type="radio" name="q3"> Que o conteúdo novo é 94% parecido com o antigo, e por isso o Git considerou uma renomeação</label>
+<label><input type="radio" name="q3"> Que a renomeação está 94% concluída</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. <code>git mv receita.txt doces/</code> respondeu <code>fatal: destination directory does not exist</code>. Como resolver?</p>
+<label><input type="radio" name="q4"> Usar <code>git mv -f</code></label>
+<label><input type="radio" name="q4"> Dar <code>git add receita.txt</code> antes</label>
+<label><input type="radio" name="q4"> Tirar a barra do fim</label>
+<label><input type="radio" name="q4"> Criar a pasta antes, com <code>mkdir doces</code></label>
+</div>
+
+<h3>Missão final: organizando em pastas</h3>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo 'Bolo' &gt; bolo.txt;;echo 'Pudim' &gt; pudim.txt;;echo 'Lasanha' &gt; lasanha.txt;;git add .;;git commit -q -m 'Receitas'" data-goal="file:~/receitas/doces/bolo.txt,file:~/receitas/doces/pudim.txt,file:~/receitas/salgados/lasanha.txt,commits:2,limpo" data-solucao="mkdir doces salgados;;git mv bolo.txt pudim.txt doces/;;git mv lasanha.txt salgados/;;git commit -m 'Organiza as receitas em pastas'">
+<p class="try-task"><strong>Missão:</strong> organize as receitas em duas pastas: <code>bolo.txt</code> e <code>pudim.txt</code> em <code>doces/</code>, <code>lasanha.txt</code> em <code>salgados/</code>. Lembre-se de criar as pastas antes. Confira os <code>R</code> no <code>git status --short</code> e faça um commit só.</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git mv origem destino</code> renomeia ou move um arquivo (ou pasta) e já prepara a mudança; depois, <code>git commit</code>.</li>
+  <li>No <code>git status</code>, aparece <code>renamed: velho -&gt; novo</code>; no <code>--short</code>, <code>R</code>.</li>
+  <li>O Git não guarda renomeações: ele as deduz pela semelhança do conteúdo (<code>similarity index</code>, 50% ou mais). Renomeie e mude o conteúdo em commits separados.</li>
+  <li><code>mv</code> + <code>git add</code> nos dois nomes dá no mesmo que <code>git mv</code>.</li>
+  <li><code>git log --follow -- arquivo</code> mostra a história atravessando renomeações.</li>
+  <li>Erros comuns: <code>bad source</code> (origem não rastreada ou nome errado), <code>destination exists</code> (use outro nome ou <code>-f</code>), <code>destination directory does not exist</code> (crie a pasta).</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
