@@ -79,7 +79,7 @@ Arquivos não monitorados:                                    « 3) arquivos nov
 </table>
 </div>
 
-<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona bolo';;echo '3 ovos' &gt;&gt; bolo.txt;;git add bolo.txt" data-goal="naopreparado:bolo.txt,contains:bolo.txt=3 ovos" data-solucao="git restore --staged bolo.txt">
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona bolo';;echo '3 ovos' &gt;&gt; bolo.txt;;git add bolo.txt" data-goal="naopreparado:bolo.txt,contains:receitas/bolo.txt=3 ovos" data-solucao="git restore --staged bolo.txt">
 <p class="try-task"><strong>Missão:</strong> a Ana deu <code>git add</code> no <code>bolo.txt</code> cedo demais. Tire o arquivo da área de preparo <strong>sem</strong> perder a linha "3 ovos" que ela acabou de escrever. Confira com <code>git status</code>.</p>
 </div>
 
