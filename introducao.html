@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git O que é — controle de versão, história e o que ele faz | Guia Git</title>
+<meta name="description" content="O que é o Git: um programa que guarda fotografias (commits) do seu projeto, a história do Git (Linus Torvalds, 2005), o que ele faz por você e o que você vai aprender neste curso.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">O que é o Git</span></h1>
+
+<p class="intro">O Git é um programa que guarda a história de um projeto. Cada vez que você pede, ele tira uma "fotografia" de todos os arquivos da pasta e anota quem fez, quando e por quê. Com essas fotografias, você pode ver o que mudou, voltar a uma versão antiga e trabalhar junto com outras pessoas sem que uma apague o trabalho da outra. Nesta aula você vai entender o que é o Git, de onde ele veio e o que ele faz.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que o Git faz, com uma comparação do dia a dia.</li>
+  <li>As palavras que vão aparecer o tempo todo: <strong>repositório</strong>, <strong>commit</strong> e <strong>histórico</strong>.</li>
+  <li>A história do Git: por que Linus Torvalds o criou em 2005.</li>
+  <li>Como ver, no terminal, a versão do Git e o histórico de um projeto.</li>
+  <li>O que você vai conseguir fazer ao terminar este curso.</li>
+</ul>
+</div>
+
+<hr>
+
+<h2>A ideia: um álbum de fotografias do projeto</h2>
+<p>A Ana está fazendo um site de receitas. Ela escreve a página da lasanha, depois a do bolo de cenoura, troca as cores, apaga uma receita, se arrepende… Sem nenhuma ferramenta, ela teria duas escolhas ruins: ou guarda só a versão atual (e perde tudo o que apagou), ou faz cópias da pasta inteira com nomes como <code>receitas-final</code>, <code>receitas-final-2</code>, <code>receitas-agora-vai</code>.</p>
+<p>O Git resolve isso como um <strong>álbum de fotografias</strong>. Quando a Ana chega num ponto que vale a pena guardar, ela pede ao Git: "tire uma foto de como o projeto está agora, com esta legenda". O Git cola a foto no álbum, com a data e o nome dela. A pasta continua uma só; as versões antigas ficam guardadas no álbum, e qualquer uma pode ser olhada ou trazida de volta.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>No álbum</th><th>No Git</th><th>Em inglês</th></tr>
+<tr><td>O álbum inteiro, com todas as fotos</td><td>O <strong>repositório</strong>: a pasta do projeto mais a história guardada pelo Git</td><td><em>repository</em> (ou <em>repo</em>)</td></tr>
+<tr><td>Uma foto, com legenda, data e autor</td><td>Um <strong>commit</strong>: o registro de como todos os arquivos estavam num momento</td><td><em>commit</em> ("registro", "compromisso")</td></tr>
+<tr><td>A sequência de fotos, da primeira à última</td><td>O <strong>histórico</strong></td><td><em>history</em>, <em>log</em></td></tr>
+<tr><td>Um segundo álbum para testar uma ideia sem estragar o principal</td><td>Um <strong>branch</strong> ("ramo")</td><td><em>branch</em></td></tr>
+</table>
+</div>
+
+<p>Você vai ver cada uma dessas palavras com calma, em aulas próprias. Por enquanto, basta a ideia: <strong>o Git guarda fotografias do projeto, e cada fotografia se chama commit</strong>.</p>
+
+<div class="tip">
+<strong>Por que "commit"?</strong>
+<p>Em inglês, <em>to commit</em> é "comprometer-se", "registrar de forma definitiva". Fazer um commit é dizer ao Git: "esta versão está boa, registre". Como quase todo mundo, este guia usa a palavra em inglês: "fazer um commit", "o último commit".</p>
+</div>
+
+<hr>
+
+<h2>Vendo o Git de verdade</h2>
+<p>O Git é um programa de <strong>linha de comando</strong>: você o usa digitando no terminal. Todo comando do Git começa com a palavra <code>git</code>, seguida do que você quer que ele faça. O primeiro comando é o mais simples de todos, o que pergunta a versão:</p>
+
+<dl class="anatomy">
+  <dt>git</dt><dd>O nome do programa. Tudo o que vem depois é um pedido para ele.</dd>
+  <dt>--version</dt><dd>Uma <strong>opção</strong> (começa com dois tracinhos): "mostre a sua versão e pare".</dd>
+</dl>
+
+<pre class="term">$ git --version
+git version 2.53.0                 « o Git 2.53, o que vem no Ubuntu 26.04</pre>
+
+<p>Esta resposta saiu em inglês, mesmo com o sistema da Ana em português: é uma das poucas mensagens que o Git não traduz. Quase todas as outras (as do <code>git status</code>, os erros, as dicas) saem em português, como você vai ver.</p>
+
+<div class="try" data-goal="ran:^\s*git --version,outre:git version \d+\.\d+" data-solucao="git --version">
+<p class="try-task"><strong>Missão:</strong> pergunte ao Git do terminal do guia qual é a versão dele. Digite <code>git --version</code> e aperte <kbd>Enter</kbd>.</p>
+</div>
+
+<h3>O álbum de um projeto pronto</h3>
+<p>A Ana já tem o site de receitas guardado num repositório, a pasta <code>receitas</code>. O comando <code>git log</code> ("diário de bordo") mostra o histórico. Com a opção <code>--oneline</code> ("uma linha"), cada commit ocupa uma linha só:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+7da866d (HEAD -&gt; main) Adiciona a receita de bolo de cenoura   « o mais novo
+610cd61 Adiciona a receita de lasanha
+700bbd5 Cria o README                                    « o primeiro commit</pre>
+
+<p>Leia de baixo para cima: o commit mais antigo está embaixo, o mais novo em cima. Cada linha tem duas partes:</p>
+<ul>
+  <li>um código como <code>700bbd5</code>: o começo do <strong>hash</strong>, a "impressão digital" do commit, que o identifica sem confusão (aula <a href="hash.html">O Hash do Commit</a>);</li>
+  <li>a <strong>mensagem</strong> que a Ana escreveu ao fazer o commit, dizendo o que mudou.</li>
+</ul>
+<p>Na primeira linha aparece <code>(HEAD -&gt; main)</code>: é o Git dizendo "você está aqui, no último commit do ramo <code>main</code>". Você vai entender isso em <a href="head.html">O que é HEAD</a>.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;echo 'Lasanha' &gt; lasanha.txt;;git add lasanha.txt;;git commit -q -m 'Adiciona a receita de lasanha';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona a receita de bolo de cenoura'" data-goal="ran:^\s*git log" data-solucao="git log --oneline">
+<p class="try-task"><strong>Missão:</strong> o terminal já está dentro da pasta <code>receitas</code> da Ana. Veja o histórico com <code>git log --oneline</code>. Depois, se quiser, tente <code>git log</code> sem opção: cada commit ocupa várias linhas, com autor e data.</p>
+</div>
+
+<hr>
+
+<h2>O que o Git faz por você</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Sem Git</th><th>Com Git</th></tr>
+<tr><td>"Apaguei um parágrafo ontem e agora quero de volta."</td><td>Se não houver cópia, perdeu.</td><td>O parágrafo está no commit de ontem: é só trazê-lo de volta (<a href="git-restore.html">git restore</a>).</td></tr>
+<tr><td>"O que eu mudei desde a semana passada?"</td><td>Comparar arquivos no olho.</td><td><a href="git-diff.html">git diff</a> mostra linha por linha o que entrou e o que saiu.</td></tr>
+<tr><td>"Quero testar um layout novo sem estragar o site."</td><td>Copiar a pasta inteira.</td><td>Criar um <a href="branches.html">branch</a>, testar e, se gostar, juntar ao principal.</td></tr>
+<tr><td>"O Bruno e eu mexemos no mesmo arquivo."</td><td>Um apaga o trabalho do outro, ou alguém junta tudo à mão.</td><td>O Git junta as mudanças sozinho e avisa só quando as duas mexeram na mesma linha (<a href="conflitos.html">conflito</a>).</td></tr>
+<tr><td>"Meu notebook quebrou."</td><td>Tudo perdido, se não havia backup.</td><td>Uma cópia completa do repositório está no GitHub (<a href="git-push.html">git push</a>).</td></tr>
+</table>
+</div>
+
+<p>O Git funciona com qualquer tipo de arquivo, mas brilha com <strong>arquivos de texto</strong>: código de programas, páginas HTML, textos em Markdown, configurações, até um TCC escrito em LaTeX. Nesses, ele mostra exatamente que linhas mudaram. Com fotos, vídeos e planilhas ele também guarda as versões, mas não consegue mostrar "o que mudou" por dentro.</p>
+
+<h3>Um Git em cada computador</h3>
+<p>O Git é <strong>distribuído</strong>: cada pessoa tem, no próprio computador, o repositório inteiro, com toda a história. Não é preciso internet para fazer commits, ver o histórico ou criar branches. A internet só entra quando você quer <strong>trocar</strong> commits com outras pessoas, geralmente por um site como o GitHub. A diferença entre o Git e o GitHub tem aula própria: <a href="git-e-github.html">Git × GitHub</a>.</p>
+
+<hr>
+
+<h2>Um pouco de história</h2>
+<p>Em 2005, o kernel Linux (o "núcleo" do sistema operacional) já era um projeto enorme, com milhares de pessoas mandando mudanças. Para organizar tudo, Linus Torvalds, o criador do Linux, usava um programa de controle de versão chamado BitKeeper, que era pago, mas tinha uma licença gratuita para o projeto. Em abril de 2005 essa licença foi retirada, e o Linux ficou sem ferramenta.</p>
+<p>Linus não gostou de nenhuma das opções livres da época e decidiu escrever a sua. Em poucos dias, o Git já guardava a própria história. As metas eram claras: ser <strong>rápido</strong>, aguentar projetos gigantes, funcionar sem um servidor central e proteger os dados contra corrupção (cada commit é identificado pelo hash do seu conteúdo).</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Quando</th><th>O que aconteceu</th></tr>
+<tr><td>abril de 2005</td><td>Linus Torvalds começa o Git. O primeiro commit do próprio Git é de 7 de abril de 2005.</td></tr>
+<tr><td>julho de 2005</td><td>Linus passa a manutenção para <strong>Junio Hamano</strong>, que cuida do Git até hoje.</td></tr>
+<tr><td>dezembro de 2005</td><td>Sai o Git 1.0.</td></tr>
+<tr><td>2008</td><td>Nasce o <strong>GitHub</strong>, um site para guardar e compartilhar repositórios Git.</td></tr>
+<tr><td>2014</td><td>Sai o Git 2.0. Desde então, a versão principal continua sendo a 2, com uma nova "2.x" a cada poucos meses.</td></tr>
+<tr><td>2019</td><td>O Git 2.23 traz <code>git switch</code> e <code>git restore</code>, comandos mais fáceis que este guia usa.</td></tr>
+<tr><td>2020</td><td>O GitHub passa a chamar o ramo principal de novos repositórios de <code>main</code> (antes era <code>master</code>).</td></tr>
+<tr><td>hoje</td><td>O Git é, de longe, o controle de versão mais usado no mundo. Este guia usa o <strong>Git 2.53</strong>, o do Ubuntu 26.04.</td></tr>
+</table>
+</div>
+
+<div class="note">
+<strong>E o nome?</strong>
+<p>"Git", na gíria inglesa, quer dizer algo como "pessoa chata, teimosa". Linus brincou que dá nome aos projetos em homenagem a si mesmo (primeiro o Linux, depois o Git). O arquivo de apresentação original chamava o Git de "o rastreador de conteúdo estúpido" (<em>the stupid content tracker</em>), uma piada com a ideia de que ele faz algo simples, e faz bem.</p>
+</div>
+
+<hr>
+
+<h2>Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Errei o nome do comando</strong>
+<pre class="term">$ git stauts
+git: 'stauts' não é um comando git. Veja 'git --help'.
+
+The most similar command is      « "o comando mais parecido é"
+	status</pre>
+<p><strong>O que aconteceu:</strong> a Ana quis digitar <code>git status</code> e trocou duas letras. O Git não conhece nenhum subcomando chamado <code>stauts</code> e avisa isso na primeira linha.</p>
+<p><strong>Como resolver:</strong> leia as linhas de baixo: o Git procurou o nome mais parecido que ele conhece e sugeriu <code>status</code>. Essa parte saiu em inglês ("The most similar command is" = "o comando mais parecido é"): algumas mensagens do Git ainda não têm tradução. É só digitar de novo, certo. Os comandos e a ajuda do Git ficam em <a href="git-help.html">Pedindo Ajuda (git help)</a>.</p>
+</div>
+
+<div class="cenario">
+<strong>O Git não está instalado</strong>
+<p>Se o terminal responder que o comando <code>git</code> não foi encontrado, o Git não está instalado no seu computador (ou o terminal ainda não o enxerga). A aula <a href="instalar.html">Instalar o Git</a> mostra como instalar no Windows, no macOS e no Linux. Enquanto isso, você pode praticar no terminal do guia, que já tem um Git.</p>
+</div>
+
+<hr>
+
+<h2>O que você vai conseguir fazer</h2>
+<p>Ao terminar os níveis e os projetos deste guia, você vai:</p>
+<ul>
+  <li>criar um repositório e registrar o seu trabalho em commits pequenos, com boas mensagens;</li>
+  <li>ver o histórico, comparar versões e desfazer erros sem medo (até os grandes);</li>
+  <li>usar branches para testar ideias e juntá-las com <code>merge</code>, resolvendo conflitos;</li>
+  <li>guardar o seu projeto no GitHub e trabalhar em dupla com <code>clone</code>, <code>push</code> e <code>pull</code>;</li>
+  <li>contribuir com outros projetos usando <em>fork</em> e <em>pull request</em>;</li>
+  <li>publicar um site de graça com o GitHub Pages.</li>
+</ul>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Termo</th><th>Significado</th></tr>
+<tr><td>Git</td><td>Programa de controle de versão: guarda a história de um projeto.</td></tr>
+<tr><td>Repositório</td><td>A pasta do projeto mais toda a história guardada pelo Git.</td></tr>
+<tr><td>Commit</td><td>Uma "fotografia" de todos os arquivos, com mensagem, autor e data.</td></tr>
+<tr><td>Histórico</td><td>A sequência de commits, do primeiro ao último.</td></tr>
+<tr><td>Hash</td><td>O código que identifica cada commit (ex.: <code>700bbd5</code>).</td></tr>
+<tr><td>Distribuído</td><td>Cada pessoa tem o repositório inteiro no próprio computador.</td></tr>
+<tr><td><code>git --version</code></td><td>Mostra a versão do Git.</td></tr>
+<tr><td><code>git log --oneline</code></td><td>Mostra o histórico, um commit por linha.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">1. No Git, o que é um <strong>commit</strong>?</p>
+<label><input type="radio" name="q1"> Uma cópia da pasta no GitHub.</label>
+<label><input type="radio" name="q1"> Um registro de como todos os arquivos estavam num momento, com mensagem, autor e data.</label>
+<label><input type="radio" name="q1"> Um arquivo que o Git apagou.</label>
+<label><input type="radio" name="q1"> O nome do programa que instala o Git.</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">2. Por que Linus Torvalds criou o Git, em 2005?</p>
+<label><input type="radio" name="q2"> Para substituir o GitHub.</label>
+<label><input type="radio" name="q2"> Para guardar fotos de viagem.</label>
+<label><input type="radio" name="q2"> Porque o Linux perdeu a licença gratuita do BitKeeper e precisava de outra ferramenta.</label>
+<label><input type="radio" name="q2"> Porque o Git 1.0 já existia e era lento.</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">3. A Ana está num avião, sem internet. O que ela <strong>consegue</strong> fazer com o Git?</p>
+<label><input type="radio" name="q3"> Fazer commits e ver o histórico, porque o repositório inteiro está no notebook dela.</label>
+<label><input type="radio" name="q3"> Nada: o Git só funciona conectado.</label>
+<label><input type="radio" name="q3"> Só ler os arquivos, sem fazer commits.</label>
+<label><input type="radio" name="q3"> Mandar os commits para o GitHub.</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. No resultado do <code>git log --oneline</code>, onde está o commit mais <strong>antigo</strong>?</p>
+<label><input type="radio" name="q4"> Na primeira linha.</label>
+<label><input type="radio" name="q4"> Na última linha.</label>
+<label><input type="radio" name="q4"> Na linha com <code>(HEAD -&gt; main)</code>.</label>
+<label><input type="radio" name="q4"> Ele não aparece.</label>
+</div>
+
+<div class="exercise">
+<h3>5. Qual é a versão?</h3>
+<p>Complete o comando que mostra a versão do Git instalado:</p>
+<div class="ex-code">git <input data-answer="--version|-v|version" aria-label="opção"></div>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O Git guarda a história de um projeto como um álbum de fotografias; cada fotografia é um <strong>commit</strong>.</li>
+  <li>O <strong>repositório</strong> é a pasta do projeto mais essa história; o <strong>histórico</strong> é a sequência de commits.</li>
+  <li>O Git é <strong>distribuído</strong>: cada pessoa tem tudo no próprio computador, e a internet só serve para trocar commits.</li>
+  <li>Foi criado por Linus Torvalds em 2005, para o Linux, e é mantido por Junio Hamano desde então.</li>
+  <li>Todo comando começa com <code>git</code>: <code>git --version</code> mostra a versão, <code>git log --oneline</code> mostra o histórico.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
