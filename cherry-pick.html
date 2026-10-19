@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git cherry-pick — copiando um commit de outro branch | Guia Git</title>
+<meta name="description" content="O git cherry-pick para quem está começando: copiar um único commit de outro branch para o branch atual, por que o commit copiado ganha um hash novo, a opção -x, vários commits de uma vez, --no-commit, conflitos (--continue, --abort, --skip) e as mensagens reais do Git em português.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">cherry-pick</span></h1>
+
+<p class="intro">Às vezes um branch tem <strong>um</strong> commit de que você precisa agora, no meio de vários outros que ainda não estão prontos. Juntar o branch inteiro com <a href="git-merge.html">git merge</a> traria tudo junto. O <code>git cherry-pick</code> resolve isso: ele <strong>copia um commit escolhido</strong> de qualquer lugar do histórico e o aplica no branch em que você está. O nome vem do inglês <em>cherry-pick</em>, "colher a cereja": escolher a dedo só a fruta que interessa.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que o <code>git cherry-pick</code> faz e por que o commit copiado ganha um <strong>hash novo</strong>.</li>
+  <li>Como achar o commit certo com o <code>git log</code> e copiá-lo para o <code>main</code>.</li>
+  <li>Como copiar vários commits de uma vez, anotar de onde veio a cópia (<code>-x</code>) e aplicar sem commitar (<code>-n</code>).</li>
+  <li>O que fazer quando a cópia dá <strong>conflito</strong>: <code>--continue</code>, <code>--abort</code> e <code>--skip</code>.</li>
+  <li>Quando o cherry-pick é a ferramenta certa, e quando um merge é melhor.</li>
+</ul>
+</div>
+
+<p>Todas as sessões desta aula rodaram no Git real do Ubuntu, na máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com as mensagens em português. Se o seu sistema estiver em inglês, as mensagens saem em inglês; a seção <a href="#errado">Quando dá errado</a> mostra a versão em inglês das mais importantes.</p>
+
+<hr>
+
+<h2>A ideia: copiar uma receita de um caderno para o outro</h2>
+<p>A Ana tem dois cadernos de receitas. O <strong>caderno passado a limpo</strong> é o que ela mostra para a família (o branch <code>main</code>). O <strong>caderno de rascunho</strong> é onde ela testa um visual novo para o site (o branch <code>novo-layout</code>). Enquanto mexia no rascunho, ela percebeu que a receita de bolo estava com um erro de acento ("açucar") e corrigiu <strong>lá no rascunho</strong>.</p>
+<p>O visual novo ainda não está pronto, mas a correção do acento está, e ela quer essa correção no caderno passado a limpo <strong>hoje</strong>. O que ela faz no papel?</p>
+<ol class="passo">
+  <li>Abre o rascunho na página da correção.</li>
+  <li>Copia <strong>só aquela correção</strong> para o caderno passado a limpo, com a mesma anotação ("Corrige o acento de açúcar").</li>
+  <li>O rascunho continua igual: a página original não sai de lá.</li>
+</ol>
+<p>Três detalhes desse jeito de copiar valem para todo cherry-pick:</p>
+<ul>
+  <li>O que se copia é <strong>a mudança</strong> (o "troque <em>açucar</em> por <em>açúcar</em>"), não o caderno inteiro.</li>
+  <li>A cópia é uma <strong>página nova</strong> no caderno de destino. No Git, isso quer dizer um <strong>commit novo, com hash novo</strong> (veja <a href="hash.html">O Hash do Commit</a>), mesmo com a mesma mensagem e o mesmo conteúdo.</li>
+  <li>O original fica onde estava. Nada some do branch de origem.</li>
+</ul>
+
+<hr>
+
+<h2>1. A situação da Ana</h2>
+<p>O repositório <code>receitas</code> começou com dois commits no <code>main</code>. A partir deles, a Ana criou o branch <code>novo-layout</code> e fez três commits nele. Depois voltou ao <code>main</code> e acrescentou a receita de pudim. Ela está no <code>main</code>; o <code>git log</code> sem nada mostra o histórico do branch atual, e com o nome de um branch mostra o histórico <strong>daquele</strong> branch:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+74a4b0b Adiciona a receita de pudim
+e0ec859 Adiciona a receita de bolo
+700bbd5 Cria o README
+$ git log --oneline novo-layout
+ac783ac Deixa os títulos roxos
+d07edbe Corrige o acento de açúcar           « este é o commit que a Ana quer
+7664ece Começa o novo layout
+e0ec859 Adiciona a receita de bolo
+700bbd5 Cria o README
+$ git log --oneline --graph --all
+* 74a4b0b Adiciona a receita de pudim
+| * ac783ac Deixa os títulos roxos
+| * d07edbe Corrige o acento de açúcar
+| * 7664ece Começa o novo layout
+|/
+* e0ec859 Adiciona a receita de bolo
+* 700bbd5 Cria o README
+</pre>
+
+<p>O <code>--graph --all</code> desenha todos os branches juntos (veja <a href="log-graph.html">Vendo os Galhos</a>). Desenhando com letras, que são só apelidos para os commits:</p>
+<pre>
+          C---D---E   novo-layout
+         /
+    A---B---X         main
+</pre>
+<ul>
+  <li><code>C</code> = "Começa o novo layout" (cria o <code>estilo.css</code>) — <strong>não</strong> está pronto.</li>
+  <li><code>D</code> = "Corrige o acento de açúcar" (muda o <code>bolo.txt</code>) — <strong>está</strong> pronto, e é este que a Ana quer no <code>main</code>.</li>
+  <li><code>E</code> = "Deixa os títulos roxos" — <strong>não</strong> está pronto.</li>
+  <li><code>X</code> = "Adiciona a receita de pudim", feito no <code>main</code> depois que os caminhos se separaram.</li>
+</ul>
+<p>Um <code>git merge novo-layout</code> traria os três. A Ana quer só o <code>D</code>.</p>
+
+<hr>
+
+<h2>2. O primeiro cherry-pick</h2>
+<p>O cherry-pick sempre <strong>traz para o branch atual</strong>. Então o primeiro passo é ir para o branch que vai receber a cópia, o <code>main</code> (veja <a href="git-switch.html">git switch</a>), e só depois chamar o cherry-pick com o hash do commit escolhido:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch main
+Already on 'main'
+$ git cherry-pick d07edbe
+[main 92c2d52] Corrige o acento de açúcar
+ Date: Thu Oct 15 10:30:00 2026 -0300
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+</pre>
+
+<dl class="anatomy">
+  <dt>git</dt><dd>O programa Git.</dd>
+  <dt>cherry-pick</dt><dd>O subcomando: "copie este commit para cá".</dd>
+  <dt>d07edbe</dt><dd>O commit a copiar, pelo <strong>hash abreviado</strong> que o <code>git log --oneline</code> mostrou. Pode ser qualquer forma de apontar um commit: o hash inteiro, um nome de branch (que quer dizer "a ponta do branch") ou <code>novo-layout~1</code> ("um antes da ponta do <code>novo-layout</code>"). Veja <a href="#formas">Formas diferentes</a>.</dd>
+</dl>
+
+<p>Linha por linha, o que o Git respondeu:</p>
+<dl class="anatomy">
+  <dt>Already on 'main'</dt><dd>"Já está no <code>main</code>": a Ana já estava lá, então o <code>switch</code> não fez nada. Não custa conferir antes. (Esta e outras mensagens do Git saem em inglês mesmo com o sistema em português: a tradução do Git para o português do Brasil não cobre todas as frases.)</dd>
+  <dt>[main 92c2d52]</dt><dd>O commit novo foi criado no branch <code>main</code> e ganhou o hash <code>92c2d52</code>. Repare: <strong>não</strong> é o <code>d07edbe</code> que a Ana pediu.</dd>
+  <dt>Corrige o acento de açúcar</dt><dd>A mensagem do commit, copiada do original.</dd>
+  <dt>Date: Thu Oct 15 10:30:00 2026 -0300</dt><dd>A data do <strong>autor</strong>, também copiada do original (quinta-feira, 15 de outubro de 2026, 10:30, fuso −03:00). O Git mostra essa linha porque, num commit copiado, a data de quando a mudança foi escrita pode ser bem anterior à de hoje.</dd>
+  <dt>1 file changed, 1 insertion(+), 1 deletion(-)</dt><dd>"1 arquivo mudou, 1 linha entrou, 1 linha saiu": a linha do açúcar trocada.</dd>
+</dl>
+
+<h3>Antes e depois</h3>
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main
+nothing to commit, working tree clean
+$ git log --oneline --graph --all
+* 92c2d52 Corrige o acento de açúcar          « a cópia, no main
+* 74a4b0b Adiciona a receita de pudim
+| * ac783ac Deixa os títulos roxos
+| * d07edbe Corrige o acento de açúcar        « o original continua aqui
+| * 7664ece Começa o novo layout
+|/
+* e0ec859 Adiciona a receita de bolo
+* 700bbd5 Cria o README
+$ cat bolo.txt
+Bolo de cenoura
+- 3 cenouras
+- 4 ovos
+- 2 xícaras de açúcar                          « corrigido
+$ ls
+README.md
+bolo.txt
+pudim.txt                                      « nada de estilo.css
+</pre>
+<p>O <code>git status</code> diz "nada a commitar, pasta de trabalho limpa" (<em>nothing to commit, working tree clean</em>): o cherry-pick já fez o commit sozinho, não sobrou nada para você fazer.</p>
+
+<p>O desenho, agora:</p>
+<pre>
+          C---D---E   novo-layout
+         /
+    A---B---X---D'    main
+</pre>
+<p>O <code>D'</code> ("D linha") é a cópia: mesma mudança, mesma mensagem, <strong>commit diferente</strong>. O <code>novo-layout</code> não mudou nada, e o <code>estilo.css</code> não veio junto, porque ele nasceu no commit <code>C</code>, que a Ana não escolheu.</p>
+
+<div class="tip">
+<strong>Copia a mudança, não o arquivo</strong>
+<p>O cherry-pick pega a <strong>diferença</strong> que o commit escolhido fez em relação ao commit anterior a ele (o que o <a href="git-show.html">git show</a> mostra) e repete essa diferença no branch atual. Se o <code>bolo.txt</code> do <code>main</code> tivesse outras linhas diferentes das do <code>novo-layout</code>, elas continuariam lá: só a linha do açúcar muda.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;echo 'Bolo de cenoura' &gt; bolo.txt;;echo '- 3 cenouras' &gt;&gt; bolo.txt;;echo '- 4 ovos' &gt;&gt; bolo.txt;;echo '- 2 xícaras de açucar' &gt;&gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona a receita de bolo';;git switch -q -c novo-layout;;echo 'body { font-family: sans-serif; }' &gt; estilo.css;;git add estilo.css;;git commit -q -m 'Começa o novo layout';;sed -i 's/açucar/açúcar/' bolo.txt;;git commit -q -am 'Corrige o acento de açúcar';;echo 'h1 { color: purple; }' &gt;&gt; estilo.css;;git commit -q -am 'Deixa os títulos roxos';;git switch -q main;;echo 'Pudim de leite' &gt; pudim.txt;;git add pudim.txt;;git commit -q -m 'Adiciona a receita de pudim'" data-goal="head:main,contem:HEAD:bolo.txt=açúcar,commits:4,absent:estilo.css,limpo" data-solucao="git log --oneline novo-layout;;git cherry-pick novo-layout~1">
+<p class="try-task"><strong>Missão:</strong> você está no <code>main</code> da Ana. Olhe o histórico do <code>novo-layout</code> com <code>git log --oneline novo-layout</code>, ache o commit "Corrige o acento de açúcar" e copie <strong>só ele</strong> para o <code>main</code>. No fim, confira com <code>cat bolo.txt</code> e <code>git log --oneline</code>.</p>
+</div>
+
+<hr>
+
+<h2>3. A cópia tem hash novo (e a opção <code>-x</code>)</h2>
+<p>Compare os dois commits lado a lado. O formato <code>fuller</code> ("mais completo") do <code>git log</code> mostra, além do autor, <strong>quem fez o commit</strong> e quando:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log -1 --format=fuller d07edbe
+commit d07edbe144d7abd72bc3e14c1c416d2b8f7fa3cc
+Author:     Ana Souza &lt;ana@exemplo.com&gt;
+AuthorDate: Thu Oct 15 10:30:00 2026 -0300
+Commit:     Ana Souza &lt;ana@exemplo.com&gt;
+CommitDate: Thu Oct 15 10:30:00 2026 -0300
+
+    Corrige o acento de açúcar
+$ git log -1 --format=fuller HEAD
+commit 92c2d525f4e6f947e211abbc95655605a94f0624
+Author:     Ana Souza &lt;ana@exemplo.com&gt;
+AuthorDate: Thu Oct 15 10:30:00 2026 -0300
+Commit:     Ana Souza &lt;ana@exemplo.com&gt;
+CommitDate: Thu Oct 15 10:30:00 2026 -0300
+
+    Corrige o acento de açúcar
+</pre>
+
+<dl class="anatomy">
+  <dt>Author / AuthorDate</dt><dd>Quem <strong>escreveu</strong> a mudança, e quando. O cherry-pick copia os dois do original: se a Ana copiasse um commit do Bruno, o autor continuaria sendo o Bruno.</dd>
+  <dt>Commit / CommitDate</dt><dd>Quem <strong>gravou</strong> este commit, e quando. Num cherry-pick, é quem rodou o comando, na hora em que rodou. No lab do guia o relógio está parado em 15/10/2026 10:30, por isso as duas datas coincidem; no seu computador, a <code>CommitDate</code> da cópia seria a hora do cherry-pick.</dd>
+</dl>
+
+<p>Autor, mensagem e mudança iguais; <strong>hash diferente</strong>. Por quê? O hash é calculado a partir de <strong>tudo</strong> o que o commit guarda, e isso inclui <strong>quem é o commit pai</strong>. O pai do original <code>d07edbe</code> é o <code>7664ece</code> ("Começa o novo layout"); o pai da cópia <code>92c2d52</code> é o <code>74a4b0b</code> ("Adiciona a receita de pudim"). Pai diferente, hash diferente, mesmo com tudo o mais igual. (No seu computador ainda tem a data diferente, mais um motivo.)</p>
+
+<p>Daqui a seis meses, como a Ana vai saber que o commit do <code>main</code> é uma cópia de outro? Com a opção <code>-x</code>, o Git <strong>acrescenta uma linha na mensagem</strong> dizendo de onde a cópia veio:</p>
+
+<p>Para mostrar, a Ana desfez a cópia (com <code>git reset --hard HEAD~1</code>, que joga fora o último commit; veja <a href="git-reset.html">git reset</a>) e copiou de novo, agora com <code>-x</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git reset --hard HEAD~1
+HEAD is now at 74a4b0b Adiciona a receita de pudim
+$ git cherry-pick -x d07edbe
+[main 105eea3] Corrige o acento de açúcar
+ Date: Thu Oct 15 10:30:00 2026 -0300
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+$ git log -1
+commit 105eea3748859636df346d08d8485b664affd935
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Corrige o acento de açúcar
+
+    (cherry picked from commit d07edbe144d7abd72bc3e14c1c416d2b8f7fa3cc)
+</pre>
+
+<p>Repare que o hash mudou de novo (<code>105eea3</code>, e não <code>92c2d52</code>): a mensagem agora tem uma linha a mais, e a mensagem também entra na conta do hash. A linha <code>(cherry picked from commit …)</code> ("colhido do commit …") traz o hash <strong>inteiro</strong> do original. Use <code>-x</code> quando o commit original está num branch que outras pessoas também veem (por exemplo, quando você copia uma correção do <code>main</code> para o branch de uma versão antiga). Se o original estava num branch só seu, que vai ser apagado, a linha aponta para um commit que ninguém mais vai achar; aí não vale a pena.</p>
+
+<hr>
+
+<h2>4. Vários commits de uma vez</h2>
+<p>O cherry-pick aceita mais de um commit. Eles são copiados <strong>na ordem em que você escreve</strong>, um commit novo para cada. A Ana voltou o <code>main</code> para o pudim de novo e testou copiar o <code>C</code> e o <code>E</code>, pulando o <code>D</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git reset --hard HEAD~1
+HEAD is now at 74a4b0b Adiciona a receita de pudim
+$ git cherry-pick 7664ece ac783ac
+[main 121406f] Começa o novo layout
+ Date: Thu Oct 15 10:30:00 2026 -0300
+ 1 file changed, 1 insertion(+)
+ create mode 100644 estilo.css
+[main d95fb33] Deixa os títulos roxos
+ Date: Thu Oct 15 10:30:00 2026 -0300
+ 1 file changed, 1 insertion(+)
+$ git log --oneline
+d95fb33 Deixa os títulos roxos
+121406f Começa o novo layout
+74a4b0b Adiciona a receita de pudim
+e0ec859 Adiciona a receita de bolo
+700bbd5 Cria o README
+</pre>
+
+<p>Um bloco <code>[main …]</code> para cada commit copiado. O <code>create mode 100644 estilo.css</code> avisa que o commit <strong>criou</strong> um arquivo novo (o <code>100644</code> é o tipo: arquivo comum, sem permissão de execução).</p>
+
+<p>Para uma sequência de commits seguidos, existe a escrita com dois pontos, <code>A..B</code>. Atenção a um detalhe que confunde todo mundo: <code>A..B</code> quer dizer "os commits depois de <code>A</code> até <code>B</code>", ou seja, <strong>o <code>A</code> fica de fora</strong>. Para incluir o <code>A</code>, escreva <code>A^..B</code> (o <code>^</code> quer dizer "o pai de <code>A</code>"):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git reset --hard HEAD~2
+HEAD is now at 74a4b0b Adiciona a receita de pudim
+$ git cherry-pick 7664ece^..ac783ac
+[main 121406f] Começa o novo layout
+ Date: Thu Oct 15 10:30:00 2026 -0300
+ 1 file changed, 1 insertion(+)
+ create mode 100644 estilo.css
+[main a751422] Corrige o acento de açúcar
+ Date: Thu Oct 15 10:30:00 2026 -0300
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[main f45de4c] Deixa os títulos roxos
+ Date: Thu Oct 15 10:30:00 2026 -0300
+ 1 file changed, 1 insertion(+)
+$ git log --oneline
+f45de4c Deixa os títulos roxos
+a751422 Corrige o acento de açúcar
+121406f Começa o novo layout
+74a4b0b Adiciona a receita de pudim
+e0ec859 Adiciona a receita de bolo
+700bbd5 Cria o README
+</pre>
+
+<p>Os três vieram, em ordem. (Se a Ana tivesse escrito <code>7664ece..ac783ac</code>, sem o <code>^</code>, o "Começa o novo layout" teria ficado de fora.)</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Você escreve</th><th>O Git copia</th></tr>
+<tr><td><code>git cherry-pick C</code></td><td>só o <code>C</code></td></tr>
+<tr><td><code>git cherry-pick C E</code></td><td>o <code>C</code> e depois o <code>E</code> (pula o <code>D</code>)</td></tr>
+<tr><td><code>git cherry-pick C..E</code></td><td>o <code>D</code> e o <code>E</code> (o <code>C</code> fica de fora)</td></tr>
+<tr><td><code>git cherry-pick C^..E</code></td><td>o <code>C</code>, o <code>D</code> e o <code>E</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>5. Aplicar sem commitar: <code>-n</code></h2>
+<p>Com <code>-n</code> (ou <code>--no-commit</code>, "sem commit"), o Git aplica a mudança na pasta e na <a href="area-de-preparo.html">área de preparo</a>, mas <strong>não cria o commit</strong>. Serve para revisar antes, para ajustar algo, ou para juntar vários commits copiados num commit só:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git reset --hard HEAD~3
+HEAD is now at 74a4b0b Adiciona a receita de pudim
+$ git cherry-pick -n d07edbe
+$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	modified:   bolo.txt
+
+$ git diff --staged
+diff --git a/bolo.txt b/bolo.txt
+index f32f198..ea7e3b4 100644
+--- a/bolo.txt
++++ b/bolo.txt
+@@ -1,4 +1,4 @@
+ Bolo de cenoura
+ - 3 cenouras
+ - 4 ovos
+-- 2 xícaras de açucar
++- 2 xícaras de açúcar
+$ git commit -m 'Corrige o acento de açúcar'
+[main 92c2d52] Corrige o acento de açúcar
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+</pre>
+
+<p>O <code>cherry-pick -n</code> não mostrou nada: não houve commit para anunciar. O <code>git status</code> mostra o <code>bolo.txt</code> em "Mudanças a serem submetidas" (a área de preparo), com a dica de como tirá-lo de lá. O <a href="git-diff-staged.html">git diff --staged</a> confirma que a mudança é exatamente a do commit escolhido. Aí a Ana fez o commit com a mensagem que quis.</p>
+
+<p>Daí em diante é o fluxo de sempre: mude o que quiser, <code>git add</code>, <code>git commit</code>. Parecido, o <code>-e</code> (<code>--edit</code>) cria o commit, mas antes abre o editor para você mudar a mensagem.</p>
+
+<hr>
+
+<h2>6. Quando a cópia dá conflito</h2>
+<p>O cherry-pick repete uma mudança num lugar diferente de onde ela nasceu. Se, no branch atual, as mesmas linhas foram mudadas de outro jeito, o Git não sabe qual das duas vale e para no meio, com um <strong>conflito</strong> (o mesmo tipo de conflito do merge: veja <a href="conflitos.html">Conflitos de Merge</a>).</p>
+<p>No exemplo, a Ana voltou o <code>main</code> para o pudim e, antes de copiar a correção, mexeu no <code>main</code> na <strong>mesma linha</strong> do açúcar: escreveu "açucar refinado" (ainda sem o acento) e commitou. Aí pediu o cherry-pick:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git reset --hard HEAD~1
+HEAD is now at 74a4b0b Adiciona a receita de pudim
+$ sed -i 's/açucar/açucar refinado/' bolo.txt
+$ git commit -q -am 'Especifica o açúcar refinado'
+$ git cherry-pick d07edbe
+Mesclagem automática de bolo.txt
+CONFLITO (conteúdo): conflito de mesclagem em bolo.txt
+error: não foi possível aplicar d07edbe... Corrige o acento de açúcar
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm &lt;pathspec&gt;", then run
+hint: "git cherry-pick --continue".
+hint: You can instead skip this commit with "git cherry-pick --skip".
+hint: To abort and get back to the state before "git cherry-pick",
+hint: run "git cherry-pick --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+</pre>
+
+<p>(O <code>sed -i</code> só trocou o texto dentro do arquivo, como se a Ana tivesse editado no editor. O <code>-q</code> deixa o commit quieto, e o <code>-a</code> do <code>-am</code> prepara sozinho os arquivos já rastreados.) Linha por linha, o que o cherry-pick disse:</p>
+<dl class="anatomy">
+  <dt>Mesclagem automática de bolo.txt</dt><dd>O Git tentou juntar sozinho a mudança do commit com o <code>bolo.txt</code> do <code>main</code>.</dd>
+  <dt>CONFLITO (conteúdo): conflito de mesclagem em bolo.txt</dt><dd>Não conseguiu: o <strong>conteúdo</strong> da mesma linha mudou dos dois lados.</dd>
+  <dt>error: não foi possível aplicar d07edbe... Corrige o acento de açúcar</dt><dd>Por isso o commit <code>d07edbe</code> ainda não foi copiado. O cherry-pick está <strong>parado no meio</strong>, esperando você.</dd>
+  <dt>hint: After resolving the conflicts…</dt><dd>As dicas (em inglês, porque não estão traduzidas): "depois de resolver os conflitos, marque-os com <code>git add/rm &lt;caminho&gt;</code> e rode <code>git cherry-pick --continue</code>"; "em vez disso, você pode pular este commit com <code>git cherry-pick --skip</code>"; "para desistir e voltar ao estado de antes do <code>git cherry-pick</code>, rode <code>git cherry-pick --abort</code>".</dd>
+  <dt>hint: Disable this message…</dt><dd>"Desligue esta mensagem com …": para quem já sabe tudo isso e não quer mais ver as dicas. Deixe ligado.</dd>
+</dl>
+
+<p>O <code>git status</code> lembra a situação a qualquer momento:</p>
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main
+You are currently cherry-picking commit d07edbe.
+  (fix conflicts and run "git cherry-pick --continue")
+  (use "git cherry-pick --skip" to skip this patch)
+  (use "git cherry-pick --abort" to cancel the cherry-pick operation)
+
+Caminhos não mesclados:
+  (usar "git add &lt;arquivo&gt;..." para marcar resolução)
+	ambos modificados:   bolo.txt
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+</pre>
+<p>"Você está no meio do cherry-pick do commit <code>d07edbe</code>" (<em>You are currently cherry-picking commit</em>), com as mesmas três saídas. Embaixo, em "Caminhos não mesclados", o arquivo com conflito: <code>ambos modificados</code> quer dizer que os dois lados (o <code>main</code> e o commit copiado) mexeram nele.</p>
+
+<p>O arquivo tem as marcas de conflito, como num merge:</p>
+<pre class="term" data-cwd="~/receitas">$ cat bolo.txt
+Bolo de cenoura
+- 3 cenouras
+- 4 ovos
+&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+- 2 xícaras de açucar refinado                 « como está no main (HEAD)
+=======
+- 2 xícaras de açúcar                          « como ficou no commit copiado
+&gt;&gt;&gt;&gt;&gt;&gt;&gt; d07edbe (Corrige o acento de açúcar)
+</pre>
+
+<p>A Ana resolve como em <a href="resolver-conflitos.html">Resolvendo Conflitos</a>: edita o arquivo deixando a versão certa (com o acento <strong>e</strong> o "refinado"), sem as marcas, e marca como resolvido com <code>git add</code>. Depois, em vez de <code>git commit</code>, ela <strong>continua o cherry-pick</strong>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ printf 'Bolo de cenoura\n- 3 cenouras\n- 4 ovos\n- 2 xícaras de açúcar refinado\n' &gt; bolo.txt
+$ git add bolo.txt
+$ git status
+No ramo main
+You are currently cherry-picking commit d07edbe.
+  (all conflicts fixed: run "git cherry-pick --continue")
+  (use "git cherry-pick --skip" to skip this patch)
+  (use "git cherry-pick --abort" to cancel the cherry-pick operation)
+
+Mudanças a serem submetidas:
+	modified:   bolo.txt
+
+$ git cherry-pick --continue --no-edit
+[main b58ddf9] Corrige o acento de açúcar
+ Date: Thu Oct 15 10:30:00 2026 -0300
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+$ git log --oneline
+b58ddf9 Corrige o acento de açúcar
+662fdfb Especifica o açúcar refinado
+74a4b0b Adiciona a receita de pudim
+e0ec859 Adiciona a receita de bolo
+700bbd5 Cria o README
+</pre>
+
+<ul>
+  <li>O <code>printf</code> escreveu o arquivo inteiro já resolvido (no seu dia a dia, você faria isso no editor de texto).</li>
+  <li>Depois do <code>git add</code>, o <code>status</code> mudou para "todos os conflitos resolvidos: rode <code>git cherry-pick --continue</code>" (<em>all conflicts fixed</em>).</li>
+  <li>O <code>--no-edit</code> usa a mensagem do commit original sem perguntar. <strong>Sem ele</strong>, o <code>--continue</code> abre o seu editor de texto com a mensagem já escrita: é só salvar e fechar (no nano, <kbd>Ctrl</kbd>+<kbd>O</kbd>, <kbd>Enter</kbd>, <kbd>Ctrl</kbd>+<kbd>X</kbd>).</li>
+</ul>
+
+<h3>As três saídas de um cherry-pick parado</h3>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th><th>Quando usar</th></tr>
+<tr><td><code>git cherry-pick --continue</code></td><td>Cria o commit com o que você resolveu (e segue para o próximo, se você pediu vários)</td><td>Você resolveu o conflito e deu <code>git add</code></td></tr>
+<tr><td><code>git cherry-pick --abort</code></td><td>Desiste de tudo e volta o branch para como estava antes do cherry-pick</td><td>Você se arrependeu ou escolheu o commit errado</td></tr>
+<tr><td><code>git cherry-pick --skip</code></td><td>Pula só o commit atual e segue para o próximo da lista</td><td>Vários commits: este não faz falta</td></tr>
+<tr><td><code>git cherry-pick --quit</code></td><td>Sai do modo cherry-pick e <strong>deixa</strong> a pasta como está</td><td>Raro: você quer terminar na mão</td></tr>
+</table>
+</div>
+
+<p>O <code>--abort</code> na prática: a Ana desfez o commit copiado, provocou o mesmo conflito e desistiu:</p>
+<pre class="term" data-cwd="~/receitas">$ git reset --hard HEAD~1
+HEAD is now at 662fdfb Especifica o açúcar refinado
+$ git cherry-pick d07edbe
+Mesclagem automática de bolo.txt
+CONFLITO (conteúdo): conflito de mesclagem em bolo.txt
+error: não foi possível aplicar d07edbe... Corrige o acento de açúcar
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm &lt;pathspec&gt;", then run
+hint: "git cherry-pick --continue".
+hint: You can instead skip this commit with "git cherry-pick --skip".
+hint: To abort and get back to the state before "git cherry-pick",
+hint: run "git cherry-pick --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+$ git cherry-pick --abort
+$ git status
+No ramo main
+nothing to commit, working tree clean
+$ git log --oneline
+662fdfb Especifica o açúcar refinado
+74a4b0b Adiciona a receita de pudim
+e0ec859 Adiciona a receita de bolo
+700bbd5 Cria o README
+</pre>
+<p>O <code>--abort</code> não diz nada, mas o <code>status</code> e o <code>log</code> confirmam: as marcas de conflito sumiram e o branch voltou a ser exatamente o de antes.</p>
+
+<hr>
+
+<h2>7. Copiar um commit que já está lá</h2>
+<p>Se a mudança do commit escolhido <strong>já existe</strong> no branch atual (a Ana copiou duas vezes, ou já tinha feito a mesma correção na mão), sobra um commit sem mudança nenhuma, e o Git para para perguntar:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git reset --hard HEAD~1
+HEAD is now at 74a4b0b Adiciona a receita de pudim
+$ git cherry-pick d07edbe
+[main 92c2d52] Corrige o acento de açúcar
+ Date: Thu Oct 15 10:30:00 2026 -0300
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+$ git cherry-pick d07edbe
+The previous cherry-pick is now empty, possibly due to conflict resolution.
+If you wish to commit it anyway, use:
+
+    git commit --allow-empty
+
+Otherwise, please use 'git cherry-pick --skip'
+No ramo main
+You are currently cherry-picking commit d07edbe.
+  (all conflicts fixed: run "git cherry-pick --continue")
+  (use "git cherry-pick --skip" to skip this patch)
+  (use "git cherry-pick --abort" to cancel the cherry-pick operation)
+
+nothing to commit, working tree clean
+$ git cherry-pick --skip
+$ git log --oneline
+92c2d52 Corrige o acento de açúcar
+74a4b0b Adiciona a receita de pudim
+e0ec859 Adiciona a receita de bolo
+700bbd5 Cria o README
+</pre>
+
+<p>Em português: "o cherry-pick anterior agora está <strong>vazio</strong> (<em>empty</em>), possivelmente por causa da resolução de conflitos. Se mesmo assim você quiser commitá-lo, use <code>git commit --allow-empty</code>. Senão, use <code>git cherry-pick --skip</code>". Embaixo, o Git já mostra o <code>status</code>: o cherry-pick está parado, sem nada a commitar. Gravar um commit vazio quase nunca é o que você quer; a Ana pulou com <code>--skip</code>, e o histórico ficou com uma cópia só.</p>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer a mesma coisa</h2>
+<p>O commit pode ser escolhido de vários jeitos; todos apontam para o mesmo <code>D</code>:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>Quer dizer</th></tr>
+<tr><td><code>git cherry-pick d07edbe</code></td><td>pelo hash abreviado (o jeito mais comum)</td></tr>
+<tr><td><code>git cherry-pick d07edbe144d7abd72bc3e14c1c416d2b8f7fa3cc</code></td><td>pelo hash inteiro</td></tr>
+<tr><td><code>git cherry-pick novo-layout~1</code></td><td>"um commit antes da ponta do <code>novo-layout</code>"</td></tr>
+<tr><td><code>git cherry-pick novo-layout</code></td><td>a <strong>ponta</strong> do branch (aqui seria o <code>E</code>, não o <code>D</code>!)</td></tr>
+</table>
+</div>
+
+<p>E há outros caminhos para levar trabalho de um branch para outro. Qual usar:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Use</th></tr>
+<tr><td>Você quer <strong>tudo</strong> o que o branch tem</td><td><a href="git-merge.html">git merge</a> (ou <a href="git-rebase.html">git rebase</a>): o cherry-pick copiaria um por um e deixaria commits duplicados</td></tr>
+<tr><td>Um ou poucos commits prontos num branch que ainda não está pronto</td><td><code>git cherry-pick</code></td></tr>
+<tr><td>Uma correção do <code>main</code> que também precisa ir para o branch de uma versão antiga</td><td><code>git cherry-pick -x</code> (o caso clássico)</td></tr>
+<tr><td>Você quer o <strong>arquivo inteiro</strong> como está no outro branch, não a mudança de um commit</td><td><code>git restore --source=novo-layout bolo.txt</code> (veja <a href="git-restore.html">git restore</a>)</td></tr>
+<tr><td>Commitou no branch errado e quer levar o commit para o certo</td><td><code>git cherry-pick</code> no branch certo e, depois, tirar do errado (veja <a href="git-reset.html">git reset</a>)</td></tr>
+</table>
+</div>
+
+<div class="warning">
+<strong>Não transforme o cherry-pick em hábito</strong>
+<p>Cada cópia é um commit novo. Se mais tarde a Ana juntar o <code>novo-layout</code> inteiro no <code>main</code> com merge, o <code>D</code> e o <code>D'</code> fazem a mesma mudança, e o Git costuma perceber isso sem conflito; mas o histórico fica com a mesma correção duas vezes, com hashes diferentes. Para alguns commits soltos, tudo bem. Para levar um branch inteiro, use merge ou rebase (a aula <a href="rebase-ou-merge.html">Rebase ou Merge?</a> compara os dois).</p>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>O commit não existe (hash ou nome errado)</strong>
+<pre class="term" data-cwd="~/receitas">$ git cherry-pick novo-layot
+fatal: bad revision 'novo-layot'
+$ git cherry-pick 1234567
+fatal: bad revision '1234567'
+</pre>
+<p>"Revisão inválida": o Git não achou nenhum commit com esse nome. No primeiro, faltou um <code>u</code> em <code>novo-layout</code>; no segundo, o hash foi digitado errado (ou é de outro repositório). <strong>Como confirmar:</strong> <code>git log --oneline --all</code> lista os commits de todos os branches. <strong>Como resolver:</strong> copie o hash da lista, em vez de digitar de memória.</p>
+</div>
+
+<div class="cenario">
+<strong>Mudanças não commitadas no mesmo arquivo</strong>
+<pre class="term" data-cwd="~/receitas">$ echo '- 1 pitada de sal' &gt;&gt; bolo.txt
+$ git status --short
+ M bolo.txt
+$ git cherry-pick d07edbe
+error: Your local changes to the following files would be overwritten by merge:
+	bolo.txt
+Please commit your changes or stash them before you merge.
+Aborting
+fatal: cherry-pick failed
+</pre>
+<p>"As suas mudanças locais nestes arquivos seriam sobrescritas: <code>bolo.txt</code>. Faça commit delas ou guarde-as com stash antes. Abortando. O cherry-pick falhou." A Ana tinha uma linha nova no <code>bolo.txt</code> que ainda não foi commitada, e o commit escolhido mexe no mesmo arquivo. O Git <strong>se recusa a começar</strong> para não estragar o seu trabalho (nada foi mudado). <strong>Como resolver:</strong> commite a mudança, ou guarde-a com <a href="git-stash.html">git stash</a>, ou descarte-a com <a href="git-restore.html">git restore</a>, e rode o cherry-pick de novo. (Se as suas mudanças estiverem em <strong>outros</strong> arquivos, que o commit não toca, o cherry-pick funciona normalmente e elas ficam lá.)</p>
+</div>
+
+<div class="cenario">
+<strong>Tentou copiar um commit de merge</strong>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --graph main
+*   bcbdba7 Merge branch 'pudim-de-chocolate'
+|\
+| * e3da56a Adiciona o pudim de chocolate
+|/
+* 74a4b0b Adiciona a receita de pudim
+* e0ec859 Adiciona a receita de bolo
+* 700bbd5 Cria o README
+$ git switch -q novo-layout
+$ git cherry-pick main
+error: commit bcbdba7ca038f5377d6085bdc17d8cd218925e41 is a merge but no -m option was given.
+fatal: cherry-pick failed
+</pre>
+<p>"O commit … é um merge, mas a opção <code>-m</code> não foi dada." Um commit de merge tem <strong>dois pais</strong>, e o cherry-pick copia "a diferença em relação ao pai"; com dois pais, o Git não sabe qual usar. <strong>Como resolver:</strong> quase sempre, o melhor é copiar os commits <strong>de dentro</strong> do branch que foi juntado (aqui, o <code>e3da56a</code>). Se você quer mesmo o merge inteiro, diga qual pai é a base com <code>-m 1</code> (o 1 é o branch que recebeu o merge, o <code>main</code>):</p>
+<pre class="term" data-cwd="~/receitas">$ git cherry-pick -m 1 main
+[novo-layout c22b7cb] Merge branch 'pudim-de-chocolate'
+ Date: Thu Oct 15 10:30:00 2026 -0300
+ 1 file changed, 1 insertion(+)
+ create mode 100644 pudim-chocolate.txt
+</pre>
+<p>Repare que o resultado é um commit <strong>comum</strong> (um pai só) com a mensagem do merge, o que confunde quem lê o histórico depois. Prefira copiar os commits de dentro.</p>
+</div>
+
+<div class="cenario">
+<strong>Começou outro cherry-pick sem terminar o anterior</strong>
+<pre class="term" data-cwd="~/receitas">$ git cherry-pick ac783ac
+error: Cherry-picking is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm &lt;file&gt;'
+hint: as appropriate to mark resolution and make a commit.
+fatal: cherry-pick failed
+</pre>
+<p>"Não é possível fazer cherry-pick porque há arquivos não mesclados. Conserte-os na pasta e use <code>git add/rm</code> para marcar a resolução." A Ana ainda estava no meio do conflito da seção 6. <strong>Como confirmar:</strong> o <code>git status</code> mostra <code>You are currently cherry-picking commit …</code>. <strong>Como resolver:</strong> termine o primeiro (<code>--continue</code>) ou desista dele (<code>--abort</code>), e só então peça o próximo.</p>
+</div>
+
+<div class="cenario">
+<strong>As mesmas mensagens em inglês</strong>
+<p>Com o sistema em inglês (aqui forçado com <code>LC_ALL=C</code>), o conflito da seção 6 aparece assim. Vale reconhecer, porque é o que você vai achar nos fóruns:</p>
+<pre class="term" data-cwd="~/receitas">$ LC_ALL=C git cherry-pick d07edbe
+Auto-merging bolo.txt
+CONFLICT (content): Merge conflict in bolo.txt
+error: could not apply d07edbe... Corrige o acento de açúcar
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm &lt;pathspec&gt;", then run
+hint: "git cherry-pick --continue".
+hint: You can instead skip this commit with "git cherry-pick --skip".
+hint: To abort and get back to the state before "git cherry-pick",
+hint: run "git cherry-pick --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+$ LC_ALL=C git status
+On branch main
+You are currently cherry-picking commit d07edbe.
+  (fix conflicts and run "git cherry-pick --continue")
+  (use "git cherry-pick --skip" to skip this patch)
+  (use "git cherry-pick --abort" to cancel the cherry-pick operation)
+
+Unmerged paths:
+  (use "git add &lt;file&gt;..." to mark resolution)
+	both modified:   bolo.txt
+
+no changes added to commit (use "git add" and/or "git commit -a")
+</pre>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo 'Bolo de cenoura' &gt; bolo.txt;;echo '- 2 xícaras de açucar' &gt;&gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona a receita de bolo';;git switch -q -c novo-layout;;sed -i 's/açucar/açúcar/' bolo.txt;;git commit -q -am 'Corrige o acento de açúcar';;git switch -q main;;sed -i 's/açucar/açucar refinado/' bolo.txt;;git commit -q -am 'Especifica o açúcar refinado';;git cherry-pick novo-layout" data-goal="semconflito,head:main,commits:3,contem:HEAD:bolo.txt=açúcar refinado,limpo" data-solucao="echo 'Bolo de cenoura' &gt; bolo.txt;;echo '- 2 xícaras de açúcar refinado' &gt;&gt; bolo.txt;;git add bolo.txt;;git cherry-pick --continue --no-edit">
+<p class="try-task"><strong>Missão:</strong> a Ana pediu um cherry-pick e deu conflito. Veja a situação com <code>git status</code> e <code>cat bolo.txt</code>. Deixe a linha como <code>- 2 xícaras de açúcar refinado</code> (com o acento <strong>e</strong> o "refinado"), sem as marcas de conflito, marque como resolvido e termine o cherry-pick. Dica: para escrever o arquivo inteiro, use <code>echo 'Bolo de cenoura' &gt; bolo.txt</code> e depois <code>echo '- 2 xícaras de açúcar refinado' &gt;&gt; bolo.txt</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git cherry-pick HASH</code></td><td>Copia o commit para o branch atual, como um commit novo</td></tr>
+<tr><td><code>git cherry-pick A B C</code></td><td>Copia vários, nessa ordem</td></tr>
+<tr><td><code>git cherry-pick A..B</code></td><td>Copia os commits depois de <code>A</code> até <code>B</code> (sem o <code>A</code>)</td></tr>
+<tr><td><code>git cherry-pick A^..B</code></td><td>Copia de <code>A</code> até <code>B</code>, com o <code>A</code></td></tr>
+<tr><td><code>git cherry-pick -x HASH</code></td><td>Acrescenta "(cherry picked from commit …)" na mensagem</td></tr>
+<tr><td><code>git cherry-pick -n HASH</code></td><td>Aplica a mudança sem commitar (fica na área de preparo)</td></tr>
+<tr><td><code>git cherry-pick -e HASH</code></td><td>Abre o editor para mudar a mensagem antes de commitar</td></tr>
+<tr><td><code>git cherry-pick --continue</code></td><td>Segue depois de resolver o conflito e dar <code>git add</code></td></tr>
+<tr><td><code>git cherry-pick --abort</code></td><td>Desiste e volta tudo como estava</td></tr>
+<tr><td><code>git cherry-pick --skip</code></td><td>Pula o commit atual (conflito ou vazio)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o comando</h3>
+<p>Você está no <code>main</code> e quer copiar o commit <code>a1b2c3d</code> anotando na mensagem de onde ele veio:</p>
+<div class="ex-code">git <input data-answer="cherry-pick" aria-label="subcomando"> <input data-answer="-x" aria-label="opção"> a1b2c3d</div>
+</div>
+
+<div class="exercise">
+<h3>2. Depois do conflito</h3>
+<p>O cherry-pick parou com conflito. Você editou o arquivo e deu <code>git add bolo.txt</code>. Qual comando termina a cópia?</p>
+<div class="ex-code">git cherry-pick <input data-answer="--continue" aria-label="opção"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. Depois de um <code>git cherry-pick</code>, o commit copiado tem o mesmo hash do original?</p>
+<label><input type="radio" name="q3"> Sim: é o mesmo commit, só que em dois branches</label>
+<label><input type="radio" name="q3"> Não: é um commit novo, com outro pai, e por isso outro hash</label>
+<label><input type="radio" name="q3"> Só se você usar <code>-x</code></label>
+<label><input type="radio" name="q3"> Depende do tamanho do commit</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. O histórico é <code>C---D---E</code>. Quais commits o <code>git cherry-pick C..E</code> copia?</p>
+<label><input type="radio" name="q4"> <code>C</code>, <code>D</code> e <code>E</code></label>
+<label><input type="radio" name="q4"> Só o <code>C</code> e o <code>E</code></label>
+<label><input type="radio" name="q4"> <code>D</code> e <code>E</code></label>
+<label><input type="radio" name="q4"> Só o <code>E</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. Em que branch o commit copiado aparece?</p>
+<label><input type="radio" name="q5"> No branch em que você está quando roda o cherry-pick</label>
+<label><input type="radio" name="q5"> No branch de onde o commit veio</label>
+<label><input type="radio" name="q5"> Sempre no <code>main</code></label>
+<label><input type="radio" name="q5"> Num branch novo, criado pelo Git</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">6. A Ana quer trazer <strong>todos</strong> os 12 commits de um branch pronto para o <code>main</code>. O que é melhor?</p>
+<label><input type="radio" name="q6"> 12 cherry-picks, um por um</label>
+<label><input type="radio" name="q6"> <code>git cherry-pick -n</code> com o nome do branch</label>
+<label><input type="radio" name="q6"> Copiar os arquivos na mão</label>
+<label><input type="radio" name="q6"> Um <code>git merge</code> (ou rebase) do branch</label>
+</div>
+
+<h3>Missão final: a correção que vai para a versão antiga</h3>
+
+<p>A Ana guarda o branch <code>versao-1</code>, com a versão do site que a família já usa. No <code>main</code>, ela corrigiu o tempo de forno do bolo (que estava errado: 50 minutos em vez de 40), mas o <code>main</code> também tem receitas novas que ainda não devem ir para a versão 1.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;echo 'Bolo de cenoura' &gt; bolo.txt;;echo 'Forno: 50 minutos' &gt;&gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona a receita de bolo';;git branch versao-1;;echo 'Pudim de leite' &gt; pudim.txt;;git add pudim.txt;;git commit -q -m 'Adiciona a receita de pudim';;sed -i 's/50 minutos/40 minutos/' bolo.txt;;git commit -q -am 'Corrige o tempo de forno do bolo';;echo 'Brigadeiro' &gt; brigadeiro.txt;;git add brigadeiro.txt;;git commit -q -m 'Adiciona a receita de brigadeiro'" data-goal="head:versao-1,commits:3,contem:HEAD:bolo.txt=40 minutos,msg:cherry picked from commit,absent:pudim.txt,limpo" data-solucao="git log --oneline main;;git switch versao-1;;git cherry-pick -x main~1">
+<p class="try-task"><strong>Missão:</strong> leve <strong>só</strong> o commit "Corrige o tempo de forno do bolo" para o branch <code>versao-1</code>, com a anotação de onde ele veio (<code>-x</code>). O pudim e o brigadeiro não podem ir junto. Confira no fim com <code>git log</code> e <code>cat bolo.txt</code>.</p>
+</div>
+
+<p>No lab, depois de <code>git switch versao-1</code> e <code>git cherry-pick -x</code> com o hash da correção, o <code>cat bolo.txt</code> mostrou <code>Forno: 40 minutos</code>, o <code>ls</code> mostrou só <code>README.md</code> e <code>bolo.txt</code>, e o <code>git log</code> mostrou a linha <code>(cherry picked from commit 17a84a705080a8557edba5b72686b898ebbf83c6)</code> na mensagem da cópia.</p>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git cherry-pick HASH</code> copia a <strong>mudança</strong> de um commit para o branch em que você está, criando um commit novo.</li>
+  <li>A cópia tem a mesma mensagem, o mesmo autor e a mesma mudança, mas <strong>outro hash</strong> (porque tem outro pai). O original continua no branch de origem.</li>
+  <li><code>-x</code> anota na mensagem de onde a cópia veio; <code>-n</code> aplica sem commitar; vários commits vão na ordem escrita, e <code>A..B</code> deixa o <code>A</code> de fora.</li>
+  <li>Conflito: resolva, <code>git add</code>, <code>git cherry-pick --continue</code>. Para desistir, <code>--abort</code>; para pular um, <code>--skip</code>.</li>
+  <li>Use para alguns commits soltos. Para um branch inteiro, prefira merge ou rebase.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
