@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Versionamento Semântico — o que querem dizer os números v1.2.3 | Guia Git</title>
+<meta name="description" content="Versionamento Semântico (SemVer) para iniciantes: MAJOR.MINOR.PATCH, quando subir cada número, versões 0.x, pré-lançamentos (-beta.1, -rc.1), o prefixo v, e como usar com tags no Git: ordenar com --sort=v:refname e tag.sort, versionsort.suffix, git describe e git log entre versões, com saídas reais.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Versionamento Semântico</span></h1>
+
+<p class="intro">Na aula <a href="git-tag.html">Marcando Versões</a>, a Ana marcou a <code>v1.0</code>. E a próxima? <code>v1.1</code>? <code>v2.0</code>? <code>v1.0.1</code>? O Git aceita qualquer nome; quem dá sentido aos números é uma <strong>convenção</strong>. A mais usada no mundo se chama <strong>Versionamento Semântico</strong> (em inglês, <em>Semantic Versioning</em>, ou <strong>SemVer</strong>): três números, <code>MAJOR.MINOR.PATCH</code>, e cada um conta uma coisa diferente sobre o que mudou. Esta aula explica a regra e mostra como o Git ajuda (e atrapalha) a trabalhar com esses números.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que quer dizer cada número de <code>1.4.2</code>, e quando subir cada um.</li>
+  <li>O que são as versões <code>0.x</code> e os pré-lançamentos (<code>2.0.0-beta.1</code>).</li>
+  <li>Por que o <code>git tag</code> põe <code>v1.10.0</code> antes de <code>v1.2.0</code>, e como corrigir com <code>--sort=v:refname</code>.</li>
+  <li>Como ver o que mudou entre duas versões e em que versão você está.</li>
+</ul>
+</div>
+
+<p>A regra vem da especificação <strong>Semantic Versioning 2.0.0</strong>, publicada em semver.org (há tradução para o português no próprio site). As saídas de terminal vieram do Git 2.53.0 da máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>).</p>
+
+<hr>
+
+<h2>A ideia: errata, edição ampliada e livro novo</h2>
+<p>Pense numa receita publicada num livro. Três coisas diferentes podem acontecer com ela:</p>
+<ul>
+  <li><strong>Errata</strong>: estava escrito "3 xícaras de sla" e o certo é "sal". Quem já usava a receita não precisa mudar nada no jeito de fazer: só corrige o erro.</li>
+  <li><strong>Edição ampliada</strong>: entrou uma sugestão de cobertura no fim. O que já existia continua igual; quem quiser, usa a novidade.</li>
+  <li><strong>Livro novo</strong>: a receita agora é sem glúten, com outros ingredientes e outro forno. Quem seguia a antiga vai ter de <strong>se adaptar</strong>.</li>
+</ul>
+<p>O Versionamento Semântico dá um número para cada um desses três tipos de mudança. Olhando só para o número da versão nova, quem usa o seu projeto já sabe se pode atualizar sem medo.</p>
+
+<hr>
+
+<h2>1. Os três números: <code>MAJOR.MINOR.PATCH</code></h2>
+
+<pre>     1  .  4  .  2
+     │     │     └── PATCH (correção): consertou um defeito, nada muda para quem usa
+     │     └──────── MINOR (novidade):  algo novo, e o que existia continua funcionando
+     └────────────── MAJOR (ruptura):   mudou de um jeito que quebra o que funcionava antes</pre>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Número</th><th>Em inglês</th><th>Sobe quando…</th><th>Exemplo no projeto da Ana</th></tr>
+<tr><td>1º</td><td><strong>MAJOR</strong> ("maior")</td><td>Há uma mudança <strong>incompatível</strong>: quem usava a versão anterior pode ter de mudar alguma coisa</td><td>O site muda todos os endereços das páginas: os links antigos, salvos por outras pessoas, param de funcionar</td></tr>
+<tr><td>2º</td><td><strong>MINOR</strong> ("menor")</td><td>Entra uma <strong>funcionalidade nova</strong>, compatível com o que existia</td><td>O site ganha uma busca de receitas</td></tr>
+<tr><td>3º</td><td><strong>PATCH</strong> ("remendo")</td><td>Há só <strong>correções</strong> de defeitos, compatíveis</td><td>Corrige um erro de digitação, um link quebrado</td></tr>
+</table>
+</div>
+
+<p>Na especificação, "quem usa" é a <strong>API pública</strong> do projeto: aquilo que outras pessoas ou programas usam dele (as funções de uma biblioteca, os comandos de um programa, os endereços de um site). A pergunta-chave é sempre: <strong>"quem usava a versão anterior vai ter algum problema com esta?"</strong></p>
+
+<h3>As regras de subir os números</h3>
+<ol class="passo">
+  <li>Subiu o PATCH: só ele muda. <code>1.4.2</code> → <code>1.4.3</code>.</li>
+  <li>Subiu o MINOR: o PATCH <strong>volta a zero</strong>. <code>1.4.3</code> → <code>1.5.0</code>.</li>
+  <li>Subiu o MAJOR: MINOR e PATCH <strong>voltam a zero</strong>. <code>1.5.0</code> → <code>2.0.0</code>.</li>
+  <li>Os números são inteiros e crescem sem limite: depois de <code>1.9.0</code> vem <code>1.10.0</code>, e não <code>2.0.0</code>. (Não é um número decimal: <code>1.10</code> é maior que <code>1.9</code>.)</li>
+  <li>Uma versão lançada <strong>nunca muda</strong>. Achou um erro na <code>1.4.2</code>? Lance a <code>1.4.3</code>. (Por isso, uma tag publicada nunca é movida; veja <a href="git-tag.html">Marcando Versões</a>.)</li>
+</ol>
+
+<p>Uma lista de mudanças no projeto da Ana, e a versão de cada lançamento:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>O que mudou</th><th>Tipo</th><th>Versão</th></tr>
+<tr><td>Primeira versão pública do site</td><td>—</td><td><code>1.0.0</code></td></tr>
+<tr><td>Corrige erro de digitação na receita de bolo</td><td>correção</td><td><code>1.0.1</code></td></tr>
+<tr><td>Adiciona a busca de receitas</td><td>novidade</td><td><code>1.1.0</code></td></tr>
+<tr><td>Adiciona a lista de compras <strong>e</strong> corrige um link</td><td>novidade (a maior das duas manda)</td><td><code>1.2.0</code></td></tr>
+<tr><td>Muda os endereços de todas as páginas</td><td>ruptura</td><td><code>2.0.0</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>2. Antes do 1.0.0: as versões <code>0.x</code></h2>
+<p>Enquanto o projeto está nascendo e tudo pode mudar a qualquer momento, use <code>0.</code> no começo: <code>0.1.0</code>, <code>0.2.0</code>, <code>0.9.3</code>. Pela especificação, numa versão <code>0.y.z</code> <strong>qualquer coisa pode mudar</strong>, e ninguém deve contar com estabilidade. A <code>1.0.0</code> é a promessa: "a partir daqui, eu sigo as regras". A especificação sugere começar em <code>0.1.0</code>.</p>
+
+<hr>
+
+<h2>3. Pré-lançamentos: <code>-alpha</code>, <code>-beta</code>, <code>-rc</code></h2>
+<p>Antes de lançar a <code>2.0.0</code>, a Ana quer que alguns amigos testem. Para isso existem as versões de <strong>pré-lançamento</strong> (em inglês, <em>pre-release</em>): um hífen e um identificador depois dos três números.</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Versão</th><th>Costuma querer dizer</th></tr>
+<tr><td><code>2.0.0-alpha.1</code></td><td>Primeira versão de testes, ainda incompleta</td></tr>
+<tr><td><code>2.0.0-beta.1</code></td><td>Completa, mas ainda em teste; pode ter defeitos</td></tr>
+<tr><td><code>2.0.0-rc.1</code></td><td><em>Release candidate</em>, "candidata a lançamento": se ninguém achar problema, vira a <code>2.0.0</code></td></tr>
+<tr><td><code>2.0.0</code></td><td>A versão final</td></tr>
+</table>
+</div>
+<p>Pela especificação, um pré-lançamento vem <strong>antes</strong> da versão final: <code>2.0.0-alpha.1</code> &lt; <code>2.0.0-beta.1</code> &lt; <code>2.0.0-rc.1</code> &lt; <code>2.0.0</code>. (Os nomes <code>alpha</code>, <code>beta</code> e <code>rc</code> são costume; a regra só exige o hífen e letras, números e pontos.) Existe também a informação de <em>build</em>, depois de um <code>+</code> (<code>1.0.0+20261015</code>), que não conta para a ordem; é bem menos comum.</p>
+
+<div class="note">
+<strong>E o <code>v</code> na frente?</strong>
+<p>A versão é <code>1.4.2</code>; o <code>v</code> de <code>v1.4.2</code> não faz parte do Versionamento Semântico. Mas pôr o <code>v</code> no <strong>nome da tag</strong> é um costume muito comum (o próprio FAQ do semver.org diz isso), e ajuda a separar tags de versão de outras tags. Escolha um jeito e use sempre o mesmo: misturar <code>v1.0.0</code> e <code>1.0.0</code> atrapalha a ordenação (veja em <a href="#errado">Quando dá errado</a>).</p>
+</div>
+
+<hr>
+
+<h2>4. No Git: tags com números de versão</h2>
+<p>A Ana passou a usar o SemVer nas tags anotadas do site (aula <a href="git-tag.html">Marcando Versões</a>): <code>v1.0.0</code>, <code>v1.0.1</code> e <code>v1.1.0</code>, cada uma num commit. Para mostrar o que acontece com muitas versões, ela criou mais algumas tags <strong>de teste</strong>, todas no mesmo commit (só para a demonstração; depois apagou):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git tag v1.2.0
+$ git tag v1.9.0
+$ git tag v1.10.0
+$ git tag v2.0.0-beta.1
+$ git tag v2.0.0
+$ git tag
+v1.0.0
+v1.0.1
+v1.1.0
+v1.10.0
+v1.2.0
+v1.9.0
+v2.0.0
+v2.0.0-beta.1
+</pre>
+
+<p>Viu o problema? O <code>git tag</code> lista em ordem <strong>alfabética</strong>, letra por letra, como num dicionário: <code>v1.1</code> e depois <code>v1.10</code>, porque <code>"1.10"</code> começa igual a <code>"1.1"</code>; o <code>v1.2.0</code> só vem depois. Para o Git, <code>v1.10.0</code> é só um texto.</p>
+
+<h3>Ordem de versão: <code>--sort=v:refname</code></h3>
+
+<pre class="term" data-cwd="~/receitas">$ git tag --sort=v:refname
+v1.0.0
+v1.0.1
+v1.1.0
+v1.2.0
+v1.9.0
+v1.10.0
+v2.0.0
+v2.0.0-beta.1
+$ git tag --sort=-v:refname
+v2.0.0-beta.1
+v2.0.0
+v1.10.0
+v1.9.0
+v1.2.0
+v1.1.0
+v1.0.1
+v1.0.0
+</pre>
+
+<dl class="anatomy">
+  <dt>--sort=v:refname</dt><dd>"Ordene pelo nome, tratando-o como <strong>versão</strong>" (o <code>v:</code> é de <em>version</em>). Agora os números são comparados como números: <code>1.2</code>, <code>1.9</code>, <code>1.10</code>.</dd>
+  <dt>--sort=-v:refname</dt><dd>Com o <code>-</code> na frente, a ordem inversa: a versão mais nova primeiro. Útil para ver "qual é a última?".</dd>
+</dl>
+
+<p>Quase perfeito. Olhe o fim da primeira lista: o Git pôs a <code>v2.0.0-beta.1</code> <strong>depois</strong> da <code>v2.0.0</code>, mas pela regra do SemVer o pré-lançamento vem antes. Para o Git entender que o que vem depois de um hífen é um pré-lançamento, há uma configuração:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git config versionsort.suffix -
+$ git tag --sort=v:refname
+v1.0.0
+v1.0.1
+v1.1.0
+v1.2.0
+v1.9.0
+v1.10.0
+v2.0.0-beta.1
+v2.0.0
+</pre>
+
+<p>O <code>versionsort.suffix -</code> diz: "um nome com <code>-</code> depois da versão vem <strong>antes</strong> da versão sem nada". Agora a ordem é a do SemVer. E para não digitar o <code>--sort</code> toda vez, configure a ordem padrão do <code>git tag</code>:</p>
+
+<pre class="term" data-cwd="~/r">$ git tag
+v1.10.0
+v1.2.0
+v1.9.0
+$ git config tag.sort v:refname
+$ git tag
+v1.2.0
+v1.9.0
+v1.10.0
+</pre>
+
+<p>(Num repositório de teste, com só três tags.) Com <code>--global</code>, as duas configurações valem para todos os seus repositórios (veja <a href="config-util.html">Configurações Úteis</a>). O padrão do <code>-l</code> também combina com a ordem:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git tag -l 'v1.*' --sort=-v:refname
+v1.10.0
+v1.9.0
+v1.2.0
+v1.1.0
+v1.0.1
+v1.0.0
+</pre>
+
+<p>Só a família <code>1.x</code>, da mais nova para a mais velha.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeira versão';;git tag -a v1.0.0 -m 'Primeira versão';;echo 'Receitas da família.' &gt;&gt; README.md;;git commit -q -am 'Corrige erro de digitação no README'" data-goal="tag:v1.0.1,ran:tag -a" data-solucao="git tag -a v1.0.1 -m 'Corrige erro de digitação'">
+<p class="try-task"><strong>Missão:</strong> a última versão do site é a <code>v1.0.0</code>. Depois dela, a Ana só corrigiu um erro de digitação (veja com <code>git log --oneline</code>). Crie a tag <strong>anotada</strong> da próxima versão, seguindo o Versionamento Semântico, com uma mensagem que diga o que mudou.</p>
+</div>
+
+<hr>
+
+<h2>5. O que mudou entre versões?</h2>
+<p>Com as versões marcadas, o Git responde perguntas como "o que entrou na 1.1.0?". Depois de apagar as tags de teste, a Ana fez mais um commit:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline v1.0.1..v1.1.0
+02645c6 (tag: v1.1.0) Adiciona a busca de receitas
+$ git log --oneline v1.1.0..HEAD
+a628093 (HEAD -&gt; main) Muda o layout
+$ git describe
+v1.1.0-1-ga628093
+$ git describe --abbrev=0
+v1.1.0
+</pre>
+
+<dl class="anatomy">
+  <dt>git log --oneline v1.0.1..v1.1.0</dt><dd>Os commits que estão na <code>v1.1.0</code> e não estavam na <code>v1.0.1</code>: o que entrou nessa versão. Os dois pontos querem dizer "de … até …" (mais em <a href="log-filtros.html">git log: Filtros e Formatos</a>).</dd>
+  <dt>git log --oneline v1.1.0..HEAD</dt><dd>O que foi feito <strong>desde</strong> a última versão: o que vai entrar na próxima. É o rascunho das notas da versão.</dd>
+  <dt>git describe → v1.1.0-1-ga628093</dt><dd>"Um commit depois da <code>v1.1.0</code>, no commit <code>a628093</code>" (o <code>g</code> é de "git").</dd>
+  <dt>git describe --abbrev=0</dt><dd>Só o nome da última tag anotada: <code>v1.1.0</code>. Perfeito para responder "qual é a versão atual?".</dd>
+</dl>
+
+<p>Olhando o <code>v1.1.0..HEAD</code>, a Ana decide o próximo número: "Muda o layout" mudou só a aparência, sem quebrar nada nem acrescentar funcionalidade? <code>v1.1.1</code>. Acrescentou algo? <code>v1.2.0</code>. É aqui que as mensagens de commit bem escritas ajudam; a aula <a href="conventional-commits.html">Conventional Commits</a> mostra um padrão de mensagens feito para casar com o SemVer.</p>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de numerar versões</h2>
+<p>O SemVer é o mais comum, mas não é o único:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Esquema</th><th>Exemplo</th><th>Usado por / quando</th></tr>
+<tr><td>Versionamento Semântico</td><td><code>2.4.1</code></td><td>Bibliotecas, programas e sites que outras pessoas usam; o padrão de quase todo o mundo do código aberto</td></tr>
+<tr><td>Por data (<em>CalVer</em>)</td><td><code>2026.10</code>, <code>26.04</code></td><td>Projetos lançados em datas fixas. O Ubuntu da Ana, por exemplo, é o <code>26.04</code>: ano 2026, mês 04</td></tr>
+<tr><td>Um número só</td><td><code>v1</code>, <code>v2</code>, <code>v3</code></td><td>Projetos pequenos e pessoais, sem ninguém dependendo deles</td></tr>
+</table>
+</div>
+<p>O Git não obriga nenhum deles. Qualquer que seja o esquema, o importante é usá-lo <strong>sempre do mesmo jeito</strong> e registrar cada versão com uma tag anotada.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>v1.10.0</code> aparece antes de <code>v1.2.0</code></strong>
+<p>É a ordem alfabética do <code>git tag</code> (seção 4). Nada está errado nas tags. <strong>Como resolver:</strong> <code>git tag --sort=v:refname</code>, ou de uma vez por todas, <code>git config --global tag.sort v:refname</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Misturou tags com e sem <code>v</code></strong>
+<pre class="term" data-cwd="~/r">$ git tag v1.0
+$ git tag 1.0.0
+$ git tag --sort=-v:refname
+v1.10.0
+v1.9.0
+v1.2.0
+v1.0
+1.0.0
+</pre>
+<p>Com as tags <code>v1.2.0</code>, <code>v1.9.0</code> e <code>v1.10.0</code> no repositório de teste, a Ana criou também <code>v1.0</code> (com dois números) e <code>1.0.0</code> (sem <code>v</code>). A ordem por versão ficou estranha: a <code>1.0.0</code>, sem o <code>v</code>, foi para o fim, separada das outras. <strong>Como evitar:</strong> escolha um formato (por exemplo, sempre <code>v</code> + três números) e não fuja dele.</p>
+</div>
+
+<div class="cenario">
+<strong>"Lancei a 1.3.0, mas tinha um erro. Posso trocar o que está na 1.3.0?"</strong>
+<p>Não. Pela regra 5 da seção 1, uma versão lançada nunca muda: alguém já pode ter baixado a <code>1.3.0</code> com o erro. <strong>Como resolver:</strong> corrija num commit novo e lance a <code>1.3.1</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>"Mudei uma coisa pequena, mas que quebra quem usava. É PATCH?"</strong>
+<p>Não: o tamanho da mudança não importa, o que importa é se ela é <strong>compatível</strong>. Mudar o nome de um único arquivo que outras páginas usam é pequeno e quebra: é MAJOR (ou, numa versão <code>0.x</code>, pode ser só MINOR, porque lá tudo pode mudar).</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Item</th><th>Resumo</th></tr>
+<tr><td><code>MAJOR.MINOR.PATCH</code></td><td>Ruptura . novidade compatível . correção</td></tr>
+<tr><td>Subir o MINOR</td><td>Zera o PATCH (<code>1.4.3</code> → <code>1.5.0</code>)</td></tr>
+<tr><td>Subir o MAJOR</td><td>Zera MINOR e PATCH (<code>1.5.0</code> → <code>2.0.0</code>)</td></tr>
+<tr><td><code>0.y.z</code></td><td>Desenvolvimento inicial: tudo pode mudar</td></tr>
+<tr><td><code>2.0.0-beta.1</code></td><td>Pré-lançamento: vem antes da <code>2.0.0</code></td></tr>
+<tr><td><code>git tag -a v1.2.0 -m "…"</code></td><td>Marca a versão com uma tag anotada</td></tr>
+<tr><td><code>git tag --sort=v:refname</code> / <code>-v:refname</code></td><td>Lista as tags em ordem de versão / da mais nova para a mais velha</td></tr>
+<tr><td><code>git config tag.sort v:refname</code></td><td>Faz o <code>git tag</code> usar a ordem de versão sempre</td></tr>
+<tr><td><code>git config versionsort.suffix -</code></td><td>Põe os pré-lançamentos (<code>-beta.1</code>) antes da versão final</td></tr>
+<tr><td><code>git log --oneline v1.0.1..v1.1.0</code></td><td>O que entrou numa versão</td></tr>
+<tr><td><code>git describe --abbrev=0</code></td><td>A última tag anotada (a versão atual)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Qual a próxima versão?</h3>
+<p>A versão atual é <code>2.3.4</code>. Escreva a próxima, em cada caso:</p>
+<div class="ex-code">Só uma correção de defeito: <input data-answer="2.3.5" aria-label="versão depois de uma correção"><br>Uma funcionalidade nova, compatível: <input data-answer="2.4.0" aria-label="versão depois de uma novidade"><br>Uma mudança incompatível: <input data-answer="3.0.0" aria-label="versão depois de uma ruptura"></div>
+</div>
+
+<div class="exercise">
+<h3>2. Depois do 1.9.0</h3>
+<p>A versão atual é <code>1.9.0</code> e entrou uma funcionalidade nova, compatível. Qual é a próxima versão?</p>
+<div class="ex-code"><input data-answer="1.10.0" aria-label="versão"></div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. Qual destas versões vem primeiro, pela regra do SemVer?</p>
+<label><input type="radio" name="q3"> <code>2.0.0</code></label>
+<label><input type="radio" name="q3"> <code>2.0.0-rc.1</code></label>
+<label><input type="radio" name="q3"> <code>2.0.0-alpha.1</code></label>
+<label><input type="radio" name="q3"> <code>2.0.1</code></label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. Por que o <code>git tag</code>, sem opções, mostra <code>v1.10.0</code> antes de <code>v1.2.0</code>?</p>
+<label><input type="radio" name="q4"> Porque a <code>v1.10.0</code> foi criada antes</label>
+<label><input type="radio" name="q4"> Porque ele ordena os nomes como texto, em ordem alfabética</label>
+<label><input type="radio" name="q4"> Porque <code>1.10</code> é menor que <code>1.2</code></label>
+<label><input type="radio" name="q4"> É um defeito do Git</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">5. A versão <code>1.3.0</code> foi lançada com um erro. O que fazer?</p>
+<label><input type="radio" name="q5"> Apagar a tag <code>v1.3.0</code> e criá-la de novo no commit corrigido</label>
+<label><input type="radio" name="q5"> Lançar a <code>2.0.0</code></label>
+<label><input type="radio" name="q5"> Lançar a <code>1.3.0-fix</code></label>
+<label><input type="radio" name="q5"> Corrigir num commit novo e lançar a <code>1.3.1</code></label>
+</div>
+
+<h3>Missão final: a décima versão</h3>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeira versão';;git tag v1.0.0;;git tag v1.2.0;;git tag v1.9.0;;echo 'Lista de compras' &gt; compras.txt;;git add compras.txt;;git commit -q -m 'Adiciona a lista de compras'" data-goal="tag:v1.10.0,ran:sort=-?v:refname" data-solucao="git tag -a v1.10.0 -m 'Lista de compras';;git tag --sort=v:refname">
+<p class="try-task"><strong>Missão:</strong> a última versão do site é a <code>v1.9.0</code>, e a Ana acabou de acrescentar a lista de compras, uma funcionalidade nova e compatível. Crie a tag anotada da próxima versão. Depois, liste as tags com <code>git tag</code> e repare onde a nova aparece; liste de novo em ordem de versão.</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>No Versionamento Semântico, a versão é <code>MAJOR.MINOR.PATCH</code>: <strong>MAJOR</strong> sobe com mudanças incompatíveis, <strong>MINOR</strong> com novidades compatíveis, <strong>PATCH</strong> com correções. Subir um número zera os da direita.</li>
+  <li>Versões <code>0.y.z</code> são de desenvolvimento inicial; a <code>1.0.0</code> é a primeira estável. Pré-lançamentos (<code>-alpha.1</code>, <code>-beta.1</code>, <code>-rc.1</code>) vêm antes da versão final.</li>
+  <li>Uma versão lançada nunca muda: corrija lançando outra.</li>
+  <li>No Git, cada versão vira uma tag anotada (<code>v1.2.0</code>). O <code>git tag</code> ordena como texto; use <code>--sort=v:refname</code> (ou <code>git config tag.sort v:refname</code>) e <code>versionsort.suffix -</code> para a ordem certa.</li>
+  <li><code>git log v1.0.1..v1.1.0</code> mostra o que entrou numa versão; <code>git describe --abbrev=0</code>, a versão atual.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
