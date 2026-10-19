@@ -184,6 +184,12 @@ upstream, see 'push.autoSetupRemote' in 'git help config'.
 
 <pre class="term" data-cwd="~/lojinha">$ git config --global push.autoSetupRemote true
 $ git push
+Enumerating objects: 4, done.
+Counting objects: 100% (4/4), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (2/2), done.
+Writing objects: 100% (3/3), 298 bytes | 298.00 KiB/s, done.
+Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
 To /home/ana/servidor/lojinha.git
  * [new branch]      promocao -&gt; promocao
 branch 'promocao' set up to track 'origin/promocao'.
@@ -195,6 +201,7 @@ nothing to commit, working tree clean
 </pre>
 
 <dl class="anatomy">
+  <dt>Enumerating objects … Total 3</dt><dd>O progresso do envio: o Git conta, comprime e manda os objetos do commit novo (cada linha está explicada em <a href="git-push.html">git push</a>). O terminal do guia não mostra essas linhas.</dd>
   <dt>To /home/ana/servidor/lojinha.git</dt><dd>Para onde foi. Neste exemplo, o "servidor" da lojinha é uma pasta no próprio computador da Ana; com o GitHub, aparece o endereço <code>https://github.com/…</code>.</dd>
   <dt>* [new branch] promocao -&gt; promocao</dt><dd>"Branch novo": o <code>promocao</code> da Ana virou o <code>promocao</code> do servidor.</dd>
   <dt>branch 'promocao' set up to track 'origin/promocao'.</dt><dd>"O branch <code>promocao</code> foi configurado para rastrear <code>origin/promocao</code>": exatamente o que o <code>--set-upstream</code> faria. Daqui para a frente, <code>git push</code> e <code>git pull</code> sabem para onde ir.</dd>
