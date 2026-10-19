@@ -727,7 +727,7 @@
     };
     R.numstat = function (m) {
       var ta = m.a ? (m.a.texto != null ? m.a.texto : this.textoBlob(m.a.hash)) : "", tb = m.b ? (m.b.texto != null ? m.b.texto : this.textoBlob(m.b.hash)) : "";
-      if (binario(ta) || binario(tb)) return { bin: true, add: 0, del: 0 };
+      if (binario(ta) || binario(tb)) return { bin: true, add: 0, del: 0, ta: utf8bytes(ta).length, tb: utf8bytes(tb).length };
       return contarMudancas(ta, tb);
     };
     function nomeStat(m) {
@@ -755,7 +755,7 @@
       itens.forEach(function (x) {
         var nome = x.nome;
         out += " " + nome + rep(" ", largNome - larg(nome)) + " | ";
-        if (x.n.bin) { out += "Bin\n"; return; }
+        if (x.n.bin) { out += "Bin " + x.n.ta + " -> " + x.n.tb + " bytes\n"; return; }
         var a = x.n.add, d = x.n.del, tot = a + d;
         out += rep(" ", largNum - String(tot).length) + tot;
         if (tot) {
@@ -795,7 +795,7 @@
       idx.forEach(function (e) { if (e.stage === 0) I0[e.path] = { mode: e.mode, hash: e.hash }; else conf[e.path] = conf[e.path] || []; if (e.stage) conf[e.path][e.stage] = e; });
       var W = this.arquivos(), WM = {};
       Object.keys(W).forEach(function (k) { if (!/\/$/.test(k)) WM[k] = W[k]; });
-      var preparado = compararMapas(H, I0, true).filter(function (m) { return !conf[m.para] && !conf[m.de]; });
+      var preparado = compararMapas(H, I0, function (a, b) { return self.similaridade(a, b); }).filter(function (m) { return !conf[m.para] && !conf[m.de]; });
       var naoPrep = [];
       Object.keys(I0).sort(cmpCam).forEach(function (k) {
         var n = WM[k];
@@ -830,8 +830,13 @@
       ign.forEach(function (k) {
         var p = k.replace(/\/$/, "").split("/"), alvo = k;
         for (var i = 1; i < p.length; i++) { var d = p.slice(0, i).join("/"); if (self.regraIgnore(d, true) && !self.regraIgnore(d, true).neg) { alvo = d + "/"; break; } }
-        if (alvo === k) {
-          // pasta só com ignorados e sem rastreados
+        if (alvo === k) { // pasta só com ignorados (e sem nada rastreado nem não rastreado dentro): "pasta/"
+          var pp = k.split("/");
+          for (var j = 1; j < pp.length; j++) {
+            var dir = pp.slice(0, j).join("/") + "/";
+            var dentro = Object.keys(self.arquivos()).filter(function (x) { return x.indexOf(dir) === 0; });
+            if (dentro.every(function (x) { return ign.indexOf(x) >= 0; }) && !Object.keys(I0).some(function (x) { return x.indexOf(dir) === 0; })) { alvo = dir; break; }
+          }
         }
         if (!vistos[alvo]) { vistos[alvo] = 1; res.push(alvo); }
       });
@@ -1464,6 +1469,7 @@
       if (opt.oneline) {
         s += (opt.abbrev === false ? h : repo.abrev(h)) + (deco ? " (" + deco + ")" : "") + " " + assunto(c.msg) + "\n";
       } else if (opt.format != null) {
+        if (opt.format === "") return "";
         s += formatoLivre(repo, h, c, opt.format) + (opt.tformat ? "\n" : "");
       } else {
         s += "commit " + h + (deco ? " (" + deco + ")" : "") + "\n";
@@ -1568,6 +1574,7 @@
         else if (/^--(since|after|until|before)$/.test(a)) o[/since|after/.test(a) ? "since" : "until"] = args[++i];
         else if ((m = /^--author$/.exec(a))) o.author.push(args[++i]);
         else if ((m = /^--date=(.*)$/.exec(a))) o.dataFmt = m[1];
+        else if (/^-[MC]\d*%?$|^--find-renames|^--find-copies|^--no-renames$/.test(a)) {}
         else if (a === "--follow" || a === "--color=never" || a === "--no-color" || a === "--date-order" || a === "--topo-order") { if (a === "--topo-order") o.topo = true; }
         else if (a[0] === "-") return { erro: a };
         else o.revs.push(a);
@@ -1669,7 +1676,7 @@
           var mud = mudancasCommit(repo, h);
           if (specs.length) mud = mud.filter(function (m) { return specs.some(function (s) { return casaSpec(s, m.para); }); });
           var corpo = corpoDiffCommit(repo, h, o, mud);
-          if (corpo) out += (o.oneline || o.format != null ? "" : (o.stat && o.patch ? "---\n" : "\n")) + corpo;
+          if (corpo) out += (o.oneline ? "" : o.format != null ? "\n" : (o.stat && o.patch ? "---\n" : "\n")) + corpo;
         }
       });
       io.out(out);
@@ -1870,7 +1877,7 @@
         if (o.paths.length) { var specs = o.paths.map(function (p) { return pathspec(repo, p); }); mud = mud.filter(function (m) { return specs.some(function (s) { return casaSpec(s, m.para); }); }); }
         if (!o.stat && !o.nameOnly && !o.nameStatus && !o.shortstat) o.patch = true;
         var corpo = corpoDiffCommit(repo, h, o, mud);
-        if (corpo) out += (o.oneline || o.format != null ? "" : "\n") + corpo;
+        if (corpo) out += (o.oneline || o.format === "" ? "" : "\n") + corpo;
       });
       io.out(out);
       return 0;
@@ -2523,7 +2530,7 @@
 
     /* ---------- tag ---------- */
     CMDS.tag = function (args, io, sh) {
-      var g = opcoes(args, { "-a": true, "--annotate": "-a", "-m": "valor", "--message": "-m", "-d": true, "--delete": "-d", "-l": true, "--list": "-l", "-f": true, "--force": "-f", "-n": "opcional", "-s": true });
+      var g = opcoes(args, { "-a": true, "--annotate": "-a", "-m": "valor", "--message": "-m", "-d": true, "--delete": "-d", "-l": true, "--list": "-l", "-f": true, "--force": "-f", "-n": "opcional", "-s": true, "--sort": "valor", "--contains": "valor", "--points-at": "valor", "--merged": "opcional" });
       if (g.erro) { io.err("error: " + g.erro + "\n"); return 129; }
       var repo = precisaRepo(io), o = g.o, ops = g.ops;
       if (o["-d"]) {
@@ -2534,6 +2541,16 @@
       if (!ops.length || o["-l"]) {
         var tags = repo.listarRefs("refs/tags/");
         if (ops.length) tags = tags.filter(function (t) { return ops.some(function (p) { return new RegExp("^" + globRe(p) + "$").test(t.nome.slice(10)); }); });
+        if (o["--contains"]) { var hc0 = repo.commitDe(o["--contains"]); tags = tags.filter(function (t) { return hc0 && repo.ehAncestral(hc0, repo.descascar(t.hash)); }); }
+        if (o["--points-at"]) { var hp0 = repo.rev(o["--points-at"]); tags = tags.filter(function (t) { return repo.descascar(t.hash) === repo.descascar(hp0); }); }
+        if (o["--sort"]) {
+          var srt = lista(o["--sort"]).slice(-1)[0], inv = srt[0] === "-"; if (inv) srt = srt.slice(1);
+          var cmpV = function (a, b) { var x = a.split(/(\d+)/), y = b.split(/(\d+)/); for (var i = 0; i < Math.max(x.length, y.length); i++) { var p = x[i] || "", q = y[i] || ""; if (p === q) continue; if (/^\d+$/.test(p) && /^\d+$/.test(q)) return +p - +q; return p < q ? -1 : 1; } return 0; };
+          if (/^(v|version):refname$/.test(srt)) tags.sort(function (a, b) { return cmpV(a.nome.slice(10), b.nome.slice(10)); });
+          else if (srt === "refname") tags.sort(function (a, b) { return cmpCam(a.nome, b.nome); });
+          else if (/date$/.test(srt)) tags.sort(function (a, b) { var oa = repo.ler(a.hash), ob = repo.ler(b.hash); var ta = parseIdent(oa.tagger || oa.committer).ts, tb = parseIdent(ob.tagger || ob.committer).ts; return ta - tb; });
+          if (inv) tags.reverse();
+        }
         var out = "";
         tags.forEach(function (t) {
           var n = t.nome.slice(10);

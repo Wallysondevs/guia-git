@@ -1,0 +1,42 @@
+### diff-renomeacao-ignore-binario
+mkdir r && cd r && git init -q
+printf 'linha 1\nlinha 2\nlinha 3\nlinha 4\nlinha 5\nlinha 6\nlinha 7\nlinha 8\nlinha 9\nlinha 10\n' > texto.txt
+printf 'sem fim' > semfim.txt
+echo '#!/bin/bash' > s.sh
+git add .; git commit -qm um
+printf 'sem fim\n' > semfim.txt
+git diff
+chmod +x s.sh
+git diff
+git status -s
+sed -i 's/linha 5/LINHA 5/' texto.txt
+git mv texto.txt doc.txt
+git add -A
+git status
+git commit -qm dois
+git show --stat
+git log --stat -1 --format=%s
+git show -M --name-status --format=
+mkdir -p logs build/tmp; echo x > logs/a.log; echo y > build/tmp/b.o; echo k > keep.log
+printf '*.log\n!keep.log\nbuild/\n' > .gitignore
+git status
+git status --ignored
+git status -uall
+git add .
+git status -s
+git check-ignore -v logs/a.log build/tmp/b.o keep.log
+git ls-files
+printf '\x00\x01bin' > img.bin; git add img.bin; git commit -qm bin
+printf '\x00\x02bin' > img.bin
+git diff
+git diff --stat
+git log --oneline --stat -1
+### tag-sort-format-vazio
+mkdir r && cd r && git init -q && echo a > a && git add a && git commit -qm um
+for v in v1.0.0 v1.2.0 v1.10.0 v1.9.0 v2.0.0; do git tag $v; done
+git tag
+git tag --sort=version:refname
+git tag --sort=-v:refname
+git tag -l "v1.*" --sort=v:refname
+git show --name-status --format=
+git log --oneline --stat
