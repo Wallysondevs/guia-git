@@ -67,19 +67,19 @@
 <p>A Ana enviou a receita de pudim para o GitHub, com um erro de digitação ("leiet"). O Bruno clonou o repositório e começou a trabalhar em cima: commitou a receita de brigadeiro no computador dele, mas ainda não enviou.</p>
 
 <pre class="term" data-cwd="~/receitas">$ git log --oneline
-14fffbd Adiciona a receita de pudim
+14fffbd (HEAD -&gt; main, origin/main) Adiciona a receita de pudim
 c34349b Adiciona a receita de bolo
 700bbd5 Cria o README
 </pre>
 
 <pre class="term" data-user="bruno" data-cwd="~/receitas">$ git log --oneline
-52e2dc5 Adiciona a receita de brigadeiro
-14fffbd Adiciona a receita de pudim
+52e2dc5 (HEAD -&gt; main) Adiciona a receita de brigadeiro
+14fffbd (origin/main, origin/HEAD) Adiciona a receita de pudim
 c34349b Adiciona a receita de bolo
 700bbd5 Cria o README
 </pre>
 
-<p>O primeiro terminal é o da Ana; o segundo, o do Bruno. Os três commits de baixo são <strong>os mesmos</strong> nos dois computadores (mesmos hashes), e o <code>52e2dc5</code> do Bruno foi feito em cima do <code>14fffbd</code> da Ana:</p>
+<p>O primeiro terminal é o da Ana; o segundo, o do Bruno. Os três commits de baixo são <strong>os mesmos</strong> nos dois computadores (mesmos hashes), e o <code>52e2dc5</code> do Bruno foi feito em cima do <code>14fffbd</code> da Ana. Os nomes entre parênteses mostram onde cada branch está: <code>HEAD -&gt; main</code> é o branch atual; <code>origin/main</code> é a última posição do <code>main</code> do GitHub que aquele computador conhece (veja <a href="git-fetch.html">git fetch</a>). No Bruno, o <code>origin/main</code> está um commit atrás do <code>main</code> dele: o brigadeiro ainda não foi enviado.</p>
 <pre>
 GitHub e Ana:   A---B---P
 Bruno:          A---B---P---G
@@ -94,7 +94,7 @@ Bruno:          A---B---P---G
 <pre class="term" data-cwd="~/receitas">$ sed -i 's/leiet/leite/' pudim.txt
 $ git commit -q -a --amend --no-edit
 $ git log --oneline
-fa7fe1f Adiciona a receita de pudim             « hash novo: o 14fffbd sumiu do branch
+fa7fe1f (HEAD -&gt; main) Adiciona a receita de pudim   « hash novo: o 14fffbd sumiu do branch
 c34349b Adiciona a receita de bolo
 700bbd5 Cria o README
 $ git status
@@ -131,10 +131,16 @@ hint: See the 'Note about fast-forwards' in 'git push --help' for details.
 
 <h3>O <code>--force</code> passa por cima</h3>
 <pre class="term" data-cwd="~/receitas">$ git push --force
+Enumerating objects: 4, done.
+Counting objects: 100% (4/4), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (2/2), done.
+Writing objects: 100% (3/3), 339 bytes | 339.00 KiB/s, done.
+Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
 To https://github.com/ana-souza/receitas.git
  + 14fffbd...fa7fe1f main -&gt; main (forced update)
 </pre>
-<p>O <code>+</code> no começo e o <code>(forced update)</code> ("atualização forçada") dizem que o <code>main</code> do GitHub foi <strong>trocado</strong>: antes apontava para o <code>14fffbd</code>, agora aponta para o <code>fa7fe1f</code>. Repare nos <strong>três pontos</strong> (<code>...</code>) entre os hashes: num push normal são dois (<code>..</code>, "de … até …"); três pontos indicam que um não é continuação do outro. No computador da Ana, tudo parece resolvido. O problema agora é do Bruno.</p>
+<p>As linhas de cima são o progresso do envio, as mesmas de qualquer push (veja <a href="git-push.html">git push</a>). O <code>+</code> no começo e o <code>(forced update)</code> ("atualização forçada") dizem que o <code>main</code> do GitHub foi <strong>trocado</strong>: antes apontava para o <code>14fffbd</code>, agora aponta para o <code>fa7fe1f</code>. Repare nos <strong>três pontos</strong> (<code>...</code>) entre os hashes: num push normal são dois (<code>..</code>, "de … até …"); três pontos indicam que um não é continuação do outro. No computador da Ana, tudo parece resolvido. O problema agora é do Bruno.</p>
 
 <hr>
 
@@ -154,6 +160,11 @@ hint: See the 'Note about fast-forwards' in 'git push --help' for details.
 <p>Recusado com <code>(fetch first)</code>, "busque primeiro": "o remoto tem trabalho que você não tem; normalmente é outra pessoa que enviou para o mesmo branch". Até aqui, parece um push rejeitado comum (veja <a href="push-rejeitado.html">Push Rejeitado</a>). O Bruno faz o que a dica manda:</p>
 
 <pre class="term" data-user="bruno" data-cwd="~/receitas">$ git pull
+remote: Enumerating objects: 4, done.
+remote: Counting objects: 100% (4/4), done.
+remote: Compressing objects: 100% (2/2), done.
+remote: Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (3/3), 319 bytes | 319.00 KiB/s, done.
 From https://github.com/ana-souza/receitas
  + 14fffbd...fa7fe1f main       -&gt; origin/main  (forced update)
 hint: You have divergent branches and need to specify how to reconcile them.
@@ -170,7 +181,7 @@ hint: or --ff-only on the command line to override the configured default per
 hint: invocation.
 fatal: Need to specify how to reconcile divergent branches.
 </pre>
-<p>A primeira linha entrega o que aconteceu: <code>+ 14fffbd...fa7fe1f … (forced update)</code>, o <code>main</code> do GitHub foi <strong>forçado</strong>. O resto é o aviso de branches divergentes (explicado em <a href="rebase-ou-merge.html">Rebase ou Merge?</a>). O Bruno escolhe o merge, o padrão de muita gente:</p>
+<p>As linhas <code>remote: …</code> e <code>Unpacking objects</code> são o progresso do download. Logo depois do <code>From</code>, uma linha entrega o que aconteceu: <code>+ 14fffbd...fa7fe1f … (forced update)</code>, o <code>main</code> do GitHub foi <strong>forçado</strong>. O resto é o aviso de branches divergentes (explicado em <a href="rebase-ou-merge.html">Rebase ou Merge?</a>). O Bruno escolhe o merge, o padrão de muita gente:</p>
 
 <pre class="term" data-user="bruno" data-cwd="~/receitas">$ git pull --no-rebase
 Mesclagem automática de pudim.txt
@@ -210,9 +221,9 @@ Pudim de leite condensado
 <p>O Bruno desistiu do merge (veja <a href="abortar-merge.html">Desistindo de um Merge</a>) e olhou o desenho:</p>
 <pre class="term" data-user="bruno" data-cwd="~/receitas">$ git merge --abort
 $ git log --oneline --graph --all
-* 52e2dc5 Adiciona a receita de brigadeiro
-* 14fffbd Adiciona a receita de pudim             « o pudim antigo, que só o Bruno ainda tem
-| * fa7fe1f Adiciona a receita de pudim           « o pudim reescrito (origin/main)
+* 52e2dc5 (HEAD -&gt; main) Adiciona a receita de brigadeiro
+* 14fffbd Adiciona a receita de pudim                    « o pudim antigo, que só o Bruno ainda tem
+| * fa7fe1f (origin/main, origin/HEAD) Adiciona a receita de pudim   « o reescrito
 |/
 * c34349b Adiciona a receita de bolo
 * 700bbd5 Cria o README
@@ -227,11 +238,17 @@ $ git log --oneline --graph --all
 <pre class="term" data-user="bruno" data-cwd="~/receitas">$ git pull --rebase
 Successfully rebased and updated refs/heads/main.
 $ git log --oneline --graph --all
-* c9c0c26 Adiciona a receita de brigadeiro
-* fa7fe1f Adiciona a receita de pudim
+* c9c0c26 (HEAD -&gt; main) Adiciona a receita de brigadeiro
+* fa7fe1f (origin/main, origin/HEAD) Adiciona a receita de pudim
 * c34349b Adiciona a receita de bolo
 * 700bbd5 Cria o README
 $ git push
+Enumerating objects: 4, done.
+Counting objects: 100% (4/4), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (2/2), done.
+Writing objects: 100% (3/3), 360 bytes | 360.00 KiB/s, done.
+Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
 To https://github.com/ana-souza/receitas.git
    fa7fe1f..c9c0c26  main -&gt; main
 </pre>
@@ -251,10 +268,16 @@ To https://github.com/ana-souza/receitas.git
 <pre class="term" data-cwd="~/receitas">$ sed -i 's/leiet/leite/' pudim.txt
 $ git commit -q -am 'Corrige erro de digitação no pudim'
 $ git push
+Enumerating objects: 5, done.
+Counting objects: 100% (5/5), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (2/2), done.
+Writing objects: 100% (3/3), 300 bytes | 300.00 KiB/s, done.
+Total 3 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)
 To https://github.com/ana-souza/receitas.git
    14fffbd..dc121d5  main -&gt; main
 $ git log --oneline
-dc121d5 Corrige erro de digitação no pudim
+dc121d5 (HEAD -&gt; main, origin/main) Corrige erro de digitação no pudim
 14fffbd Adiciona a receita de pudim
 c34349b Adiciona a receita de bolo
 700bbd5 Cria o README
@@ -262,12 +285,17 @@ c34349b Adiciona a receita de bolo
 <p>Push normal, sem força: <code>14fffbd..dc121d5</code>, dois pontos, "do <code>14fffbd</code> até o <code>dc121d5</code>". E do lado do Bruno, que tem o brigadeiro ainda não enviado:</p>
 
 <pre class="term" data-user="bruno" data-cwd="~/receitas">$ git pull --rebase
+remote: Enumerating objects: 5, done.
+remote: Counting objects: 100% (5/5), done.
+remote: Compressing objects: 100% (2/2), done.
+remote: Total 3 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (3/3), 280 bytes | 280.00 KiB/s, done.
 From https://github.com/ana-souza/receitas
    14fffbd..dc121d5  main       -&gt; origin/main
 Successfully rebased and updated refs/heads/main.
 $ git log --oneline --graph --all
-* ab8f560 Adiciona a receita de brigadeiro
-* dc121d5 Corrige erro de digitação no pudim
+* ab8f560 (HEAD -&gt; main) Adiciona a receita de brigadeiro
+* dc121d5 (origin/main, origin/HEAD) Corrige erro de digitação no pudim
 * 14fffbd Adiciona a receita de pudim
 * c34349b Adiciona a receita de bolo
 * 700bbd5 Cria o README

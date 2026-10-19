@@ -50,8 +50,8 @@
 <p>Para comparar, a Ana montou essa situação na pasta <code>receitas-merge</code> e fez uma cópia idêntica dela, <code>receitas-rebase</code>, com <code>cp -r</code>. Numa, ela vai juntar com merge; na outra, com rebase. O ponto de partida das duas:</p>
 
 <pre class="term" data-cwd="~/receitas-merge">$ git log --oneline --graph --all
-* f724d33 Corrige o título do README
-| * 585943c Adiciona os ingredientes do pudim
+* f724d33 (HEAD -&gt; main) Corrige o título do README
+| * 585943c (pudim) Adiciona os ingredientes do pudim
 | * ca05c9e Adiciona a receita de pudim
 |/
 * 818e38e Adiciona a receita de bolo
@@ -77,9 +77,9 @@ Merge made by the 'ort' strategy.
  1 file changed, 2 insertions(+)
  create mode 100644 pudim.txt
 $ git log --oneline --graph
-*   f081cef Merge branch 'pudim'
+*   f081cef (HEAD -&gt; main) Merge branch 'pudim'
 |\
-| * 585943c Adiciona os ingredientes do pudim     « hash original
+| * 585943c (pudim) Adiciona os ingredientes do pudim   « hash original
 | * ca05c9e Adiciona a receita de pudim           « hash original
 * | f724d33 Corrige o título do README
 |/
@@ -118,7 +118,7 @@ Fast-forward
  1 file changed, 2 insertions(+)
  create mode 100644 pudim.txt
 $ git log --oneline --graph
-* 340b09d Adiciona os ingredientes do pudim       « hash novo
+* 340b09d (HEAD -&gt; main, pudim) Adiciona os ingredientes do pudim   « hash novo
 * 3e0849a Adiciona a receita de pudim             « hash novo
 * f724d33 Corrige o título do README
 * 818e38e Adiciona a receita de bolo
@@ -145,14 +145,10 @@ $ git log --oneline --graph
 nenhuma diferença
 $ ls receitas-merge receitas-rebase
 receitas-merge:
-README.md
-bolo.txt
-pudim.txt
+README.md  bolo.txt  pudim.txt
 
 receitas-rebase:
-README.md
-bolo.txt
-pudim.txt
+README.md  bolo.txt  pudim.txt
 </pre>
 <p>O <code>diff -r</code> compara as duas pastas inteiras (o <code>--exclude=.git</code> deixa de fora a pasta escondida do Git, onde o histórico é diferente). Ele não mostrou nada, então o <code>echo</code> rodou.</p>
 
@@ -206,6 +202,11 @@ Seu ramo está à frente de 'origin/main' por 1 submissão.
 
 nothing to commit, working tree clean
 $ git pull
+remote: Enumerating objects: 5, done.
+remote: Counting objects: 100% (5/5), done.
+remote: Compressing objects: 100% (2/2), done.
+remote: Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (3/3), 289 bytes | 289.00 KiB/s, done.
 From https://github.com/ana-souza/receitas
    c34349b..8ba76e5  main       -&gt; origin/main
 hint: You have divergent branches and need to specify how to reconcile them.
@@ -225,6 +226,7 @@ fatal: Need to specify how to reconcile divergent branches.
 
 <dl class="anatomy">
   <dt>Seu ramo está à frente de 'origin/main' por 1 submissão.</dt><dd>O <code>status</code> só sabe o que o Git baixou da última vez; ele ainda não sabe do commit do Bruno. ("Submissão" é como a tradução do Git chama o commit.)</dd>
+  <dt>remote: … / Unpacking objects</dt><dd>O progresso do download: o GitHub separa os objetos novos (<code>remote:</code> são mensagens do servidor) e o seu Git os desempacota. Os números mudam de um caso para outro; não precisa entender cada um (veja <a href="git-fetch.html">git fetch</a>).</dd>
   <dt>c34349b..8ba76e5  main -&gt; origin/main</dt><dd>A parte <code>fetch</code> do pull funcionou: o commit do Bruno (<code>8ba76e5</code>) foi baixado para o <code>origin/main</code>.</dd>
   <dt>hint: You have divergent branches…</dt><dd>"Os seus branches divergiram e você precisa dizer como reconciliá-los. Rode um destes comandos antes do próximo pull": <code>pull.rebase false</code> (merge), <code>pull.rebase true</code> (rebase) ou <code>pull.ff only</code> (só avanço rápido). "Troque <code>git config</code> por <code>git config --global</code> para valer em todos os repositórios. Você também pode passar <code>--rebase</code>, <code>--no-rebase</code> ou <code>--ff-only</code> no próprio comando."</dd>
   <dt>fatal: Need to specify how to reconcile divergent branches.</dt><dd>"É preciso dizer como reconciliar branches divergentes." O <code>main</code> da Ana <strong>não mudou</strong>: o commit dela continua lá, e o do Bruno está guardado no <code>origin/main</code>.</dd>
@@ -244,8 +246,8 @@ fatal: Need to specify how to reconcile divergent branches.
 <pre class="term" data-cwd="~/receitas">$ git pull --rebase
 Successfully rebased and updated refs/heads/main.
 $ git log --oneline --graph
-* 9521dee Adiciona a receita de pudim             « o commit da Ana, refeito
-* 8ba76e5 Adiciona as cenouras ao bolo            « o commit do Bruno
+* 9521dee (HEAD -&gt; main) Adiciona a receita de pudim                « o commit da Ana, refeito
+* 8ba76e5 (origin/main, origin/HEAD) Adiciona as cenouras ao bolo   « o commit do Bruno
 * c34349b Adiciona a receita de bolo
 * 700bbd5 Cria o README
 $ git status
