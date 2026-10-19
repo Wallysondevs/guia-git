@@ -443,7 +443,8 @@
       return Object.keys(r).sort().map(function (k) { return { nome: k, hash: r[k] }; });
     };
     R.config = function (chave) { var t = this.configTodas().filter(function (e) { return e.k === chave.toLowerCase().replace(/^([^.]*\.)(.*\.)?/, function (m) { return m; }) || e.k.toLowerCase() === chave.toLowerCase(); }); return t.length ? t[t.length - 1].v : null; };
-    R.configTodas = function () { return configGlobal(this.sh).concat(parseConfig(this.arq("config"))); };
+    var configExtra = []; // "git -c chave=valor"
+    R.configTodas = function () { return configGlobal(this.sh).concat(parseConfig(this.arq("config")), configExtra); };
     function configGlobal(sh) { var h = sh.valor("HOME") || "/home/ana"; return parseConfig(lerTxt(sh, h + "/.gitconfig")); }
     function configSemRepo(sh, chave) { var t = configGlobal(sh).filter(function (e) { return e.k.toLowerCase() === chave.toLowerCase(); }); return t.length ? t[t.length - 1].v : null; }
 
@@ -952,11 +953,12 @@
         if (a[0] === "--version") { io.out("git version 2.53.0\n"); return 0; }
         if (a[0] === "--help" || a[0] === "-h") { a = ["help"]; break; }
         if (a[0] === "--no-pager" || a[0] === "-P" || a[0] === "--paginate" || a[0] === "-p") { a.shift(); continue; }
-        if (a[0] === "-c") { a.splice(0, 2); continue; }
+        if (a[0] === "-c") { var kv = a[1] || "", ie = kv.indexOf("="); configExtra.push({ k: chaveNorm(ie < 0 ? kv : kv.slice(0, ie)) ? (ie < 0 ? kv : kv.slice(0, ie)).toLowerCase() : kv, v: ie < 0 ? "true" : kv.slice(ie + 1) }); a.splice(0, 2); continue; }
         io.err("unknown option: " + a[0] + "\n" + USO); return 129;
       }
       if (!a.length) { io.out(USO + "\n" + AJUDA); return 1; }
       var cwdAntes = sh.cwd;
+      var extraAntes = configExtra.length;
       if (dirC) { var nd = noDe(sh, sh.abs(dirC)); if (!nd || nd.t !== "d") { io.err("fatal: cannot change to '" + dirC + "': Arquivo ou diretório inexistente\n"); return 128; } sh.cwd = sh.abs(dirC); }
       var nome = a[0], al = { co: "checkout", br: "branch", ci: "commit", st: "status" };
       // apelidos da config
@@ -976,7 +978,7 @@
       } catch (e) {
         if (e instanceof GitErro) { io.err(e.msg); return e.st; }
         throw e;
-      } finally { if (dirC) sh.cwd = cwdAntes; }
+      } finally { if (dirC) sh.cwd = cwdAntes; configExtra.length = 0; }
     };
     B.EXT.git.gitsim = true;
     var USO = "usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]\n           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]\n           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--no-lazy-fetch]\n           [--no-optional-locks] [--no-advice] [--bare] [--git-dir=<path>]\n           [--work-tree=<path>] [--namespace=<name>] [--config-env=<name>=<envvar>]\n           <command> [<args>]\n";
@@ -1207,13 +1209,13 @@
       else if (estado.merge || estado.cherry || estado.revert) s += "\n";
       var LBL = { A: "new file:   ", M: "modified:   ", D: "deleted:    ", R: "renamed:    " };
       if (prep.length) {
-        s += "Mudanças a serem submetidas:\n" + (estado.merge || estado.cherry || estado.revert || estado.rebase ? "" : st.head ? "  (use \"git restore --staged <file>...\" to unstage)\n" : "  (utilize \"git rm --cached <arquivo>...\" para não apresentar)\n");
+        s += "Mudanças a serem submetidas:\n" + (estado.merge || estado.cherry ? "" : st.head ? "  (use \"git restore --staged <file>...\" to unstage)\n" : "  (utilize \"git rm --cached <arquivo>...\" para não apresentar)\n");
         prep.forEach(function (m) { s += "\t" + LBL[m.tipo] + (m.tipo === "R" ? rel(m.de) + " -> " : "") + rel(m.para) + "\n"; });
         s += "\n";
       }
       if (conf.length) {
         var temDelC = conf.some(function (k) { var e = st.conf[k]; return !e[2] || !e[3]; });
-        s += "Caminhos não mesclados:\n" + (temDelC ? "  (use \"git add/rm <file>...\" as appropriate to mark resolution)\n" : "  (usar \"git add <arquivo>...\" para marcar resolução)\n");
+        s += "Caminhos não mesclados:\n" + (estado.merge || estado.cherry ? "" : st.head ? "  (use \"git restore --staged <file>...\" to unstage)\n" : "  (utilize \"git rm --cached <arquivo>...\" para não apresentar)\n") + (temDelC ? "  (use \"git add/rm <file>...\" as appropriate to mark resolution)\n" : "  (usar \"git add <arquivo>...\" para marcar resolução)\n");
         conf.forEach(function (k) {
           var e = st.conf[k], c = (e[1] ? "1" : "") + (e[2] ? "2" : "") + (e[3] ? "3" : "");
           var L0 = { "123": "ambos modificados:", "23": "ambos adicionaram:", "13": "excluídos por nós:", "12": "excluídos por eles:", "3": "adicionado por:", "2": "adicionados por nós:", "1": "ambos excluídos:" }[c], L = L0 + rep(" ", 21 - L0.length);
@@ -1258,10 +1260,10 @@
         var feitos = (repo.arq("rebase-merge/done") || "").split("\n").filter(Boolean), resto = (repo.arq("rebase-merge/git-rebase-todo") || "").split("\n").filter(Boolean);
         var s = "Last command" + (feitos.length > 1 ? "s" : "") + " done (" + feitos.length + " command" + (feitos.length > 1 ? "s" : "") + " done):\n";
         feitos.slice(-2).forEach(function (l) { s += "   " + l + "\n"; });
-        if (resto.length) { s += "Next command" + (resto.length > 1 ? "s" : "") + " to do (" + resto.length + " remaining command" + (resto.length > 1 ? "s" : "") + "):\n"; resto.slice(0, 2).forEach(function (l) { s += "   " + l + "\n"; }); s += "  (use \"git rebase --edit-todo\" to view and edit)\n"; }
+        if (resto.length) { s += "Next command" + (resto.length > 1 ? "s" : "") + " to do (" + resto.length + " remaining command" + (resto.length > 1 ? "s" : "") + "):\n"; resto.slice(0, 2).forEach(function (l) { s += "   " + l.replace(/^(\w+) ([0-9a-f]{40})/, function (m, c, h) { return c + " " + repo.abrev(h); }) + "\n"; }); s += "  (use \"git rebase --edit-todo\" to view and edit)\n"; }
         else s += "No commands remaining.\n";
         var conf = Object.keys(repo.estado().conf).length;
-        s += "You are currently rebasing branch '" + ramo + "' on '" + repo.abrev(onto) + "'.\n" + (conf ? "  (fix conflicts and then run \"git rebase --continue\")\n  (use \"git rebase --skip\" to skip this patch)\n  (use \"git rebase --abort\" to check out the original branch)\n" : "  (all conflicts fixed: run \"git rebase --continue\")\n") + "\n";
+        s += "You are currently rebasing branch '" + ramo + "' on '" + repo.abrev(onto) + "'.\n" + (conf ? "  (corrija os conflitos e então rode \"git rebase --continue\")\n  (use \"git rebase --skip\" para ignorar este patch)\n  (use \"git rebase --abort\" para verificar o ramo original)\n" : "  (todos os conflitos foram corrigidos: execute \"git rebase --continue\")\n") + "\n";
         r.rebase = s;
       }
       return r;
@@ -1467,6 +1469,8 @@
       var cab = partes.filter(function (p) { return /^HEAD/.test(p); }), locais = partes.filter(function (p) { return !/^HEAD/.test(p); });
       return cab.concat(tg, remotosP, locais).join(", ");
     }
+    // log.decorate=auto: decora quando a saída é um terminal (no .try), não quando vai para pipe/arquivo
+    function decorarAuto(repo, io) { var v = repo.config("log.decorate"); if (v === "false" || v === "no") return false; if (v === "true" || v === "short" || v === "full") return true; return !!(io.tty && io.tty()); }
     function parseLogArgs(repo, args, padraoShow) {
       var o = { n: -1, oneline: false, graph: false, all: false, patch: false, stat: false, revs: [], paths: [], decorate: null, reverse: false, nameOnly: false, nameStatus: false, firstParent: false, grep: [], author: [], format: null };
       var fimRevs = false;
@@ -1570,7 +1574,7 @@
       var listaToda = lista.slice();
       if (o.n >= 0) lista = lista.slice(0, o.n);
       if (o.reverse) lista.reverse();
-      var opt = { oneline: o.oneline, decorate: o.decorate === true, format: o.format, tformat: o.tformat, abbrev: o.abbrev, fuller: o.fuller, dataRel: o.dataRel };
+      var opt = { oneline: o.oneline, decorate: o.decorate === true || (o.decorate === null && decorarAuto(repo, io)), format: o.format, tformat: o.tformat, abbrev: o.abbrev, fuller: o.fuller, dataRel: o.dataRel };
       var temCorpo = o.patch || o.stat || o.shortstat || o.nameOnly || o.nameStatus;
       if (o.graph) { io.out(desenharGrafo(repo, lista, listaToda, opt, o, specs)); return 0; }
       var out = "";
@@ -1775,7 +1779,7 @@
         if (obj.type === "blob") { out += obj.data; return; }
         if (obj.type === "tree") { out += "tree " + r + "\n\n" + obj.ents.map(function (e) { return e.name + (e.mode === "40000" ? "/" : ""); }).join("\n") + "\n"; return; }
         if (idx > 0 && !o.oneline) out += "\n";
-        out += formatarCommit(repo, h, { oneline: o.oneline, decorate: o.decorate === true, format: o.format, tformat: o.tformat, fuller: o.fuller });
+        out += formatarCommit(repo, h, { oneline: o.oneline, decorate: o.decorate === true || (o.decorate === null && decorarAuto(repo, io)), format: o.format, tformat: o.tformat, fuller: o.fuller });
         var c = obj;
         if (o.noPatch) return;
         if (c.parents.length > 1 && !o.stat && !o.nameOnly && !o.nameStatus) { out += "\n"; return; }
@@ -2127,6 +2131,7 @@
       return null;
     }
     CMDS.switch = function (args, io, sh) {
+      if (args.some(function (a) { return a === "-q" || a === "--quiet" || /^-[a-zA-Z]*q[a-zA-Z]*$/.test(a); })) io = { sh: sh, out: function () {}, err: function () {}, tty: function () { return false; } };
       var g = opcoes(args, { "-c": "valor", "--create": "-c", "-C": "valor", "--force-create": "-C", "-d": true, "--detach": "-d", "-f": true, "--force": "-f", "--discard-changes": "-f", "--orphan": "valor", "-t": true, "--track": "-t", "--no-track": true, "-q": true, "--quiet": "-q", "--guess": true });
       if (g.erro) { io.err("error: " + g.erro + "\n"); return 129; }
       var repo = precisaRepo(io); precisaArvore(repo);
@@ -2170,6 +2175,7 @@
       fatal("invalid reference: " + alvo);
     };
     CMDS.checkout = function (args, io, sh) {
+      if (args.some(function (a) { return a === "-q" || a === "--quiet"; })) io = { sh: sh, out: function () {}, err: function () {}, tty: function () { return false; } };
       var g = opcoes(args, { "-b": "valor", "-B": "valor", "-f": true, "--force": "-f", "-q": true, "--quiet": "-q", "--detach": true, "-t": true, "--track": "-t", "--ours": true, "--theirs": true, "--orphan": "valor", "-p": true });
       if (g.erro) { io.err("error: " + g.erro + "\n"); return 129; }
       var repo = precisaRepo(io); precisaArvore(repo);
@@ -3259,6 +3265,117 @@
       io.err("(simulador) github: use  github novo DONO/REPO  |  github bruno 'comandos'  |  github lista  |  github log DONO/REPO  |  github apaga DONO/REPO\n");
       return 2;
     };
+
+    /* ---------- rebase (não interativo) ---------- */
+    function rbArq(repo, n) { var t = repo.arq("rebase-merge/" + n); return t == null ? null : t.replace(/\n$/, ""); }
+    function editorNulo(repo, sh) { var e = sh.valor("GIT_EDITOR") || repo.config("core.editor"); return e === "true" || e === ":"; }
+    function linhaPick(repo, h) { return "pick " + repo.abrev(h) + " # " + assunto(repo.ler(h).msg); }
+    function rebaseSujo(repo) { var st = repo.estado(); return st.preparado.length || st.naoPrep.length; }
+    CMDS.rebase = function (args, io, sh) {
+      var g = opcoes(args, { "--continue": true, "--abort": true, "--skip": true, "--quit": true, "--onto": "valor", "-i": true, "--interactive": "-i", "-q": true, "--quiet": "-q", "--autostash": true, "--edit-todo": true, "-m": true, "--merge": "-m", "--root": true });
+      if (g.erro) { io.err("error: " + g.erro + "\n"); return 129; }
+      var repo = precisaRepo(io); precisaArvore(repo);
+      var o = g.o, emRebase = repo.existe("rebase-merge");
+      var interativo = o["-i"] && editorNulo(repo, sh);
+      if ((o["-i"] && !interativo) || o["--edit-todo"]) { io.err("(simulador) o rebase interativo (git rebase -i) abre um editor de texto, que não existe aqui. Experimente no seu computador.\n"); return 1; }
+      if (o["--abort"] || o["--quit"]) {
+        if (!emRebase) { io.err("fatal: no rebase in progress\n"); return 128; }
+        var ref = rbArq(repo, "head-name"), orig = rbArq(repo, "orig-head");
+        if (o["--abort"]) {
+          repo.trocarArvore(repo.arvoreDe(repo.head()), repo.arvoreDe(orig), { forcar: true });
+          var hAntes = repo.head();
+          if (ref && ref !== "detached HEAD") { repo.gravar("HEAD", "ref: " + ref + "\n"); repo.logar("HEAD", hAntes, orig, "rebase (abort): returning to " + ref); }
+          else repo.gravar("HEAD", orig + "\n");
+        }
+        apagar(sh, repo.g + "/rebase-merge");
+        return 0;
+      }
+      if (o["--continue"] || o["--skip"]) {
+        if (!emRebase) { io.err("fatal: no rebase in progress\n"); return 128; }
+        var st = repo.estado(), conf = Object.keys(st.conf).sort(cmpCam);
+        if (o["--skip"]) { repo.trocarArvore(repo.arvoreDe(repo.head()), repo.arvoreDe(repo.head()), { forcar: true }); repo.apagarArq("rebase-merge/stopped-sha"); return seguirRebase(repo, io, sh); }
+        if (conf.length) { io.err(conf.map(function (k) { return k + ": needs merge\n"; }).join("") + "You must edit all merge conflicts and then\nmark them as resolved using git add\n"); return 1; }
+        var parado = rbArq(repo, "stopped-sha");
+        if (parado) {
+          var c = repo.ler(parado), head = repo.head(), arv = repo.escreverArvore(repo.lerIndice());
+          if (arv !== repo.ler(head).tree) {
+            var novo = { type: "commit", tree: arv, parents: [head], author: c.author, committer: repo.ident("c"), msg: c.msg };
+            var hn = repo.escreverObj(novo);
+            repo.gravar("HEAD", hn + "\n"); repo.logar("HEAD", head, hn, "rebase (continue): " + assunto(c.msg));
+            var mud = compararMapas(repo.arvoreDe(head), repo.arvorePlana(arv), function (a, b) { return repo.similaridade(a, b); });
+            io.out("[detached HEAD " + repo.abrev(hn) + "] " + assunto(c.msg) + "\n" + repo.shortstat(mud) + repo.resumoCriacao(mud));
+          }
+          repo.apagarArq("rebase-merge/stopped-sha");
+        } else if (rebaseSujo(repo)) { io.err("error: you have staged changes in your working tree\n"); return 1; }
+        return seguirRebase(repo, io, sh);
+      }
+      if (emRebase) { io.err("fatal: It seems that there is already a rebase-merge directory, and\nI wonder if you are in the middle of another rebase.  If that is the\ncase, please try\n\tgit rebase (--continue | --abort | --skip)\nIf that is not the case, please\n\trm -fr \"" + repo.g + "/rebase-merge\"\nand run me again.  I am stopping in case you still have something\nvaluable there.\n\n"); return 128; }
+      var ramo = repo.branchAtual(), upNome = g.ops[0];
+      if (g.ops[1]) { var rs = CMDS.switch([g.ops[1]], { sh: sh, out: function () {}, err: function () {}, tty: function () { return false; } }, sh); if (rs) return rs; ramo = repo.branchAtual(); }
+      if (!upNome) {
+        var up = ramo && upstream(repo, ramo);
+        if (!up) { io.err("There is no tracking information for the current branch.\nPlease specify which branch you want to rebase against.\nSee git-rebase(1) for details.\n\n    git rebase '<branch>'\n\nIf you wish to set tracking information for this branch you can do so with:\n\n    git branch --set-upstream-to=<remote>/<branch> " + ramo + "\n\n"); return 1; }
+        upNome = up.nome;
+      }
+      var ontoNome = o["--onto"] || upNome, onto = repo.commitDe(ontoNome), upH = repo.commitDe(upNome);
+      if (!upH) { io.err("fatal: invalid upstream '" + upNome + "'\n"); return 128; }
+      if (!onto) { io.err("fatal: Does not point to a valid commit '" + ontoNome + "'\n"); return 128; }
+      if (rebaseSujo(repo)) { io.err("error: cannot rebase: You have unstaged changes.\nerror: Please commit or stash them.\n"); return 1; }
+      var head = repo.head();
+      var commits = repo.revList([head], [upH], {}).reverse().filter(function (h) { return repo.ler(h).parents.length < 2; });
+      var refNome = ramo ? "refs/heads/" + ramo : "detached HEAD";
+      if (repo.ehAncestral(onto, head) && !o["--onto"] && !interativo) { io.out("Current branch " + (ramo || "HEAD") + " is up to date.\n"); return 0; }
+      if (repo.ehAncestral(onto, head) && repo.mergeBase(head, upH) === onto && !o["--onto"] && false) { io.out("Current branch " + ramo + " is up to date.\n"); return 0; }
+      // começa: HEAD destacado em onto
+      repo.gravar("ORIG_HEAD", head + "\n");
+      mkdirP(sh, repo.g + "/rebase-merge");
+      repo.gravar("rebase-merge/head-name", refNome + "\n");
+      repo.gravar("rebase-merge/onto", onto + "\n");
+      repo.gravar("rebase-merge/orig-head", head + "\n");
+      repo.gravar("rebase-merge/done", "");
+      repo.gravar("rebase-merge/git-rebase-todo", commits.map(function (h) { return "pick " + h + " # " + assunto(repo.ler(h).msg) + "\n"; }).join(""));
+      repo.gravar("rebase-merge/end", commits.length + "\n");
+      repo.trocarArvore(repo.arvoreDe(head), repo.arvoreDe(onto), { forcar: true });
+      repo.gravar("HEAD", onto + "\n");
+      repo.logar("HEAD", head, onto, "rebase (start): checkout " + ontoNome);
+      return seguirRebase(repo, io, sh);
+    };
+    function seguirRebase(repo, io, sh) {
+      var todo = (rbArq(repo, "git-rebase-todo") || "").split("\n").filter(Boolean), feitos = (rbArq(repo, "done") || "").split("\n").filter(Boolean);
+      var total = +(rbArq(repo, "end") || todo.length + feitos.length);
+      while (todo.length) {
+        var linha = todo.shift(), h = linha.split(" ")[1], c = repo.ler(h), head = repo.head();
+        feitos.push("pick " + repo.abrev(h) + " # " + assunto(c.msg));
+        repo.gravar("rebase-merge/done", feitos.join("\n") + "\n");
+        repo.gravar("rebase-merge/git-rebase-todo", todo.join("\n") + (todo.length ? "\n" : ""));
+        if (c.parents[0] === head) { repo.trocarArvore(repo.arvoreDe(head), repo.arvoreDe(h), { forcar: true }); repo.gravar("HEAD", h + "\n"); repo.logar("HEAD", head, h, "rebase (pick): " + assunto(c.msg)); continue; } // pick "rápido": reaproveita o commit
+        io.err("Rebasing (" + feitos.length + "/" + total + ")\r");
+        var pai = c.parents[0] || null;
+        var res = repo.mesclarArvores(pai, head, h, "HEAD", repo.abrev(h) + " (" + assunto(c.msg) + ")");
+        repo.aplicarMesclagem(head, res);
+        if (res.conflitos.length) {
+          repo.gravar("rebase-merge/stopped-sha", h + "\n");
+          io.out(res.msgs.join(""));
+          io.err("error: não foi possível aplicar " + repo.abrev(h) + "... " + assunto(c.msg) + "\nhint: Resolve all conflicts manually, mark them as resolved with\nhint: \"git add/rm <conflicted_files>\", then run \"git rebase --continue\".\nhint: You can instead skip this commit: run \"git rebase --skip\".\nhint: To abort and get back to the state before \"git rebase\", run \"git rebase --abort\".\nhint: Disable this message with \"git config set advice.mergeConflict false\"\nCould not apply " + repo.abrev(h) + "... # " + assunto(c.msg) + "\n");
+          return 1;
+        }
+        io.out(res.msgs.join(""));
+        var arv = repo.escreverArvore(repo.lerIndice());
+        if (arv === repo.ler(head).tree) continue; // já aplicado: o git descarta
+        var hn = repo.escreverObj({ type: "commit", tree: arv, parents: [head], author: c.author, committer: repo.ident("c"), msg: c.msg });
+        repo.gravar("HEAD", hn + "\n"); repo.logar("HEAD", head, hn, "rebase (pick): " + assunto(c.msg));
+      }
+      // fim
+      var ref = rbArq(repo, "head-name"), onto = rbArq(repo, "onto"), fim = repo.head();
+      if (ref && ref !== "detached HEAD") {
+        repo.gravarRef(ref, fim, "rebase (finish): " + ref + " onto " + onto, rbArq(repo, "orig-head"));
+        repo.gravar("HEAD", "ref: " + ref + "\n");
+        repo.logar("HEAD", fim, fim, "rebase (finish): returning to " + ref);
+      }
+      apagar(repo.sh, repo.g + "/rebase-merge");
+      io.err("Successfully rebased and updated " + (ref || "detached HEAD") + ".\n");
+      return 0;
+    }
 
     /* ---------- help ---------- */
     CMDS.help = function (args, io, sh) {
