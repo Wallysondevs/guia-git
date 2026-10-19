@@ -10261,6 +10261,8 @@
     if (/^\$\{?[A-Za-z_]*$/.test(parcial)) {
       var pv = parcial.replace(/^\$\{?/, ""), chave = parcial.indexOf("${") === 0;
       opcoes = sh.nomesVars().filter(function (n) { return n.indexOf(pv) === 0; }).map(function (n) { return (chave ? "${" : "$") + n + (chave ? "}" : ""); });
+    } else if (!primeira && BashSim.gitsim && (opcoes = BashSim.gitsim.completar(sh, antes, parcial))) { // Git: subcomandos, ramos, remotos
+      if (!opcoes.length) return { linha: linha, lista: [] };
     } else if (primeira && parcial.indexOf("/") < 0) {
       var ub = sh.no("/usr/bin"), nomes = Object.keys(BUILTINS).concat(Object.keys(sh.funcs), Object.keys(sh.aliases), PALAVRAS_CHAVE, ub ? Object.keys(ub.c).filter(function (n) { return EXT[n]; }) : []);
       var vistos = {};
@@ -10874,7 +10876,7 @@
     Sessao: Sessao, Shell: Shell, Kernel: Kernel, Parser: Parser,
     opcoes: OPCOES, checarMeta: checarMeta, dividirMetas: dividirMetas, semCor: semCor,
     incompleta: incompleta, BUILTINS: BUILTINS, EXT: EXT, versao: BASH_VERSION,
-    _internos: { mkF: mkF, mkD: mkD, utf8bytes: utf8bytes, compilarSed: compilarSed, casaPadrao: casaPadrao, ereParaJs: ereParaJs, imprimirCmd: imprimirCmd, Arith: Arith }
+    _internos: { mkF: mkF, mkD: mkD, utf8bytes: utf8bytes, completar: completar, compilarSed: compilarSed, casaPadrao: casaPadrao, ereParaJs: ereParaJs, imprimirCmd: imprimirCmd, Arith: Arith }
   };
   global.BashSim = BashSim;
   (global.BashSimExtras || []).forEach(function (f) { f(BashSim); }); // extensões carregadas antes (gitsim.js)

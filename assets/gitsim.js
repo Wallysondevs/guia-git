@@ -3841,7 +3841,37 @@
       return false;
     }
 
-    B.gitsim = { sha1: sha1, hashObjeto: hashObjeto, achar: achar, Repo: Repo, CMDS: CMDS, diffUnificado: diffUnificado, merge3: merge3, meta: meta };
+    /* ---------- Tab no terminal: completa subcomandos, ramos, tags e remotos (como o git-completion do Ubuntu) ---------- */
+    var SUBCOMANDOS = "add bisect blame branch checkout cherry-pick clean clone commit config diff fetch grep help init log merge mv pull push rebase reflog remote reset restore revert rm show stash status switch tag".split(" ");
+    function completar(sh, antes, parcial) {
+      var m = /(?:^|[;&|]\s*)git\s+((?:-\S+\s+)*)(\S+\s+)?((?:\S+\s+)*)$/.exec(antes);
+      if (!/(^|[;&|]\s*)git\s/.test(antes)) return null;
+      var pal = antes.replace(/^.*?\bgit\s+/, "").split(/\s+/).filter(Boolean);
+      if (!pal.length) return SUBCOMANDOS.concat(alias()).filter(function (c) { return c.indexOf(parcial) === 0; }).sort();
+      var sub = pal[0], resto = pal.slice(1).filter(function (x) { return x[0] !== "-"; });
+      var repo = achar(sh); if (!repo) return null;
+      function alias() { var r = []; try { configGlobal(sh).forEach(function (e) { var mm = /^alias\.(.*)$/.exec(e.k); if (mm) r.push(mm[1]); }); } catch (e) { /* */ } return r; }
+      var ramos = repo.listarRefs("refs/heads/").map(function (r) { return r.nome.slice(11); });
+      var tags = repo.listarRefs("refs/tags/").map(function (r) { return r.nome.slice(10); });
+      var remotos = remotosConfig(repo), remRamos = repo.listarRefs("refs/remotes/").map(function (r) { return r.nome.slice(13); }).filter(function (x) { return !/\/HEAD$/.test(x); });
+      var lista = null;
+      if (sub === "switch" || sub === "merge" || sub === "rebase" || sub === "cherry-pick") lista = ramos.concat(sub === "switch" ? remRamos.map(function (x) { return x.replace(/^[^/]+\//, ""); }) : remRamos, sub === "switch" ? [] : tags);
+      else if (sub === "branch" && /(^|\s)-[dDmM]\s/.test(antes + " ")) lista = ramos;
+      else if (sub === "checkout" || sub === "log" || sub === "show" || sub === "diff" || sub === "reset" || sub === "revert" || sub === "tag" && resto.length) {
+        lista = ramos.concat(tags, remRamos, ["HEAD"]).filter(function (x) { return x.indexOf(parcial) === 0; });
+        if (!lista.length || /--\s/.test(antes)) return null; // nomes de arquivo
+      }
+      else if (sub === "push" || sub === "pull" || sub === "fetch") lista = resto.length ? ramos.concat(tags) : remotos;
+      else if (sub === "stash" && !resto.length) lista = "apply branch clear drop list pop push show".split(" ");
+      else if (sub === "remote" && !resto.length) lista = "add get-url remove rename set-url show".split(" ");
+      else if (sub === "remote" && /^(remove|rm|rename|show|get-url|set-url)$/.test(resto[0]) && resto.length === 1) lista = remotos;
+      else if (sub === "bisect" && !resto.length) lista = "bad good log reset run skip start".split(" ");
+      if (!lista) return null;
+      var vistos = {};
+      return lista.filter(function (x) { if (vistos[x] || x.indexOf(parcial) !== 0) return false; vistos[x] = 1; return true; }).sort();
+    }
+
+    B.gitsim = { sha1: sha1, hashObjeto: hashObjeto, achar: achar, Repo: Repo, CMDS: CMDS, diffUnificado: diffUnificado, merge3: merge3, meta: meta, completar: completar };
   }
 
   if (global.BashSim) instalar(global.BashSim);
