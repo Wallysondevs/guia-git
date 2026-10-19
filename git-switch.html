@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git switch — trocando de branch | Guia Git</title>
+<meta name="description" content="O comando git switch para quem nunca usou Git: mudar de branch, criar e mudar com -c, voltar ao anterior com git switch -, criar a partir de outro ponto, o que acontece com os arquivos da pasta e com as mudanças não commitadas, e os erros reais (branch que não existe, mudanças locais que seriam sobrescritas, arquivo não rastreado no caminho).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">switch</span> <span class="versao">git 2.23+</span></h1>
+
+<p class="intro">Criar um branch com <a href="git-branch.html">git branch</a> só cola uma etiqueta nova: você continua onde estava. Para <strong>ir</strong> até outro branch e trabalhar nele, o comando é o <code>git switch</code> (em inglês, "trocar", "mudar"). Ele move o HEAD para o branch escolhido e deixa os arquivos da pasta iguais aos daquele ramo.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Mudar de branch com <code>git switch NOME</code>, e o que acontece com os arquivos da pasta.</li>
+  <li>Criar e mudar de uma vez com <code>git switch -c NOME</code>, inclusive a partir de outro ponto.</li>
+  <li>Voltar para o branch anterior com <code>git switch -</code>.</li>
+  <li>O que acontece com as mudanças que você ainda não commitou: quando elas vão junto e quando o Git se recusa a trocar.</li>
+</ul>
+</div>
+
+<p>As saídas vieram do Git real do Ubuntu 26.04, na máquina da Ana, com o sistema em português. O <code>git switch</code> existe desde o Git 2.23 (de 2019). Em tutoriais mais antigos você vai ver o <code>git checkout</code> fazendo o mesmo papel: ele tem aula própria, <a href="git-checkout.html">git checkout: o Comando Antigo</a>.</p>
+
+<hr>
+
+<h2>A ideia: trocar de caderno na mesa</h2>
+<p>A Ana tem vários cadernos (os branches) e uma mesa (a pasta do projeto). Ela só consegue escrever no caderno que está aberto na mesa. O <code>git switch</code> é <strong>guardar o caderno aberto e abrir outro</strong>: a mesa passa a mostrar as páginas do caderno novo.</p>
+<p>E se tiver uma folha solta, rabiscada, em cima da mesa (uma mudança ainda não commitada)? Se ela não atrapalha, continua na mesa depois da troca. Se ela ia ser coberta por uma página diferente do outro caderno, o Git <strong>para</strong> e avisa, para você não perder o rabisco. Os dois casos estão na seção 5.</p>
+
+<hr>
+
+<h2>1. Mudar para um branch que já existe</h2>
+<p>A Ana tem o repositório <code>receitas</code> com três commits no <code>main</code> e acabou de criar o branch <code>sobremesas</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git branch sobremesas
+$ git switch sobremesas
+Switched to branch 'sobremesas'
+$ git switch sobremesas
+Already on 'sobremesas'
+$ git status
+No ramo sobremesas                « confirma onde você está
+nothing to commit, working tree clean
+</pre>
+
+<dl class="anatomy">
+  <dt>git</dt><dd>O programa.</dd>
+  <dt>switch</dt><dd>O subcomando: "trocar de branch".</dd>
+  <dt>sobremesas</dt><dd>O branch de destino. Ele precisa existir (para criar, use <code>-c</code>, na seção 3).</dd>
+  <dt>Switched to branch 'sobremesas'</dt><dd>A confirmação: "mudado para o ramo 'sobremesas'". Esta mensagem ainda não foi traduzida e sai em inglês mesmo com o sistema em português (a tradução do Git não cobre todas as mensagens).</dd>
+  <dt>Already on 'sobremesas'</dt><dd>"Já em 'sobremesas'". Pedir para ir aonde você já está não é erro: o Git só avisa.</dd>
+</dl>
+
+<pre>Antes:   A---B---C   ← main ← HEAD
+                     ← sobremesas
+
+Depois:  A---B---C   ← main
+                     ← sobremesas ← HEAD
+
+A = 700bbd5 (README)   B = 7225e04 (bolo)   C = 0244251 (pão de queijo)
+</pre>
+<p>Só o HEAD mudou de etiqueta. Os arquivos da pasta ficaram iguais, porque os dois branches apontam para o mesmo commit.</p>
+
+<hr>
+
+<h2>2. Os arquivos da pasta mudam junto</h2>
+<p>A Ana faz um commit com a receita de pudim no <code>sobremesas</code> e depois volta para o <code>main</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'Pudim de leite' &gt; pudim.txt
+$ git add pudim.txt &amp;&amp; git commit -q -m 'Adiciona receita de pudim'
+$ git log --oneline --graph --all
+* d6f2336 (HEAD -&gt; sobremesas) Adiciona receita de pudim
+* 0244251 (main) Adiciona receita de pão de queijo
+* 7225e04 Adiciona receita de bolo
+* 700bbd5 Cria o README
+$ ls
+README.md  bolo.txt  pao.txt  pudim.txt
+$ git switch main
+Switched to branch 'main'
+$ ls
+README.md  bolo.txt  pao.txt              « o pudim.txt sumiu da pasta
+$ git log --oneline --graph --all
+* d6f2336 (sobremesas) Adiciona receita de pudim
+* 0244251 (HEAD -&gt; main) Adiciona receita de pão de queijo
+* 7225e04 Adiciona receita de bolo
+* 700bbd5 Cria o README
+</pre>
+
+<p>O <code>pudim.txt</code> estava na pasta e, depois do <code>git switch main</code>, não está mais. O Git deixou a pasta igual ao commit para onde o <code>main</code> aponta, e lá não existe pudim. O arquivo continua guardado no commit do <code>sobremesas</code>: voltando para lá, ele reaparece.</p>
+
+<pre>Antes:   A---B---C   ← main
+                  \
+                   D   ← sobremesas ← HEAD     pasta: README.md bolo.txt pao.txt pudim.txt
+
+Depois:  A---B---C   ← main ← HEAD             pasta: README.md bolo.txt pao.txt
+                  \
+                   D   ← sobremesas            (D = d6f2336, o pudim)
+</pre>
+
+<div class="warning">
+<strong>Editor aberto?</strong>
+<p>Se o <code>pudim.txt</code> estiver aberto num editor de texto quando você trocar de branch, o editor pode continuar mostrando o conteúdo antigo, ou avisar que o arquivo foi apagado. Isso é normal: o arquivo mudou no disco. Feche e abra de novo.</p>
+</div>
+
+<hr>
+
+<h2>3. Voltar para o anterior: <code>git switch -</code></h2>
+<p>O <code>-</code> quer dizer "o branch onde eu estava antes", como o <code>cd -</code> do terminal. É ótimo para pular entre dois ramos:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch -
+Switched to branch 'sobremesas'
+$ git switch -
+Switched to branch 'main'
+</pre>
+
+<hr>
+
+<h2>4. Criar e mudar de uma vez: <code>git switch -c</code></h2>
+<p>Na prática, quase sempre você cria um branch para trabalhar nele na hora. A opção <code>-c</code> (de <em>create</em>, "criar") faz as duas coisas:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch -c salgados
+Switched to a new branch 'salgados'
+$ git log --oneline --graph --all
+* d6f2336 (sobremesas) Adiciona receita de pudim
+* 0244251 (HEAD -&gt; salgados, main) Adiciona receita de pão de queijo
+* 7225e04 Adiciona receita de bolo
+* 700bbd5 Cria o README
+</pre>
+
+<dl class="anatomy">
+  <dt>-c salgados</dt><dd>Cria o branch <code>salgados</code> no commit atual e já muda para ele. É o mesmo que <code>git branch salgados</code> seguido de <code>git switch salgados</code>.</dd>
+  <dt>Switched to a new branch 'salgados'</dt><dd>"Mudado para um ramo <strong>novo</strong>, 'salgados'": o Git avisa que criou o branch.</dd>
+</dl>
+
+<h3>Criar a partir de outro ponto</h3>
+<p>Como no <code>git branch</code>, dá para dizer de onde o branch novo parte. A Ana quer um ramo <code>bebidas</code> que comece onde o <code>sobremesas</code> está, sem precisar ir até lá antes:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch main
+Switched to branch 'main'
+$ git switch -c bebidas sobremesas
+Switched to a new branch 'bebidas'
+$ git log --oneline --graph --all
+* d6f2336 (HEAD -&gt; bebidas, sobremesas) Adiciona receita de pudim
+* 0244251 (salgados, main) Adiciona receita de pão de queijo
+* 7225e04 Adiciona receita de bolo
+* 700bbd5 Cria o README
+</pre>
+
+<pre>Antes:   A---B---C   ← main ← HEAD
+                  \  ← salgados
+                   D   ← sobremesas
+
+Depois:  A---B---C   ← main
+                  \  ← salgados
+                   D   ← sobremesas
+                       ← bebidas ← HEAD
+</pre>
+<p>O <code>bebidas</code> nasceu no commit <code>D</code>, onde o <code>sobremesas</code> estava, e o HEAD foi junto para lá. O ponto de partida pode ser um branch, um hash (<code>git switch -c bebidas d6f2336</code>) ou algo como <code>HEAD~1</code>.</p>
+
+<hr>
+
+<h2>5. E as mudanças que ainda não foram commitadas?</h2>
+
+<h3>Quando não atrapalham, elas vão junto</h3>
+<p>A Ana mudou o <code>bolo.txt</code> no <code>main</code> e, sem commitar, trocou para o <code>salgados</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch main
+Switched to branch 'main'
+$ echo 'Bolo de cenoura com cobertura' &gt; bolo.txt
+$ git status --short
+ M bolo.txt
+$ git switch salgados
+M       bolo.txt                           « "levando junto: bolo.txt modificado"
+Switched to branch 'salgados'
+$ git status --short
+ M bolo.txt                                « a mudança continua aqui
+$ git switch main
+M       bolo.txt
+Switched to branch 'main'
+</pre>
+
+<p>O <code>M</code> do <code>git status --short</code> (veja <a href="git-status.html">git status</a>) continua lá depois da troca, e o próprio <code>git switch</code> avisou, antes do <code>Switched…</code>, que o <code>bolo.txt</code> está modificado (a linha <code>M       bolo.txt</code>). As mudanças não commitadas <strong>não pertencem a nenhum branch</strong>: elas estão na pasta, e a pasta é uma só. Como o <code>bolo.txt</code> é igual nos dois ramos, o Git pôde trocar sem mexer nele, e a mudança veio junto.</p>
+<p>Isso é útil quando você começa a mexer e percebe que devia estar em outro branch: troque com <code>git switch</code> (ou crie um com <code>-c</code>) e faça o commit lá.</p>
+
+<h3>Quando atrapalham, o Git se recusa a trocar</h3>
+
+<p>A Ana commitou a cobertura no <code>main</code> (agora o <code>bolo.txt</code> é diferente nos dois ramos), foi para o <code>sobremesas</code>, mexeu no bolo de novo e, sem commitar, tentou voltar:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git commit -q -am 'Melhora o bolo'
+$ git switch -q sobremesas
+$ echo 'Bolo de cenoura sem açúcar' &gt; bolo.txt
+$ git switch main
+error: Your local changes to the following files would be overwritten by checkout:
+        bolo.txt
+Please commit your changes or stash them before you switch branches.
+Aborting
+</pre>
+
+<p>Linha por linha:</p>
+<dl class="anatomy">
+  <dt>error: Your local changes to the following files would be overwritten by checkout:</dt><dd>"Erro: as suas mudanças locais nos arquivos abaixo seriam sobrescritas pela troca". O <code>bolo.txt</code> do <code>main</code> é diferente do <code>bolo.txt</code> do <code>sobremesas</code>; para trocar, o Git teria de escrever a versão do <code>main</code> por cima do seu rabisco. (A palavra <code>checkout</code> aparece porque o <code>switch</code> usa, por baixo, o mesmo mecanismo do comando antigo.)</dd>
+  <dt>bolo.txt</dt><dd>A lista dos arquivos em perigo.</dd>
+  <dt>Please commit your changes or stash them before you switch branches.</dt><dd>"Por favor, faça commit das suas mudanças ou guarde-as (<em>stash</em>) antes de trocar de branch". A própria mensagem ensina as saídas.</dd>
+  <dt>Aborting</dt><dd>"Abortando": a troca foi cancelada.</dd>
+</dl>
+
+<p>Nada mudou: a Ana continua no <code>sobremesas</code>, com a mudança intacta. Ela tem três saídas:</p>
+<ol class="passo">
+  <li><strong>Commitar</strong> a mudança no branch atual e depois trocar (o mais comum).</li>
+  <li><strong>Guardar para depois</strong> com <a href="git-stash.html">git stash</a>, trocar, e recuperar mais tarde.</li>
+  <li><strong>Jogar a mudança fora</strong> e trocar mesmo assim, com <code>--discard-changes</code> (cuidado: o rabisco se perde):</li>
+</ol>
+
+<pre class="term" data-cwd="~/receitas">$ git switch --discard-changes main
+Switched to branch 'main'
+$ git status
+No ramo main
+nothing to commit, working tree clean
+$ cat bolo.txt
+Bolo de cenoura com cobertura              « a versão do main; o "sem açúcar" se perdeu
+</pre>
+
+<hr>
+
+<h2>Experimente</h2>
+<p>O terminal está na pasta <code>receitas</code>, com os três commits da Ana no <code>main</code>. Use <code>ls</code> e <code>git log --oneline --graph --all</code> depois de cada troca.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;echo 'Pão de queijo' &gt; pao.txt;;git add pao.txt;;git commit -q -m 'Adiciona receita de pão de queijo'" data-goal="branch:salgados,head:salgados,commits:4,limpo,contem:salgados:coxinha.txt=Coxinha" data-solucao="git switch -c salgados;;echo 'Coxinha' &gt; coxinha.txt;;git add coxinha.txt;;git commit -m 'Adiciona coxinha'">
+<p class="try-task"><strong>Missão:</strong> crie o branch <code>salgados</code> e mude para ele <strong>com um comando só</strong>. Lá, crie o arquivo <code>coxinha.txt</code> com o texto <code>Coxinha</code> e faça um commit. Depois, experimente <code>git switch -</code> duas vezes e veja a coxinha sumir e voltar no <code>ls</code>.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;git switch -q -c sobremesas;;echo 'Pudim de leite' &gt; pudim.txt;;git add pudim.txt;;git commit -q -m 'Adiciona receita de pudim';;git switch -q main;;echo 'Bolo de cenoura com cobertura' &gt; bolo.txt;;git commit -q -am 'Melhora o bolo';;git switch -q sobremesas;;echo 'Bolo de cenoura sem açúcar' &gt; bolo.txt" data-goal="head:main,limpo,contem:sobremesas:bolo.txt=sem açúcar" data-solucao="git commit -am 'Bolo sem açúcar';;git switch main">
+<p class="try-task"><strong>Missão:</strong> a Ana está no <code>sobremesas</code>, com uma mudança não commitada no <code>bolo.txt</code>. Tente <code>git switch main</code> e leia o erro. Depois, <strong>sem perder</strong> a mudança, faça um commit dela no <code>sobremesas</code> e aí sim volte para o <code>main</code>.</p>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de trocar de branch</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git switch NOME</code></td><td>Muda para um branch que existe</td></tr>
+<tr><td><code>git switch -c NOME</code></td><td>Cria no commit atual e muda</td></tr>
+<tr><td><code>git switch -c NOME PONTO</code></td><td>Cria a partir de outro commit ou branch e muda</td></tr>
+<tr><td><code>git switch -</code></td><td>Volta para o branch anterior</td></tr>
+<tr><td><code>git branch NOME</code> + <code>git switch NOME</code></td><td>O mesmo que <code>-c</code>, em dois passos</td></tr>
+<tr><td><code>git checkout NOME</code> / <code>git checkout -b NOME</code></td><td>O jeito antigo (<a href="git-checkout.html">aula própria</a>)</td></tr>
+</table>
+</div>
+<p><strong>Qual usar?</strong> <code>git switch</code> para trocar e <code>git switch -c</code> para criar e trocar. Eles fazem uma coisa só e recusam o que não é troca de branch (por exemplo, <code>git switch</code> num commit solto exige <code>--detach</code>; veja <a href="head-destacado.html">HEAD Destacado</a>). O <code>git checkout</code> ainda funciona, mas faz muitas coisas diferentes com o mesmo nome.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>fatal: invalid reference: bebidas</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git switch bebidas
+fatal: invalid reference: bebidas
+</pre>
+<p>"Referência inválida": não existe branch (nem commit) com esse nome. <strong>Como confirmar:</strong> <code>git branch</code> lista os que existem; confira se não é erro de digitação ou de maiúscula. <strong>Como resolver:</strong> para criar o branch, use <code>git switch -c bebidas</code>.</p>
+</div>
+
+<div class="cenario">
+<strong><code>fatal: a branch named 'salgados' already exists</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git switch -c salgados
+fatal: a branch named 'salgados' already exists
+</pre>
+<p>O <code>-c</code> só cria branches novos. <strong>Como resolver:</strong> para ir até o que já existe, tire o <code>-c</code>: <code>git switch salgados</code>. (O <code>-C</code>, maiúsculo, recria o branch no ponto atual, jogando a etiqueta antiga fora: <code>Switched to and reset branch 'salgados'</code>. Commits que só esse branch tinha ficam sem etiqueta; evite.)</p>
+</div>
+
+<div class="cenario">
+<strong><code>error: Your local changes … would be overwritten by checkout</code></strong>
+<p>A mensagem da seção 5. <strong>O que aconteceu:</strong> você tem mudanças não commitadas num arquivo que é diferente no outro branch. <strong>Como confirmar:</strong> <code>git status</code> mostra o arquivo como modificado. <strong>Como resolver:</strong> faça commit (<code>git commit -am '…'</code>), guarde com <code>git stash</code> (<a href="git-stash.html">aula própria</a>) ou, se a mudança não presta, descarte com <code>git restore bolo.txt</code> (ou <code>git switch --discard-changes main</code>).</p>
+</div>
+
+<div class="cenario">
+<strong><code>error: The following untracked working tree files would be overwritten by checkout</code></strong>
+<pre class="term" data-cwd="~/receitas">$ echo 'Doce de leite' &gt; doce.txt
+$ git switch sobremesas
+error: The following untracked working tree files would be overwritten by checkout:
+        doce.txt
+Please move or remove them before you switch branches.
+Aborting
+</pre>
+<p>"Os arquivos não rastreados abaixo seriam sobrescritos pela troca. Por favor, mova-os ou apague-os antes de trocar de branch." <strong>O que aconteceu:</strong> no <code>main</code>, a Ana criou um <code>doce.txt</code> novo (nunca commitado), mas no <code>sobremesas</code> existe um <code>doce.txt</code> commitado (o brigadeiro). Para trocar, o Git teria de apagar o arquivo dela. <strong>Como resolver:</strong> renomeie (<code>mv doce.txt doce-de-leite.txt</code>), apague se não precisar (<code>rm doce.txt</code>) ou commite-o no <code>main</code>. Depois, troque de novo.</p>
+</div>
+
+<div class="cenario">
+<strong><code>fatal: a branch is expected, got commit '…'</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git switch HEAD~1
+fatal: a branch is expected, got commit 'HEAD~1'
+hint: If you want to detach HEAD at the commit, try again with the --detach option.
+</pre>
+<p>"Era esperado um branch, veio um commit". O <code>git switch</code> só aceita <strong>branches</strong>. Se você der um hash ou <code>HEAD~1</code>, ele recusa e a dica sugere repetir com <code>--detach</code> ("destacar"), para você não ir parar sem querer num "HEAD destacado". O que é isso, e quando vale a pena, está na aula <a href="head-destacado.html">HEAD Destacado</a>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git switch NOME</code></td><td>Muda para o branch</td></tr>
+<tr><td><code>git switch -c NOME [PONTO]</code></td><td>Cria (no atual ou em PONTO) e muda</td></tr>
+<tr><td><code>git switch -C NOME [PONTO]</code></td><td>Como <code>-c</code>, mas se o branch já existir ele é <strong>movido</strong> para o ponto (cuidado: commits só dele podem ficar sem etiqueta)</td></tr>
+<tr><td><code>git switch -</code></td><td>Volta para o branch anterior</td></tr>
+<tr><td><code>git switch --discard-changes NOME</code></td><td>Troca descartando as mudanças não commitadas</td></tr>
+<tr><td><code>git switch --detach COMMIT</code></td><td>Vai para um commit sem branch (<a href="head-destacado.html">HEAD destacado</a>)</td></tr>
+<tr><td><code>git switch -q NOME</code></td><td>Troca sem mostrar mensagens</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete os comandos</h3>
+<div class="ex-code">Ir para o branch salgados: git <input data-answer="switch" aria-label="subcomando"> salgados<br>Criar o branch bebidas e ir para ele: git switch <input data-answer="-c" aria-label="opção"> bebidas<br>Voltar para o branch anterior: git switch <input data-answer="-" aria-label="argumento"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. A Ana está no <code>main</code>, que não tem o arquivo <code>pudim.txt</code>. O branch <code>sobremesas</code> tem. O que acontece com a pasta depois de <code>git switch sobremesas</code>?</p>
+<label><input type="radio" name="q2"> Nada: os arquivos só mudam depois de um commit</label>
+<label><input type="radio" name="q2"> O <code>pudim.txt</code> aparece na pasta</label>
+<label><input type="radio" name="q2"> Aparece uma pasta <code>sobremesas/</code> com uma cópia do projeto</label>
+<label><input type="radio" name="q2"> O Git pergunta se deve copiar o <code>pudim.txt</code></label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">3. A Ana mudou o <code>README.md</code> (sem commitar) e o <code>README.md</code> é igual nos dois branches. O que acontece com <code>git switch salgados</code>?</p>
+<label><input type="radio" name="q3"> Erro: é preciso commitar antes de trocar</label>
+<label><input type="radio" name="q3"> A mudança é descartada</label>
+<label><input type="radio" name="q3"> A mudança é commitada automaticamente no branch antigo</label>
+<label><input type="radio" name="q3"> A troca acontece e a mudança continua na pasta, ainda não commitada</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. O Git respondeu <code>error: Your local changes to the following files would be overwritten by checkout</code>. Qual destas <strong>não</strong> é uma saída que mantém a sua mudança?</p>
+<label><input type="radio" name="q4"> <code>git switch --discard-changes main</code></label>
+<label><input type="radio" name="q4"> Fazer um commit e depois trocar</label>
+<label><input type="radio" name="q4"> <code>git stash</code>, trocar, e recuperar depois</label>
+<label><input type="radio" name="q4"> Nenhuma das outras: todas mantêm</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git switch NOME</code> muda o HEAD para o branch e deixa a pasta igual ao último commit dele: arquivos aparecem, somem e mudam.</li>
+  <li><code>git switch -c NOME</code> cria e muda; com um ponto no fim (<code>-c bebidas sobremesas</code>), o branch novo nasce lá.</li>
+  <li><code>git switch -</code> volta para o branch anterior.</li>
+  <li>Mudanças não commitadas ficam na pasta e vão junto, se não atrapalham. Se a troca fosse sobrescrevê-las, o Git se recusa: commite, guarde com <code>git stash</code> ou descarte com <code>--discard-changes</code>.</li>
+  <li>Branch que não existe dá <code>fatal: invalid reference</code>; para criar, use <code>-c</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
