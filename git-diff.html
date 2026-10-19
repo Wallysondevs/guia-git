@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git diff — vendo o que mudou, linha por linha | Guia Git</title>
+<meta name="description" content="O git diff para quem nunca usou Git: o que ele compara (a pasta × a área de preparo), como ler cada linha do diff unificado (diff --git, index, --- e +++, @@ -1,3 +1,4 @@, linhas com + e -), vários trechos (hunks), git diff arquivo, --stat, --word-diff, --name-only, o diff que fica vazio e os erros reais do Git em português.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">diff</span></h1>
+
+<p class="intro">O <a href="git-status.html">git status</a> diz <strong>quais</strong> arquivos mudaram: "o <code>bolo.txt</code> foi modificado". Mas o que mudou lá dentro? Uma vírgula? A receita inteira? Para isso existe o <code>git diff</code> (de <em>difference</em>, "diferença"): ele mostra, <strong>linha por linha</strong>, o que você tirou e o que você pôs. É o comando que você roda antes de cada <code>git add</code> para conferir o próprio trabalho.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que o <code>git diff</code> compara: a sua pasta com a área de preparo.</li>
+  <li>A ler um <strong>diff unificado</strong> linha por linha: <code>diff --git</code>, <code>index</code>, <code>---</code> e <code>+++</code>, o <code>@@ -1,3 +1,4 @@</code> e as linhas com <code>+</code>, <code>-</code> e espaço.</li>
+  <li>Por que um diff pode ter vários trechos (<em>hunks</em>) e o que é a "linha de contexto".</li>
+  <li>Os resumos: <code>git diff arquivo</code>, <code>--stat</code>, <code>--word-diff</code>, <code>--name-only</code>.</li>
+  <li>Por que o <code>git diff</code> às vezes não mostra nada, mesmo com mudanças (e qual comando usar então).</li>
+</ul>
+</div>
+
+<p>Todas as saídas desta aula saíram do Git do Ubuntu 26.04, na máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português. Com o sistema em inglês, as mensagens do Git saem em inglês, mas o diff em si (as linhas com <code>+</code> e <code>-</code>) é igual.</p>
+
+<hr>
+
+<h2>A ideia: o "jogo dos 7 erros"</h2>
+<p>Lembra do jogo dos 7 erros do jornal? Duas figuras quase iguais, lado a lado, e você tem de achar as diferenças. Agora imagine que alguém já circulou cada diferença para você, com <strong>vermelho</strong> no que sumiu e <strong>verde</strong> no que apareceu. É isso que o <code>git diff</code> faz com os seus arquivos de texto.</p>
+<p>As duas "figuras" que ele compara são:</p>
+<ul>
+  <li><strong>a sua pasta de trabalho</strong>: os arquivos como estão agora no disco, com as mudanças que você acabou de fazer;</li>
+  <li><strong>a área de preparo</strong> (<em>staging area</em>, veja <a href="area-de-preparo.html">A Área de Preparo</a>): a versão que iria para o próximo commit. Logo depois de um commit, ela é igual ao último commit.</li>
+</ul>
+<pre>   último commit        área de preparo         sua pasta
+  ┌─────────────┐      ┌──────────────┐      ┌─────────────┐
+  │  bolo.txt   │ ───► │   bolo.txt   │      │  bolo.txt   │
+  │  (4 ovos)   │      │   (4 ovos)   │      │  (3 ovos)   │
+  └─────────────┘      └──────────────┘      └─────────────┘
+                              └──── git diff ────┘
+                       "o que eu mudei e ainda NÃO preparei"</pre>
+<p>Ou seja: <strong><code>git diff</code>, sem nada, mostra as mudanças que você ainda não deu <code>git add</code></strong>. O que já foi preparado aparece com outro comando, o <a href="git-diff-staged.html">git diff --staged</a> (a próxima aula).</p>
+
+<hr>
+
+<h2>1. Preparando o terreno</h2>
+<p>A Ana tem um repositório <code>receitas</code> com a receita de bolo em 3 linhas, já commitada:</p>
+
+<pre class="term">$ mkdir receitas
+$ cd receitas
+$ git init -q
+$ printf 'Bolo de cenoura\n3 cenouras\n4 ovos\n' &gt; bolo.txt
+$ git add bolo.txt
+$ git commit -q -m 'Adiciona receita de bolo'
+$ git diff
+$
+</pre>
+
+<p>O <code>-q</code> (de <em>quiet</em>, "quieto") só faz o <code>git init</code> e o <code>git commit</code> não falarem nada, para o exemplo ficar curto. Repare no último comando: o <code>git diff</code> <strong>não mostrou nada</strong>. Isso não é erro: quer dizer "não há diferença nenhuma". A pasta está igual ao que foi commitado.</p>
+
+<div class="tip">
+<strong>Silêncio é uma resposta</strong>
+<p>Muitos comandos do Git (e do terminal em geral) seguem a regra: "se não há nada a dizer, não diga nada". Um <code>git diff</code> vazio é a resposta "nada mudou desde o último <code>git add</code>".</p>
+</div>
+
+<hr>
+
+<h2>2. O primeiro diff</h2>
+<p>A Ana testou a receita e mudou duas coisas: bastam <strong>3</strong> ovos, e faltava a farinha. O arquivo agora tem 4 linhas:</p>
+
+<pre class="file" data-file="bolo.txt">Bolo de cenoura
+3 cenouras
+3 ovos
+2 xícaras de farinha
+</pre>
+
+<p>O <code>git status</code> só avisa que o arquivo mudou (<code>modified</code> = "modificado"):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   bolo.txt
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+</pre>
+
+<p>Repare que parte das linhas saiu em inglês (<code>Changes not staged for commit</code> = "mudanças não preparadas para o commit"). Não é defeito da sua máquina: a tradução do Git para o português ainda não está completa, e o Git do Ubuntu mostra exatamente isso. A aula <a href="git-status.html">git status</a> explica cada linha.</p>
+
+<p>E o <code>git diff</code> mostra <strong>o quê</strong> mudou:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git diff
+diff --git a/bolo.txt b/bolo.txt
+index 10a5c6d..c8726b3 100644
+--- a/bolo.txt
++++ b/bolo.txt
+@@ -1,3 +1,4 @@
+ Bolo de cenoura
+ 3 cenouras
+-4 ovos
++3 ovos
++2 xícaras de farinha
+</pre>
+
+<p>À primeira vista parece uma sopa de símbolos. Mas cada linha tem um papel, e depois de ler esta seção você vai ler qualquer diff.</p>
+
+<h3>Linha por linha</h3>
+
+<dl class="anatomy">
+  <dt>diff --git a/bolo.txt b/bolo.txt</dt>
+  <dd>O <strong>cabeçalho</strong>: começa a comparação de um arquivo. O Git chama a versão antiga de <code>a/</code> e a nova de <code>b/</code> (são só rótulos, não pastas de verdade). Aqui o arquivo não mudou de nome, então os dois lados são <code>bolo.txt</code>. Quando várias coisas mudaram, cada arquivo ganha o seu <code>diff --git</code>.</dd>
+  <dt>index 10a5c6d..c8726b3 100644</dt>
+  <dd>Detalhes técnicos que você pode ignorar no dia a dia. <code>10a5c6d</code> e <code>c8726b3</code> são os começos das "impressões digitais" (os <em>hashes</em>, veja <a href="hash.html">O Hash do Commit</a>) do conteúdo antigo e do novo do arquivo: <code>antes..depois</code>. <code>100644</code> é o tipo do arquivo: um arquivo comum, que não é programa executável.</dd>
+  <dt>--- a/bolo.txt</dt>
+  <dd>"Linhas com <strong>menos</strong> (<code>-</code>) vêm da versão <code>a</code>", a antiga.</dd>
+  <dt>+++ b/bolo.txt</dt>
+  <dd>"Linhas com <strong>mais</strong> (<code>+</code>) vêm da versão <code>b</code>", a nova. Essas duas linhas são a <strong>legenda</strong> do que vem a seguir.</dd>
+  <dt>@@ -1,3 +1,4 @@</dt>
+  <dd>O começo de um <strong>trecho</strong> (em inglês, <em>hunk</em>, "pedaço"). Leia assim: "<code>-1,3</code>: na versão antiga, este trecho começa na linha <strong>1</strong> e tem <strong>3</strong> linhas; <code>+1,4</code>: na versão nova, começa na linha <strong>1</strong> e tem <strong>4</strong> linhas". O arquivo cresceu uma linha.</dd>
+  <dt>␣Bolo de cenoura</dt>
+  <dd>Linha que começa com um <strong>espaço</strong> (o <code>␣</code> só marca o espaço; ele não aparece no terminal): é uma linha de <strong>contexto</strong>, que não mudou. Ela está ali para você se localizar no arquivo.</dd>
+  <dt>␣3 cenouras</dt>
+  <dd>Outra linha de contexto, igual nas duas versões.</dd>
+  <dt>-4 ovos</dt>
+  <dd>Linha que começa com <code>-</code>: existia na versão antiga e <strong>saiu</strong>. No terminal ela aparece em <strong>vermelho</strong>.</dd>
+  <dt>+3 ovos</dt>
+  <dd>Linha que começa com <code>+</code>: <strong>entrou</strong> na versão nova. No terminal, em <strong>verde</strong>. Repare: o Git não tem um símbolo para "linha alterada". Trocar <code>4 ovos</code> por <code>3 ovos</code> aparece como "saiu a linha velha, entrou a nova".</dd>
+  <dt>+2 xícaras de farinha</dt>
+  <dd>Mais uma linha que entrou: a farinha que a Ana acrescentou.</dd>
+</dl>
+
+<p>Confira a conta do <code>@@</code>: na versão antiga, o trecho tem as linhas de contexto e as com <code>-</code> (2 + 1 = <strong>3</strong>); na nova, as de contexto e as com <code>+</code> (2 + 2 = <strong>4</strong>). Por isso <code>-1,3 +1,4</code>.</p>
+
+<div class="note">
+<strong>De onde vêm o <code>a/</code>, o <code>b/</code> e o <code>---</code>/<code>+++</code>?</strong>
+<p>Esse jeito de mostrar diferenças é o <strong>diff unificado</strong>, bem mais antigo que o Git: é o mesmo formato do comando <code>diff -u</code> do Linux. O Git só acrescenta as linhas <code>diff --git</code> e <code>index</code>. Por isso, quem aprende a ler um <code>git diff</code> lê também os diffs do GitHub, das revisões de código e de muitos outros programas.</p>
+</div>
+
+<h3>As cores</h3>
+<p>No terminal de verdade, o Git pinta o diff: o cabeçalho em <strong>negrito</strong>, a linha <code>@@</code> em <strong>azul-ciano</strong>, as linhas com <code>-</code> em <strong>vermelho</strong> e as com <code>+</code> em <strong>verde</strong>. As cores ajudam muito, mas o que manda são os <strong>sinais</strong> no começo da linha: mesmo sem cor (num e-mail, num arquivo, num terminal sem cores), o <code>+</code> e o <code>-</code> dizem tudo. Também é por isso que a linha de contexto começa com um espaço: para todas as linhas terem uma "coluna de sinal".</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;printf 'Bolo de cenoura\n3 cenouras\n4 ovos\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;printf 'Bolo de cenoura\n3 cenouras\n3 ovos\n2 xícaras de farinha\n' &gt; bolo.txt" data-goal="ran:^git diff" data-solucao="git diff">
+<p class="try-task"><strong>Missão:</strong> o repositório <code>receitas</code> desta caixa já tem a mudança da Ana no <code>bolo.txt</code>. Rode <code>git status</code> e depois <code>git diff</code>, e encontre no diff: a linha que saiu, as duas que entraram e o <code>@@ -1,3 +1,4 @@</code>.</p>
+</div>
+
+<hr>
+
+<h2>3. Um diff com vários trechos</h2>
+<p>O Git não mostra o arquivo inteiro: ele mostra só os pedaços que mudaram, com <strong>até 3 linhas de contexto</strong> antes e depois de cada mudança. Se duas mudanças estão longe uma da outra, cada uma vira um trecho <code>@@</code> separado. Na lojinha da Ana, a lista de produtos tem 15 linhas:</p>
+
+<pre class="term">$ cat -n produtos.txt
+     1	Lojinha da Ana
+     2
+     3	Produtos:
+     4	- caneca branca: R$ 25
+     5	- caneca preta: R$ 25
+     6	- camiseta P: R$ 40
+     7	- camiseta M: R$ 40
+     8	- camiseta G: R$ 45
+     9	- boné: R$ 30
+    10	- chaveiro: R$ 10
+    11	- adesivo: R$ 5
+    12	- bolsa de pano: R$ 35
+    13
+    14	Entrega em todo o Brasil.
+    15	Contato: ana@exemplo.com
+</pre>
+
+<p>Ela fez duas mudanças, longe uma da outra: aumentou o preço da caneca preta (linha 5) e escreveu sobre o frete (linha 14). O diff:</p>
+
+<pre class="term" data-cwd="~/loja">$ git diff
+diff --git a/produtos.txt b/produtos.txt
+index ad1ef9e..484712b 100644
+--- a/produtos.txt
++++ b/produtos.txt
+@@ -2,7 +2,7 @@ Lojinha da Ana
+
+ Produtos:
+ - caneca branca: R$ 25
+-- caneca preta: R$ 25
++- caneca preta: R$ 28
+ - camiseta P: R$ 40
+ - camiseta M: R$ 40
+ - camiseta G: R$ 45
+@@ -11,5 +11,5 @@ Produtos:
+ - adesivo: R$ 5
+ - bolsa de pano: R$ 35
+
+-Entrega em todo o Brasil.
++Entrega em todo o Brasil (frete grátis acima de R$ 100).
+ Contato: ana@exemplo.com
+</pre>
+
+<p>Agora há <strong>dois trechos</strong>, cada um com o seu <code>@@</code>:</p>
+<ul>
+  <li><code>@@ -2,7 +2,7 @@</code>: começa na linha 2 e tem 7 linhas, antes e depois (o número de linhas não mudou, porque uma linha saiu e outra entrou no lugar). São 3 linhas de contexto acima da caneca preta (a linha em branco, <code>Produtos:</code> e a caneca branca), a troca, e 3 de contexto abaixo (as camisetas).</li>
+  <li><code>@@ -11,5 +11,5 @@</code>: começa na linha 11 e tem 5 linhas: 3 de contexto acima do frete, a troca e só 1 abaixo, porque o arquivo acaba ali.</li>
+</ul>
+<p>As linhas 9 e 10 (o boné e o chaveiro) não aparecem: estão longe das duas mudanças e não serviriam de contexto. Quando duas mudanças ficam perto (menos de 6 linhas entre elas), os contextos se encostam e o Git as junta num trecho só. Por exemplo, se a Ana também tivesse apagado o chaveiro (linha 10), tudo viraria um único trecho, <code>@@ -2,14 +2,13 @@ Lojinha da Ana</code>, com uma linha <code>-- chaveiro: R$ 10</code> no meio (o primeiro <code>-</code> é o sinal do diff, o segundo é o tracinho da lista, que faz parte do texto).</p>
+<p>O texto que às vezes aparece <strong>depois</strong> do segundo <code>@@</code> na mesma linha (como o <code>Lojinha da Ana</code> em <code>@@ -2,7 +2,7 @@ Lojinha da Ana</code>) não faz parte da mudança: é uma "dica de onde você está", uma linha mais acima do arquivo que o Git achou útil mostrar (em programas, costuma ser o nome da função).</p>
+
+<h3>Menos (ou mais) contexto: <code>-U</code></h3>
+<p>As 3 linhas de contexto são o padrão. Com <code>-U</code> (de <em>unified</em>) seguido de um número, você escolhe quantas:</p>
+
+<pre class="term" data-cwd="~/loja">$ git diff -U1
+diff --git a/produtos.txt b/produtos.txt
+index ad1ef9e..484712b 100644
+--- a/produtos.txt
++++ b/produtos.txt
+@@ -4,3 +4,3 @@ Produtos:
+ - caneca branca: R$ 25
+-- caneca preta: R$ 25
++- caneca preta: R$ 28
+ - camiseta P: R$ 40
+@@ -13,3 +13,3 @@ Produtos:
+
+-Entrega em todo o Brasil.
++Entrega em todo o Brasil (frete grátis acima de R$ 100).
+ Contato: ana@exemplo.com
+$ git diff -U0
+diff --git a/produtos.txt b/produtos.txt
+index ad1ef9e..484712b 100644
+--- a/produtos.txt
++++ b/produtos.txt
+@@ -5 +5 @@ Produtos:
+-- caneca preta: R$ 25
++- caneca preta: R$ 28
+@@ -14 +14 @@ Produtos:
+-Entrega em todo o Brasil.
++Entrega em todo o Brasil (frete grátis acima de R$ 100).
+</pre>
+
+<p>Com <code>-U1</code>, cada trecho tem só 1 linha de contexto de cada lado (3 linhas no total). Com <code>-U0</code>, sai só o que mudou, sem contexto nenhum; e como cada trecho tem 1 linha só, o Git escreve <code>@@ -5 +5 @@</code> em vez de <code>@@ -5,1 +5,1 @@</code>. Contexto demais cansa; contexto de menos deixa você perdido no arquivo. O padrão (3) costuma ser o melhor.</p>
+
+<hr>
+
+<h2>4. Só um arquivo: <code>git diff arquivo</code></h2>
+<p>Quando muitos arquivos mudaram, você pode pedir o diff de um só, escrevendo o nome dele no fim:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git diff bolo.txt
+diff --git a/bolo.txt b/bolo.txt
+index 10a5c6d..c8726b3 100644
+--- a/bolo.txt
++++ b/bolo.txt
+@@ -1,3 +1,4 @@
+ Bolo de cenoura
+ 3 cenouras
+-4 ovos
++3 ovos
++2 xícaras de farinha
+</pre>
+
+<dl class="anatomy">
+  <dt>git diff</dt><dd>O comando.</dd>
+  <dt>bolo.txt</dt><dd>Um <strong>caminho</strong>: limita o diff a esse arquivo. Pode ser mais de um (<code>git diff bolo.txt pudim.txt</code>), uma pasta inteira (<code>git diff doces/</code>) ou um padrão entre aspas (<code>git diff '*.txt'</code>).</dd>
+</dl>
+
+<p>Também dá para escrever <code>git diff -- bolo.txt</code>. O <code>--</code> quer dizer "daqui em diante, só nomes de arquivo". Ele só é necessário quando o nome do arquivo pode ser confundido com outra coisa (veja <a href="#errado">Quando dá errado</a>).</p>
+
+<hr>
+
+<h2>5. Resumos: <code>--stat</code>, <code>--name-only</code> e <code>--word-diff</code></h2>
+
+<h3><code>--stat</code>: quantas linhas, em cada arquivo</h3>
+<pre class="term" data-cwd="~/receitas">$ git diff --stat
+ bolo.txt | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+</pre>
+<p>Uma linha por arquivo, com o número de linhas mexidas e um "gráfico" de <code>+</code> e <code>-</code>, e no fim o total. Aqui: o <code>bolo.txt</code> teve <strong>3</strong> linhas mexidas, 2 que entraram (<code>++</code>) e 1 que saiu (<code>-</code>). A última linha diz, em inglês: "1 arquivo mudado, 2 inserções (+), 1 remoção (-)".</p>
+
+<h3><code>--name-only</code> e <code>--name-status</code>: só os nomes</h3>
+<pre class="term" data-cwd="~/loja">$ git diff --name-only
+bolo.txt
+$ git diff --name-status
+M	bolo.txt
+</pre>
+<p>O <code>--name-status</code> põe uma letra antes do nome: <code>M</code> de <em>modified</em> (modificado). Em outras situações aparecem <code>A</code> (<em>added</em>, novo) e <code>D</code> (<em>deleted</em>, apagado).</p>
+
+<h3><code>--word-diff</code>: palavra por palavra</h3>
+<p>Num texto comprido (o TCC da Ana, um parágrafo de README), mudar uma palavra faz a linha inteira aparecer duas vezes, com <code>-</code> e com <code>+</code>. O <code>--word-diff</code> mostra só as <strong>palavras</strong> que mudaram, dentro da linha:</p>
+<pre class="term" data-cwd="~/receitas">$ git diff --word-diff
+diff --git a/bolo.txt b/bolo.txt
+index 10a5c6d..c8726b3 100644
+--- a/bolo.txt
++++ b/bolo.txt
+@@ -1,3 +1,4 @@
+Bolo de cenoura
+3 cenouras
+[-4-]{+3+} ovos
+{+2 xícaras de farinha+}
+</pre>
+<p><code>[-4-]</code> é o que saiu (entre <code>[-</code> e <code>-]</code>) e <code>{+3+}</code> é o que entrou (entre <code>{+</code> e <code>+}</code>). No terminal com cores, o Git também tem o <code>--color-words</code>, que pinta as palavras de vermelho e verde sem os colchetes.</p>
+
+<hr>
+
+<h2>6. Quando o <code>git diff</code> fica vazio (mas mudou alguma coisa)</h2>
+
+<h3>Depois do <code>git add</code></h3>
+<p>A Ana gostou do que viu e preparou o arquivo. E o diff... sumiu:</p>
+<pre class="term" data-cwd="~/receitas">$ git add bolo.txt
+$ git diff
+$
+</pre>
+<p>As mudanças não se perderam: elas foram para a <strong>área de preparo</strong>. Como o <code>git diff</code> compara a pasta com a área de preparo, e agora as duas estão iguais, não há diferença a mostrar. Para ver o que está preparado (o que vai entrar no commit), use <code>git diff --staged</code>:</p>
+<pre class="term" data-cwd="~/receitas">$ git diff --staged
+diff --git a/bolo.txt b/bolo.txt
+index 10a5c6d..c8726b3 100644
+--- a/bolo.txt
++++ b/bolo.txt
+@@ -1,3 +1,4 @@
+ Bolo de cenoura
+ 3 cenouras
+-4 ovos
++3 ovos
++2 xícaras de farinha
+</pre>
+<p>Esse é o assunto da próxima aula: <a href="git-diff-staged.html">git diff --staged</a>.</p>
+
+<h3>Arquivo novo, que o Git ainda não conhece</h3>
+<pre class="term" data-cwd="~/receitas">$ git commit -q -m 'Ajusta ovos e farinha'
+$ echo 'Bolo de chocolate' &gt; chocolate.txt
+$ git status --short
+?? chocolate.txt
+$ git diff
+$ git diff chocolate.txt
+$
+</pre>
+<p>O <code>git status</code> mostra o <code>chocolate.txt</code> com <code>??</code> (não rastreado), mas o <code>git diff</code> não diz nada sobre ele. O Git só compara arquivos que ele <strong>já conhece</strong>; um arquivo novo não tem "versão anterior" para comparar. Depois do <code>git add chocolate.txt</code>, ele aparece no <code>git diff --staged</code>, com todas as linhas marcadas com <code>+</code>.</p>
+
+<hr>
+
+<h2>7. O fim de arquivo sem quebra de linha</h2>
+<p>Às vezes aparece uma linha estranha, começando com uma barra invertida:</p>
+<pre class="term" data-cwd="~/loja">$ git diff fim.txt
+diff --git a/fim.txt b/fim.txt
+index d77f1f6..6a6a60c 100644
+--- a/fim.txt
++++ b/fim.txt
+@@ -1 +1,2 @@
+-Contato: ana@exemplo.com
+\ No newline at end of file
++Contato: ana@exemplo.com
++Instagram: @lojinha.da.ana
+\ No newline at end of file
+</pre>
+<p><code>\ No newline at end of file</code> quer dizer "não há quebra de linha no fim do arquivo" (o Git mostra essa frase sempre em inglês). A última linha do <code>fim.txt</code> antigo terminava sem o "Enter" final. Quando a Ana acrescentou uma linha depois dela, a linha velha ganhou um "Enter", e por isso aparece como removida e adicionada, mesmo com o mesmo texto. Não é erro: é só um aviso. Muitos editores (como o VS Code, com a opção certa) põem o "Enter" final sozinhos e evitam esse ruído.</p>
+
+<hr>
+
+<h2>8. Diff comprido: o paginador</h2>
+<p>Quando o diff não cabe na tela, o Git o abre num <strong>paginador</strong> (o programa <code>less</code>), em vez de despejar tudo de uma vez. Você percebe porque o prompt não volta e aparece <code>:</code> (ou <code>(END)</code>, no fim) na última linha da tela. Ali (ilustrativo, pois depende do tamanho da sua janela):</p>
+<ul>
+  <li><kbd>Espaço</kbd> ou <kbd>↓</kbd> descem; <kbd>b</kbd> ou <kbd>↑</kbd> sobem;</li>
+  <li><kbd>/</kbd> seguido de um texto procura esse texto;</li>
+  <li><kbd>q</kbd> (de <em>quit</em>) <strong>sai</strong> e devolve o prompt.</li>
+</ul>
+<p>Se você quiser o diff direto na tela, sem paginador, use <code>git --no-pager diff</code> (ou a forma curta, <code>git -P diff</code>). O <code>--no-pager</code> vem <strong>antes</strong> do <code>diff</code>, porque é uma opção do <code>git</code>, não do subcomando. Com um tracinho só, o Git não entende:</p>
+<pre class="term" data-cwd="~/receitas">$ git -no-pager diff
+unknown option: -no-pager
+usage: git [-v | --version] [-h | --help] [-C &lt;path&gt;] [-c &lt;name&gt;=&lt;value&gt;]
+           [--exec-path[=&lt;path&gt;]] [--html-path] [--man-path] [--info-path]
+           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--no-lazy-fetch]
+           [--no-optional-locks] [--no-advice] [--bare] [--git-dir=&lt;path&gt;]
+           [--work-tree=&lt;path&gt;] [--namespace=&lt;name&gt;] [--config-env=&lt;name&gt;=&lt;envvar&gt;]
+           &lt;command&gt; [&lt;args&gt;]
+$ git --no-pager diff --stat
+ bolo.txt | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+</pre>
+<p><code>unknown option</code> = "opção desconhecida"; embaixo vem o resumo de uso do <code>git</code>, onde dá para ver, na terceira linha, o <code>-P | --no-pager</code> certo.</p>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de ver o que mudou</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Você quer…</th><th>Use</th></tr>
+<tr><td>Saber <strong>quais</strong> arquivos mudaram</td><td><code>git status</code> (ou <code>git diff --name-only</code>)</td></tr>
+<tr><td>Ver <strong>as linhas</strong> que você mudou e ainda não preparou</td><td><code>git diff</code></td></tr>
+<tr><td>Ver só um arquivo</td><td><code>git diff arquivo</code></td></tr>
+<tr><td>Ter uma ideia do tamanho da mudança</td><td><code>git diff --stat</code></td></tr>
+<tr><td>Ver palavras trocadas num texto comprido</td><td><code>git diff --word-diff</code> (ou <code>--color-words</code>)</td></tr>
+<tr><td>Ver o que <strong>já está preparado</strong> (vai no próximo commit)</td><td><code>git diff --staged</code> (aula <a href="git-diff-staged.html">git diff --staged</a>)</td></tr>
+<tr><td>Ver tudo desde o último commit, preparado ou não</td><td><code>git diff HEAD</code> (também na aula <a href="git-diff-staged.html">git diff --staged</a>)</td></tr>
+<tr><td>Ver o que um commit antigo mudou</td><td><code>git show</code> (aula <a href="git-show.html">git show</a>)</td></tr>
+<tr><td>Ver as diferenças num programa com janelas</td><td>O VS Code e outros mostram o mesmo diff lado a lado (aula <a href="interfaces-graficas.html">Git no VS Code</a>)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>O nome do arquivo está errado</strong>
+<pre class="term" data-cwd="~/receitas">$ git diff nada.txt
+fatal: ambiguous argument 'nada.txt': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git &lt;command&gt; [&lt;revision&gt;...] -- [&lt;file&gt;...]'
+$ git diff -- nada.txt
+$
+</pre>
+<p>O Git não achou nenhum <code>nada.txt</code> na pasta. Linha por linha (esta mensagem ainda não tem tradução e sai em inglês): <code>fatal: ambiguous argument 'nada.txt'</code> = "argumento ambíguo"; <code>unknown revision or path not in the working tree</code> = "não é uma versão (<em>revision</em>, um commit) conhecida nem um caminho que exista na pasta de trabalho". Como o <code>git diff</code> aceita tanto nomes de commits quanto nomes de arquivos, ele não sabe o que você quis dizer. As duas linhas seguintes sugerem o <code>--</code>: "use <code>--</code> para separar caminhos de versões". Com o <code>--</code>, o Git entende que <code>nada.txt</code> é um arquivo e simplesmente não mostra nada (não há mudanças nele). <strong>Como resolver:</strong> confira o nome com <code>ls</code> ou <code>git status</code> (maiúsculas contam: <code>Bolo.txt</code> não é <code>bolo.txt</code>).</p>
+</div>
+
+<div class="cenario">
+<strong>Fora de um repositório</strong>
+<pre class="term" data-cwd="/tmp">$ git diff
+warning: Not a git repository. Use --no-index to compare two paths outside a working tree
+uso: git diff --no-index [&lt;options&gt;] &lt;path&gt; &lt;path&gt; [&lt;pathspec&gt;...]
+
+Diff output format options
+    -p, --patch           generate patch
+    -s, --no-patch        suppress diff output
+…  (mais umas 120 linhas com a lista de opções)
+$ echo $?
+129
+</pre>
+<p>A Ana estava na pasta <code>/tmp</code>, que não é um repositório. A primeira linha diz: "aviso: não é um repositório git. Use <code>--no-index</code> para comparar dois caminhos fora de uma árvore de trabalho". Em seguida o Git despeja o modo de usar do <code>git diff --no-index</code> (um jeito de usar o <code>git diff</code> para comparar dois arquivos quaisquer) e a lista inteira de opções, em inglês. O código de saída <code>129</code> é o que o Git usa para "você usou o comando do jeito errado". Repare que, ao contrário de outros comandos, aqui <strong>não</strong> aparece o famoso <code>fatal: not a git repository</code>. <strong>Como resolver:</strong> entre na pasta do projeto (<code>cd ~/receitas</code>) e rode de novo.</p>
+</div>
+
+<div class="cenario">
+<strong>"Mudei o arquivo e o <code>git diff</code> não mostra nada!"</strong>
+<p>Três causas comuns, da mais à menos provável:</p>
+<ol>
+  <li><strong>Você já deu <code>git add</code>.</strong> Confira com <code>git status</code>: se o arquivo está em "Mudanças a serem submetidas", use <code>git diff --staged</code>.</li>
+  <li><strong>O arquivo é novo</strong> (<code>??</code> no <code>git status --short</code>): o Git ainda não o conhece. Dê <code>git add</code> e use <code>git diff --staged</code>.</li>
+  <li><strong>Você não salvou</strong> o arquivo no editor. O Git só vê o que está no disco.</li>
+</ol>
+</div>
+
+<div class="cenario">
+<strong>"O terminal travou depois do <code>git diff</code>"</strong>
+<p>Provavelmente não travou: é o paginador (seção 8). Aperte <kbd>q</kbd>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando / linha</th><th>O que é</th></tr>
+<tr><td><code>git diff</code></td><td>Mudanças da pasta que ainda não foram para a área de preparo</td></tr>
+<tr><td><code>git diff arquivo</code></td><td>O mesmo, só para esse arquivo (ou pasta)</td></tr>
+<tr><td><code>git diff --stat</code></td><td>Resumo: arquivos e número de linhas mudadas</td></tr>
+<tr><td><code>git diff --name-only</code> / <code>--name-status</code></td><td>Só os nomes dos arquivos (com <code>M</code>, <code>A</code>, <code>D</code>)</td></tr>
+<tr><td><code>git diff --word-diff</code></td><td>Mostra palavras trocadas: <code>[-saiu-]{+entrou+}</code></td></tr>
+<tr><td><code>git diff -U1</code></td><td>Só 1 linha de contexto (o padrão é 3)</td></tr>
+<tr><td><code>git --no-pager diff</code></td><td>Sem paginador</td></tr>
+<tr><td><code>diff --git a/x b/x</code></td><td>Começo do diff de um arquivo (<code>a</code> = antes, <code>b</code> = depois)</td></tr>
+<tr><td><code>index 1a2b..3c4d 100644</code></td><td>Hashes do conteúdo antes..depois e o tipo do arquivo</td></tr>
+<tr><td><code>--- a/x</code> / <code>+++ b/x</code></td><td>Legenda: <code>-</code> é da versão antiga, <code>+</code> da nova</td></tr>
+<tr><td><code>@@ -1,3 +1,4 @@</code></td><td>Trecho: antes, da linha 1, 3 linhas; depois, da linha 1, 4 linhas</td></tr>
+<tr><td><code>␣linha</code> / <code>-linha</code> / <code>+linha</code></td><td>Contexto (igual) / saiu / entrou</td></tr>
+<tr><td><code>\ No newline at end of file</code></td><td>A linha acima é a última do arquivo e não tem "Enter" no fim</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Leia o cabeçalho do trecho</h3>
+<p>Num diff aparece <code>@@ -5,4 +5,6 @@</code>. Complete:</p>
+<div class="ex-code">Na versão antiga, o trecho começa na linha <input data-answer="5" aria-label="linha inicial antiga"> e tem <input data-answer="4" aria-label="linhas antigas"> linhas; na nova, tem <input data-answer="6" aria-label="linhas novas"> linhas.</div>
+</div>
+
+<div class="exercise">
+<h3>2. O sinal de cada linha</h3>
+<p>Complete com o sinal que começa a linha no diff:</p>
+<div class="ex-code">Linha que saiu: <input data-answer="-" aria-label="sinal da linha que saiu"> · Linha que entrou: <input data-answer="+" aria-label="sinal da linha que entrou"></div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. A Ana mudou o <code>bolo.txt</code>, rodou <code>git add bolo.txt</code> e depois <code>git diff</code>. O que aparece?</p>
+<label><input type="radio" name="q3"> O diff completo do <code>bolo.txt</code></label>
+<label><input type="radio" name="q3"> Uma mensagem de erro</label>
+<label><input type="radio" name="q3"> Nada: as mudanças já estão na área de preparo, e o <code>git diff</code> compara a pasta com ela</label>
+<label><input type="radio" name="q3"> Só o nome do arquivo</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. A Ana trocou <code>4 ovos</code> por <code>3 ovos</code>. Como essa troca aparece no <code>git diff</code>?</p>
+<label><input type="radio" name="q4"> Uma linha <code>~4 ovos → 3 ovos</code></label>
+<label><input type="radio" name="q4"> Uma linha <code>-4 ovos</code> seguida de uma linha <code>+3 ovos</code></label>
+<label><input type="radio" name="q4"> Só <code>+3 ovos</code></label>
+<label><input type="radio" name="q4"> Não aparece: o número de linhas não mudou</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. Um arquivo novo, que nunca recebeu <code>git add</code>, aparece no <code>git diff</code>?</p>
+<label><input type="radio" name="q5"> Não: o Git só compara arquivos que ele já rastreia</label>
+<label><input type="radio" name="q5"> Sim, com todas as linhas em <code>+</code></label>
+<label><input type="radio" name="q5"> Sim, com todas as linhas em <code>-</code></label>
+<label><input type="radio" name="q5"> Só com <code>--stat</code></label>
+</div>
+
+<h3>Missão final: o que mudou na lojinha?</h3>
+
+<div class="try" data-setup="mkdir loja;;cd loja;;git init -q;;printf 'Caneca: R$ 25\nCamiseta: R$ 40\nBoné: R$ 30\n' &gt; precos.txt;;printf 'Entrega em todo o Brasil.\n' &gt; entrega.txt;;git add .;;git commit -q -m 'Precos e entrega';;printf 'Caneca: R$ 25\nCamiseta: R$ 45\nBoné: R$ 30\n' &gt; precos.txt" data-goal="ran:^git diff,preparado:precos.txt" data-solucao="git diff;;git add precos.txt">
+<p class="try-task"><strong>Missão:</strong> alguém mexeu num arquivo da lojinha. Use <code>git status</code> para descobrir qual, <code>git diff</code> para ver o que mudou (qual produto ficou mais caro?) e, se a mudança estiver certa, prepare esse arquivo com <code>git add</code>. Depois rode <code>git diff</code> de novo: o que aconteceu?</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git diff</code> mostra, linha por linha, o que mudou na sua pasta e <strong>ainda não</strong> foi para a área de preparo. Vazio quer dizer "nada a mostrar".</li>
+  <li>No diff unificado: <code>diff --git a/… b/…</code> abre um arquivo; <code>index</code> traz os hashes; <code>---</code>/<code>+++</code> são a legenda; <code>@@ -início,linhas +início,linhas @@</code> abre um trecho; linhas com <code>-</code> saíram, com <code>+</code> entraram, com espaço são contexto.</li>
+  <li>Uma linha alterada aparece como uma <code>-</code> seguida de uma <code>+</code>.</li>
+  <li><code>git diff arquivo</code> limita a um arquivo; <code>--stat</code>, <code>--name-only</code> e <code>--word-diff</code> resumem.</li>
+  <li>Depois do <code>git add</code>, as mudanças saem do <code>git diff</code> e aparecem no <a href="git-diff-staged.html">git diff --staged</a>. Arquivos novos (não rastreados) não aparecem no <code>git diff</code>.</li>
+  <li>Diff comprido abre no paginador: <kbd>q</kbd> para sair.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
