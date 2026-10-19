@@ -56,7 +56,7 @@
 <h2>2. O rebase para: lendo a mensagem</h2>
 
 <pre class="term" data-cwd="~/receitas">$ git rebase main
-Rebasing (1/2)Rebasing (2/2)Mesclagem automática de bolo.txt
+Mesclagem automática de bolo.txt
 CONFLITO (conteúdo): conflito de mesclagem em bolo.txt
 error: não foi possível aplicar 8d43442... Diminui o açúcar para 1 xícara e meia
 hint: Resolve all conflicts manually, mark them as resolved with
@@ -68,7 +68,7 @@ Could not apply 8d43442... # Diminui o açúcar para 1 xícara e meia
 </pre>
 <p>Linha por linha:</p>
 <ul>
-  <li><code>Rebasing (1/2)Rebasing (2/2)</code>: o progresso. O 1º commit (a cobertura) foi refeito sem problema; o Git estava no 2º. (No terminal, o contador se apaga e você vê só o resto.)</li>
+  <li>O 1º commit (a cobertura) foi refeito sem problema; o Git parou no 2º. (Sem terminal, num script, aparece antes também o contador de progresso, <code>Rebasing (1/2)Rebasing (2/2)</code>.)</li>
   <li><code>Mesclagem automática de bolo.txt</code>: o Git tentou juntar as mudanças do <code>bolo.txt</code> sozinho…</li>
   <li><code>CONFLITO (conteúdo): conflito de mesclagem em bolo.txt</code>: …e não conseguiu: os dois lados mexeram nas mesmas linhas.</li>
   <li><code>error: não foi possível aplicar 8d43442...</code>: o commit que parou foi o <code>8d43442</code>, "Diminui o açúcar".</li>
