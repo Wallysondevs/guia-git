@@ -263,7 +263,7 @@
     h.c["Modelos"] = mkD(UID, 509, d12);
     h.c[".profile"] = mkF(UID, 420, TXT.profile, T0);
     h.c[".bash_history"] = mkF(UID, 384, "", dataT(2026, 10, 15, 8, 40));
-    h.c[".gitconfig"] = mkF(UID, 420, "[user]\n\tname = Ana Souza\n\temail = ana@exemplo.com\n[init]\n\tdefaultBranch = main\n", dataT(2026, 10, 15, 8, 40)); // Git da Ana já configurado
+    h.c[".gitconfig"] = mkF(UID, 420, "[user]\n\tname = Ana Souza\n\temail = ana@exemplo.com\n[init]\n\tdefaultBranch = main\n[core]\n\teditor = nano\n", dataT(2026, 10, 15, 8, 40)); // Git da Ana já configurado
     h.c["Público"] = mkD(UID, 509, d12);
     h.c["Vídeos"] = mkD(UID, 509, d12);
     h.c["Imagens"] = mkD(UID, 509, d12);
@@ -10805,7 +10805,7 @@
     var r = [], cur = "";
     for (var i = 0; i < meta.length; i++) {
       if (meta[i] === "\\" && meta[i + 1] === ",") { cur += ","; i++; continue; }
-      if (meta[i] === "," && /^\s*(dir|file|absent|exec|link|contains|cwd|var|func|alias|ran|out|outre|err|errre|exit|src):/.test(meta.slice(i + 1))) { r.push(cur); cur = ""; continue; }
+      if (meta[i] === "," && (/^\s*(dir|file|absent|exec|link|contains|cwd|var|func|alias|ran|out|outre|err|errre|exit|src|commits|preparado|naopreparado|rastreado|ignorado|branch|semBranch|head|msg|logre|tag|remoto|contem|stash):/.test(meta.slice(i + 1)) || /^\s*(repo|limpo|conflito|semconflito)\s*(,|$)/.test(meta.slice(i + 1)))) { r.push(cur); cur = ""; continue; }
       cur += meta[i];
     }
     r.push(cur);
@@ -10815,7 +10815,8 @@
   function checarMeta(sh, meta, ctx) {
     var falhas = [];
     dividirMetas(meta).forEach(function (g) {
-      var i = g.indexOf(":"), tipo = g.slice(0, i), val = g.slice(i + 1), ok = false, r;
+      var i = g.indexOf(":"); if (i < 0) i = g.length;
+      var tipo = g.slice(0, i), val = g.slice(i + 1), ok = false, r;
       function cam(v) { return v === "~" ? HOME : v.indexOf("~/") === 0 ? HOME + v.slice(1) : (v[0] === "/" ? v : HOME + "/" + v); }
       try {
         switch (tipo) {
@@ -10836,7 +10837,7 @@
           case "errre": ok = new RegExp(val, "m").test(ctx.err || ""); break;
           case "exit": ok = String(ctx.exit) === val; break;
           case "src": ok = new RegExp(val, "m").test(ctx.src || ""); break;
-          default: ok = false;
+          default: { var mg = BashSim.gitsim ? BashSim.gitsim.meta(sh, tipo, val) : undefined; ok = mg === true; } // metas do Git (gitsim.js)
         }
       } catch (ex) { ok = false; }
       if (!ok) falhas.push(g);

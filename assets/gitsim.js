@@ -927,12 +927,7 @@
     }
     function lista(v) { return v === undefined ? [] : Array.isArray(v) ? v : [v]; }
     function precisaRepo(io) { var r = achar(io.sh); if (!r) naoRepo(io.sh); return r; }
-    function naoRepo(sh) {
-      var c = sh.cwd;
-      if (c === "/home" || c.indexOf("/home/") === 0) fatal("not a git repository (or any parent up to mount point /home)\nStopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).");
-      if (c === "/tmp" || c.indexOf("/tmp/") === 0) fatal("not a git repository (or any parent up to mount point /tmp)\nStopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).");
-      fatal("not a git repository (or any of the parent directories): .git");
-    }
+    function naoRepo(sh) { fatal("not a git repository (or any of the parent directories): .git"); }
     function precisaArvore(repo) { if (!repo.raiz) fatal("this operation must be run in a work tree"); }
     // caminhos dados pelo usuário → relativos à raiz do repositório
     function pathspec(repo, p) {
@@ -1206,22 +1201,23 @@
       if (estado.rebase) s += estado.rebase;
       if (up && st.head) s += textoUpstream(repo, st.head, up);
       if (!st.head) s += "\nNo commits yet\n";
-      if (estado.merge) s += conf.length ? "You have unmerged paths.\n  (fix conflicts and run \"git commit\")\n  (use \"git merge --abort\" to abort the merge)\n" : "All conflicts fixed but you are still merging.\n  (use \"git commit\" to conclude merge)\n";
+      if (estado.merge) s += conf.length ? "Você tem caminhos não mesclados.\n  (fixar conflitos e executar \"git commit\")\n  (use \"git merge --abort\" to abort the merge)\n" : "Todos os conflitos foram corrigidos mas você continua mesclando.\n  (use  \"git commit\" para concluir a mesclagem)\n";
       if (estado.cherry) s += estado.cherry;
       if (estado.revert) s += estado.revert;
       if (!st.head) s += "\n";
       else if (estado.merge || estado.cherry || estado.revert) s += "\n";
       var LBL = { A: "new file:   ", M: "modified:   ", D: "deleted:    ", R: "renamed:    " };
       if (prep.length) {
-        s += "Mudanças a serem submetidas:\n" + (st.head ? "  (use \"git restore --staged <file>...\" to unstage)\n" : "  (utilize \"git rm --cached <arquivo>...\" para não apresentar)\n");
+        s += "Mudanças a serem submetidas:\n" + (estado.merge || estado.cherry || estado.revert || estado.rebase ? "" : st.head ? "  (use \"git restore --staged <file>...\" to unstage)\n" : "  (utilize \"git rm --cached <arquivo>...\" para não apresentar)\n");
         prep.forEach(function (m) { s += "\t" + LBL[m.tipo] + (m.tipo === "R" ? rel(m.de) + " -> " : "") + rel(m.para) + "\n"; });
         s += "\n";
       }
       if (conf.length) {
-        s += "Unmerged paths:\n  (use \"git add <file>...\" to mark resolution)\n";
+        var temDelC = conf.some(function (k) { var e = st.conf[k]; return !e[2] || !e[3]; });
+        s += "Caminhos não mesclados:\n" + (temDelC ? "  (use \"git add/rm <file>...\" as appropriate to mark resolution)\n" : "  (usar \"git add <arquivo>...\" para marcar resolução)\n");
         conf.forEach(function (k) {
           var e = st.conf[k], c = (e[1] ? "1" : "") + (e[2] ? "2" : "") + (e[3] ? "3" : "");
-          var L = { "123": "both modified:   ", "23": "both added:      ", "13": "deleted by us:   ", "12": "deleted by them: ", "3": "added by them:   ", "2": "added by us:     ", "1": "both deleted:    " }[c];
+          var L0 = { "123": "ambos modificados:", "23": "ambos adicionaram:", "13": "excluídos por nós:", "12": "excluídos por eles:", "3": "adicionado por:", "2": "adicionados por nós:", "1": "ambos excluídos:" }[c], L = L0 + rep(" ", 21 - L0.length);
           s += "\t" + L + rel(k) + "\n";
         });
         s += "\n";
@@ -1246,7 +1242,7 @@
         if (nprep.length) s += "nenhuma modificação adicionada à submissão (utilize \"git add\" e/ou \"git commit -a\")\n";
         else if (nr.length) s += "nada adicionado ao envio mas arquivos não registrados estão presentes (use \"git add\" to registrar)\n";
         else if (!st.head) s += "nada para enviar (crie/copie arquivos e use \"git add\" para registrar)\n";
-        else if (uModo === "no") s += "nothing to commit (use -u to show untracked files)\n";
+        else if (uModo === "no") s += "nada a submeter (utilize -u para mostrar arquivos não rastreados)\n";
         else s += "nothing to commit, working tree clean\n";
       }
       io.out(s);
@@ -1277,9 +1273,13 @@
       var h = repo.head(), rl = repo.reflog("HEAD");
       for (var i = 0; i < rl.length; i++) {
         var m = /^checkout: moving from .* to (.*)$/.exec(rl[i].msg);
-        if (m) { var alvo = m[1], ha = repo.commitDe(alvo); if (ha === h) return "HEAD destacada em " + alvo; return "HEAD destacada de " + alvo; }
+        if (m) {
+          var alvo = m[1], ehRef = ["refs/heads/", "refs/tags/", "refs/remotes/"].some(function (p) { return repo.resolverRef(p + alvo); });
+          var nome = ehRef ? alvo : repo.abrev(rl[i].neu);
+          return (rl[i].neu === h ? "HEAD detached at " : "HEAD detached from ") + nome;
+        }
       }
-      return "HEAD destacada em " + repo.abrev(h);
+      return "HEAD detached at " + repo.abrev(h);
     }
     function upstream(repo, ramo) {
       var remoto = repo.config("branch." + ramo + ".remote"), merge = repo.config("branch." + ramo + ".merge");
@@ -1297,9 +1297,9 @@
       if (up.sumiu) return "Your branch is based on '" + up.nome + "', but the upstream is gone.\n  (use \"git branch --unset-upstream\" to fixup)\n";
       var ab = aFrente(repo, head, up.hash);
       if (!ab.a && !ab.b) return "Your branch is up to date with '" + up.nome + "'.\n\n";
-      if (ab.a && !ab.b) return "Your branch is ahead of '" + up.nome + "' by " + plural(ab.a, "commit", "commits") + ".\n  (use \"git push\" to publish your local commits)\n\n";
-      if (!ab.a && ab.b) return "Your branch is behind '" + up.nome + "' by " + plural(ab.b, "commit", "commits") + ", and can be fast-forwarded.\n  (use \"git pull\" to update your local branch)\n\n";
-      return "Your branch and '" + up.nome + "' have diverged,\nand have " + ab.a + " and " + ab.b + " different commits each, respectively.\n  (use \"git pull\" if you want to integrate the remote branch with yours)\n\n";
+      if (ab.a && !ab.b) return "Seu ramo está à frente de '" + up.nome + "' por " + plural(ab.a, "submissão", "submissões") + ".\n  (use \"git push\" to publish your local commits)\n\n";
+      if (!ab.a && ab.b) return "Seu ramo está atrás de '" + up.nome + "' em " + plural(ab.b, "submissão", "submissões") + ", e pode ser avançado.\n  (use \"git pull\" to update your local branch)\n\n";
+      return (ab.a + ab.b > 1 ? "O seu branch e '" : "O seu ramo e '") + up.nome + "' divergiram-se,\ne cada um tem " + ab.a + " e " + ab.b + (ab.a + ab.b > 1 ? " submissões" : " submissão") + ", respectivamente.\n  (use \"git pull\" if you want to integrate the remote branch with yours)\n\n";
     }
 
     /* ---------- commit ---------- */
@@ -1472,7 +1472,7 @@
         var a = args[i], m;
         if (fimRevs) { o.paths.push(a); continue; }
         if (a === "--") { fimRevs = true; continue; }
-        if (a === "--oneline") { o.oneline = true; o.decorate = o.decorate === null ? null : o.decorate; }
+        if (a === "--oneline") { o.oneline = true; o.format = null; }
         else if (a === "--graph") o.graph = true;
         else if (a === "--all") o.all = true;
         else if (a === "-p" || a === "-u" || a === "--patch") o.patch = true;
@@ -1492,7 +1492,7 @@
         else if (a === "--pretty=oneline" || a === "--format=oneline") { o.oneline = true; o.abbrev = false; }
         else if (a === "--pretty=short" || a === "--pretty=medium" || a === "--pretty") {}
         else if (a === "--relative-date" || a === "--date=relative") o.dataRel = true;
-        else if ((m = /^--(?:pretty|format)=(?:format:|tformat:)?(.*)$/.exec(a))) { o.format = m[1]; o.tformat = !/^--pretty=format:/.test(a); }
+        else if ((m = /^--(?:pretty|format)=(?:format:|tformat:)?(.*)$/.exec(a))) { o.format = m[1]; o.tformat = !/^--pretty=format:/.test(a); o.oneline = false; }
         else if (a === "-n" || a === "--max-count") o.n = +args[++i];
         else if ((m = /^(?:-n|--max-count=)(\d+)$/.exec(a)) || (m = /^-(\d+)$/.exec(a))) o.n = +m[1];
         else if ((m = /^--grep=(.*)$/.exec(a))) o.grep.push(m[1]);
@@ -2022,7 +2022,7 @@
       } else {
         if (!atualRef && head === destHash) e += "HEAD is now at " + repo.abrev(destHash) + " " + repo.ler(destHash).msg.split("\n")[0] + "\n";
         else {
-          if (!atualRef && head) e += "Previous HEAD position was " + repo.abrev(head) + " " + repo.ler(head).msg.split("\n")[0] + "\n";
+          if (!atualRef && head && head !== destHash) e += "Previous HEAD position was " + repo.abrev(head) + " " + repo.ler(head).msg.split("\n")[0] + "\n";
           if (opt.avisoDestacado) e += "Note: switching to '" + alvo.nome + "'.\n\nYou are in 'detached HEAD' state. You can look around, make experimental\nchanges and commit them, and you can discard any commits you make in this\nstate without impacting any branches by switching back to a branch.\n\nIf you want to create a new branch to retain commits you create, you may\ndo so (now or later) by using -c with the switch command. Example:\n\n  git switch -c <new-branch-name>\n\nOr undo this operation with:\n\n  git switch -\n\nTurn off this advice by setting config variable advice.detachedHead to false\n\n";
           e += "HEAD is now at " + repo.abrev(destHash) + " " + repo.ler(destHash).msg.split("\n")[0] + "\n";
         }
@@ -2032,7 +2032,7 @@
         var perdidos = repo.revList([head], repo.listarRefs("refs/").map(function (x) { return repo.descascar(x.hash); }), {});
         if (perdidos.length) {
           e = "Warning: you are leaving " + plural(perdidos.length, "commit", "commits") + " behind, not connected to\nany of your branches:\n\n" + perdidos.slice(0, 5).map(function (h) { return "  " + repo.abrev(h) + " " + repo.ler(h).msg.split("\n")[0] + "\n"; }).join("") + (perdidos.length > 5 ? " ... and " + (perdidos.length - 5) + " more.\n" : "") + "\nIf you want to keep " + (perdidos.length === 1 ? "it" : "them") + " by creating a new branch, this may be a good time\nto do so with:\n\n git branch <new-branch-name> " + repo.abrev(head) + "\n\n" + e;
-        } else e = "Previous HEAD position was " + repo.abrev(head) + " " + repo.ler(head).msg.split("\n")[0] + "\n" + e;
+        } else if (head !== destHash) e = "Previous HEAD position was " + repo.abrev(head) + " " + repo.ler(head).msg.split("\n")[0] + "\n" + e;
       }
       io.out(s); io.err(e);
       return 0;
@@ -2221,15 +2221,15 @@
         // os dois mudaram
         if (o && t) {
           var m = merge3(b ? self.textoBlob(b.hash) : "", self.textoBlob(o.hash), self.textoBlob(t.hash), rotO, rotT);
-          msgs.push("Auto-merging " + k + "\n");
-          if (m.conflitos) { conflitos.push({ path: k, tipo: b ? "content" : "add/add", ents: [b, o, t], txt: m.txt }); msgs.push("CONFLICT (" + (b ? "content" : "add/add") + "): Merge conflict in " + k + "\n"); return; }
+          msgs.push("Mesclagem automática de " + k + "\n");
+          if (m.conflitos) { conflitos.push({ path: k, tipo: b ? "content" : "add/add", ents: [b, o, t], txt: m.txt }); msgs.push("CONFLITO (" + (b ? "conteúdo" : "adicionar/adicionar") + "): conflito de mesclagem em " + k + "\n"); return; }
           var h = self.escreverObj({ type: "blob", data: m.txt });
           res[k] = { mode: o.mode, hash: h };
           return;
         }
         // apagado de um lado, modificado do outro
-        if (!o) { conflitos.push({ path: k, tipo: "modify/delete", ents: [b, null, t] }); msgs.push("CONFLICT (modify/delete): " + k + " deleted in " + rotO + " and modified in " + rotT + ".  Version " + rotT + " of " + k + " left in tree.\n"); return; }
-        conflitos.push({ path: k, tipo: "modify/delete", ents: [b, o, null] }); msgs.push("CONFLICT (modify/delete): " + k + " deleted in " + rotT + " and modified in " + rotO + ".  Version " + rotO + " of " + k + " left in tree.\n");
+        if (!o) { conflitos.push({ path: k, tipo: "modify/delete", ents: [b, null, t] }); msgs.push("CONFLITO (modificar/delete): " + k + " excluído em " + rotO + " e modificado em " + rotT + ". Versão " + rotT + " de " + k + " deixada na árvore.\n"); return; }
+        conflitos.push({ path: k, tipo: "modify/delete", ents: [b, o, null] }); msgs.push("CONFLITO (modificar/delete): " + k + " excluído em " + rotT + " e modificado em " + rotO + ". Versão " + rotO + " de " + k + " deixada na árvore.\n");
       });
       return { mapa: res, conflitos: conflitos, msgs: msgs };
     };
@@ -2750,7 +2750,44 @@
     };
     CMDS.version = function (args, io) { io.out("git version 2.53.0\n"); return 0; };
 
-    B.gitsim = { sha1: sha1, hashObjeto: hashObjeto, achar: achar, Repo: Repo, CMDS: CMDS, diffUnificado: diffUnificado, merge3: merge3 };
+    /* ---------------- metas das missões (data-goal) ---------------- */
+    // devolve true/false, ou undefined se a meta não é do Git
+    function meta(sh, tipo, val) {
+      var NOMES = { repo: 1, commits: 1, limpo: 1, preparado: 1, naopreparado: 1, rastreado: 1, ignorado: 1, branch: 1, semBranch: 1, head: 1, msg: 1, logre: 1, tag: 1, remoto: 1, conflito: 1, semconflito: 1, contem: 1, stash: 1 };
+      if (!NOMES[tipo]) return undefined;
+      var repo = achar(sh);
+      if (tipo === "repo") return !!repo;
+      if (!repo) return false;
+      var head = repo.head();
+      function rel(p) { try { return pathspec(repo, p); } catch (e) { return null; } }
+      switch (tipo) {
+        case "commits": return (head ? repo.revList([head], [], {}).length : 0) === +val;
+        case "limpo": { if (!repo.raiz) return false; var st = repo.estado(); return !st.preparado.length && !st.naoPrep.length && !st.naoRastr.length && !Object.keys(st.conf).length; }
+        case "preparado": { var st1 = repo.estado(), k1 = rel(val); return st1.preparado.some(function (m) { return m.para === k1 || m.de === k1; }); }
+        case "naopreparado": { var st2 = repo.estado(), k2 = rel(val); return !!st2.conf[k2] || st2.naoPrep.some(function (m) { return m.para === k2; }); }
+        case "rastreado": { var k3 = rel(val); return repo.lerIndice().some(function (e) { return e.path === k3; }); }
+        case "ignorado": { var k4 = rel(val); if (k4 === null || repo.lerIndice().some(function (e) { return e.path === k4; })) return false; var n4 = noDe(sh, repo.absDe(k4)); return !!repo.ignorado(k4, !!(n4 && n4.t === "d")); }
+        case "branch": return !!repo.resolverRef("refs/heads/" + val);
+        case "semBranch": return !repo.resolverRef("refs/heads/" + val);
+        case "head": return val === "destacado" ? !repo.headRef() : repo.branchAtual() === val;
+        case "msg": return !!head && repo.ler(head).msg.indexOf(val) >= 0;
+        case "logre": { if (!head) return false; var txt = repo.revList([head], [], {}).map(function (h) { return repo.abrev(h) + " " + repo.ler(h).msg.split("\n")[0]; }).join("\n"); return new RegExp(val, "m").test(txt); }
+        case "tag": return !!repo.resolverRef("refs/tags/" + val);
+        case "remoto": return repo.config("remote." + val + ".url") !== null;
+        case "conflito": return repo.lerIndice().some(function (e) { return e.stage > 0; });
+        case "semconflito": return !repo.lerIndice().some(function (e) { return e.stage > 0; }) && !repo.existe("MERGE_HEAD") && !repo.existe("CHERRY_PICK_HEAD") && !repo.existe("REVERT_HEAD") && !repo.existe("rebase-merge");
+        case "contem": {
+          var eq = val.indexOf("="), esq = val.slice(0, eq), texto = val.slice(eq + 1), dp = esq.indexOf(":");
+          var hc = repo.commitDe(esq.slice(0, dp) || "HEAD"); if (!hc) return false;
+          var e = repo.arvoreDe(hc)[esq.slice(dp + 1)];
+          return !!e && repo.textoBlob(e.hash).indexOf(texto) >= 0;
+        }
+        case "stash": return repo.reflog("refs/stash").length === +val;
+      }
+      return false;
+    }
+
+    B.gitsim = { sha1: sha1, hashObjeto: hashObjeto, achar: achar, Repo: Repo, CMDS: CMDS, diffUnificado: diffUnificado, merge3: merge3, meta: meta };
   }
 
   if (global.BashSim) instalar(global.BashSim);

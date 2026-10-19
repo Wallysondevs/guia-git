@@ -94,10 +94,55 @@ Use `\,` para uma vírgula dentro de uma meta. O agente do simulador pode acresc
 ### Outros blocos
 `div.note/.tip/.warning/.cenario`, `ol.passo`, `div.table-wrap > table.ref`, `.exercise`, `.mc`, `figure`, `<span class="versao">git 2.23+</span>` (para comandos que não existem em Gits antigos: `switch`/`restore` são do 2.23).
 
-## 4. O simulador (`assets/bashsim.js` + o Git simulado)
+## 4. O simulador (`assets/bashsim.js` + o Git simulado `assets/gitsim.js`)
 > **Esta seção é mantida pelo agente do simulador.** Antes de escrever uma frase do tipo "no terminal do guia…", confira com as ferramentas dele (`tools/sim.js`).
 
-(em construção)
+O terminal do guia é o Bash simulado do Guia Bash (`assets/bashsim.js`) com **um Git imitado em JavaScript** (`assets/gitsim.js`, carregado junto: nas páginas, `<script src="assets/bashsim.js"></script><script src="assets/gitsim.js"></script>`). O repositório vive de verdade no sistema de arquivos fictício, dentro de `.git` (`HEAD`, `config`, `refs/`, `logs/`, `objects/`), com **blobs, árvores e commits com o SHA-1 real**: com a Ana (`Ana Souza <ana@exemplo.com>`, já em `~/.gitconfig`, igual ao lab) e a data fixa `1792071000 -0300` (15/10/2026 10:30), **os hashes saem iguais aos do lab** (`echo '# Receitas da Ana' > README.md` + `git commit -m 'Cria o README'` → `700bbd5`).
+
+Ver uma sessão do simulador (na VPS): `node tools/sim.js --sem-tty 'mkdir r && cd r && git init' 'git status'` — use `--sem-tty`, que é como o `lab -i`.
+
+### O que funciona
+`init`, `config` (`--global`, `--list`, `--unset`, `user.name`…), `status` (longo e `-s`/`-b`/`--ignored`), `add` (`.`, `-A`, `-u`, `-f`, `-n`, pasta, `'*.txt'`), `commit` (`-m` várias vezes, `-a`, `--amend`, `--no-edit`, `--allow-empty`, caminhos), `log` (`--oneline`, `--graph`, `--all`, `-p`, `--stat`, `-n`/`-3`, `--decorate`, `--reverse`, `--grep`, `--author`, `-S`, `--format`/`--pretty=format:` com `%h %H %s %an %ae %ad %ar %d`…, `A..B`, `-- arquivo`), `show` (commit, `HEAD~1`, `HEAD:arquivo`, tag anotada), `diff` (sem nada, `--staged`/`--cached`, `HEAD`, `A B`, `A..B`, `--stat`, `--name-only`, conflito `diff --cc`), `restore` (`--staged`, `--source`), `rm` (`--cached`, `-r`, `-f`), `mv`, `.gitignore` (padrões, `!`, `/`, `**`, pastas; `.git/info/exclude`), `branch` (`-d -D -m -M -c -a -r -v -vv --merged --no-merged --show-current -u`), `switch` (`-c`, `-C`, `-`, `--detach`, ramo do remoto), `checkout` (ramo, `-b`, commit → HEAD destacado com o aviso completo, `-- arquivo`, `--ours/--theirs`), `merge` (fast-forward, 3 vias "Merge made by the 'ort' strategy.", `--no-ff`, `--ff-only`, `--squash`, `--no-commit`, conflito com marcadores `<<<<<<< HEAD`/`>>>>>>> ramo`, `--abort`, `--continue`), `tag` (leve, `-a -m`, `-d`, `-l`, `-n`), `reset` (`--soft`, `--mixed`, `--hard`, `reset arquivo`), `revert`, `cherry-pick` (com conflito, `--continue/--abort/--skip`), `stash` (`push -m -u`, `list`, `show -p`, `pop`, `apply`, `drop`, `clear`, `branch`), `clean` (`-n -f -d -x -X`), `reflog`, e os internos `rev-parse`, `cat-file -p/-t/-s`, `hash-object`, `ls-files`, `ls-tree`, `write-tree`, `rev-list --count`, `merge-base`. Comando inexistente: a mensagem do Git com a sugestão (`git comit` → `commit`).
+
+### Mensagens: o pt_BR **misturado** do Ubuntu
+O Git 2.53 do Ubuntu 26.04 é traduzido só em parte (pegadinha 1 do `COMO-USAR.md` do lab), e o simulador **imita a mistura exatamente**, copiada do lab: `No ramo main` + `No commits yet` + `nothing to commit, working tree clean`; `Mudanças a serem submetidas:` + `new file:`/`modified:` em inglês; `Mesclagem automática de bolo.txt` / `CONFLITO (conteúdo): conflito de mesclagem em bolo.txt` + `Automatic merge failed; …`; `ambos modificados:`; `Seu ramo está atrás de 'origin/main' em 1 submissão, e pode ser avançado.`; `hint:` sempre em inglês; `git log`/`Date:` sempre em inglês. **Não "corrija" as frases**: se o simulador e o lab divergirem, vale o lab — avise o agente do simulador.
+
+### Metas (`data-goal`)
+Valem as do Guia Bash (`dir: file: absent: exec: link: contains: cwd: var: ran: out: outre: err: errre: exit:`) e as do Git:
+
+| Meta | Verdade quando… |
+| --- | --- |
+| `repo` | a pasta atual está dentro de um repositório |
+| `commits:N` | o HEAD tem exatamente N commits (`git rev-list --count HEAD`; 0 sem commits) |
+| `limpo` | `git status --porcelain` vazio (nada preparado, nada modificado, **nenhum não rastreado**, sem conflito) |
+| `preparado:CAMINHO` | o arquivo tem mudança na área de preparo (HEAD × índice; vale o nome novo ou o antigo de um `mv`) |
+| `naopreparado:CAMINHO` | o arquivo tem mudança fora da área de preparo (índice × pasta), ou está em conflito |
+| `rastreado:CAMINHO` / `ignorado:CAMINHO` | está no índice / é ignorado e não rastreado |
+| `branch:NOME` / `semBranch:NOME` | o branch local existe / não existe |
+| `head:NOME` | o branch atual é NOME; `head:destacado` = HEAD destacado |
+| `msg:TEXTO` | a mensagem do commit HEAD contém TEXTO |
+| `logre:REGEX` | a saída de `git log --oneline` do HEAD casa com a regex (JavaScript, modo multilinha: `^`/`$` por linha) |
+| `tag:NOME` / `remoto:NOME` | a tag existe / o remoto existe (`remote.NOME.url`) |
+| `conflito` | há arquivos em conflito no índice |
+| `semconflito` | não há conflito **e** não há merge/cherry-pick/revert/rebase em andamento |
+| `contem:REF=TEXTO` | o arquivo na versão REF contém TEXTO (`HEAD:bolo.txt`, `main:README.md`, `HEAD~1:a.txt`; caminho a partir da raiz do repositório) |
+| `stash:N` | há exatamente N itens no stash |
+
+> ⚠ **Caminhos nas metas:** as metas de **arquivo do Bash** (`file:`, `dir:`, `absent:`, `contains:`, `exec:`, `link:`) são a partir de **`~` (a pasta pessoal da Ana), não da pasta atual**: dentro de `~/receitas`, escreva `contains:receitas/bolo.txt=…` (ou `contains:~/receitas/bolo.txt=…`), nunca `contains:bolo.txt=…`. Já as metas **do Git** (`preparado:`, `naopreparado:`, `rastreado:`, `ignorado:`) são a partir da **pasta atual** (como o leitor digitaria `git add bolo.txt`), e `contem:` a partir da raiz do repositório.
+
+Separe as metas com vírgula; `\,` é uma vírgula dentro de uma meta.
+
+### Testador
+`node tools/testar-missoes.js pagina.html` (na VPS, ou `~/guia-git-lab/testar pagina.html`): para cada `.try`, roda o `data-setup`, confere que a meta **ainda não** foi cumprida, digita o `data-solucao` e confere que **foi**.
+
+### O que não existe no simulador (e diferenças conhecidas)
+- **Editor**: `git commit` sem `-m`, `git tag -a` sem `-m`, `git rebase -i`, `git add -p` respondem com uma linha `(simulador) …`. Nas missões, use sempre `-m`/`--no-edit`.
+- **Hooks não rodam** (`.git/hooks` existe, vazio). Não há pager nem cores (como no `lab -i`).
+- O conteúdo de `.git/objects/…` e de `.git/index` é texto num formato próprio (no Git real é comprimido/binário): não mostre `cat` desses arquivos a partir do simulador.
+- `git log --graph` com históricos complicados (muitos ramos cruzando) pode desenhar diferente do Git real: confira no lab.
+- Remotos (`clone`, `push`, `pull`, `fetch`), `rebase`, `blame`, `bisect`, `grep`, `check-ignore`: em construção (ver o fim desta seção quando forem entregues).
+- A sugestão de comando parecido (`git sw` → …) pode listar os parecidos numa ordem diferente da do Git real.
+- `ls -A .git` lista na ordem do `ls` do Guia Bash (GNU, por locale); o `ls` do Ubuntu 26.04 do lab (uutils) põe `HEAD` primeiro.
 
 ## 5. Fidelidade: o laboratório (`~/guia-git-lab/lab`, na VPS)
 É a máquina da Ana (usuária `ana`, computador `notebook`, `/home/ana`, pt_BR, Ubuntu 26.04) com **o Git real do Ubuntu**, a data fixa (15/10/2026 10:30, a mesma do simulador) e um "GitHub de mentira" local para `clone`/`push`/`pull` (detalhes no `~/guia-git-lab/COMO-USAR.md`, na VPS):
