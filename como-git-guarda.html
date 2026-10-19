@@ -54,13 +54,7 @@ $ git init -q
 $ ls -A
 .git
 $ ls .git
-HEAD
-config
-description
-hooks
-info
-objects
-refs
+HEAD  config  description  hooks  info  objects  refs
 </pre>
 
 <dl class="anatomy">
@@ -132,7 +126,7 @@ $ find .git/objects -type f | sort
 .git/objects/26/44316531953179572e7fdf95ede19e1b33c399
 .git/objects/fe/996fb8ecae7fe25026045fd46f15ca756bc19c
 $ git log --oneline
-fe996fb Primeiro commit
+fe996fb (HEAD -&gt; main) Primeiro commit
 </pre>
 
 <p>Apareceram mais dois objetos. Um deles, <code>fe996fb…</code>, tem o mesmo começo do hash que o <code>git log</code> mostra: <strong>é o commit</strong>. Vamos abri-lo:</p>
@@ -191,7 +185,7 @@ $ echo 'Pudim de leite' &gt; doces/pudim.txt
 $ git add bolo.txt doces
 $ git commit -q -m "Adiciona bolo e pudim"
 $ git log --oneline
-eaac340 Adiciona bolo e pudim
+eaac340 (HEAD -&gt; main) Adiciona bolo e pudim
 fe996fb Primeiro commit
 $ git cat-file -p HEAD
 tree 6121a7a2f681a5065c3bc3e562f8d47d034b6f33
