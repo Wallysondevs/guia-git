@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git fetch — buscando novidades do remoto sem mexer nos seus arquivos | Guia Git</title>
+<meta name="description" content="O git fetch para quem nunca usou Git: buscar os commits novos do GitHub sem alterar os seus arquivos, o que são origin/main e os branches remotos (git branch -r), como ver o que chegou (git log main..origin/main, git diff), o status atrás de origin/main, git fetch --prune e os erros reais.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">fetch</span></h1>
+
+<p class="intro">O Bruno enviou uma mudança para o GitHub. Como a Ana fica sabendo? O Git <strong>não</strong> avisa sozinho: ele só conversa com o remoto quando você pede. O <code>git fetch</code> (em inglês, "ir buscar") é o pedido mais seguro: ele <strong>traz</strong> os commits novos do remoto para o seu repositório, mas <strong>não mexe</strong> nos seus arquivos nem nos seus branches. Você olha com calma o que chegou e decide depois o que fazer.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que o <code>git fetch</code> traz e por que ele nunca estraga o seu trabalho.</li>
+  <li>O que são <code>origin/main</code> e os <strong>branches remotos</strong> (<code>git branch -r</code>).</li>
+  <li>Como ver o que chegou: <code>git status</code>, <code>git log main..origin/main</code> e <code>git diff main origin/main</code>.</li>
+  <li>Como juntar o que chegou ao seu branch (<code>git merge origin/main</code>), e por que isso é quase o <code>git pull</code>.</li>
+  <li>Como limpar branches que já foram apagados no remoto: <code>git fetch --prune</code>.</li>
+</ul>
+</div>
+
+<hr>
+
+<h2>A ideia antes do comando</h2>
+<p>Pense na <strong>caixa de correio</strong> do prédio. O <code>git fetch</code> é descer e pegar as cartas: elas agora estão com você, na sua mão. Mas abrir as cartas e colocar as contas na gaveta da cozinha é outra decisão, que você toma depois de ler. O fetch nunca abre carta nenhuma sozinho.</p>
+<p>Para guardar as "cartas", o Git usa os <strong>branches remotos</strong>: <code>origin/main</code> é a <strong>cópia local</strong> de como estava o <code>main</code> do GitHub na última conversa. Ele não é o seu <code>main</code>, e você não trabalha nele: é uma fotografia do remoto, atualizada a cada <code>fetch</code>, <code>pull</code> ou <code>push</code>.</p>
+
+<pre>Antes do fetch                       Depois do fetch
+GitHub:   A---B---C   main           GitHub:   A---B---C   main
+
+Ana:      A---B       main           Ana:      A---B       main        (não mudou)
+                ↑ origin/main                       \
+                                                     C     origin/main (andou)</pre>
+
+<hr>
+
+<h2>O comando: <code>git fetch</code></h2>
+<dl class="anatomy">
+  <dt>git fetch</dt><dd>"Busque as novidades" do remoto padrão (o <code>origin</code>, ou o remoto do upstream do branch atual).</dd>
+  <dt>git fetch origin</dt><dd>O mesmo, dizendo o nome do remoto.</dd>
+  <dt>git fetch --all</dt><dd>Busca de <strong>todos</strong> os remotos cadastrados (útil quando há mais de um, como num <a href="fork.html">fork</a>).</dd>
+</dl>
+
+<h3>A história: o Bruno mudou o bolo</h3>
+<p>A Ana enviou o projeto para o GitHub (veja <a href="git-push.html">git push</a>). O Bruno clonou, acrescentou o óleo à receita do bolo e enviou. A Ana, no notebook dela, ainda não sabe de nada:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main
+Your branch is up to date with 'origin/main'.          « "em dia"... com a lembrança antiga!
+
+nothing to commit, working tree clean</pre>
+
+<p>O <code>git status</code> diz que ela está em dia com o <code>origin/main</code>. É verdade, mas o <code>origin/main</code> é a fotografia da última conversa com o GitHub, de antes do commit do Bruno. O <code>status</code> <strong>não</strong> consulta a internet. Para atualizar a fotografia:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git fetch
+remote: Enumerating objects: 5, done.
+remote: Counting objects: 100% (5/5), done.
+remote: Compressing objects: 100% (3/3), done.
+remote: Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (3/3), 306 bytes | 306.00 KiB/s, done.
+From https://github.com/ana-souza/receitas                   « de onde veio
+   4f68d0e..3dbde00  main       -&gt; origin/main               « origin/main andou</pre>
+
+<h3>A saída, linha por linha</h3>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Linha</th><th>O que quer dizer</th></tr>
+<tr><td><code>remote: Enumerating objects</code> … <code>remote: Total 3</code></td><td>O <strong>servidor</strong> (por isso o <code>remote:</code>) separou e empacotou o que a Ana não tem: 3 objetos (o commit do Bruno, a pasta e o <code>bolo.txt</code> novo).</td></tr>
+<tr><td><code>Unpacking objects: 100% (3/3)</code></td><td>O Git da Ana recebeu e desempacotou os 3 objetos.</td></tr>
+<tr><td><code>From https://github.com/ana-souza/receitas</code></td><td><strong>De onde</strong> veio ("From" = "de").</td></tr>
+<tr><td><code>4f68d0e..3dbde00  main -&gt; origin/main</code></td><td>"O <code>main</code> de lá foi copiado para o <code>origin/main</code> daqui, que andou de <code>4f68d0e</code> para <code>3dbde00</code>". Repare na seta: vai para <code>origin/main</code>, <strong>não</strong> para o seu <code>main</code>.</td></tr>
+</table>
+</div>
+
+<div class="note">
+<strong>Mensagens em inglês?</strong> A tradução brasileira do Git não está completa: num sistema em português, parte das mensagens sai em português e parte em inglês, como acima. O guia mostra exatamente o que o Git escreve.
+</div>
+
+<h3>Agora o <code>git status</code> sabe</h3>
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main
+Seu ramo está atrás de 'origin/main' em 1 submissão, e pode ser avançado.     « 1 commit novo lá
+  (use "git pull" to update your local branch)                              « a dica
+
+nothing to commit, working tree clean</pre>
+<ul>
+  <li><code>Seu ramo está atrás de 'origin/main' em 1 submissão</code>: o <code>origin/main</code> tem 1 commit (submissão) que o seu <code>main</code> não tem.</li>
+  <li><code>e pode ser avançado</code>: o seu <code>main</code> pode simplesmente "andar para a frente" até ele, sem mistura nenhuma (é o <a href="fast-forward.html">fast-forward</a>).</li>
+  <li><code>(use "git pull" to update your local branch)</code>: "use <code>git pull</code> para atualizar o seu branch local".</li>
+</ul>
+
+<hr>
+
+<h2>O fetch não mexeu nos seus arquivos</h2>
+<p>O commit do Bruno chegou, mas a receita no notebook da Ana continua sem o óleo:</p>
+<pre class="term" data-cwd="~/receitas">$ cat bolo.txt
+Bolo de cenoura
+- 3 cenouras                                        « nada de óleo: a pasta não mudou</pre>
+<p>Isso é o que faz o <code>fetch</code> ser seguro: você pode rodar a qualquer hora, até no meio de um trabalho sem commit, e nada do que está na sua pasta muda.</p>
+
+<h2>Olhando o que chegou</h2>
+<p>Com o <code>origin/main</code> atualizado, a Ana usa os comandos que já conhece, com o nome <code>origin/main</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --graph --all
+* 3dbde00 (origin/main, origin/HEAD) Adiciona óleo ao bolo       « o commit do Bruno
+* 4f68d0e (HEAD -&gt; main) Adiciona receita de bolo               « onde a Ana está
+* 0e8cf93 Adiciona README
+$ git log --oneline main..origin/main
+3dbde00 (origin/main, origin/HEAD) Adiciona óleo ao bolo         « só o que é novo
+$ git diff main origin/main
+diff --git a/bolo.txt b/bolo.txt
+index a302b37..3f3b090 100644
+--- a/bolo.txt
++++ b/bolo.txt
+@@ -1,2 +1,3 @@
+ Bolo de cenoura
+ - 3 cenouras
++- 1 xícara de óleo                                              « o que o Bruno mudou</pre>
+
+<dl class="anatomy">
+  <dt>git log --oneline --graph --all</dt><dd>O histórico de <strong>todos</strong> os branches, inclusive os remotos (veja <a href="log-graph.html">log --graph</a>).</dd>
+  <dt>git log main..origin/main</dt><dd>"Os commits que estão em <code>origin/main</code> e <strong>não</strong> estão em <code>main</code>": exatamente o que chegou. Os dois pontos querem dizer "de … até".</dd>
+  <dt>git diff main origin/main</dt><dd>A diferença entre os <strong>arquivos</strong> do seu <code>main</code> e os do <code>origin/main</code> (veja <a href="git-diff.html">git diff</a>).</dd>
+</dl>
+
+<p>E o <code>origin/HEAD</code>? É um apelido: "o branch principal do remoto". Aqui, <code>origin/HEAD -&gt; origin/main</code>. O Git cria esse apelido no <code>clone</code> e as versões recentes também o criam no <code>fetch</code>; você pode ignorá-lo.</p>
+
+<hr>
+
+<h2>Juntando o que chegou: <code>git merge origin/main</code></h2>
+<p>Gostou do que viu? Agora sim, a Ana traz o commit para o <code>main</code> dela. Como o <code>main</code> só está atrás, é um avanço simples (<em>fast-forward</em>):</p>
+<pre class="term" data-cwd="~/receitas">$ git merge origin/main
+Updating 4f68d0e..3dbde00
+Fast-forward                                              « o main só andou para a frente
+ bolo.txt | 1 +
+ 1 file changed, 1 insertion(+)
+$ git status
+No ramo main
+Your branch is up to date with 'origin/main'.             « agora, em dia de verdade
+
+nothing to commit, working tree clean</pre>
+
+<div class="tip">
+<strong>fetch + merge = pull.</strong> Esses dois passos, buscar e juntar, são tão comuns que existe um comando que faz os dois de uma vez: o <a href="git-pull.html">git pull</a>. A vantagem de fazer separado é poder <strong>olhar antes</strong> de juntar.
+</div>
+
+<hr>
+
+<h2>Experimente</h2>
+<p>Nos terminais abaixo, o "GitHub" é uma pasta de treino (<code>~/servidor/receitas.git</code>) e o Bruno já enviou um commit novo que a Ana ainda não buscou.</p>
+
+<div class="try" data-setup="git init -q --bare ~/servidor/receitas.git;;git clone -q ~/servidor/receitas.git bruno;;cd bruno;;echo '# Receitas' &gt; README.md;;git add README.md;;git commit -qm 'Adiciona README';;git push -q -u origin main;;cd ~;;git clone -q ~/servidor/receitas.git receitas;;cd bruno;;echo 'Suco de laranja' &gt; suco.txt;;git add suco.txt;;git commit -qm 'Adiciona suco';;git push -q;;cd ~/receitas" data-goal="contem:origin/main:suco.txt=laranja,commits:1" data-solucao="git fetch;;git log --oneline main..origin/main">
+<p class="try-task"><strong>Missão:</strong> busque as novidades do remoto <strong>sem</strong> mudar o seu <code>main</code>. Depois, descubra qual commit chegou com <code>git log --oneline main..origin/main</code> e confira com <code>ls</code> que o <code>suco.txt</code> ainda não está na sua pasta.</p>
+</div>
+
+<div class="try" data-setup="git init -q --bare ~/servidor/receitas.git;;git clone -q ~/servidor/receitas.git bruno;;cd bruno;;echo '# Receitas' &gt; README.md;;git add README.md;;git commit -qm 'Adiciona README';;git push -q -u origin main;;cd ~;;git clone -q ~/servidor/receitas.git receitas;;cd bruno;;echo 'Suco de laranja' &gt; suco.txt;;git add suco.txt;;git commit -qm 'Adiciona suco';;git push -q;;cd ~/receitas" data-goal="commits:2,contem:HEAD:suco.txt=laranja,ran:git fetch" data-solucao="git fetch;;git merge origin/main">
+<p class="try-task"><strong>Missão:</strong> agora em dois passos: busque com <code>git fetch</code>, olhe o <code>git status</code> e junte o commit do Bruno ao seu <code>main</code> com <code>git merge</code>.</p>
+</div>
+
+<hr>
+
+<h2>Branches novos e apagados no remoto</h2>
+<p>O fetch traz <strong>todos</strong> os branches do remoto, não só o <code>main</code>. O Bruno criou o branch <code>bebidas</code> e enviou:</p>
+<pre class="term" data-cwd="~/receitas">$ git fetch
+remote: Enumerating objects: 4, done.
+remote: Counting objects: 100% (4/4), done.
+remote: Compressing objects: 100% (2/2), done.
+remote: Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (3/3), 298 bytes | 298.00 KiB/s, done.
+From https://github.com/ana-souza/receitas
+ * [new branch]      bebidas    -&gt; origin/bebidas          « um branch que a Ana não conhecia
+$ git branch -r
+  origin/HEAD -&gt; origin/main
+  origin/bebidas
+  origin/main</pre>
+<p><code>git branch -r</code> (<em>remote</em>) lista os branches remotos; <code>git branch -a</code> (<em>all</em>) lista os seus e os remotos juntos. Para trabalhar no branch do Bruno, a Ana pode rodar <code>git switch bebidas</code>: o Git cria um branch local com esse nome, já ligado ao <code>origin/bebidas</code> (veja <a href="upstream.html">upstream</a>).</p>
+
+<h3><code>git fetch --prune</code>: limpando o que foi apagado lá</h3>
+<p>Dias depois, o Bruno apagou o branch <code>bebidas</code> no GitHub. Um <code>git fetch</code> comum <strong>não</strong> apaga a lembrança local:</p>
+<pre class="term" data-cwd="~/receitas">$ git fetch                                       « sem saída: nada novo
+$ git branch -r
+  origin/HEAD -&gt; origin/main
+  origin/bebidas                                   « continua aqui, mas não existe mais lá
+  origin/main
+$ git fetch --prune
+From https://github.com/ana-souza/receitas
+ - [deleted]         (none)     -&gt; origin/bebidas     « lembrança apagada
+$ git branch -r
+  origin/HEAD -&gt; origin/main
+  origin/main</pre>
+<p><em>Prune</em> é "podar". O sinal <code>-</code> e o <code>[deleted]</code> dizem que o <code>origin/bebidas</code> foi removido porque o branch não existe mais no remoto. Para podar sempre, configure uma vez: <code>git config --global fetch.prune true</code>.</p>
+
+<hr>
+
+<h2>Formas diferentes de fazer</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Forma</th><th>O que faz</th><th>Quando usar</th></tr>
+<tr><td><code>git fetch</code></td><td>Busca do remoto padrão</td><td>No dia a dia</td></tr>
+<tr><td><code>git fetch origin</code></td><td>Busca de um remoto pelo nome</td><td>Quando há mais de um remoto</td></tr>
+<tr><td><code>git fetch --all</code></td><td>Busca de todos os remotos</td><td>Fork com <code>origin</code> e <code>upstream</code></td></tr>
+<tr><td><code>git fetch --prune</code></td><td>Busca e apaga lembranças de branches que sumiram lá</td><td>De vez em quando, ou sempre com <code>fetch.prune</code></td></tr>
+<tr><td><code>git fetch</code> + <code>git merge origin/main</code></td><td>Busca, você olha, depois junta</td><td>Quando quer conferir antes</td></tr>
+<tr><td><code>git pull</code></td><td>Busca e junta de uma vez</td><td>Quando confia no que vem (veja <a href="git-pull.html">git pull</a>)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Quando dá errado</h2>
+
+<div class="cenario">
+<strong>"Fiz fetch e nada mudou nos meus arquivos"</strong>
+<p><strong>O que aconteceu:</strong> nada de errado: é assim mesmo. O fetch atualiza só o <code>origin/main</code> (e os outros branches remotos).</p>
+<p><strong>Como confirmar:</strong> <code>git status</code> mostra "atrás de 'origin/main'"; <code>git log --oneline main..origin/main</code> lista o que chegou.</p>
+<p><strong>Como resolver:</strong> junte com <code>git merge origin/main</code>, ou use <code>git pull</code> da próxima vez.</p>
+</div>
+
+<div class="cenario">
+<strong>O <code>git status</code> diz "em dia", mas o colega jura que enviou</strong>
+<p><strong>O que aconteceu:</strong> o <code>status</code> compara com a <strong>lembrança</strong> (<code>origin/main</code>), que só se atualiza quando você conversa com o remoto.</p>
+<p><strong>Como resolver:</strong> <code>git fetch</code> e <code>git status</code> de novo.</p>
+</div>
+
+<div class="cenario">
+<strong>"'orgin' does not appear to be a git repository"</strong>
+<pre class="term" data-cwd="~/receitas">$ git fetch orgin
+fatal: 'orgin' does not appear to be a git repository
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.</pre>
+<p><strong>O que aconteceu:</strong> não existe remoto com esse nome (erro de digitação de <code>origin</code>), ou o repositório não tem remoto nenhum.</p>
+<p><strong>Como resolver:</strong> <code>git remote -v</code> mostra os nomes certos.</p>
+</div>
+
+<div class="cenario">
+<strong>"not a git repository"</strong>
+<pre class="term" data-cwd="~">$ git fetch
+fatal: not a git repository (or any of the parent directories): .git</pre>
+<p><strong>O que aconteceu:</strong> você não está dentro da pasta do projeto ("não é um repositório git, nem nenhuma das pastas acima").</p>
+<p><strong>Como resolver:</strong> <code>cd receitas</code> (a pasta do projeto) e rode de novo.</p>
+</div>
+
+<div class="cenario">
+<strong>Um branch apagado no GitHub continua aparecendo no <code>git branch -r</code></strong>
+<p><strong>O que aconteceu:</strong> o fetch comum não apaga lembranças.</p>
+<p><strong>Como resolver:</strong> <code>git fetch --prune</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git fetch</code></td><td>Traz os commits novos do remoto; atualiza <code>origin/…</code>; não mexe nos seus arquivos</td></tr>
+<tr><td><code>git fetch origin</code></td><td>Busca de um remoto específico</td></tr>
+<tr><td><code>git fetch --all</code></td><td>Busca de todos os remotos</td></tr>
+<tr><td><code>git fetch --prune</code> (<code>-p</code>)</td><td>Remove branches remotos que não existem mais lá</td></tr>
+<tr><td><code>git branch -r</code> / <code>git branch -a</code></td><td>Lista os branches remotos / todos</td></tr>
+<tr><td><code>git log --oneline main..origin/main</code></td><td>Commits que chegaram e você ainda não tem no <code>main</code></td></tr>
+<tr><td><code>git diff main origin/main</code></td><td>O que mudou nos arquivos</td></tr>
+<tr><td><code>git merge origin/main</code></td><td>Junta o que chegou ao branch atual</td></tr>
+<tr><td><code>git config --global fetch.prune true</code></td><td>Faz todo fetch podar</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. O que chegou?</h3>
+<p>Complete para listar os commits que estão no <code>origin/main</code> e ainda não estão no seu <code>main</code>:</p>
+<div class="ex-code">git log --oneline main<input data-answer="..origin/main" aria-label="intervalo"></div>
+</div>
+
+<div class="exercise">
+<h3>2. Podar</h3>
+<p>Complete para buscar e, de quebra, apagar as lembranças de branches que sumiram do remoto:</p>
+<div class="ex-code">git fetch <input data-answer="--prune" aria-label="opção"></div>
+</div>
+
+<div class="exercise">
+<h3>3. Os branches de lá</h3>
+<p>Complete para listar só os branches remotos:</p>
+<div class="ex-code">git branch <input data-answer="-r" aria-label="opção"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. A Ana tem uma mudança sem commit no <code>bolo.txt</code> e roda <code>git fetch</code>. O que acontece com o arquivo?</p>
+<label><input type="radio" name="q4"> É substituído pela versão do GitHub.</label>
+<label><input type="radio" name="q4"> Nada: o fetch não mexe nos arquivos da pasta.</label>
+<label><input type="radio" name="q4"> O Git faz um merge e pode dar conflito.</label>
+<label><input type="radio" name="q4"> O fetch se recusa a rodar.</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">5. O que é <code>origin/main</code>?</p>
+<label><input type="radio" name="q5"> O branch <code>main</code> do GitHub, acessado pela internet a cada comando.</label>
+<label><input type="radio" name="q5"> Um branch que você cria para trabalhar.</label>
+<label><input type="radio" name="q5"> A cópia local de como estava o <code>main</code> do remoto na última conversa.</label>
+<label><input type="radio" name="q5"> Outro nome para o seu <code>main</code>.</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">6. Depois de um <code>git fetch</code>, o <code>git status</code> diz "atrás de 'origin/main' em 2 submissões, e pode ser avançado". O que a Ana faz para ficar em dia?</p>
+<label><input type="radio" name="q6"> <code>git merge origin/main</code> (ou <code>git pull</code>).</label>
+<label><input type="radio" name="q6"> <code>git push</code>.</label>
+<label><input type="radio" name="q6"> <code>git fetch</code> de novo.</label>
+<label><input type="radio" name="q6"> <code>git commit</code>.</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git fetch</code> traz os commits novos do remoto e atualiza os branches remotos (<code>origin/main</code>), sem tocar nos seus arquivos nem no seu <code>main</code>.</li>
+  <li>O <code>git status</code> só sabe que você está atrás depois de um fetch: ele compara com a lembrança, não com a internet.</li>
+  <li>Veja o que chegou com <code>git log main..origin/main</code> e <code>git diff main origin/main</code>; junte com <code>git merge origin/main</code>.</li>
+  <li><code>git fetch</code> + <code>git merge</code> = <code>git pull</code>.</li>
+  <li><code>git fetch --prune</code> apaga as lembranças de branches que sumiram do remoto.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
