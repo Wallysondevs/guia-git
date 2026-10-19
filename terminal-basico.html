@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git O Mínimo de Terminal — pwd, ls, cd, mkdir e arquivos | Guia Git</title>
+<meta name="description" content="O mínimo de terminal para usar o Git: o prompt, onde você está (pwd), o que tem na pasta (ls e ls -a, que mostra a pasta .git), entrar e sair de pastas (cd), criar pastas (mkdir) e arquivos (echo, editor), ver o conteúdo (cat) e os erros mais comuns.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">O Mínimo de Terminal para o Git</span></h1>
+
+<p class="intro">O Git se usa no terminal, e todo comando do Git age sobre <strong>a pasta em que você está</strong>. Por isso, antes do primeiro commit, você precisa saber responder três perguntas: onde eu estou, o que tem aqui e como vou para outra pasta. Esta aula ensina só o mínimo para isso. Se você já se vira no terminal, pode pular para <a href="git-config.html">git config</a>.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Ler o <strong>prompt</strong>, a linha que espera o seu comando.</li>
+  <li>Saber onde está (<code>pwd</code>), ver o que tem na pasta (<code>ls</code>, <code>ls -a</code>) e mudar de pasta (<code>cd</code>).</li>
+  <li>Criar uma pasta (<code>mkdir</code>), criar um arquivo e ver o conteúdo dele (<code>cat</code>).</li>
+  <li>Entender os erros mais comuns: pasta que não existe, nome com espaço.</li>
+</ul>
+</div>
+
+<hr>
+
+<h2>A ideia: o terminal é um "andar por pastas" com palavras</h2>
+<p>No gerenciador de arquivos (o Explorador do Windows, o Finder do Mac), você dá dois cliques numa pasta para entrar nela e vê os arquivos em ícones. No terminal é a mesma coisa, só que com palavras: você diz "entre nesta pasta" (<code>cd</code>) e "me mostre o que tem aqui" (<code>ls</code>). A qualquer momento, o terminal está "dentro" de uma pasta, a <strong>pasta atual</strong>.</p>
+<p>Isso importa muito para o Git: <code>git status</code>, <code>git commit</code> e quase todos os outros olham para o repositório da pasta atual. Rodar um comando do Git na pasta errada é o erro número um de quem está começando.</p>
+
+<hr>
+
+<h2>O prompt</h2>
+<p>Quando o terminal está pronto, ele mostra uma linha assim e espera você digitar:</p>
+<pre class="syntax">ana@notebook:~$ </pre>
+
+<dl class="anatomy">
+  <dt>ana</dt><dd>O nome da usuária.</dd>
+  <dt>@notebook</dt><dd>O nome do computador.</dd>
+  <dt>:~</dt><dd>A pasta atual. O <code>~</code> (til) é um apelido para a sua pasta pessoal, aqui <code>/home/ana</code>.</dd>
+  <dt>$</dt><dd>O sinal de "pode digitar". Você digita depois dele e aperta <kbd>Enter</kbd>.</dd>
+</dl>
+
+<p>Neste guia, nas caixas de terminal, a linha do comando começa com <code>$</code>: é o que você digita. As linhas sem <code>$</code> são a resposta. O prompt completo aparece quando a pasta muda, como <code>ana@notebook:~/receitas$</code>. No Git Bash do Windows e no Terminal do Mac, o prompt tem outra cara, mas a ideia é a mesma.</p>
+
+<hr>
+
+<h2>Onde estou? <code>pwd</code></h2>
+<p><code>pwd</code> quer dizer <em>print working directory</em>, "mostre a pasta de trabalho". Ele responde o caminho completo da pasta atual:</p>
+<pre class="term">$ pwd
+/home/ana                          « a pasta pessoal da Ana</pre>
+
+<p>Um <strong>caminho</strong> é o endereço de uma pasta: cada <code>/</code> separa uma pasta da de dentro. <code>/home/ana</code> é a pasta <code>ana</code>, dentro da pasta <code>home</code>, que fica na raiz do sistema (<code>/</code>). No Git Bash do Windows, os caminhos têm a mesma forma, com o disco no começo: <code>/c/Users/ana</code> é a pasta <code>C:\Users\ana</code>.</p>
+
+<hr>
+
+<h2>O que tem aqui? <code>ls</code></h2>
+<p><code>ls</code> vem de <em>list</em>, "listar". Ele mostra o que tem na pasta atual:</p>
+<pre class="term">$ ls
+ Documentos   Imagens   Música    Vídeos    'Área de trabalho'
+ Downloads    Modelos   Público</pre>
+<p>Repare em <code>'Área de trabalho'</code>: o <code>ls</code> mostra entre aspas os nomes com espaço, para você saber onde o nome começa e termina.</p>
+
+<h3>Os escondidos: <code>ls -a</code></h3>
+<p>Arquivos e pastas cujo nome começa com ponto (<code>.</code>) são <strong>ocultos</strong>: o <code>ls</code> não os mostra. A opção <code>-a</code> (<em>all</em>, "todos") mostra tudo. Isso é importante para o Git, porque ele guarda toda a história numa pasta oculta chamada <code>.git</code>. Veja a pasta <code>receitas</code>, que já é um repositório:</p>
+
+<pre class="term" data-cwd="~/receitas">$ ls
+README.md  lasanha.txt
+$ ls -a
+.  ..  .git  README.md  lasanha.txt</pre>
+
+<ul>
+  <li><code>.</code> é um apelido para a própria pasta atual, e <code>..</code> para a pasta de cima. Toda pasta tem os dois.</li>
+  <li><code>.git</code> é o "cofre" do Git, com todos os commits. Só aparece com <code>-a</code>. <strong>Não mexa nele à mão</strong>: quem cuida dele são os comandos do Git. Se você apagá-lo, a pasta deixa de ser um repositório e toda a história vai junto.</li>
+</ul>
+
+<hr>
+
+<h2>Mudando de pasta: <code>cd</code></h2>
+<p><code>cd</code> vem de <em>change directory</em>, "mudar de pasta". Ele não mostra nada quando dá certo: a mudança aparece no prompt e no <code>pwd</code>.</p>
+
+<pre class="term">$ cd receitas
+$ pwd
+/home/ana/receitas
+$ cd ..                            « sobe para a pasta de cima
+$ pwd
+/home/ana
+$ cd receitas
+$ cd ~                             « volta para a pasta pessoal, de qualquer lugar
+$ pwd
+/home/ana
+$ cd -                             « volta para a pasta onde estava antes
+/home/ana/receitas</pre>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>Vai para…</th></tr>
+<tr><td><code>cd receitas</code></td><td>A pasta <code>receitas</code>, dentro da atual.</td></tr>
+<tr><td><code>cd ..</code></td><td>A pasta de cima.</td></tr>
+<tr><td><code>cd ~</code> ou só <code>cd</code></td><td>A sua pasta pessoal.</td></tr>
+<tr><td><code>cd -</code></td><td>A pasta anterior (e mostra qual é).</td></tr>
+<tr><td><code>cd ~/receitas</code></td><td>A pasta <code>receitas</code> da pasta pessoal, de qualquer lugar.</td></tr>
+</table>
+</div>
+
+<div class="tip">
+<strong>Deixe o <kbd>Tab</kbd> digitar por você</strong>
+<p>Digite <code>cd rec</code> e aperte <kbd>Tab</kbd>: o terminal completa para <code>cd receitas/</code>. Além de poupar tempo, evita erros de digitação. As setas <kbd>↑</kbd> e <kbd>↓</kbd> trazem de volta os comandos que você já digitou.</p>
+</div>
+
+<hr>
+
+<h2>Criando uma pasta e arquivos</h2>
+<h3>Uma pasta: <code>mkdir</code></h3>
+<p><code>mkdir</code> vem de <em>make directory</em>, "criar pasta". Também não mostra nada quando dá certo:</p>
+<pre class="term">$ mkdir receitas
+$ cd receitas
+$ pwd
+/home/ana/receitas</pre>
+
+<h3>Um arquivo: <code>echo</code> com <code>&gt;</code></h3>
+<p>Nas aulas, para criar um arquivo pequeno sem abrir editor, vamos usar o <code>echo</code> (que "ecoa", repete um texto) com o sinal <code>&gt;</code>, que manda o texto para um arquivo em vez da tela:</p>
+
+<dl class="anatomy">
+  <dt>echo</dt><dd>Mostra o texto que vem depois.</dd>
+  <dt>'# Receitas da Ana'</dt><dd>O texto, entre aspas simples para o terminal não mexer em nada dentro dele.</dd>
+  <dt>&gt; README.md</dt><dd>Em vez de mostrar na tela, grave no arquivo <code>README.md</code>. Se o arquivo existe, ele é <strong>substituído</strong>; com <code>&gt;&gt;</code>, o texto é acrescentado no fim.</dd>
+</dl>
+
+<pre class="term" data-cwd="~/receitas">$ echo '# Receitas da Ana' &gt; README.md
+$ ls
+README.md
+$ cat README.md                    « cat mostra o conteúdo do arquivo
+# Receitas da Ana</pre>
+
+<p>O <code>cat</code> (de <em>concatenate</em>, "juntar") mostra o conteúdo de arquivos de texto. É o jeito rápido de conferir um arquivo antes de fazer um commit.</p>
+
+<h3>Arquivos maiores: um editor</h3>
+<p>No dia a dia, você vai editar os arquivos num editor de verdade: o VS Code, o Bloco de Notas, o gedit, o <code>nano</code> no próprio terminal… Para o Git, tanto faz: ele só olha o que está gravado na pasta. Uma dica útil: com o VS Code instalado, o comando <code>code .</code> abre a pasta atual nele (o <code>.</code> é "esta pasta").</p>
+
+<div class="try" data-goal="dir:receitas,cwd:~/receitas,file:receitas/README.md" data-solucao="mkdir receitas;;cd receitas;;echo '# Receitas da Ana' &gt; README.md">
+<p class="try-task"><strong>Missão:</strong> crie a pasta <code>receitas</code>, entre nela e crie um arquivo <code>README.md</code> com o texto <code># Receitas da Ana</code>. Confira com <code>pwd</code>, <code>ls</code> e <code>cat README.md</code>.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;cd ~" data-goal="cwd:~/receitas,ran:^\s*ls -a" data-solucao="cd receitas;;ls -a">
+<p class="try-task"><strong>Missão:</strong> você está na pasta pessoal. Entre na pasta <code>receitas</code> e encontre a pasta escondida do Git com <code>ls -a</code>.</p>
+</div>
+
+<hr>
+
+<h2>Formas diferentes de fazer a mesma coisa</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Quero…</th><th>No terminal</th><th>Sem terminal</th></tr>
+<tr><td>Criar um arquivo</td><td><code>echo 'texto' &gt; arquivo</code> ou <code>touch arquivo</code> (vazio)</td><td>"Salvar como…" no editor, dentro da pasta do projeto</td></tr>
+<tr><td>Editar um arquivo</td><td><code>nano arquivo</code></td><td>Abrir no VS Code ou no editor de texto</td></tr>
+<tr><td>Abrir o terminal já na pasta</td><td><code>cd ~/receitas</code></td><td>No Windows, clique com o botão direito na pasta e escolha abrir o Git Bash; em vários gerenciadores de arquivos do Linux há "Abrir no terminal"</td></tr>
+<tr><td>Ver o que tem na pasta</td><td><code>ls</code> (<code>ls -a</code> com os ocultos)</td><td>O gerenciador de arquivos (os ocultos ficam escondidos, a menos que você mande mostrar)</td></tr>
+</table>
+</div>
+<p>Pode misturar à vontade: editar no VS Code e fazer os commits no terminal é o jeito mais comum. O que importa é que o terminal esteja na pasta do projeto.</p>
+
+<hr>
+
+<h2>Quando dá errado</h2>
+
+<div class="cenario">
+<strong>A pasta não existe</strong>
+<pre class="term">$ cd receita
+bash: cd: receita: Arquivo ou diretório inexistente</pre>
+<p><strong>O que aconteceu:</strong> não existe uma pasta chamada <code>receita</code> (sem o "s") na pasta atual. "Diretório" é o nome técnico de pasta.</p>
+<p><strong>Como confirmar:</strong> <code>pwd</code> para ver onde você está e <code>ls</code> para ver o que existe aqui. Muitas vezes o nome está certo e é você que está na pasta errada.</p>
+<p><strong>Como resolver:</strong> corrija o nome (use o <kbd>Tab</kbd>!) ou vá antes para a pasta certa.</p>
+</div>
+
+<div class="cenario">
+<strong>Nome de pasta com espaço</strong>
+<pre class="term">$ cd Área de trabalho
+bash: cd: número excessivo de argumentos
+$ cd Área\ de\ trabalho
+$ pwd
+/home/ana/Área de trabalho</pre>
+<p><strong>O que aconteceu:</strong> o terminal separa as palavras pelos espaços. Ele entendeu <code>cd</code> com três nomes, <code>Área</code>, <code>de</code> e <code>trabalho</code>, e o <code>cd</code> só aceita um.</p>
+<p><strong>Como resolver:</strong> ponha o nome entre aspas (<code>cd "Área de trabalho"</code>) ou uma barra invertida antes de cada espaço (<code>cd Área\ de\ trabalho</code>, que é o que o <kbd>Tab</kbd> escreve). Melhor ainda: nas pastas de projeto, use nomes sem espaço e sem acento, como <code>receitas</code> ou <code>meu-site</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>A pasta já existe</strong>
+<pre class="term">$ mkdir receitas
+mkdir: receitas: Arquivo existe</pre>
+<p><strong>O que aconteceu:</strong> já há uma pasta (ou arquivo) com esse nome aqui. Nada foi apagado nem mudado.</p>
+<p><strong>Como resolver:</strong> se é a pasta que você queria, é só entrar nela com <code>cd receitas</code>. Se queria uma nova, escolha outro nome.</p>
+</div>
+
+<div class="cenario">
+<strong>Rodei um comando do Git na pasta errada</strong>
+<p>Se o Git responder <code>fatal: not a git repository</code> ("não é um repositório git"), quase sempre o terminal está fora da pasta do projeto. Rode <code>pwd</code>, vá para a pasta certa com <code>cd</code> e tente de novo. Essa mensagem aparece explicada em <a href="git-init.html">Criando um Repositório</a>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>pwd</code></td><td>Mostra a pasta atual.</td></tr>
+<tr><td><code>ls</code> / <code>ls -a</code></td><td>Lista o que tem na pasta / incluindo os ocultos, como <code>.git</code>.</td></tr>
+<tr><td><code>cd pasta</code> / <code>cd ..</code> / <code>cd</code></td><td>Entra na pasta / sobe uma / volta para a pasta pessoal.</td></tr>
+<tr><td><code>mkdir pasta</code></td><td>Cria uma pasta.</td></tr>
+<tr><td><code>echo 'texto' &gt; arquivo</code></td><td>Cria (ou substitui) um arquivo com o texto.</td></tr>
+<tr><td><code>echo 'texto' &gt;&gt; arquivo</code></td><td>Acrescenta o texto no fim do arquivo.</td></tr>
+<tr><td><code>cat arquivo</code></td><td>Mostra o conteúdo do arquivo.</td></tr>
+<tr><td><kbd>Tab</kbd> / <kbd>↑</kbd></td><td>Completa nomes / traz o comando anterior.</td></tr>
+</table>
+</div>
+
+<p>Quer ir além do mínimo? O <a href="https://wallysondevs.github.io/guia-bash/">Guia Bash</a> ensina o terminal do zero, com uma aula para cada comando.</p>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">1. O prompt mostra <code>ana@notebook:~/receitas$</code>. Em que pasta o terminal está?</p>
+<label><input type="radio" name="q1"> Na raiz do sistema.</label>
+<label><input type="radio" name="q1"> Na pasta <code>notebook</code>.</label>
+<label><input type="radio" name="q1"> Em <code>/home/ana/receitas</code>.</label>
+<label><input type="radio" name="q1"> Na pasta <code>.git</code>.</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. Por que o <code>ls</code> não mostra a pasta <code>.git</code>?</p>
+<label><input type="radio" name="q2"> Porque ela só existe no GitHub.</label>
+<label><input type="radio" name="q2"> Porque o nome começa com ponto, e o <code>ls</code> esconde esses; <code>ls -a</code> mostra.</label>
+<label><input type="radio" name="q2"> Porque ela está vazia.</label>
+<label><input type="radio" name="q2"> Porque o Git a apaga depois de cada commit.</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">3. <code>cd Meus Projetos</code> deu "número excessivo de argumentos". Qual comando funciona?</p>
+<label><input type="radio" name="q3"> <code>cd "Meus Projetos"</code></label>
+<label><input type="radio" name="q3"> <code>cd Meus-Projetos</code></label>
+<label><input type="radio" name="q3"> <code>cd Meus/Projetos</code></label>
+<label><input type="radio" name="q3"> <code>cd .. Meus Projetos</code></label>
+</div>
+
+<div class="exercise">
+<h3>4. Sobe uma pasta</h3>
+<p>Complete para ir para a pasta de cima:</p>
+<div class="ex-code">cd <input data-answer="..|../" aria-label="destino"></div>
+</div>
+
+<div class="exercise">
+<h3>5. Mostre tudo</h3>
+<p>Complete para listar também os arquivos e pastas ocultos:</p>
+<div class="ex-code">ls <input data-answer="-a|-A|--all|-la|-al" aria-label="opção"></div>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Todo comando do Git age sobre a <strong>pasta atual</strong>: saiba sempre onde você está (<code>pwd</code>, ou o prompt).</li>
+  <li><code>ls</code> mostra o que tem na pasta; <code>ls -a</code> mostra também os ocultos, como a pasta <code>.git</code>, onde o Git guarda a história.</li>
+  <li><code>cd pasta</code> entra, <code>cd ..</code> sobe, <code>cd</code> volta para a pasta pessoal; <code>mkdir</code> cria pastas.</li>
+  <li><code>echo 'texto' &gt; arquivo</code> cria um arquivo pequeno; <code>cat</code> mostra o conteúdo; um editor serve para o resto.</li>
+  <li>Nomes com espaço precisam de aspas; nas pastas de projeto, prefira nomes sem espaço.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
