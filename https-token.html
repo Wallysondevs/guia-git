@@ -127,27 +127,27 @@ origin	https://github.com/ana-souza/receitas.git (push)
 <hr>
 
 <h2>3. Usando o token: o que digitar no Username e no Password</h2>
-<p>Com o endereço HTTPS, na primeira vez que o Git precisa falar com o GitHub (um <code>push</code>, por exemplo), ele pergunta quem é você. As perguntas são estas (no laboratório, colhidas com o <code>git credential fill</code>, que faz exatamente a mesma pergunta que o <code>push</code> faria):</p>
+<p>Com o endereço HTTPS, na primeira vez que o Git precisa falar com o GitHub (um <code>push</code>, por exemplo), ele pergunta quem é você. A Ana envia o repositório <code>receitas</code> pela primeira vez, e cola o token no <code>Password</code>:</p>
 
-<pre class="term" data-cwd="~/receitas">$ git credential fill
-protocol=https
-host=github.com
-
+<pre class="term" data-cwd="~/receitas">$ git push -u origin main
 Username for 'https://github.com': ana-souza
-Password for 'https://ana-souza@github.com':
-protocol=https                     « daqui para baixo: o que o Git entendeu
-host=github.com
-username=ana-souza
-password=github_pat_EXEMPLO_0000_nao_e_um_token_de_verdade
+Password for 'https://ana-souza@github.com':                « o token foi colado aqui (não aparece)
+Enumerating objects: 3, done.
+Counting objects: 100% (3/3), done.
+Writing objects: 100% (3/3), 224 bytes | 224.00 KiB/s, done.
+Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/receitas.git
+ * [new branch]      main -&gt; main
+branch 'main' set up to track 'origin/main'.
 </pre>
-<p>No laboratório, a Ana digitou as duas primeiras linhas e uma linha vazia (é como se diz ao <code>git credential fill</code> "quero a credencial do <code>https://github.com</code>"). Num <code>git push</code>, o Git faz isso sozinho, e você só vê as duas perguntas:</p>
 
 <ul>
   <li><code>Username for 'https://github.com':</code> "nome de usuário para o github.com": digite o seu usuário do GitHub (<code>ana-souza</code>). Ele <strong>não</strong> é o e-mail.</li>
   <li><code>Password for 'https://ana-souza@github.com':</code> "senha para ana-souza no github.com": aqui vai o <strong>token</strong>, não a senha da conta. Ao colar, <strong>nada aparece na tela</strong>, nem asteriscos: é normal, o terminal esconde o que você digita. Cole (no terminal do Ubuntu, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>) e aperte <kbd>Enter</kbd>.</li>
+  <li>Depois, o envio acontece como na aula <a href="git-push.html">git push</a>: o branch <code>main</code> foi criado no GitHub.</li>
 </ul>
 
-<p>Num <code>git push</code> de verdade, depois das duas perguntas o envio acontece como na aula <a href="git-push.html">git push</a>. As perguntas são do <strong>Git</strong>, por isso continuam em inglês mesmo com o sistema em português.</p>
+<p>As perguntas são do <strong>Git</strong> e não têm tradução no Git do Ubuntu, por isso saem em inglês mesmo com o sistema em português.</p>
 
 <div class="tip">
 <strong>Atalho: a GitHub CLI ou o Git Credential Manager</strong>
@@ -157,7 +157,7 @@ password=github_pat_EXEMPLO_0000_nao_e_um_token_de_verdade
 <hr>
 
 <h2>4. Fazendo o Git lembrar do token: <code>credential.helper</code></h2>
-<p>Sem nenhuma configuração, o Git pergunta usuário e token <strong>a cada</strong> <code>push</code> e <code>pull</code>. Para não colar o token toda hora, o Git usa um <strong>ajudante de credenciais</strong> (<em>credential helper</em>): um programinha que guarda o usuário e o token e os entrega ao Git quando ele precisa. O Git já vem com dois:</p>
+<p>Sem nenhuma configuração, o Git pergunta usuário e token <strong>a cada</strong> <code>push</code> (e a cada <code>pull</code> de um repositório privado). Para não colar o token toda hora, o Git usa um <strong>ajudante de credenciais</strong> (<em>credential helper</em>): um programinha que guarda o usuário e o token e os entrega ao Git quando ele precisa. O Git já vem com dois:</p>
 
 <div class="table-wrap">
 <table class="ref">
@@ -191,12 +191,27 @@ cache --timeout=3600
 $ git config --global credential.helper
 store
 </pre>
-<p>Com o <code>store</code>, depois do primeiro <code>push</code> que der certo, o Git grava o usuário e o token no arquivo <code>~/.git-credentials</code>. No laboratório, a gravação foi feita com o <code>git credential approve</code> (o mesmo passo que o <code>push</code> faz sozinho depois de entrar com sucesso), usando o token inventado:</p>
-<pre class="term" data-cwd="~/receitas">$ printf 'protocol=https\nhost=github.com\nusername=ana-souza\npassword=github_pat_EXEMPLO_0000_nao_e_um_token_de_verdade\n\n' | git credential approve
-$ ls -l ~/.git-credentials
--rw------- 1 ana ana 79 Oct 15 10:29 /home/ana/.git-credentials
+<p>Com o <code>store</code>, o Git ainda pergunta <strong>uma vez</strong>. Depois do primeiro <code>push</code> que der certo, ele grava o usuário e o token no arquivo <code>~/.git-credentials</code>, e não pergunta mais:</p>
+<pre class="term" data-cwd="~/receitas">$ git push -u origin main
+Username for 'https://github.com': ana-souza
+Password for 'https://ana-souza@github.com':
+…                                                    « o envio, como na seção 3
 $ cat ~/.git-credentials
 https://ana-souza:github_pat_EXEMPLO_0000_nao_e_um_token_de_verdade@github.com
+$ git push                                           « um commit novo depois: nenhuma pergunta
+Enumerating objects: 4, done.
+Counting objects: 100% (4/4), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (2/2), done.
+Writing objects: 100% (3/3), 296 bytes | 296.00 KiB/s, done.
+Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/receitas.git
+   f0c33ea..934a161  main -&gt; main
+</pre>
+<p>O arquivo também pode ser gravado sem um <code>push</code>, com o <code>git credential approve</code> (o mesmo passo que o <code>push</code> faz sozinho depois de entrar com sucesso). Veja as permissões dele:</p>
+<pre class="term">$ printf 'protocol=https\nhost=github.com\nusername=ana-souza\npassword=github_pat_EXEMPLO_0000_nao_e_um_token_de_verdade\n\n' | git credential approve
+$ ls -l ~/.git-credentials
+-rw------- 1 ana ana 79 Oct 15 10:29 /home/ana/.git-credentials
 </pre>
 <ul>
   <li><code>-rw-------</code>: só a Ana pode ler e escrever o arquivo; o Git cria assim de propósito.</li>
@@ -214,7 +229,7 @@ password=github_pat_EXEMPLO_0000_nao_e_um_token_de_verdade
 $ printf 'protocol=https\nhost=github.com\nusername=ana-souza\n\n' | git credential reject
 $ cat ~/.git-credentials
 </pre>
-<p>O primeiro comando mostra o que o ajudante tem guardado para o <code>github.com</code> (o mesmo que ele entregaria a um <code>push</code>). O <code>reject</code> ("rejeitar") não mostra nada, e o <code>cat</code> não mostra nada também:</p>
+<p>O primeiro comando mostra o que o ajudante tem guardado para o <code>github.com</code> (o mesmo que ele entregaria a um <code>push</code>). O <code>reject</code> ("rejeitar") não mostra nada, e o <code>cat</code> não mostra nada também.</p>
 <p>O arquivo ficou vazio. Com o <code>cache</code>, desligar o computador já basta (ou <code>git credential-cache exit</code>, que esvazia a memória na hora).</p>
 
 <hr>
@@ -236,9 +251,9 @@ $ cat ~/.git-credentials
 <h2 id="errado">Quando dá errado</h2>
 
 <div class="cenario">
-<strong>Digitou a senha da conta no lugar do token (ilustrativo)</strong>
-<p>O GitHub recusa, e a resposta dele (as linhas <code>remote:</code>, que vêm do servidor, em inglês) explica o motivo. É mais ou menos assim:</p>
-<pre class="term" data-cwd="~/receitas">$ git push
+<strong>Digitou a senha da conta no lugar do token</strong>
+<p>O GitHub recusa, e a resposta dele (as linhas <code>remote:</code>, que vêm do servidor, em inglês) explica o motivo:</p>
+<pre class="term" data-cwd="~/receitas">$ git push -u origin main
 Username for 'https://github.com': ana-souza
 Password for 'https://ana-souza@github.com':
 remote: Support for password authentication was removed on August 13, 2021.
