@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git git init — criando um repositório | Guia Git</title>
+<meta name="description" content="git init: transformar uma pasta em repositório Git, o que é a pasta .git, o primeiro git status, a dica real do master/main e init.defaultBranch, git init pasta, -b, reinicializar, o fatal: not a git repository e o git init na pasta errada.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Criando um Repositório (git init)</span></h1>
+
+<p class="intro">Uma pasta comum não tem história nenhuma: o Git nem sabe que ela existe. O comando <code>git init</code> ("inicializar") transforma a pasta atual num <strong>repositório</strong>, criando dentro dela a pasta escondida <code>.git</code>, onde a história vai ser guardada. É o primeiro comando de todo projeto novo. Nesta aula você vai criar o repositório das receitas da Ana e entender cada linha que o Git responde.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Criar um repositório com <code>git init</code> e ler a resposta.</li>
+  <li>O que é a pasta <code>.git</code> e por que não mexer nela.</li>
+  <li>O primeiro <code>git status</code> de um repositório vazio.</li>
+  <li>A dica do <code>master</code> × <code>main</code> e como escolher o nome do ramo inicial.</li>
+  <li>O que fazer quando o <code>git init</code> foi rodado na pasta errada.</li>
+</ul>
+</div>
+
+<hr>
+
+<h2>A ideia: comprar o álbum antes de tirar as fotos</h2>
+<p>Na <a href="introducao.html">primeira aula</a>, o Git era um álbum de fotografias do projeto. O <code>git init</code> é o momento em que você compra o álbum e o deixa na pasta: ele ainda está vazio, nenhuma foto foi tirada, mas a partir de agora existe um lugar para guardá-las. As fotos (os commits) vêm na aula seguinte, <a href="primeiro-commit.html">Seu Primeiro Commit</a>.</p>
+
+<hr>
+
+<h2>Criando o repositório</h2>
+<p>A Ana cria a pasta do projeto, entra nela e confere que está vazia:</p>
+
+<pre class="term">$ mkdir receitas
+$ cd receitas
+$ ls -a
+.
+..</pre>
+
+<p>Agora, o <code>git init</code>. Ele age na <strong>pasta atual</strong>, por isso é importante estar dentro da pasta certa:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git init
+Repositório vazio Git inicializado em  /home/ana/receitas/.git/</pre>
+
+<dl class="anatomy">
+  <dt>git</dt><dd>O programa.</dd>
+  <dt>init</dt><dd>O comando: "inicialize um repositório aqui".</dd>
+</dl>
+
+<p>A resposta quer dizer: "criei um repositório Git vazio em <code>/home/ana/receitas/.git/</code>". Repare no caminho: ele termina em <code>.git/</code>, porque o repositório de verdade, a "caixa" com a história, é essa pasta. "Vazio" quer dizer que ainda não há nenhum commit. (Os dois espaços antes do caminho estão assim mesmo na tradução do Git.)</p>
+
+<h3>A pasta <code>.git</code></h3>
+<p>O <code>ls</code> comum não mostra a pasta nova, porque o nome começa com ponto. Com <code>-a</code> ela aparece:</p>
+
+<pre class="term" data-cwd="~/receitas">$ ls -a
+.
+..
+.git                               « nova: é aqui que o Git guarda tudo
+$ ls .git
+HEAD
+config
+description
+hooks
+info
+objects
+refs</pre>
+
+<p>Você não precisa entender esses arquivos agora (eles aparecem em <a href="como-git-guarda.html">Como o Git Guarda as Coisas</a>). Por enquanto, guarde duas regras:</p>
+<ul>
+  <li><strong>Não edite nem apague nada dentro de <code>.git</code> à mão.</strong> Quem cuida dela são os comandos do Git.</li>
+  <li><strong>Apagar a pasta <code>.git</code> apaga a história inteira</strong>: os seus arquivos continuam lá, mas o repositório deixa de existir.</li>
+</ul>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th></th><th>Antes do <code>git init</code></th><th>Depois do <code>git init</code></th></tr>
+<tr><td>A pasta <code>receitas</code></td><td>Uma pasta comum</td><td>Um repositório (a "pasta de trabalho" do projeto)</td></tr>
+<tr><td>A pasta <code>.git</code></td><td>Não existe</td><td>Existe, com a estrutura do repositório</td></tr>
+<tr><td>Commits</td><td>—</td><td>Nenhum ainda</td></tr>
+<tr><td>Os seus arquivos</td><td>Intocados</td><td>Intocados (o <code>git init</code> não mexe neles)</td></tr>
+</table>
+</div>
+
+<div class="try" data-goal="cwd:~/receitas,repo" data-solucao="mkdir receitas;;cd receitas;;git init">
+<p class="try-task"><strong>Missão:</strong> crie a pasta <code>receitas</code>, entre nela e transforme-a num repositório com <code>git init</code>. Depois confira a pasta escondida com <code>ls -a</code>.</p>
+</div>
+
+<hr>
+
+<h2>O primeiro <code>git status</code></h2>
+<p>O <code>git status</code> ("situação") é o comando que você mais vai digitar: ele diz em que pé está o repositório. Num repositório recém-criado:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main                       « você está no ramo (branch) main
+
+No commits yet                     « "ainda não há commits"
+
+nada para enviar (crie/copie arquivos e use "git add" para registrar)</pre>
+
+<ul>
+  <li><code>No ramo main</code>: o repositório já nasce com um ramo, chamado <code>main</code>. Ramos têm aula própria (<a href="branches.html">O que é um Branch</a>); por enquanto, é "a linha principal da história".</li>
+  <li><code>No commits yet</code>: ainda não há nenhum commit (esta linha não tem tradução).</li>
+  <li>A última linha diz que não há nada para registrar e dá a dica do próximo passo: criar ou copiar arquivos e usar <code>git add</code>.</li>
+</ul>
+
+<p>A Ana segue a dica e cria o primeiro arquivo. O <code>git status</code> percebe na hora:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo '# Receitas da Ana' &gt; README.md
+$ git status
+No ramo main
+
+No commits yet
+
+Arquivos não monitorados:                                       « arquivos que o Git ainda não acompanha
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	README.md
+
+nada adicionado ao envio mas arquivos não registrados estão presentes (use "git add" to registrar)</pre>
+
+<p>O Git viu o <code>README.md</code>, mas ainda não o acompanha: ele é um arquivo "não monitorado". A tradução desta mensagem mistura palavras ("submetido", "envio", "registrar", e até um "to" em inglês), mas o recado é um só: use <code>git add</code>. É exatamente o que a próxima aula faz. O <code>git status</code> e as suas mensagens são explicados em detalhe em <a href="git-status.html">git status</a>.</p>
+
+<hr>
+
+<h2>A dica do <code>master</code> e do <code>main</code></h2>
+<p>Na máquina da Ana, o repositório nasceu no ramo <code>main</code> porque ela configurou isso na aula <a href="git-config.html">git config</a>. Num Git recém-instalado, sem essa configuração, o <code>git init</code> responde assim:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git init
+hint: Using 'master' as the name for the initial branch. This default branch name
+hint: will change to "main" in Git 3.0. To configure the initial branch name
+hint: to use in all of your new repositories, which will suppress this warning,
+hint: call:
+hint:
+hint: 	git config --global init.defaultBranch &lt;name&gt;
+hint:
+hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+hint: 'development'. The just-created branch can be renamed via this command:
+hint:
+hint: 	git branch -m &lt;name&gt;
+hint:
+hint: Disable this message with "git config set advice.defaultBranchName false"
+Repositório vazio Git inicializado em  /home/ana/receitas/.git/</pre>
+
+<p>As linhas com <code>hint:</code> ("dica") não são um erro: o repositório foi criado normalmente (última linha). A dica, em português:</p>
+<blockquote>
+<p>"Usando <code>master</code> como nome do ramo inicial. Este nome padrão vai mudar para <code>main</code> no Git 3.0. Para configurar o nome do ramo inicial de todos os seus repositórios novos, o que também tira este aviso, rode <code>git config --global init.defaultBranch &lt;nome&gt;</code>. Nomes comuns no lugar de <code>master</code> são <code>main</code>, <code>trunk</code> e <code>development</code>. O ramo recém-criado pode ser renomeado com <code>git branch -m &lt;nome&gt;</code>. Para não ver mais esta mensagem: <code>git config set advice.defaultBranchName false</code>."</p>
+</blockquote>
+
+<h3>Por que dois nomes?</h3>
+<p>Durante muitos anos, o Git chamou o ramo inicial de <code>master</code> ("mestre"). Em 2020, o GitHub e outros serviços passaram a usar <code>main</code> ("principal") nos repositórios novos, e o próprio Git avisa que vai adotar <code>main</code> no Git 3.0. Os dois funcionam igual; o que importa é o seu repositório e o do GitHub usarem o mesmo nome. Este guia usa <code>main</code>. Você vai ver <code>master</code> em muitos projetos e tutoriais antigos.</p>
+
+<h3>Os dois jeitos de resolver, que a própria dica ensina</h3>
+<p><strong>Para os próximos repositórios</strong>, configure uma vez (se você fez a aula de <code>git config</code>, já está feito):</p>
+<pre class="syntax">git config --global init.defaultBranch main</pre>
+
+<p><strong>Para o repositório que acabou de nascer como <code>master</code></strong>, renomeie o ramo com <code>git branch -m</code> (<em>move</em>, "mover/renomear"):</p>
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo master                     « nasceu como master
+
+No commits yet
+
+nada para enviar (crie/copie arquivos e use "git add" para registrar)
+$ git branch -m main
+$ git status
+No ramo main                       « agora é main
+
+No commits yet
+
+nada para enviar (crie/copie arquivos e use "git add" para registrar)</pre>
+
+<hr>
+
+<h2>Formas diferentes de criar um repositório</h2>
+
+<h3>Criar a pasta e o repositório de uma vez</h3>
+<p>Com um nome depois do <code>init</code>, o Git cria a pasta (se não existir) e o repositório dentro dela. Você continua onde estava:</p>
+<pre class="term">$ git init loja
+Repositório vazio Git inicializado em  /home/ana/loja/.git/
+$ ls loja -a
+.
+..
+.git</pre>
+
+<h3>Escolher o nome do ramo só desta vez: <code>-b</code></h3>
+<p>A opção <code>-b</code> (de <em>branch</em>; a forma longa é <code>--initial-branch</code>) escolhe o nome do ramo inicial deste repositório, sem mexer na configuração:</p>
+<pre class="term">$ git init -b principal teste
+Repositório vazio Git inicializado em  /home/ana/teste/.git/
+$ cd teste
+$ git status
+No ramo principal
+
+No commits yet
+
+nada para enviar (crie/copie arquivos e use "git add" para registrar)</pre>
+
+<h3>Sem mensagem: <code>-q</code></h3>
+<p><code>git init -q</code> (<em>quiet</em>, "quieto") faz o mesmo sem mostrar nada. É útil em scripts.</p>
+
+<h3>Clonar em vez de iniciar</h3>
+<p>Se o projeto <strong>já existe</strong> no GitHub, você não usa <code>git init</code>: usa <code>git clone</code>, que baixa o repositório com toda a história (aula <a href="git-clone.html">git clone</a>).</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Use</th></tr>
+<tr><td>Projeto novo, numa pasta onde você já está</td><td><code>git init</code></td></tr>
+<tr><td>Projeto novo, numa pasta que ainda não existe</td><td><code>git init nome-da-pasta</code></td></tr>
+<tr><td>Projeto que já tem arquivos (mas não é repositório)</td><td><code>cd</code> até a pasta e <code>git init</code>: os arquivos ficam intocados</td></tr>
+<tr><td>Quero um nome de ramo diferente só aqui</td><td><code>git init -b nome</code></td></tr>
+<tr><td>O projeto já está no GitHub</td><td><code>git clone endereço</code></td></tr>
+</table>
+</div>
+
+<div class="try" data-goal="dir:loja/.git" data-solucao="git init loja">
+<p class="try-task"><strong>Missão:</strong> você está na pasta pessoal da Ana. Com um comando só, crie a pasta <code>loja</code> já como repositório Git. Confira com <code>ls -a loja</code>.</p>
+</div>
+
+<hr>
+
+<h2>Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>fatal: not a git repository</code></strong>
+<pre class="term">$ git status
+fatal: not a git repository (or any of the parent directories): .git</pre>
+<p><strong>O que aconteceu:</strong> "fatal: não é um repositório git (nem nenhuma das pastas acima): .git". O Git procurou uma pasta <code>.git</code> na pasta atual e em todas as pastas acima dela, até a raiz, e não achou. Ou você ainda não rodou <code>git init</code>, ou está na pasta errada. (Esta mensagem ainda não tem tradução.)</p>
+<p><strong>Como confirmar:</strong> <code>pwd</code> mostra onde você está; <code>ls -a</code> mostra se há uma <code>.git</code> aqui.</p>
+<p><strong>Como resolver:</strong> vá para a pasta do projeto com <code>cd</code>. Se ela nunca foi um repositório, rode <code>git init</code> lá dentro.</p>
+</div>
+
+<div class="cenario">
+<strong>Rodei <code>git init</code> duas vezes</strong>
+<pre class="term" data-cwd="~/receitas">$ git init
+Reinitialized existing Git repository in /home/ana/receitas/.git/</pre>
+<p><strong>O que aconteceu:</strong> "repositório Git existente reinicializado". Não se preocupe: rodar <code>git init</code> num repositório que já existe <strong>não apaga nada</strong>. Os commits, os ramos e a configuração continuam lá; o Git só confere a estrutura da pasta <code>.git</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Rodei <code>git init</code> na pasta errada (por exemplo, na pasta pessoal)</strong>
+<pre class="term">$ git init
+Repositório vazio Git inicializado em  /home/ana/.git/
+$ git status
+No ramo main
+
+No commits yet
+
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	.bash_history
+	.bash_logout
+	.bashrc
+	.config/
+	.gitconfig
+	.profile
+	loja/
+	receitas/
+
+nada adicionado ao envio mas arquivos não registrados estão presentes (use "git add" to registrar)</pre>
+<p><strong>O que aconteceu:</strong> a Ana estava na pasta pessoal (<code>~</code>), não na do projeto. Agora a pasta pessoal inteira virou um repositório, e o <code>git status</code> lista os arquivos de configuração dela como "não monitorados". (As pastas <code>Documentos</code>, <code>Imagens</code> etc. não aparecem só porque estão vazias: o Git não acompanha pastas vazias.) Pior: como o Git procura a <code>.git</code> nas pastas acima, <strong>qualquer</strong> pasta dentro da pessoal passa a parecer parte desse repositório.</p>
+<p><strong>Como resolver:</strong> se você <strong>acabou</strong> de criar e ainda não fez nenhum commit, apague só a pasta <code>.git</code> criada por engano. Confira duas vezes que está na pasta certa e que é a <code>.git</code> nova, antes de apagar:</p>
+<pre class="term">$ rm -rf .git
+$ git status
+fatal: not a git repository (or any of the parent directories): .git   « voltou a ser uma pasta comum</pre>
+<p><code>rm -rf</code> apaga sem perguntar e sem lixeira: use com muito cuidado, e nunca numa <code>.git</code> com história que você quer manter.</p>
+</div>
+
+<div class="try" data-setup="git init -q" data-goal="absent:.git" data-solucao="rm -rf .git">
+<p class="try-task"><strong>Missão:</strong> a Ana rodou <code>git init</code> sem querer na pasta pessoal. Confira com <code>git status</code>, desfaça apagando a pasta <code>.git</code> com <code>rm -rf .git</code> e confira de novo: o <code>git status</code> deve dizer que aqui não é um repositório.</p>
+</div>
+
+<div class="cenario">
+<strong>Em qual repositório eu estou?</strong>
+<p>Numa subpasta de um repositório, o Git funciona normalmente, porque ele sobe procurando a <code>.git</code>. Para saber qual pasta é a "raiz" do repositório:</p>
+<pre class="term" data-cwd="~/receitas">$ git rev-parse --show-toplevel
+/home/ana/receitas</pre>
+<p>Se a resposta for a sua pasta pessoal, você caiu no caso anterior.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git init</code></td><td>Transforma a pasta atual num repositório (cria a <code>.git</code>).</td></tr>
+<tr><td><code>git init pasta</code></td><td>Cria a pasta, se preciso, e o repositório dentro dela.</td></tr>
+<tr><td><code>git init -b nome</code></td><td>Cria com o ramo inicial chamado <code>nome</code>.</td></tr>
+<tr><td><code>git init -q</code></td><td>Cria sem mostrar mensagem.</td></tr>
+<tr><td><code>git config --global init.defaultBranch main</code></td><td>Todos os repositórios novos começam em <code>main</code>.</td></tr>
+<tr><td><code>git branch -m main</code></td><td>Renomeia o ramo atual para <code>main</code>.</td></tr>
+<tr><td><code>git status</code></td><td>Mostra a situação do repositório.</td></tr>
+<tr><td><code>git rev-parse --show-toplevel</code></td><td>Mostra a pasta raiz do repositório atual.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">1. O que o <code>git init</code> cria?</p>
+<label><input type="radio" name="q1"> O primeiro commit.</label>
+<label><input type="radio" name="q1"> Uma conta no GitHub.</label>
+<label><input type="radio" name="q1"> A pasta oculta <code>.git</code>, onde o Git vai guardar a história.</label>
+<label><input type="radio" name="q1"> Uma cópia de todos os arquivos da pasta.</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">2. O <code>git init</code> mostrou várias linhas começando com <code>hint:</code> sobre <code>master</code>. O que aconteceu?</p>
+<label><input type="radio" name="q2"> O repositório foi criado; é só uma dica sobre o nome do ramo inicial.</label>
+<label><input type="radio" name="q2"> O repositório não foi criado.</label>
+<label><input type="radio" name="q2"> O Git apagou os arquivos da pasta.</label>
+<label><input type="radio" name="q2"> É preciso reinstalar o Git.</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">3. A Ana rodou <code>git init</code> numa pasta que já era repositório, cheia de commits. O que acontece com os commits?</p>
+<label><input type="radio" name="q3"> São apagados.</label>
+<label><input type="radio" name="q3"> Vão para o GitHub.</label>
+<label><input type="radio" name="q3"> Viram um ramo chamado <code>master</code>.</label>
+<label><input type="radio" name="q3"> Nada: o Git só "reinicializa" e mantém tudo.</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. <code>git status</code> respondeu <code>fatal: not a git repository</code>. Qual é a causa mais provável?</p>
+<label><input type="radio" name="q4"> O Git não está instalado.</label>
+<label><input type="radio" name="q4"> O terminal está numa pasta que não é (nem está dentro de) um repositório.</label>
+<label><input type="radio" name="q4"> Falta configurar o nome e o e-mail.</label>
+<label><input type="radio" name="q4"> Não há internet.</label>
+</div>
+
+<div class="exercise">
+<h3>5. Ramo com outro nome</h3>
+<p>Complete para criar o repositório <code>site</code> com o ramo inicial <code>main</code>, sem depender da configuração:</p>
+<div class="ex-code">git init <input data-answer="-b main|--initial-branch=main|--initial-branch main" aria-label="opção"> site</div>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git init</code> transforma a pasta atual num repositório, criando a pasta oculta <code>.git</code>; os seus arquivos não são tocados.</li>
+  <li>A <code>.git</code> guarda toda a história: não mexa nela à mão; apagá-la apaga o repositório.</li>
+  <li>Num repositório novo, <code>git status</code> diz "No commits yet" e sugere criar arquivos e usar <code>git add</code>.</li>
+  <li>Sem <code>init.defaultBranch</code>, o Git usa <code>master</code> e mostra uma dica; configure <code>main</code> ou renomeie com <code>git branch -m main</code>.</li>
+  <li><code>fatal: not a git repository</code> = pasta errada ou falta o <code>git init</code>. Rodar <code>git init</code> de novo não apaga nada.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
