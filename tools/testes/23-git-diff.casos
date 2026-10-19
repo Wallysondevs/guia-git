@@ -1,6 +1,7 @@
 ### diff-renomeacao-ignore-binario
 mkdir r && cd r && git init -q
-printf 'linha 1\nlinha 2\nlinha 3\nlinha 4\nlinha 5\nlinha 6\nlinha 7\nlinha 8\nlinha 9\nlinha 10\n' > texto.txt
+printf 'linha 1\nlinha 2\nlinha 3\nlinha 4\nlinha 5\n' > texto.txt
+printf 'linha 6\nlinha 7\nlinha 8\nlinha 9\nlinha 10\n' >> texto.txt
 printf 'sem fim' > semfim.txt
 echo '#!/bin/bash' > s.sh
 git add .; git commit -qm um
@@ -17,7 +18,8 @@ git commit -qm dois
 git show --stat
 git log --stat -1 --format=%s
 git show -M --name-status --format=
-mkdir -p logs build/tmp; echo x > logs/a.log; echo y > build/tmp/b.o; echo k > keep.log
+mkdir -p logs build/tmp; echo x > logs/a.log
+echo y > build/tmp/b.o; echo k > keep.log
 printf '*.log\n!keep.log\nbuild/\n' > .gitignore
 git status
 git status --ignored
