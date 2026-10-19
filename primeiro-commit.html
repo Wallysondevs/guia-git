@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Primeiro Commit — do arquivo novo à primeira fotografia | Guia Git</title>
+<meta name="description" content="O primeiro commit no Git para quem nunca usou: criar um arquivo, ver com git status, preparar com git add, registrar com git commit -m, conferir com git log, e o segundo commit. Com as saídas reais do Git em português explicadas linha por linha e os erros clássicos (Please tell me who you are, nada adicionado ao commit, not a git repository).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Primeiro Commit</span></h1>
+
+<p class="intro">Na aula anterior, a Ana criou um repositório vazio com o <a href="git-init.html">git init</a>. Um repositório vazio é como um álbum de fotos novo, ainda sem nenhuma foto. Nesta aula ela tira a <strong>primeira foto</strong> do projeto: o primeiro <strong>commit</strong> (em inglês, "registro"; aqui no guia, pense numa <strong>fotografia</strong> da pasta naquele momento). São só três comandos (<code>git status</code>, <code>git add</code> e <code>git commit</code>), e você vai ver cada um deles em detalhe nas próximas aulas. Aqui o objetivo é fazer o caminho inteiro uma vez, do começo ao fim, e entender o que o Git respondeu em cada passo.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é um commit e por que o Git pede <strong>dois</strong> passos (<code>add</code> e depois <code>commit</code>) para guardar uma versão.</li>
+  <li>O caminho completo: criar um arquivo → <code>git status</code> → <code>git add</code> → <code>git commit -m "mensagem"</code> → <code>git log</code>.</li>
+  <li>O que quer dizer cada linha que o Git mostra no caminho, inclusive o <code>(root-commit)</code> e o código do commit.</li>
+  <li>Como fazer o <strong>segundo</strong> commit (o ciclo que você vai repetir para sempre).</li>
+  <li>Os erros clássicos do primeiro commit: <code>Please tell me who you are</code>, "nada adicionado ao commit" e <code>not a git repository</code>.</li>
+</ul>
+</div>
+
+<p>Todas as saídas desta aula são <strong>reais</strong>: saíram do Git da máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>, Ubuntu 26.04 em português). Se o seu sistema estiver em inglês, o Git fala inglês; a aula mostra a frase em inglês quando ela for importante para você reconhecer.</p>
+
+<hr>
+
+<h2>A ideia: arrumar a mesa e depois tirar a foto</h2>
+<p>Pense numa confeitaria que fotografa os bolos para o cardápio. O fotógrafo não fotografa a cozinha inteira, com a pia suja e as panelas: ele <strong>escolhe</strong> o que vai para a mesa da foto, arruma, e só então aperta o botão. A foto vai para o álbum, com data e uma legenda.</p>
+<p>O Git trabalha do mesmo jeito, com três lugares:</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Na confeitaria</th><th>No Git</th><th>O que é</th></tr>
+<tr><td>A cozinha (tudo, bagunçado)</td><td><strong>Pasta de trabalho</strong></td><td>A pasta do projeto, com os arquivos como estão agora no seu computador. É onde você edita.</td></tr>
+<tr><td>A mesa da foto</td><td><strong>Área de preparo</strong> (<em>staging area</em>)</td><td>O que você <strong>escolheu</strong> para entrar na próxima foto. Você põe coisas lá com <code>git add</code>.</td></tr>
+<tr><td>O álbum</td><td><strong>Histórico</strong> (o repositório)</td><td>As fotos já tiradas, cada uma com autor, data e legenda. Uma foto nova entra com <code>git commit</code>.</td></tr>
+</table>
+</div>
+
+<pre>pasta de trabalho  ──git add──▶  área de preparo  ──git commit──▶  histórico
+   (você edita)                  (a mesa da foto)                  (o álbum)
+</pre>
+
+<p>Por que dois passos, e não um botão "salvar versão"? Porque assim você decide <strong>o que</strong> entra em cada foto. Se mexeu em três arquivos, mas só dois têm a ver com a receita nova, você prepara só esses dois e tira a foto; o terceiro fica para outra foto, com outra legenda. A aula <a href="area-de-preparo.html">A Área de Preparo</a> mostra isso com calma.</p>
+
+<hr>
+
+<h2>Antes de começar</h2>
+<p>Você precisa de duas coisas, das aulas anteriores:</p>
+<ol class="passo">
+  <li>O Git sabe <strong>quem você é</strong> (<a href="git-config.html">git config</a>): todo commit leva o nome e o e-mail do autor. A Ana confere o que configurou:
+<pre class="term">$ git config --global user.name
+Ana Souza
+$ git config --global user.email
+ana@exemplo.com
+</pre>
+  </li>
+  <li>Uma pasta que é um <strong>repositório</strong> (<a href="git-init.html">git init</a>). A Ana criou a pasta <code>receitas</code>, para o site de receitas dela:
+<pre class="term">$ mkdir receitas
+$ cd receitas
+$ git init
+Repositório vazio Git inicializado em  /home/ana/receitas/.git/
+</pre>
+  </li>
+</ol>
+
+<hr>
+
+<h2>Passo 1: o <code>git status</code> do repositório vazio</h2>
+<p>Antes de qualquer coisa, pergunte ao Git como as coisas estão. O comando é o <code>git status</code> ("situação"), e ele nunca muda nada: só olha e conta.</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main            « você está no ramo "main"
+
+No commits yet          « ainda não há nenhum commit
+
+nada para enviar (crie/copie arquivos e use "git add" para registrar)
+</pre>
+
+<dl class="anatomy">
+  <dt>No ramo main</dt><dd>"No ramo <code>main</code>". Um <strong>ramo</strong> (<em>branch</em>) é uma linha do histórico; todo repositório começa com um, o <code>main</code> ("principal"). Os ramos têm um capítulo inteiro, a partir de <a href="branches.html">O que é um Branch</a>. Por enquanto, basta saber que você está nele.</dd>
+  <dt>No commits yet</dt><dd>"Nenhum commit ainda": o álbum está vazio.</dd>
+  <dt>nada para enviar (crie/copie arquivos e use "git add" para registrar)</dt><dd>Não há nada para commitar (o Git da tradução brasileira diz "enviar" ou "submeter" para <em>commit</em>). E vem a dica: crie ou copie arquivos para a pasta e use <code>git add</code> para o Git começar a cuidar deles. É exatamente o que a Ana vai fazer.</dd>
+</dl>
+
+<div class="note">
+<strong>Por que o Git fala metade em inglês?</strong>
+<p>O Git é traduzido por voluntários, e a tradução para o português do Brasil do Git do Ubuntu 26.04 (versão 2.53) está <strong>incompleta</strong>: algumas frases saem em português, outras continuam em inglês, às vezes na mesma linha (<code>use "git add" to registrar</code>). Não é defeito do seu computador, e é exatamente isso que você vai ver no seu terminal. Neste guia, as saídas são copiadas como saíram, e cada frase em inglês ganha tradução na explicação. Num sistema todo em inglês, tudo sai em inglês: <code>On branch main</code>, <code>No commits yet</code>, <code>nothing to commit</code>…</p>
+</div>
+
+<hr>
+
+<h2>Passo 2: criar um arquivo</h2>
+<p>A Ana cria o primeiro arquivo do site, um <code>README.md</code> (o "leia-me" do projeto; o <code>.md</code> é de Markdown, um formato de texto simples que você vai ver em <a href="readme.html">O README e o Markdown</a>). Ela usa o <code>echo</code> do terminal para escrever uma linha nele, mas poderia usar qualquer editor de texto:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo '# Receitas da Ana' &gt; README.md
+$ ls
+README.md
+</pre>
+
+<p>O arquivo existe na pasta de trabalho, mas o Git ainda não o conhece. Pergunte de novo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main
+
+No commits yet
+
+Arquivos não monitorados:                                       « bloco novo
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	README.md                                                       « o arquivo novo
+
+nada adicionado ao envio mas arquivos não registrados estão presentes (use "git add" to registrar)
+</pre>
+
+<dl class="anatomy">
+  <dt>Arquivos não monitorados:</dt><dd>"Arquivos que o Git não está acompanhando" (em inglês, <em>untracked files</em>; neste guia dizemos <strong>não rastreados</strong>). É a lista de arquivos que estão na pasta, mas nunca entraram no Git.</dd>
+  <dt>(utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)</dt><dd>A <strong>dica</strong>: use <code>git add</code> seguido do nome do arquivo para incluí-lo no próximo commit. O <code>&lt;arquivo&gt;</code> é um lugar para você pôr o nome (não digite os sinais <code>&lt; &gt;</code>), e os <code>...</code> dizem que pode ser mais de um.</dd>
+  <dt>README.md</dt><dd>O arquivo novo, recuado com uma tabulação.</dd>
+  <dt>nada adicionado ao envio mas arquivos não registrados estão presentes (use "git add" to registrar)</dt><dd>O resumo: "nada foi adicionado ao commit, mas existem arquivos não rastreados; use <code>git add</code> para rastreá-los" (o <em>to</em> é o "para" que ficou sem tradução).</dd>
+</dl>
+
+<p>"Não rastreado" quer dizer que o Git <strong>vê</strong> o arquivo, mas não está cuidando dele: se você apagar ou mudar o arquivo, o Git não tem nenhuma cópia para devolver. Ele está na cozinha, longe da mesa da foto.</p>
+
+<hr>
+
+<h2>Passo 3: <code>git add</code>, pôr na mesa da foto</h2>
+
+<pre class="term" data-cwd="~/receitas">$ git add README.md
+</pre>
+
+<dl class="anatomy">
+  <dt>git</dt><dd>O programa Git. Todo comando do Git começa assim.</dd>
+  <dt>add</dt><dd>O subcomando: "adicionar" à área de preparo.</dd>
+  <dt>README.md</dt><dd>O arquivo que vai para a mesa da foto. Pode ser mais de um (<code>git add README.md bolo.txt</code>), ou <code>.</code> para "tudo o que mudou nesta pasta" (aula <a href="git-add.html">git add</a>).</dd>
+</dl>
+
+<p>O <code>git add</code> não mostra nada quando dá certo: no terminal, silêncio quer dizer "feito". Para ver o efeito, o <code>git status</code> de novo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main
+
+No commits yet
+
+Mudanças a serem submetidas:                                    « vai entrar no próximo commit
+  (utilize "git rm --cached &lt;arquivo&gt;..." para não apresentar)
+	new file:   README.md                                       « arquivo novo, preparado
+
+</pre>
+
+<dl class="anatomy">
+  <dt>Mudanças a serem submetidas:</dt><dd>"Mudanças que vão entrar no commit" (em inglês, <em>Changes to be committed</em>). É a <strong>área de preparo</strong>, a mesa da foto. Tudo o que estiver nesta lista entra no próximo <code>git commit</code>.</dd>
+  <dt>(utilize "git rm --cached &lt;arquivo&gt;..." para não apresentar)</dt><dd>A dica para <strong>voltar atrás</strong>: se você preparou o arquivo por engano, <code>git rm --cached README.md</code> o tira da mesa (sem apagar o arquivo da pasta). Ela só aparece assim antes do primeiro commit; depois, a dica muda (você vai ver em <a href="git-status.html">git status</a>).</dd>
+  <dt>new file:   README.md</dt><dd>"Arquivo novo": o <code>README.md</code> nunca esteve num commit e agora está preparado.</dd>
+</dl>
+
+<p>O arquivo saiu da cozinha e foi para a mesa. A foto ainda não foi tirada: o histórico continua vazio.</p>
+
+<hr>
+
+<h2>Passo 4: <code>git commit</code>, tirar a foto</h2>
+
+<pre class="term" data-cwd="~/receitas">$ git commit -m "Adiciona o README"
+[main (root-commit) d84dc97] Adiciona o README
+ 1 file changed, 1 insertion(+)
+ create mode 100644 README.md
+</pre>
+
+<dl class="anatomy">
+  <dt>git commit</dt><dd>"Registre": tira a foto de <strong>tudo o que está na área de preparo</strong> e guarda no histórico.</dd>
+  <dt>-m</dt><dd>De <em>message</em>, "mensagem": a legenda da foto vem logo em seguida, na mesma linha.</dd>
+  <dt>"Adiciona o README"</dt><dd>A mensagem, entre aspas (porque tem espaços). Ela diz <strong>o que</strong> este commit faz. O costume é escrever no imperativo ou no presente, curto, como um título: "Adiciona o README", "Corrige o tempo do bolo". A aula <a href="mensagens-commit.html">Boas Mensagens de Commit</a> é só sobre isso.</dd>
+</dl>
+
+<p>A resposta, linha por linha:</p>
+<dl class="anatomy">
+  <dt>[main (root-commit) d84dc97]</dt><dd>Entre colchetes: o commit foi feito no ramo <code>main</code>; <code>root-commit</code> ("commit raiz") avisa que é o <strong>primeiro</strong> do repositório, a raiz do histórico (só ele tem essa marca); <code>d84dc97</code> é o começo do <strong>código</strong> do commit (o <em>hash</em>), o "RG" dessa foto. Você usa esse código para se referir ao commit depois (aula <a href="hash.html">O Hash do Commit</a>). No seu computador ele vai sair diferente, porque depende do nome, da data e do conteúdo.</dd>
+  <dt>Adiciona o README</dt><dd>A mensagem que você deu.</dd>
+  <dt>1 file changed, 1 insertion(+)</dt><dd>"1 arquivo alterado, 1 inserção": o commit mexeu em 1 arquivo e acrescentou 1 linha (o <code>README.md</code> tem uma linha só).</dd>
+  <dt>create mode 100644 README.md</dt><dd>"Criado com o modo 100644": o arquivo é novo no histórico, e <code>100644</code> é o jeito do Git anotar "arquivo comum, não executável". Arquivos executáveis (scripts) aparecem como <code>100755</code>.</dd>
+</dl>
+
+<p>E o <code>git status</code> agora:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main
+nothing to commit, working tree clean
+</pre>
+
+<p><code>nothing to commit, working tree clean</code> (esta saiu em inglês) quer dizer "nada a commitar, pasta de trabalho limpa": tudo o que está na pasta é igual à última foto. A linha <code>No commits yet</code> sumiu, porque agora existe um commit.</p>
+
+<hr>
+
+<h2>Passo 5: ver a foto no álbum com <code>git log</code></h2>
+
+<pre class="term" data-cwd="~/receitas">$ git log
+commit d84dc9769de7f3c81874872c30843402cbae59f9
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Adiciona o README
+</pre>
+
+<dl class="anatomy">
+  <dt>commit d84dc97…</dt><dd>O código completo do commit, com 40 caracteres. O <code>d84dc97</code> da saída do <code>git commit</code> é só o começo dele.</dd>
+  <dt>Author: Ana Souza &lt;ana@exemplo.com&gt;</dt><dd>"Autor": o nome e o e-mail que a Ana configurou com o <code>git config</code>.</dd>
+  <dt>Date: Thu Oct 15 10:30:00 2026 -0300</dt><dd>"Data": quinta-feira (<em>Thu</em>), 15 de outubro (<em>Oct</em>) de 2026, às 10:30, no fuso de Brasília (<code>-0300</code>, três horas a menos que o horário universal). O Git escreve a data em inglês mesmo com o sistema em português.</dd>
+  <dt>Adiciona o README</dt><dd>A mensagem, recuada com 4 espaços.</dd>
+</dl>
+
+<p>O <code>git log</code> tem uma aula própria (<a href="git-log.html">git log</a>). Para ver o que a foto guardou por dentro, existe o <a href="git-show.html">git show</a>.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md" data-goal="commits:1,limpo,msg:README" data-solucao="git add README.md;;git commit -m 'Adiciona o README'">
+<p class="try-task"><strong>Missão:</strong> a pasta <code>receitas</code> já é um repositório e já tem o <code>README.md</code>, que ainda não foi commitado. Rode <code>git status</code>, prepare o arquivo com <code>git add</code>, rode <code>git status</code> de novo e faça o primeiro commit com a mensagem <code>Adiciona o README</code>. No fim, o <code>git status</code> deve dizer que não há nada a commitar.</p>
+</div>
+
+<hr>
+
+<h2>O segundo commit: o ciclo que se repete</h2>
+<p>Daqui em diante, o trabalho com o Git é sempre o mesmo ciclo: <strong>editar → <code>git status</code> → <code>git add</code> → <code>git commit</code></strong>. A Ana escreve a primeira receita e muda o README:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'Bolo de cenoura' &gt; bolo.txt
+$ echo 'Site com as receitas da família.' &gt;&gt; README.md
+$ git status
+No ramo main
+Changes not staged for commit:                                  « rastreado e modificado
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   README.md
+
+Arquivos não monitorados:                                       « novo
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	bolo.txt
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+$ git add bolo.txt README.md
+$ git commit -m "Adiciona a receita de bolo"
+[main fa4a0cf] Adiciona a receita de bolo
+ 2 files changed, 2 insertions(+)
+ create mode 100644 bolo.txt
+$ git log --oneline
+fa4a0cf Adiciona a receita de bolo
+d84dc97 Adiciona o README
+</pre>
+
+<p>O que há de novo aqui:</p>
+<ul>
+  <li>O <code>README.md</code> já estava no primeiro commit, então ele não é mais "não monitorado": aparece em <code>Changes not staged for commit</code> ("mudanças não preparadas para o commit") como <code>modified</code> ("modificado"). As dicas mudaram também: <code>git add</code> para preparar a mudança, ou <code>git restore</code> para <strong>descartá-la</strong> e voltar o arquivo ao que estava no último commit. A aula <a href="git-status.html">git status</a> explica cada bloco com calma.</li>
+  <li>O <code>git add</code> recebeu <strong>dois</strong> arquivos de uma vez, separados por espaço.</li>
+  <li>O commit não tem mais <code>(root-commit)</code>: só o primeiro tem. Ele mexeu em 2 arquivos (<code>2 files changed</code>), com 2 linhas novas no total, e só o <code>bolo.txt</code> é arquivo novo (<code>create mode</code>).</li>
+  <li>O <code>git log --oneline</code> mostra o histórico resumido, uma linha por commit: o código curto e a mensagem, <strong>o mais novo em cima</strong>.</li>
+</ul>
+
+<p>Desenhado, o histórico da Ana agora é uma linha com duas fotos, cada uma apontando para a anterior (a seta mostra de quem cada commit "é filho"):</p>
+
+<pre>d84dc97  ◀──  fa4a0cf  ◀── main
+(README)      (bolo)
+</pre>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Adiciona o README'" data-goal="commits:2,limpo,rastreado:bolo.txt" data-solucao="echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -m 'Adiciona a receita de bolo'">
+<p class="try-task"><strong>Missão:</strong> o repositório já tem um commit. Crie o arquivo <code>bolo.txt</code> (por exemplo, com <code>echo 'Bolo de cenoura' &gt; bolo.txt</code>) e faça o <strong>segundo</strong> commit com ele. Confira com <code>git log --oneline</code>: devem aparecer duas linhas.</p>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer</h2>
+
+<h3>Preparar: um arquivo, vários, ou tudo</h3>
+<p>Em vez de nomear o arquivo, dá para usar o ponto, que quer dizer "esta pasta, com tudo o que tem dentro":</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'Pudim de leite' &gt; pudim.txt
+$ git add .
+$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	new file:   pudim.txt
+
+</pre>
+
+<p>É prático, mas cuidado: o ponto pega <strong>tudo</strong>, inclusive o que você não queria commitar (um arquivo de senha, um arquivo temporário). Por isso, olhe o <code>git status</code> antes. A aula <a href="git-add.html">git add</a> mostra as variações e a <a href="gitignore.html">.gitignore</a> mostra como fazer o Git ignorar arquivos.</p>
+
+<h3>A mensagem: com <code>-m</code> ou no editor</h3>
+<p>Sem o <code>-m</code>, o Git abre um <strong>editor de texto</strong> no terminal (no Ubuntu, normalmente o <code>nano</code>; em outros sistemas, o <code>vim</code>) para você escrever a mensagem. Você escreve, salva e fecha, e o commit acontece. Na máquina da Ana, o <code>git commit</code> sozinho abriu o editor <code>nano</code> com este texto:</p>
+
+<pre class="file" data-file=".git/COMMIT_EDITMSG">
+# Please enter the commit message for your changes. Lines starting
+# with '#' will be ignored, and an empty message aborts the commit.
+#
+# No ramo main
+# Mudanças a serem submetidas:
+#	new file:   pudim.txt
+#
+</pre>
+
+<p>A primeira linha, vazia, é onde você escreve a mensagem. As linhas com <code>#</code> são só um lembrete ("escreva a mensagem; linhas começando com <code>#</code> serão ignoradas, e uma mensagem vazia cancela o commit") e não entram no commit. A Ana fechou o <code>nano</code> com <kbd>Ctrl</kbd>+<kbd>X</kbd> sem escrever nada, e o Git respondeu:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git commit
+Aborting commit due to empty commit message.
+</pre>
+
+<p>"Cancelando o commit porque a mensagem está vazia": nenhum commit foi feito, e o arquivo continua na área de preparo, esperando. Para quem está começando, o <code>-m</code> é mais simples. O editor e como escolher outro estão em <a href="git-commit.html">git commit</a>.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Forma</th><th>Quando usar</th></tr>
+<tr><td><code>git add arquivo</code></td><td>O normal: você escolhe exatamente o que entra na foto.</td></tr>
+<tr><td><code>git add .</code></td><td>Quando o <code>git status</code> mostrou que <strong>tudo</strong> o que mudou deve entrar.</td></tr>
+<tr><td><code>git commit -m "mensagem"</code></td><td>Mensagem curta, de uma linha. O mais usado no dia a dia.</td></tr>
+<tr><td><code>git commit</code> (abre o editor)</td><td>Quando a mensagem precisa de um título e um texto explicando o porquê.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>"Please tell me who you are" (o Git não sabe quem você é)</strong>
+<p>Num Git recém-instalado, sem o <code>git config</code>, o <code>git add</code> funciona, mas o commit não:</p>
+<pre class="term" data-cwd="~/receitas">$ git commit -m "Adiciona o README"
+Author identity unknown
+
+*** Please tell me who you are.
+
+Run
+
+  git config --global user.email "you@example.com"
+  git config --global user.name "Your Name"
+
+to set your account's default identity.
+Omit --global to set the identity only in this repository.
+
+fatal: unable to auto-detect email address (got 'ana@notebook.(none)')
+</pre>
+<p>Esta mensagem só existe em inglês. Ela diz: "Identidade do autor desconhecida. <strong>Por favor, me diga quem você é.</strong> Rode os dois comandos abaixo para definir a identidade padrão da sua conta; sem o <code>--global</code>, a identidade vale só neste repositório." A última linha conta que o Git tentou adivinhar o e-mail juntando o usuário e o nome do computador (<code>ana@notebook.(none)</code>) e desistiu, porque isso não é um e-mail de verdade. <strong>Nenhum commit foi feito</strong>, mas o arquivo continua preparado. <strong>Como resolver:</strong> rode os dois comandos com <strong>os seus</strong> dados (não copie o <code>you@example.com</code>) e repita o commit:</p>
+<pre>git config --global user.name "Ana Souza"
+git config --global user.email "ana@exemplo.com"
+git commit -m "Adiciona o README"</pre>
+<p>Detalhes em <a href="git-config.html">git config</a>.</p>
+</div>
+
+<div class="cenario">
+<strong>Commit sem <code>git add</code> antes</strong>
+<pre class="term" data-cwd="~/receitas">$ echo '# Receitas da Ana' &gt; README.md
+$ git commit -m "Primeira versão"
+No ramo main
+
+Submissão inicial.
+
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	README.md
+
+nada adicionado ao envio mas arquivos não registrados estão presentes (use "git add" to registrar)
+</pre>
+<p>O Git não fez o commit e, em vez de um erro, mostrou o <code>git status</code>: "Submissão inicial" (seria o commit inicial), o <code>README.md</code> como não rastreado, e o resumo "nada foi adicionado ao commit". O <code>git commit</code> só fotografa o que está na área de preparo, e ela estava vazia. <strong>Como resolver:</strong> <code>git add README.md</code> e repita o commit.</p>
+</div>
+
+<div class="cenario">
+<strong>Commit quando não mudou nada</strong>
+<pre class="term" data-cwd="~/receitas">$ git commit -m "Primeira versão"
+No ramo main
+nothing to commit, working tree clean
+</pre>
+<p>"Nada a commitar, pasta de trabalho limpa". Todas as mudanças já estão em commits (talvez você já tenha feito este commit e não percebeu). Confira com <code>git log --oneline</code>. Se você mudou um arquivo e esperava que ele aparecesse, confira se salvou o arquivo no editor.</p>
+</div>
+
+<div class="cenario">
+<strong>"not a git repository" (não é um repositório)</strong>
+<pre class="term" data-cwd="~/receitas">$ cd ~
+$ git status
+fatal: not a git repository (or any of the parent directories): .git
+$ git add receitas/README.md
+fatal: not a git repository (or any of the parent directories): .git
+</pre>
+<p>"Fatal: não é um repositório Git (nem nenhuma das pastas acima dela): <code>.git</code>". O Git procura a pasta escondida <code>.git</code> na pasta atual e, se não acha, nas de cima. A Ana estava na pasta pessoal (<code>~</code>), que não é um repositório; o repositório é a <code>receitas</code>, que fica <strong>dentro</strong> dela. <strong>Como resolver:</strong> entre na pasta do projeto (<code>cd receitas</code>) e confira com <code>pwd</code>. Se a pasta do projeto nunca recebeu um <code>git init</code>, veja <a href="git-init.html">git init</a>.</p>
+</div>
+
+<div class="cenario">
+<strong>O nome do arquivo errado no <code>git add</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git add pudin.txt
+fatal: pathspec 'pudin.txt' não encontrou nenhum arquivo
+</pre>
+<p>"O caminho <code>pudin.txt</code> não corresponde a nenhum arquivo" (<em>pathspec</em> é o nome que o Git dá ao caminho que você digita). A Ana digitou <code>pudin</code> com <strong>n</strong>; o arquivo é <code>pudim.txt</code>. Nada foi preparado. <strong>Como resolver:</strong> confira o nome com <code>ls</code> ou <code>git status</code> e digite de novo (a tecla <kbd>Tab</kbd> completa nomes de arquivo e evita esse erro). Maiúsculas contam: <code>Readme.md</code> não é <code>README.md</code>.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;echo 'Pudim de leite' &gt; pudim.txt" data-goal="commits:1,limpo,rastreado:pudim.txt,rastreado:README.md" data-solucao="git add README.md pudim.txt;;git commit -m 'Adiciona o README e o pudim'">
+<p class="try-task"><strong>Missão:</strong> a Ana tentou commitar sem preparar nada. Rode <code>git commit -m "Primeira versão"</code> e leia a resposta do Git. Depois, faça do jeito certo: prepare os <strong>dois</strong> arquivos da pasta e faça o commit.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git status</code></td><td>Mostra a situação: o que é novo, o que mudou, o que está preparado. Não muda nada.</td></tr>
+<tr><td><code>git add arquivo</code></td><td>Põe o arquivo na área de preparo (a mesa da foto).</td></tr>
+<tr><td><code>git add .</code></td><td>Prepara tudo o que mudou na pasta atual (e nas de dentro).</td></tr>
+<tr><td><code>git commit -m "mensagem"</code></td><td>Registra no histórico tudo o que está preparado, com a mensagem.</td></tr>
+<tr><td><code>git log</code></td><td>Mostra o histórico, do commit mais novo para o mais velho.</td></tr>
+<tr><td><code>git log --oneline</code></td><td>O histórico resumido, uma linha por commit.</td></tr>
+</table>
+</div>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>O Git disse</th><th>O que fazer</th></tr>
+<tr><td><code>Please tell me who you are</code></td><td>Configure <code>user.name</code> e <code>user.email</code> com <code>git config --global</code> e repita o commit.</td></tr>
+<tr><td><code>nada adicionado ao envio mas arquivos não registrados estão presentes</code></td><td>Faltou o <code>git add</code> antes do commit.</td></tr>
+<tr><td><code>nothing to commit, working tree clean</code></td><td>Não há nada novo; tudo já está commitado.</td></tr>
+<tr><td><code>not a git repository</code></td><td>Você está fora do repositório: <code>cd</code> para a pasta do projeto.</td></tr>
+<tr><td><code>pathspec '…' não encontrou nenhum arquivo</code></td><td>Nome de arquivo errado no <code>git add</code>: confira com <code>ls</code>.</td></tr>
+<tr><td><code>Aborting commit due to empty commit message</code></td><td>A mensagem ficou vazia no editor: repita o commit, com <code>-m</code> ou escrevendo a mensagem.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o caminho</h3>
+<p>Complete os comandos para fazer o primeiro commit do arquivo <code>index.html</code>:</p>
+<div class="ex-code">git <input data-answer="add" aria-label="subcomando que prepara"> index.html<br>git <input data-answer="commit" aria-label="subcomando que registra"> <input data-answer="-m" aria-label="opção da mensagem"> "Adiciona a página inicial"</div>
+</div>
+
+<div class="exercise">
+<h3>2. Qual comando?</h3>
+<p>Qual comando mostra a situação da pasta (o que é novo, o que está preparado), sem mudar nada?</p>
+<div class="ex-code">git <input data-answer="status" aria-label="subcomando"></div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. A Ana criou <code>pudim.txt</code> e rodou <code>git commit -m "Adiciona o pudim"</code> sem rodar <code>git add</code>. O que acontece?</p>
+<label><input type="radio" name="q3"> O commit é feito com o <code>pudim.txt</code></label>
+<label><input type="radio" name="q3"> O Git faz o <code>git add</code> sozinho e depois o commit</label>
+<label><input type="radio" name="q3"> Nenhum commit é feito: não havia nada na área de preparo</label>
+<label><input type="radio" name="q3"> O arquivo é apagado</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. Na saída <code>[main (root-commit) …] Adiciona o README</code>, o que quer dizer <code>root-commit</code>?</p>
+<label><input type="radio" name="q4"> Que o commit foi feito pelo administrador (root) do computador</label>
+<label><input type="radio" name="q4"> Que é o primeiro commit do repositório, a raiz do histórico</label>
+<label><input type="radio" name="q4"> Que deu erro no commit</label>
+<label><input type="radio" name="q4"> Que o commit foi enviado para o GitHub</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. Qual é a ordem certa do ciclo?</p>
+<label><input type="radio" name="q5"> editar → <code>git add</code> → <code>git commit</code></label>
+<label><input type="radio" name="q5"> <code>git commit</code> → <code>git add</code> → editar</label>
+<label><input type="radio" name="q5"> <code>git add</code> → editar → <code>git commit</code></label>
+<label><input type="radio" name="q5"> editar → <code>git commit</code> → <code>git add</code></label>
+</div>
+
+<h3>Missão final: três fotos</h3>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q" data-goal="commits:3,limpo,rastreado:README.md,rastreado:bolo.txt,rastreado:pudim.txt" data-solucao="echo '# Receitas' &gt; README.md;;git add README.md;;git commit -m 'Adiciona o README';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -m 'Adiciona o bolo';;echo 'Pudim de leite' &gt; pudim.txt;;git add pudim.txt;;git commit -m 'Adiciona o pudim'">
+<p class="try-task"><strong>Missão:</strong> o repositório <code>receitas</code> está vazio. Faça <strong>três</strong> commits, um para cada arquivo: primeiro o <code>README.md</code>, depois o <code>bolo.txt</code>, depois o <code>pudim.txt</code> (crie cada um com <code>echo</code>). No fim, o <code>git log --oneline</code> deve mostrar três linhas e o <code>git status</code>, nada a commitar.</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Um <strong>commit</strong> é uma fotografia do projeto, guardada no histórico com autor, data e mensagem.</li>
+  <li>São dois passos: <code>git add</code> põe o arquivo na <strong>área de preparo</strong> (a mesa da foto); <code>git commit -m "mensagem"</code> tira a foto do que está preparado.</li>
+  <li>O <code>git status</code> diz a situação a cada passo e, nas linhas entre parênteses, <strong>sugere o próximo comando</strong>. Rode-o sempre.</li>
+  <li>O primeiro commit aparece como <code>(root-commit)</code>: é a raiz do histórico. Cada commit ganha um código (o <em>hash</em>), como <code>d84dc97</code>.</li>
+  <li>O <code>git log</code> mostra as fotos já tiradas; o <code>git log --oneline</code>, uma por linha.</li>
+  <li>Sem nome e e-mail configurados, o Git não deixa commitar (<code>Please tell me who you are</code>); sem nada preparado, não há o que commitar.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
