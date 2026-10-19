@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Flow e Outros Fluxos — develop, feature, release, hotfix e trunk-based | Guia Git</title>
+<meta name="description" content="Os fluxos de trabalho com Git explicados para iniciantes: Git Flow (main, develop, feature, release e hotfix) feito passo a passo com comandos e saídas reais, GitHub Flow, desenvolvimento baseado em tronco (trunk-based), fluxo com fork, e uma tabela para escolher o fluxo da sua equipe.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Git Flow e Outros Fluxos</span></h1>
+
+<p class="intro">O Git não manda você trabalhar de um jeito ou de outro: ele deixa criar quantos branches quiser, com o nome que quiser. Por isso cada equipe combina um <strong>fluxo de trabalho</strong> (em inglês, <em>workflow</em>): quais branches existem, de onde cada um nasce, para onde ele volta e quem pode mexer em quê. Na aula anterior você viu o mais simples, o <a href="github-flow.html">GitHub Flow</a>. Nesta aula você conhece o mais famoso e mais detalhado, o <strong>Git Flow</strong>, e mais dois que você vai encontrar por aí.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é um fluxo de trabalho e por que a equipe precisa combinar um.</li>
+  <li>O <strong>Git Flow</strong>: os branches <code>main</code> e <code>develop</code> e os de apoio <code>feature/</code>, <code>release/</code> e <code>hotfix/</code>, feitos com comandos de verdade.</li>
+  <li>O desenvolvimento baseado em tronco (<em>trunk-based development</em>) e o fluxo com fork.</li>
+  <li>Como escolher o fluxo certo para o tamanho do projeto.</li>
+</ul>
+</div>
+
+<p>Os comandos desta aula rodaram no Git do Ubuntu da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com as mensagens em português.</p>
+
+<hr>
+
+<h2>A ideia: regras de trânsito</h2>
+<p>Uma rua pode ser de mão única ou de mão dupla, ter faixa só para ônibus ou não. Nenhuma dessas regras é "a certa"; o que não pode é cada motorista seguir uma regra diferente. Fluxo de trabalho é isso: <strong>a regra de trânsito dos branches da equipe</strong>. Ela responde a perguntas como:</p>
+<ul>
+  <li>Onde fica o código que está no ar? E o que vai para a próxima versão?</li>
+  <li>De onde eu crio o branch da minha tarefa, e para onde ele volta?</li>
+  <li>Como se corrige um erro urgente no que já está no ar, sem levar junto o que ainda não ficou pronto?</li>
+</ul>
+
+<hr>
+
+<h2>1. O Git Flow</h2>
+<p>O Git Flow foi descrito por Vincent Driessen num texto de janeiro de 2010, "A successful Git branching model" (<a href="https://nvie.com/posts/a-successful-git-branching-model/">nvie.com</a>). Ele foi pensado para software que sai em <strong>versões numeradas</strong> (1.0, 1.1, 2.0…), como um aplicativo que você baixa e instala. Ele tem <strong>dois branches permanentes</strong> e <strong>três tipos de branch temporário</strong>:</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Branch</th><th>Vida</th><th>Nasce de</th><th>Volta para</th><th>Para quê</th></tr>
+<tr><td><code>main</code> (no texto original, <code>master</code>)</td><td>Permanente</td><td>—</td><td>—</td><td>Só o que já foi lançado. Cada merge nela é uma versão nova, com uma <a href="git-tag.html">tag</a>.</td></tr>
+<tr><td><code>develop</code></td><td>Permanente</td><td><code>main</code></td><td>—</td><td>Onde se junta o trabalho para a <strong>próxima</strong> versão.</td></tr>
+<tr><td><code>feature/…</code></td><td>Temporário</td><td><code>develop</code></td><td><code>develop</code></td><td>Uma funcionalidade nova.</td></tr>
+<tr><td><code>release/…</code></td><td>Temporário</td><td><code>develop</code></td><td><code>main</code> e <code>develop</code></td><td>Preparar o lançamento: número da versão, últimos ajustes.</td></tr>
+<tr><td><code>hotfix/…</code></td><td>Temporário</td><td><code>main</code></td><td><code>main</code> e <code>develop</code></td><td>Corrigir com urgência o que já está no ar.</td></tr>
+</table>
+</div>
+
+<p>Um desenho simplificado de cada tipo de branch temporário (o histórico de verdade, como o Git mostra, está no item 1.5):</p>
+<pre>
+feature: nasce da develop e volta para ela
+
+develop:        ──●─────────────M──
+                   \           /
+feature/pudim:      ●────●────●
+
+
+release: nasce da develop e volta para a main (com tag) e para a develop
+
+main:           ──●─────────────M  (tag v1.0)
+                               /
+release/1.0:              ●───●
+                         /     \
+develop:        ──●─────●───────M──
+
+
+hotfix: nasce da main e volta para a main (com tag) e para a develop
+
+main:           ──M (v1.0)──────M  (tag v1.0.1)
+                   \           /
+hotfix/1.0.1:       ●─────────●
+                               \
+develop:        ──●─────●───────M──
+</pre>
+
+<p>Parece muita coisa, mas cada branch faz um papel só. A Ana vai montar esse desenho inteiro, comando por comando, no site de receitas. O Git Flow usa <code>git merge --no-ff</code> em todos os merges: o <code>--no-ff</code> (<em>no fast-forward</em>) obriga o Git a criar um commit de merge mesmo quando daria para só "avançar o ponteiro" (veja <a href="fast-forward.html">Merge Fast-forward</a>). Assim, cada funcionalidade fica visível no histórico como um "galho" que entrou de uma vez.</p>
+
+<h3>1.1 Criar o <code>develop</code></h3>
+<p>O repositório <code>receitas</code> da Ana tem um commit na <code>main</code>. Primeiro, ela cria o branch permanente <code>develop</code> a partir dela:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch -c develop
+Switched to a new branch 'develop'      « "trocou para um branch novo"
+$ git branch
+* develop
+  main
+</pre>
+<p>Pronto: dois branches, apontando para o mesmo commit. A partir de agora, ninguém commita direto na <code>main</code>: ela só recebe merges de <code>release/</code> e <code>hotfix/</code>. (Algumas mensagens do Git 2.53 do Ubuntu ainda não têm tradução e saem em inglês, como esta; a aula traduz cada uma.)</p>
+
+<h3>1.2 Uma funcionalidade: <code>feature/pudim</code></h3>
+<p>Toda funcionalidade nasce da <code>develop</code>, nunca da <code>main</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch -c feature/pudim develop
+Switched to a new branch 'feature/pudim'
+$ printf '# Pudim\n\n- 200 g de açúcar\n' &gt; pudim.md
+$ git add pudim.md
+$ git commit -m "Adiciona receita de pudim"
+[feature/pudim 539d9ef] Adiciona receita de pudim
+ 1 file changed, 3 insertions(+)
+ create mode 100644 pudim.md
+$ git switch develop
+Switched to branch 'develop'
+$ git merge --no-ff --no-edit feature/pudim
+Merge made by the 'ort' strategy.              « "merge feito pela estratégia 'ort'": criou um commit de merge
+ pudim.md | 3 +++
+ 1 file changed, 3 insertions(+)
+ create mode 100644 pudim.md
+$ git branch -d feature/pudim
+Deleted branch feature/pudim (was 539d9ef).
+</pre>
+<p>Sem o <code>--no-ff</code>, esse merge seria um fast-forward (a <code>develop</code> não tinha andado), e a mensagem seria <code>Fast-forward</code>, sem commit de merge. O <code>ort</code> é o nome do jeito que o Git usa para juntar dois galhos (veja <a href="merge-tres-vias.html">Merge de Três Vias</a>).</p>
+
+<dl class="anatomy">
+  <dt>git switch -c feature/pudim develop</dt><dd>Cria o branch <code>feature/pudim</code> <strong>a partir da <code>develop</code></strong> (o último argumento diz de onde ele nasce) e entra nele. A barra no nome é só um costume para agrupar: <code>feature/pudim</code>, <code>feature/busca</code>…</dd>
+  <dt>git merge --no-ff feature/pudim</dt><dd>Junta a funcionalidade na <code>develop</code> criando um commit de merge, mesmo que fosse possível um fast-forward.</dd>
+  <dt>--no-edit</dt><dd>Aceita a mensagem padrão do commit de merge (<code>Merge branch 'feature/pudim' into develop</code>) sem abrir o editor.</dd>
+  <dt>git branch -d feature/pudim</dt><dd>A funcionalidade já está na <code>develop</code>: o branch temporário pode ir embora (veja <a href="apagar-branch.html">Apagando Branches</a>).</dd>
+</dl>
+
+<h3>1.3 Preparar o lançamento: <code>release/1.0</code></h3>
+<p>Quando a <code>develop</code> tem tudo o que a versão 1.0 precisa, a Ana abre um branch de release. Ali só entram ajustes finais (o número da versão, um erro de digitação); funcionalidades novas continuam indo para a <code>develop</code>, para a <strong>próxima</strong> versão.</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch -c release/1.0 develop
+Switched to a new branch 'release/1.0'
+$ echo '1.0' &gt; VERSAO
+$ git add VERSAO
+$ git commit -m "Prepara a versão 1.0"
+[release/1.0 bce8224] Prepara a versão 1.0
+ 1 file changed, 1 insertion(+)
+ create mode 100644 VERSAO
+$ git switch main
+Switched to branch 'main'
+$ git merge --no-ff --no-edit release/1.0
+Merge made by the 'ort' strategy.
+ VERSAO   | 1 +
+ pudim.md | 3 +++                         « a main recebe o pudim e o VERSAO de uma vez: é o lançamento
+ 2 files changed, 4 insertions(+)
+ create mode 100644 VERSAO
+ create mode 100644 pudim.md
+$ git tag v1.0
+$ git switch develop
+Switched to branch 'develop'
+$ git merge --no-ff --no-edit release/1.0
+Merge made by the 'ort' strategy.
+ VERSAO | 1 +                              « a develop só não tinha o VERSAO
+ 1 file changed, 1 insertion(+)
+ create mode 100644 VERSAO
+$ git branch -d release/1.0
+Deleted branch release/1.0 (was bce8224).
+</pre>
+
+<p>O release voltou para <strong>dois</strong> lugares: para a <code>main</code> (é o lançamento, marcado com a tag <code>v1.0</code>) e para a <code>develop</code> (para os ajustes finais não se perderem na próxima versão).</p>
+
+<h3>1.4 Corrigir com urgência: <code>hotfix/1.0.1</code></h3>
+<p>Um leitor avisou que a receita de pudim no ar diz "200 g de açúcar" em vez de "100 g". A <code>develop</code> já tem coisas novas que <strong>não</strong> podem ir ao ar ainda; por isso o hotfix nasce da <code>main</code>:</p>
+
+<p>Enquanto isso, a <code>develop</code> já ganhou a receita de brigadeiro (commit <code>Adiciona receita de brigadeiro</code>), que é para a versão 1.1. O hotfix:</p>
+<pre class="term" data-cwd="~/receitas">$ git switch -c hotfix/1.0.1 main
+Switched to a new branch 'hotfix/1.0.1'
+$ sed -i 's/200 g/100 g/' pudim.md
+$ echo '1.0.1' &gt; VERSAO
+$ git commit -am "Corrige açúcar do pudim"
+[hotfix/1.0.1 951613d] Corrige açúcar do pudim
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+$ git switch main
+Switched to branch 'main'
+$ git merge --no-ff --no-edit hotfix/1.0.1
+Merge made by the 'ort' strategy.
+ VERSAO   | 2 +-
+ pudim.md | 2 +-                           « o brigadeiro NÃO veio junto: o hotfix nasceu da main
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+$ git tag v1.0.1
+$ git switch develop
+Switched to branch 'develop'
+$ git merge --no-ff --no-edit hotfix/1.0.1
+Merge made by the 'ort' strategy.
+ VERSAO   | 2 +-
+ pudim.md | 2 +-                           « a correção também vai para a próxima versão
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+$ git branch -d hotfix/1.0.1
+Deleted branch hotfix/1.0.1 (was 951613d).
+</pre>
+<p>O <code>sed -i</code> só troca o texto no arquivo pelo terminal (você pode usar o editor). O ponto importante é a ordem: o hotfix volta <strong>primeiro</strong> para a <code>main</code> (com a tag) e <strong>depois</strong> para a <code>develop</code>. Se ele não voltasse para a <code>develop</code>, a versão 1.1 sairia com o erro do açúcar de novo (veja <a href="#errado">Quando dá errado</a>).</p>
+
+<h3>1.5 O desenho completo</h3>
+
+<p>Depois de tudo isso, o histórico completo, com todos os branches:</p>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --graph --all --decorate
+*   da8ec74 (HEAD -&gt; develop) Merge branch 'hotfix/1.0.1' into develop
+|\
+* | 3790835 Adiciona receita de brigadeiro
+* |   2bc7651 Merge branch 'release/1.0' into develop
+|\ \
+| | | *   e8e767a (tag: v1.0.1, main) Merge branch 'hotfix/1.0.1'
+| | | |\
+| | | |/
+| | |/|
+| | * | 951613d Corrige açúcar do pudim
+| | |/
+| | *   13fdc37 (tag: v1.0) Merge branch 'release/1.0'
+| | |\
+| | |/
+| |/|
+| * | bce8224 Prepara a versão 1.0
+|/ /
+* |   c35d8d5 Merge branch 'feature/pudim' into develop
+|\ \
+| |/
+|/|
+| * 539d9ef Adiciona receita de pudim
+|/
+* 072d2e8 Primeira versão do site
+</pre>
+<p>Confuso? É normal: esse é o preço do Git Flow. Metade dos commits (5 de 10) são de merge, com cruzamentos para todo lado, o desenho fica difícil de ler mesmo num projeto pequeno. (Os galhos aqui se cruzam mais do que o normal porque, no laboratório, todos os commits têm a mesma data e hora.) Dois detalhes ajudam a enxergar a lógica:</p>
+<ul>
+  <li>As tags <code>v1.0</code> e <code>v1.0.1</code> estão nos commits de merge da <code>main</code>, como manda o fluxo.</li>
+  <li>Os merges na <code>main</code> têm a mensagem <code>Merge branch 'release/1.0'</code>, sem o "into…": quando o destino é a <code>main</code>, o Git deixa de fora o "<code>into main</code>"; nos outros branches ele escreve, como em <code>into develop</code>.</li>
+</ul>
+<p>Para ver só a "linha principal" de cada branch, use <code>--first-parent</code> ("só o primeiro pai"): o Git segue cada branch sem entrar nos galhos que foram mesclados nele.</p>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --first-parent main
+e8e767a Merge branch 'hotfix/1.0.1'            « versão 1.0.1
+13fdc37 Merge branch 'release/1.0'             « versão 1.0
+072d2e8 Primeira versão do site
+$ git log --oneline --first-parent develop
+da8ec74 Merge branch 'hotfix/1.0.1' into develop
+3790835 Adiciona receita de brigadeiro
+2bc7651 Merge branch 'release/1.0' into develop
+c35d8d5 Merge branch 'feature/pudim' into develop
+072d2e8 Primeira versão do site
+</pre>
+<p>Agora fica claro: a <code>main</code> só tem lançamentos, um por linha; a <code>develop</code> tem cada funcionalidade que entrou, cada release e cada hotfix que voltaram para ela.</p>
+
+<div class="note">
+<strong>A extensão <code>git flow</code> (ilustrativo)</strong>
+<p>Existe uma extensão que automatiza esses comandos: com ela, <code>git flow feature start pudim</code> cria o branch e <code>git flow feature finish pudim</code> faz o merge e apaga o branch. Ela <strong>não</strong> vem com o Git (é um programa à parte, instalado com o gerenciador de pacotes) e não rodou no laboratório desta aula. Tudo o que ela faz são os comandos comuns que você acabou de ver.</p>
+</div>
+
+<div class="warning">
+<strong>O próprio autor recomenda pensar antes de usar</strong>
+<p>Em março de 2020, Driessen acrescentou uma nota ao texto: o Git Flow virou quase um dogma, mas foi pensado para software com <strong>versões explícitas</strong>, ou que precisa manter várias versões em uso ao mesmo tempo. Para aplicações web que vão ao ar o tempo todo (entrega contínua), ele recomenda um fluxo mais simples, como o GitHub Flow.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas' &gt; README.md;;git add README.md;;git commit -q -m 'Primeira versão';;git switch -q -c develop" data-goal="head:develop,semBranch:feature/bolo,rastreado:bolo.md,commits:3,msg:feature/bolo" data-solucao="git switch -c feature/bolo develop;;echo '# Bolo' &gt; bolo.md;;git add bolo.md;;git commit -m 'Adiciona receita de bolo';;git switch develop;;git merge --no-ff --no-edit feature/bolo;;git branch -d feature/bolo">
+<p class="try-task"><strong>Missão:</strong> o repositório <code>receitas</code> já tem os branches <code>main</code> e <code>develop</code>, e você está na <code>develop</code>. Siga o Git Flow para uma funcionalidade: crie <code>feature/bolo</code> a partir da <code>develop</code>, crie o arquivo <code>bolo.md</code> e faça um commit, volte para a <code>develop</code>, faça o merge com <code>git merge --no-ff --no-edit feature/bolo</code> e apague o branch <code>feature/bolo</code>.</p>
+</div>
+
+<hr>
+
+<h2>2. O GitHub Flow, de novo, para comparar</h2>
+<p>O <a href="github-flow.html">GitHub Flow</a> tem um branch permanente só, a <code>main</code>, e um branch curto por tarefa, que entra por pull request. Não há <code>develop</code> nem <code>release/</code>: o que entra na <code>main</code> pode ir ao ar. É o fluxo do mesmo desenho da aula anterior:</p>
+<pre>
+main:    A───B───────M───N          « sempre pronta para ir ao ar
+              \     /   /
+tarefa-1:      C───D   /
+                \     /
+tarefa-2:        E───┘
+</pre>
+
+<hr>
+
+<h2>3. Desenvolvimento baseado em tronco (<em>trunk-based</em>)</h2>
+<p>"Tronco" (<em>trunk</em>) é o branch principal, a <code>main</code>. No desenvolvimento baseado em tronco, todo mundo junta o trabalho na <code>main</code> <strong>com muita frequência</strong>: pelo menos uma vez por dia, em pedaços bem pequenos. Branches, quando existem, duram horas. É o GitHub Flow levado ao extremo.</p>
+<ul>
+  <li><strong>Vantagem:</strong> quase não há conflito, porque ninguém fica dias longe da <code>main</code>.</li>
+  <li><strong>O preço:</strong> precisa de testes automáticos fortes (cada merge é testado; veja <a href="github-actions.html">GitHub Actions</a>) e de um jeito de esconder o que ainda não está pronto. O mais comum são as <strong>feature flags</strong> ("chaves de funcionalidade"): o código novo vai para a <code>main</code> desligado por um <code>if</code>, e é ligado quando ficar pronto.</li>
+</ul>
+
+<hr>
+
+<h2>4. O fluxo com fork</h2>
+<p>Em projetos abertos (de código aberto), quem chega de fora não pode enviar nada para o repositório oficial. O caminho é o <a href="fork.html">fork</a>: a pessoa faz uma cópia do repositório na conta dela no GitHub, trabalha num branch dessa cópia e abre um <a href="pull-request.html">pull request</a> da cópia para o oficial. Dentro do fork, ela segue normalmente o GitHub Flow. O fork não é um fluxo diferente de branches: é uma forma de contribuir sem ter permissão de escrita.</p>
+
+<hr>
+
+<h2 id="formas">Qual fluxo usar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Fluxo</th><th>Por quê</th></tr>
+<tr><td>Projeto pessoal, TCC, site da Ana</td><td>GitHub Flow (ou até só a <code>main</code>, se você trabalha sozinho)</td><td>Simples; um branch por tarefa já organiza bem.</td></tr>
+<tr><td>Site ou aplicativo web que vai ao ar várias vezes por semana</td><td>GitHub Flow</td><td>A <code>main</code> é o que está no ar; não há versões numeradas para preparar.</td></tr>
+<tr><td>Equipe com testes automáticos fortes, que integra o tempo todo</td><td>Trunk-based</td><td>Branches de horas, quase sem conflito.</td></tr>
+<tr><td>Aplicativo com versões numeradas (1.0, 1.1, 2.0) e várias versões em uso</td><td>Git Flow</td><td>Separa o que foi lançado (<code>main</code>), o que vem por aí (<code>develop</code>) e a correção urgente (<code>hotfix/</code>).</td></tr>
+<tr><td>Projeto de código aberto com colaboradores de fora</td><td>Fork + pull request</td><td>Quem é de fora não tem permissão de push no oficial.</td></tr>
+</table>
+</div>
+<p>Na dúvida, comece pelo <strong>GitHub Flow</strong>. É mais fácil acrescentar regras quando a equipe sentir falta delas do que tirar regras que ninguém segue.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Apagou o hotfix antes de mesclar na <code>develop</code></strong>
+<p>A Ana fez o hotfix 1.0.2, mesclou na <code>main</code>, mas apagou o branch antes de levá-lo para a <code>develop</code>:</p>
+<pre class="term" data-cwd="~/receitas">$ git branch -d hotfix/1.0.2
+Deleted branch hotfix/1.0.2 (was 6637138).
+$ git switch develop
+Switched to branch 'develop'
+$ git merge --no-ff --no-edit hotfix/1.0.2
+merge: hotfix/1.0.2 - not something we can merge
+</pre>
+<p>"<code>hotfix/1.0.2</code> não é algo que dê para mesclar": o branch não existe mais. (O <code>-d</code> deixou apagar porque o trabalho estava mesclado na <code>main</code>, que era onde ela estava.) <strong>Como confirmar</strong> o que a <code>main</code> tem e a <code>develop</code> não tem: <code>git log develop..main</code> ("o que está na <code>main</code> e não está na <code>develop</code>"):</p>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline develop..main
+6ae843b Merge branch 'hotfix/1.0.2'
+e8e767a Merge branch 'hotfix/1.0.1'
+6637138 Corrige versão                   « a correção que a develop não tem
+</pre>
+<p><strong>Como resolver:</strong> mescle a própria <code>main</code> na <code>develop</code>. Isso leva tudo o que foi lançado, inclusive o hotfix esquecido:</p>
+<pre class="term" data-cwd="~/receitas">$ git merge --no-ff --no-edit main
+Merge made by the 'ort' strategy.
+ VERSAO | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+$ git log --oneline develop..main
+</pre>
+<p>O último <code>git log</code> não mostra nada: agora a <code>develop</code> tem tudo o que a <code>main</code> tem. (O <code>e8e767a</code> aparecia na lista porque os commits de merge da <code>main</code> nunca entram na <code>develop</code>; mesclar a <code>main</code> resolve isso também.)</p>
+</div>
+
+<div class="cenario">
+<strong>O branch <code>develop</code> não existe</strong>
+<pre class="term" data-cwd="~/loja">$ git switch -c feature/busca develop
+fatal: invalid reference: develop
+</pre>
+<p>"Referência inválida: <code>develop</code>". O repositório da lojinha da Ana ainda não segue o Git Flow: não há <code>develop</code> para servir de ponto de partida. <strong>Como resolver:</strong> confira com <code>git branch -a</code>; se a equipe usa Git Flow, crie a <code>develop</code> uma vez (<code>git switch -c develop main</code>) e envie (<code>git push -u origin develop</code>). Se ela existe só no GitHub, um <code>git fetch</code> traz a <code>origin/develop</code> e <code>git switch develop</code> cria a local.</p>
+</div>
+
+<div class="cenario">
+<strong>A tag da versão já existe</strong>
+<pre class="term" data-cwd="~/receitas">$ git tag v1.0
+fatal: tag 'v1.0' already exists
+</pre>
+<p>"A tag <code>v1.0</code> já existe": esse número já foi lançado. <strong>Como resolver:</strong> no Git Flow, cada release e cada hotfix ganham um número <strong>novo</strong> (<code>v1.0.1</code>, <code>v1.1</code>); veja <a href="versionamento-semantico.html">Versionamento Semântico</a>. Não mova uma tag publicada: quem já baixou a <code>v1.0</code> teria duas versões diferentes com o mesmo nome.</p>
+</div>
+
+<div class="cenario">
+<strong>A feature nasceu da <code>main</code> em vez da <code>develop</code></strong>
+<p>Ninguém avisa: o <code>git switch -c feature/busca</code> estando na <code>main</code> funciona sem erro. O problema aparece depois: a feature não tem o que já está na <code>develop</code>, e o merge pode trazer conflitos ou levar coisas na ordem errada. <strong>Como evitar:</strong> sempre diga de onde o branch nasce, com o último argumento: <code>git switch -c feature/busca develop</code>. <strong>Como confirmar:</strong> <code>git log --oneline --graph --all</code> mostra de onde o galho saiu.</p>
+</div>
+
+<hr>
+
+<h2>Referência</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Git Flow: o que fazer</th><th>Comandos</th></tr>
+<tr><td>Criar o <code>develop</code> (uma vez)</td><td><code>git switch -c develop main</code></td></tr>
+<tr><td>Começar uma funcionalidade</td><td><code>git switch -c feature/nome develop</code></td></tr>
+<tr><td>Terminar a funcionalidade</td><td><code>git switch develop</code>, <code>git merge --no-ff feature/nome</code>, <code>git branch -d feature/nome</code></td></tr>
+<tr><td>Começar um release</td><td><code>git switch -c release/1.0 develop</code></td></tr>
+<tr><td>Terminar o release</td><td><code>git switch main</code>, <code>git merge --no-ff release/1.0</code>, <code>git tag v1.0</code>, <code>git switch develop</code>, <code>git merge --no-ff release/1.0</code>, <code>git branch -d release/1.0</code></td></tr>
+<tr><td>Começar um hotfix</td><td><code>git switch -c hotfix/1.0.1 main</code></td></tr>
+<tr><td>Terminar o hotfix</td><td>Igual ao release: merge na <code>main</code>, tag, merge na <code>develop</code>, apagar o branch</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. De onde nasce?</h3>
+<p>No Git Flow, complete o branch de origem:</p>
+<div class="ex-code">git switch -c feature/busca <input data-answer="develop" aria-label="branch de origem da feature"><br>git switch -c hotfix/2.0.1 <input data-answer="main" aria-label="branch de origem do hotfix"></div>
+</div>
+
+<div class="exercise">
+<h3>2. Merge com commit</h3>
+<p>Qual opção do <code>git merge</code> obriga o Git a criar um commit de merge, mesmo quando um fast-forward seria possível?</p>
+<div class="ex-code">git merge <input data-answer="--no-ff" aria-label="opção"> feature/busca</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. No Git Flow, para onde volta um branch <code>hotfix/</code>?</p>
+<label><input type="radio" name="q3"> Só para a <code>develop</code></label>
+<label><input type="radio" name="q3"> Só para a <code>main</code></label>
+<label><input type="radio" name="q3"> Para a <code>main</code> e para a <code>develop</code></label>
+<label><input type="radio" name="q3"> Para o <code>release/</code> mais antigo</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. Uma equipe mantém um site de notícias que vai ao ar várias vezes por dia, sem números de versão. Qual fluxo combina mais?</p>
+<label><input type="radio" name="q4"> Git Flow, com <code>release/</code> a cada publicação</label>
+<label><input type="radio" name="q4"> GitHub Flow (ou trunk-based, se houver testes automáticos fortes)</label>
+<label><input type="radio" name="q4"> Fork, com cada jornalista no seu fork</label>
+<label><input type="radio" name="q4"> Nenhum: sem versões, não precisa de branches</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">5. No trunk-based development, como se evita que uma funcionalidade pela metade apareça para os usuários?</p>
+<label><input type="radio" name="q5"> Deixando o branch dela aberto por meses</label>
+<label><input type="radio" name="q5"> Com um branch <code>develop</code></label>
+<label><input type="radio" name="q5"> Com <code>git stash</code></label>
+<label><input type="radio" name="q5"> Com uma feature flag: o código entra na <code>main</code> desligado</label>
+</div>
+
+<h3>Missão final: o hotfix</h3>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '200 g de açúcar' &gt; pudim.md;;git add pudim.md;;git commit -q -m 'Adiciona receita de pudim';;git tag v1.0;;git branch develop" data-goal="head:main,tag:v1.0.1,contem:HEAD:pudim.md=100 g,commits:3,msg:hotfix/1.0.1" data-solucao="git switch -c hotfix/1.0.1 main;;echo '100 g de açúcar' &gt; pudim.md;;git commit -am 'Corrige açúcar do pudim';;git switch main;;git merge --no-ff --no-edit hotfix/1.0.1;;git tag v1.0.1">
+<p class="try-task"><strong>Missão:</strong> o repositório segue o Git Flow e você está na <code>main</code>, que tem a tag <code>v1.0</code>. Faça um hotfix: crie <code>hotfix/1.0.1</code> a partir da <code>main</code>, conserte o <code>pudim.md</code> (troque <code>200 g</code> por <code>100 g</code>, por exemplo com <code>echo '100 g de açúcar' &gt; pudim.md</code>) e faça o commit; volte para a <code>main</code>, faça o merge com <code>--no-ff --no-edit</code> e crie a tag <code>v1.0.1</code>.</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Fluxo de trabalho é a regra combinada da equipe: quais branches existem, de onde nascem e para onde voltam. O Git não impõe nenhum.</li>
+  <li><strong>Git Flow:</strong> <code>main</code> (o que foi lançado, com tags) e <code>develop</code> (a próxima versão) permanentes; <code>feature/</code> nasce e volta para a <code>develop</code>; <code>release/</code> nasce da <code>develop</code> e volta para as duas; <code>hotfix/</code> nasce da <code>main</code> e volta para as duas. Todos os merges com <code>--no-ff</code>.</li>
+  <li><strong>GitHub Flow:</strong> só a <code>main</code> permanente, um branch curto por tarefa, pull request.</li>
+  <li><strong>Trunk-based:</strong> todos juntam na <code>main</code> pelo menos uma vez por dia, com testes automáticos e feature flags.</li>
+  <li><strong>Fork:</strong> para contribuir sem permissão de escrita no repositório oficial.</li>
+  <li>Versões numeradas e várias versões em uso: Git Flow. O resto: comece pelo GitHub Flow.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
