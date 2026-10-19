@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git push --force-with-lease — forçando o push com segurança | Guia Git</title>
+<meta name="description" content="git push --force-with-lease para quem está começando: quando é preciso forçar um push (depois de um rebase), por que o --force puro apaga o trabalho dos outros, a recusa real (stale info) quando o colega enviou antes, a armadilha do git fetch e a proteção do --force-if-includes, com as saídas reais do Git.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">push --force-with-lease</span></h1>
+
+<p class="intro">Depois de um <a href="git-rebase.html">rebase</a> ou de um <a href="commit-amend.html">--amend</a> num branch que já estava no GitHub, o <code>git push</code> normal é recusado: o seu branch não é mais continuação do que está lá. Para enviar mesmo assim, é preciso <strong>forçar</strong>. Existem dois jeitos: o <code>--force</code>, que passa por cima de qualquer coisa, inclusive do trabalho de um colega; e o <code>--force-with-lease</code>, que força <strong>só se o GitHub ainda estiver como você o viu da última vez</strong>. Esta aula mostra os dois com o Git real, inclusive o <code>--force-with-lease</code> recusando de verdade quando o Bruno enviou antes.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Quando forçar um push é necessário (e quando é sinal de que algo está errado).</li>
+  <li>O que o <code>--force</code> faz com o commit de um colega, com as mensagens reais.</li>
+  <li>Como o <code>--force-with-lease</code> recusa o push (<code>stale info</code>) quando alguém mudou o branch.</li>
+  <li>A armadilha do <code>git fetch</code> e a proteção extra do <code>--force-if-includes</code>.</li>
+  <li>O que fazer depois da recusa.</li>
+</ul>
+</div>
+
+<p>Todas as sessões rodaram no Git real do Ubuntu, com o "GitHub de mentira" do laboratório do guia: a Ana (<code>ana@notebook</code>) e o Bruno (<code>bruno@notebook</code>) trabalham no repositório <code>ana-souza/receitas</code>. As mensagens do <code>push</code> saem em inglês mesmo com o sistema em português: a tradução do Git no Ubuntu é parcial.</p>
+
+<div class="warning">
+<strong>Antes de tudo: a regra de ouro</strong>
+<p>Forçar um push troca o histórico do GitHub. Isso só é aceitável num branch <strong>que só você usa</strong> (ou em que a equipe combinou reescrever). No <code>main</code> compartilhado, não force: veja <a href="regra-de-ouro.html">A Regra de Ouro</a>.</p>
+</div>
+
+<hr>
+
+<h2>A ideia: "só se ninguém mexeu"</h2>
+<p>A Ana deixou um bilhete na geladeira da república: "comprar leite". Ela quer trocar por "comprar leite <strong>e ovos</strong>". Há dois jeitos de fazer isso:</p>
+<ul>
+  <li><strong>Arrancar o bilhete e colar o novo</strong>, sem olhar. Se o Bruno tinha escrito "e pão" embaixo enquanto ela estava fora, o "e pão" vai para o lixo. Isso é o <code>--force</code>.</li>
+  <li><strong>Olhar antes:</strong> "o bilhete ainda está exatamente como eu deixei? Então troco. Mudou? Não mexo, primeiro vou ver o que é". Isso é o <code>--force-with-lease</code>.</li>
+</ul>
+<p><em>Lease</em>, em inglês, é "arrendamento", "aluguel com prazo": a ideia é "eu forço, <strong>contanto que</strong> o branch lá no GitHub ainda esteja do jeito que eu o vi". O "jeito que eu vi" é o <code>origin/chocolate</code> (ou <code>origin/main</code>…), a anotação que o seu Git guarda de onde o branch do GitHub estava no último <code>fetch</code>, <code>pull</code> ou <code>push</code> (veja <a href="git-fetch.html">git fetch</a>).</p>
+
+<hr>
+
+<h2>1. Quando é preciso forçar</h2>
+<p>A Ana criou o branch <code>chocolate</code>, commitou o pudim de chocolate e enviou com <code>git push -u origin chocolate</code> (cópia de segurança e, mais tarde, um <a href="pull-request.html">pull request</a>). Enquanto isso, o <code>main</code> ganhou um commit, os ovos do bolo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch chocolate
+Switched to branch 'chocolate'
+Your branch is up to date with 'origin/chocolate'.
+$ git log --oneline --graph --all
+* a065dea (HEAD -&gt; chocolate, origin/chocolate) Adiciona o pudim de chocolate
+| * 5927fcc (origin/main, main) Adiciona os ovos ao bolo
+|/
+* c34349b Adiciona a receita de bolo
+* 700bbd5 Cria o README
+</pre>
+
+<p>Ela quer o <code>chocolate</code> em cima do <code>main</code> atualizado, em linha reta, e faz o rebase. O push normal é recusado:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git rebase main
+Successfully rebased and updated refs/heads/chocolate.
+$ git push
+To https://github.com/ana-souza/receitas.git
+ ! [rejected]        chocolate -&gt; chocolate (non-fast-forward)
+error: failed to push some refs to 'https://github.com/ana-souza/receitas.git'
+hint: Updates were rejected because the tip of your current branch is behind
+hint: its remote counterpart. If you want to integrate the remote changes,
+hint: use 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+</pre>
+
+<p>O rebase trocou o <code>a065dea</code> por uma cópia nova, e o GitHub ainda tem o <code>a065dea</code>. Um push normal só pode <strong>acrescentar</strong> commits; este faria o <code>a065dea</code> sumir de lá, por isso <code>rejected … (non-fast-forward)</code> (as linhas uma por uma estão explicadas em <a href="regra-de-ouro.html">A Regra de Ouro</a>). Aqui a dica do <code>git pull</code> <strong>não</strong> ajuda: ela traria o commit antigo de volta e juntaria com a cópia. O branch é só da Ana; ela sabe que o commit antigo pode sumir. É o caso de forçar, com segurança:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git push --force-with-lease
+Enumerating objects: 4, done.
+Counting objects: 100% (4/4), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (2/2), done.
+Writing objects: 100% (3/3), 338 bytes | 338.00 KiB/s, done.
+Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/receitas.git
+ + a065dea...a398bad chocolate -&gt; chocolate (forced update)
+$ git log --oneline --graph --all
+* a398bad (HEAD -&gt; chocolate, origin/chocolate) Adiciona o pudim de chocolate
+* 5927fcc (origin/main, main) Adiciona os ovos ao bolo
+* c34349b Adiciona a receita de bolo
+* 700bbd5 Cria o README
+</pre>
+
+<dl class="anatomy">
+  <dt>git push --force-with-lease</dt><dd>"Envie forçando, <strong>contanto que</strong> o <code>chocolate</code> do GitHub ainda esteja onde o meu <code>origin/chocolate</code> diz (no <code>a065dea</code>)". Estava, então o Git forçou.</dd>
+  <dt>Enumerating objects … Total 3</dt><dd>O progresso do envio, como em qualquer <a href="git-push.html">git push</a>.</dd>
+  <dt>+ a065dea...a398bad chocolate -&gt; chocolate (forced update)</dt><dd>O <code>+</code> e o <code>(forced update)</code> ("atualização forçada") dizem que o branch foi <strong>trocado</strong>, não só avançado: era <code>a065dea</code>, agora é <code>a398bad</code>. Os <strong>três pontos</strong> entre os hashes também indicam isso (num push normal são dois: <code>a065dea..a398bad</code>).</dd>
+</dl>
+<p>O <code>log</code> confirma: linha reta, e o <code>origin/chocolate</code> anda junto com o <code>chocolate</code> da Ana. A saída é igual à de um <code>--force</code>; a diferença aparece quando alguém mexeu no branch.</p>
+
+<div class="try" data-setup="git init -q --bare servidor.git;;git clone -q servidor.git receitas;;cd receitas;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona a receita de bolo';;git push -q -u origin main;;git switch -q -c chocolate;;echo 'Pudim de chocolate' &gt; chocolate.txt;;git add chocolate.txt;;git commit -q -m 'Adiciona o pudim de chocolate';;git push -q -u origin chocolate;;git switch -q main;;echo '- 2 ovos' &gt;&gt; bolo.txt;;git commit -q -am 'Adiciona os ovos ao bolo';;git push -q;;git switch -q chocolate;;git rebase -q main" data-goal="head:chocolate,ran:--force-with-lease,contem:origin/chocolate:bolo.txt=2 ovos,limpo" data-solucao="git status;;git push --force-with-lease">
+<p class="try-task"><strong>Missão:</strong> você está no branch <code>chocolate</code> da Ana, que acabou de passar por um rebase (o "GitHub" aqui é a pasta <code>~/servidor.git</code>). Rode <code>git status</code> para ver a divergência, tente um <code>git push</code> normal para ver a recusa e depois envie <strong>com segurança</strong>, forçando só se ninguém mexeu no branch.</p>
+</div>
+
+<hr>
+
+<h2>2. O perigo: o Bruno enviou antes</h2>
+<p>Agora a mesma história, com um detalhe. O Bruno também estava ajudando no pudim de chocolate: baixou o branch, acrescentou a calda de caramelo e enviou, <strong>antes</strong> do rebase da Ana. A Ana não sabia (ela não fez <code>fetch</code> depois disso). No computador do Bruno:</p>
+
+<pre class="term" data-user="bruno" data-cwd="~/receitas">$ git switch chocolate
+branch 'chocolate' set up to track 'origin/chocolate'.
+Switched to a new branch 'chocolate'
+$ echo '- calda de caramelo' &gt;&gt; chocolate.txt
+$ git commit -q -am 'Adiciona a calda ao pudim de chocolate'
+$ git push
+Enumerating objects: 5, done.
+Counting objects: 100% (5/5), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (2/2), done.
+Writing objects: 100% (3/3), 303 bytes | 303.00 KiB/s, done.
+Total 3 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/receitas.git
+   a065dea..a6ee809  chocolate -&gt; chocolate
+</pre>
+
+<p>Agora o GitHub tem <code>a065dea</code> → <code>a6ee809</code> (a calda). O <code>origin/chocolate</code> da Ana ainda diz <code>a065dea</code>: ela não sabe da calda. A Ana faz o rebase e tenta enviar:</p>
+
+<h3>Com <code>--force</code>: o commit do Bruno some</h3>
+<pre class="term" data-cwd="~/receitas">$ git rebase main
+Successfully rebased and updated refs/heads/chocolate.
+$ git push --force
+Enumerating objects: 4, done.
+Counting objects: 100% (4/4), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (2/2), done.
+Writing objects: 100% (3/3), 338 bytes | 338.00 KiB/s, done.
+Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/receitas.git
+ + a6ee809...a398bad chocolate -&gt; chocolate (forced update)
+</pre>
+<p>Nenhum aviso. O único sinal é o hash da esquerda: <code>a6ee809</code>, e não o <code>a065dea</code> que a Ana conhecia. O <code>--force</code> trocou o branch inteiro pelo da Ana, e a calda do Bruno <strong>não está mais no GitHub</strong>. Quando o Bruno buscar as novidades:</p>
+
+<pre class="term" data-user="bruno" data-cwd="~/receitas">$ git fetch
+remote: Enumerating objects: 4, done.
+remote: Counting objects: 100% (4/4), done.
+remote: Compressing objects: 100% (2/2), done.
+remote: Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (3/3), 318 bytes | 318.00 KiB/s, done.
+From https://github.com/ana-souza/receitas
+ + a6ee809...a398bad chocolate  -&gt; origin/chocolate  (forced update)
+$ git log --oneline --graph --all
+* a6ee809 (HEAD -&gt; chocolate) Adiciona a calda ao pudim de chocolate
+* a065dea Adiciona o pudim de chocolate
+| * a398bad (origin/chocolate) Adiciona o pudim de chocolate
+| * 5927fcc (origin/main, origin/HEAD, main) Adiciona os ovos ao bolo
+|/
+* c34349b Adiciona a receita de bolo
+* 700bbd5 Cria o README
+</pre>
+<p>O <code>(forced update)</code> no <code>fetch</code> avisa o Bruno, e o desenho mostra: a calda (<code>a6ee809</code>) só existe no computador dele; o <code>origin/chocolate</code> foi para outro galho. Se o Bruno tivesse apagado a pasta, ou se tivesse sido outra pessoa sem cópia, o trabalho estaria perdido.</p>
+
+<h3>Com <code>--force-with-lease</code>: recusado</h3>
+<p>A mesma situação (o Bruno enviou a calda; a Ana fez o rebase sem saber), agora com o comando certo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git rebase main
+Successfully rebased and updated refs/heads/chocolate.
+$ git push
+To https://github.com/ana-souza/receitas.git
+ ! [rejected]        chocolate -&gt; chocolate (fetch first)
+error: failed to push some refs to 'https://github.com/ana-souza/receitas.git'
+hint: Updates were rejected because the remote contains work that you do not
+hint: have locally. This is usually caused by another repository pushing to
+hint: the same ref. If you want to integrate the remote changes, use
+hint: 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+$ git push --force-with-lease
+To https://github.com/ana-souza/receitas.git
+ ! [rejected]        chocolate -&gt; chocolate (stale info)
+error: failed to push some refs to 'https://github.com/ana-souza/receitas.git'
+</pre>
+
+<dl class="anatomy">
+  <dt>! [rejected] … (fetch first)</dt><dd>O push normal já desconfia: "o remoto tem trabalho que você não tem; busque primeiro". Repare que é diferente do <code>(non-fast-forward)</code> da seção 1: lá o GitHub tinha só o commit antigo da Ana; aqui tem um commit que ela <strong>nunca viu</strong>.</dd>
+  <dt>! [rejected] chocolate -&gt; chocolate (stale info)</dt><dd>"Recusado: informação velha" (<em>stale</em> = "vencido", "passado"). O Git perguntou ao GitHub onde está o <code>chocolate</code>: <code>a6ee809</code>. A Ana esperava <code>a065dea</code> (o <code>origin/chocolate</code> dela). Não bate, então <strong>nada foi enviado</strong>.</dd>
+  <dt>error: failed to push some refs…</dt><dd>O mesmo "falhou ao enviar" de sempre. Sem dicas: o <code>stale info</code> já diz tudo.</dd>
+</dl>
+<p>O commit do Bruno está salvo no GitHub. A Ana não perdeu nada também: o rebase dela continua no computador. Ela só precisa olhar o que mudou antes de decidir.</p>
+
+<p>Por baixo, o <code>--force-with-lease</code> sem nada depois é um atalho para "o valor esperado é o meu <code>origin/chocolate</code>". Dá para dizer o hash esperado explicitamente, no formato <code>--force-with-lease=BRANCH:HASH</code>; com o hash que a Ana conhecia, o resultado é o mesmo:</p>
+<pre class="term" data-cwd="~/receitas">$ git push --force-with-lease=chocolate:a065dea
+To https://github.com/ana-souza/receitas.git
+ ! [rejected]        chocolate -&gt; chocolate (stale info)
+error: failed to push some refs to 'https://github.com/ana-souza/receitas.git'
+</pre>
+
+<hr>
+
+<h2>3. Depois da recusa: olhe e decida</h2>
+<p>Primeiro, a Ana busca o que mudou e olha o desenho:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git fetch
+remote: Enumerating objects: 5, done.
+remote: Counting objects: 100% (5/5), done.
+remote: Compressing objects: 100% (2/2), done.
+remote: Total 3 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (3/3), 283 bytes | 283.00 KiB/s, done.
+From https://github.com/ana-souza/receitas
+   a065dea..a6ee809  chocolate  -&gt; origin/chocolate
+$ git log --oneline --graph --all
+* a398bad (HEAD -&gt; chocolate) Adiciona o pudim de chocolate
+* 5927fcc (origin/main, origin/HEAD, main) Adiciona os ovos ao bolo
+| * a6ee809 (origin/chocolate) Adiciona a calda ao pudim de chocolate
+| * a065dea Adiciona o pudim de chocolate
+|/
+* c34349b Adiciona a receita de bolo
+* 700bbd5 Cria o README
+</pre>
+<p>Lá está a calda do Bruno (<code>a6ee809</code>), no <code>origin/chocolate</code>. Moral da história: o branch <strong>não era só da Ana</strong>. Pela <a href="regra-de-ouro.html">regra de ouro</a>, o certo num branch compartilhado é <strong>não reescrever</strong>: ela descarta o rebase, pega o branch como está no GitHub e junta as novidades do <code>main</code> com merge:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git reset --hard origin/chocolate
+HEAD is now at a6ee809 Adiciona a calda ao pudim de chocolate
+$ git merge --no-edit main
+Merge made by the 'ort' strategy.
+ bolo.txt | 1 +
+ 1 file changed, 1 insertion(+)
+$ git push
+Enumerating objects: 4, done.
+Counting objects: 100% (4/4), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (2/2), done.
+Writing objects: 100% (2/2), 346 bytes | 346.00 KiB/s, done.
+Total 2 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/receitas.git
+   a6ee809..640682b  chocolate -&gt; chocolate
+$ git log --oneline --graph --all
+*   640682b (HEAD -&gt; chocolate, origin/chocolate) Merge branch 'main' into chocolate
+|\
+| * 5927fcc (origin/main, origin/HEAD, main) Adiciona os ovos ao bolo
+* | a6ee809 Adiciona a calda ao pudim de chocolate
+* | a065dea Adiciona o pudim de chocolate
+|/
+* c34349b Adiciona a receita de bolo
+* 700bbd5 Cria o README
+</pre>
+<ul>
+  <li><code>git reset --hard origin/chocolate</code>: põe o <code>chocolate</code> da Ana exatamente onde está o do GitHub (com a calda), jogando fora a cópia do rebase (veja <a href="reset-modos.html">reset --hard</a>; o <code>a398bad</code> ainda fica no <a href="git-reflog.html">reflog</a> por um tempo, se ela precisar).</li>
+  <li><code>git merge --no-edit main</code>: traz os ovos do <code>main</code> com um commit de merge, sem reescrever nada.</li>
+  <li><code>git push</code>: push <strong>normal</strong>, com dois pontos (<code>a6ee809..640682b</code>). Nada de força.</li>
+</ul>
+<p>Se a Ana e o Bruno tivessem combinado que o branch seria "rebaseado", o caminho seria outro: refazer o rebase <strong>incluindo</strong> a calda (por exemplo, <code>git reset --hard origin/chocolate</code> e depois <code>git rebase main</code>), enviar com <code>--force-with-lease</code> e avisar o Bruno para atualizar com <code>git pull --rebase</code>.</p>
+
+<hr>
+
+<h2>4. A armadilha do <code>git fetch</code> (e o <code>--force-if-includes</code>)</h2>
+<p>O <code>--force-with-lease</code> compara o GitHub com o seu <code>origin/chocolate</code>. Mas o <code>origin/chocolate</code> é atualizado <strong>por qualquer</strong> <code>git fetch</code>, inclusive um que você rodou só para "dar uma olhada" (e alguns editores, como o VS Code, podem buscar sozinhos de tempos em tempos). Veja o que acontece se a Ana faz o rebase, depois um <code>fetch</code> sem prestar atenção, e então o push:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git rebase main
+Successfully rebased and updated refs/heads/chocolate.
+$ git fetch
+remote: Enumerating objects: 5, done.
+remote: Counting objects: 100% (5/5), done.
+remote: Compressing objects: 100% (2/2), done.
+remote: Total 3 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (3/3), 283 bytes | 283.00 KiB/s, done.
+From https://github.com/ana-souza/receitas
+   a065dea..a6ee809  chocolate  -&gt; origin/chocolate
+$ git push --force-with-lease
+Enumerating objects: 4, done.
+Counting objects: 100% (4/4), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (2/2), done.
+Writing objects: 100% (3/3), 338 bytes | 338.00 KiB/s, done.
+Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/receitas.git
+ + a6ee809...a398bad chocolate -&gt; chocolate (forced update)
+</pre>
+<p><strong>Passou</strong>, e a calda do Bruno sumiu do GitHub, como no <code>--force</code>. O <code>fetch</code> moveu o <code>origin/chocolate</code> para o <code>a6ee809</code>; o GitHub também estava no <code>a6ee809</code>; a "garantia" bateu. O <code>--force-with-lease</code> não sabe se você <strong>olhou</strong> a calda; só sabe que o seu Git já a tinha baixado.</p>
+
+<p>Para fechar essa brecha existe o <code>--force-if-includes</code> <span class="versao">git 2.30+</span>, usado <strong>junto</strong> com o <code>--force-with-lease</code>. Ele confere se o commit do <code>origin/chocolate</code> já <strong>passou pelo seu branch</strong> (pelo diário do branch, o mesmo do <a href="git-reflog.html">reflog</a>), ou seja, se você realmente incorporou o que baixou. Na situação logo depois do <code>fetch</code> da seção 3:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git push --force-with-lease --force-if-includes
+To https://github.com/ana-souza/receitas.git
+ ! [rejected]        chocolate -&gt; chocolate (remote ref updated since checkout)
+error: failed to push some refs to 'https://github.com/ana-souza/receitas.git'
+hint: Updates were rejected because the tip of the remote-tracking branch has
+hint: been updated since the last checkout. If you want to integrate the
+hint: remote changes, use 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+</pre>
+<p>"Recusado: o branch remoto foi atualizado desde que você o pegou" (<em>remote ref updated since checkout</em>). A dica: "a ponta do branch de rastreamento remoto mudou desde o último checkout; se quiser integrar as mudanças de lá, use <code>git pull</code> antes de enviar de novo". Com os dois juntos, a Ana só consegue forçar depois de trazer a calda para o branch dela (como no <code>git reset --hard origin/chocolate</code> da seção 3).</p>
+
+<div class="tip">
+<strong>Um atalho para não esquecer</strong>
+<p>Muita gente cria um <a href="alias.html">alias</a> e nunca mais digita <code>--force</code>:</p>
+<pre class="term">$ git config --global alias.pushf 'push --force-with-lease --force-if-includes'
+$ git config --global alias.pushf
+push --force-with-lease --force-if-includes
+</pre>
+<p>A primeira linha cria o atalho (e não mostra nada quando dá certo); a segunda confere o que ficou gravado. Depois disso, <code>git pushf</code> é o "push forçado com as duas travas".</p>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer a mesma coisa</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>Força quando…</th><th>Use?</th></tr>
+<tr><td><code>git push --force</code> (ou <code>-f</code>)</td><td>Sempre, sem conferir nada</td><td>Não. Só se você tem certeza absoluta de que ninguém mais usa o branch, e mesmo assim prefira o de baixo</td></tr>
+<tr><td><code>git push --force-with-lease</code></td><td>O branch do GitHub ainda está no seu <code>origin/BRANCH</code></td><td><strong>Sim</strong>: o mínimo depois de um rebase</td></tr>
+<tr><td><code>git push --force-with-lease=BRANCH:HASH</code></td><td>O branch do GitHub está no <code>HASH</code> que você indicou</td><td>Quando você quer dizer o valor esperado explicitamente</td></tr>
+<tr><td><code>git push --force-with-lease --force-if-includes</code></td><td>Como o anterior <strong>e</strong> você já incorporou o que baixou</td><td><strong>Sim</strong>: o mais seguro (Git 2.30 ou mais novo)</td></tr>
+<tr><td><code>git push origin +chocolate</code></td><td>O <code>+</code> antes do nome força só esse branch, como o <code>--force</code></td><td>Não (mesmo perigo do <code>--force</code>); vale reconhecer em tutoriais</td></tr>
+</table>
+</div>
+
+<p>E, antes de pensar em forçar, lembre das alternativas que <strong>não precisam</strong> de força: <code>git merge main</code> no seu branch em vez de rebase (seção 3), ou um commit novo em vez de <code>--amend</code> (veja <a href="regra-de-ouro.html">A Regra de Ouro</a>).</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>! [rejected] … (stale info)</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git push --force-with-lease
+To https://github.com/ana-souza/receitas.git
+ ! [rejected]        chocolate -&gt; chocolate (stale info)
+error: failed to push some refs to 'https://github.com/ana-souza/receitas.git'
+</pre>
+<p><strong>O que aconteceu:</strong> alguém enviou para o mesmo branch depois do seu último <code>fetch</code>/<code>pull</code>. <strong>Como confirmar:</strong> <code>git fetch</code> e <code>git log --oneline --graph --all</code>: os commits novos aparecem no <code>origin/BRANCH</code>. <strong>Como resolver:</strong> <strong>não</strong> troque por <code>--force</code>. Junte o trabalho do colega (merge, ou rebase incluindo os commits dele, como na seção 3) e só então envie.</p>
+</div>
+
+<div class="cenario">
+<strong><code>! [rejected] … (remote ref updated since checkout)</code></strong>
+<p><strong>O que aconteceu:</strong> com <code>--force-if-includes</code>, o Git percebeu que você baixou commits novos (num <code>fetch</code>) mas não os incorporou ao seu branch. <strong>Como resolver:</strong> igual ao anterior: olhe o <code>origin/BRANCH</code> e traga esses commits para o seu branch antes de enviar.</p>
+</div>
+
+<div class="cenario">
+<strong>"Forcei e apaguei o commit de alguém"</strong>
+<p><strong>Como confirmar:</strong> a saída do seu push mostrou <code>+ HASH1...HASH2 … (forced update)</code> com um <code>HASH1</code> que você não reconhece (no exemplo, <code>a6ee809</code> em vez de <code>a065dea</code>). <strong>Como resolver:</strong> o commit ainda existe no computador de quem o fez: peça para a pessoa rodar <code>git fetch</code>, juntar com o seu histórico (por exemplo, <code>git pull --rebase</code>) e enviar de novo. Se você tem o hash antigo (ele aparece na sua saída do push), também pode recuperá-lo enquanto ele estiver no seu computador: depois do <code>fetch</code> que o trouxe, ele fica alcançável pelo <a href="git-reflog.html">reflog</a> do <code>origin/BRANCH</code> (<code>git reflog origin/chocolate</code>).</p>
+</div>
+
+<div class="cenario">
+<strong>O push forçado foi recusado pelo próprio GitHub</strong>
+<p>Repositórios no GitHub podem ter <strong>regras de proteção de branch</strong> que proíbem push forçado (segundo a documentação, num branch protegido o GitHub bloqueia o push forçado por padrão). Nesse caso, nem o <code>--force</code> passa: o GitHub recusa com uma mensagem <code>remote: …</code> explicando a regra (ilustrativo; o laboratório do guia não imita essas regras; veja "Sobre branches protegidos" em <a href="https://docs.github.com/pt/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches">docs.github.com</a>). Isso é bom: é o GitHub aplicando a regra de ouro por você.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Saída</th><th>Quer dizer</th></tr>
+<tr><td><code>+ abc1234...def5678 br -&gt; br (forced update)</code></td><td>O push forçado passou; o branch foi trocado de <code>abc1234</code> para <code>def5678</code></td></tr>
+<tr><td><code>! [rejected] … (non-fast-forward)</code></td><td>Push normal recusado: o seu branch não continua o do GitHub (rebase/amend?)</td></tr>
+<tr><td><code>! [rejected] … (fetch first)</code></td><td>Push normal recusado: há commits no GitHub que você nunca baixou</td></tr>
+<tr><td><code>! [rejected] … (stale info)</code></td><td><code>--force-with-lease</code> recusado: o GitHub não está onde o seu <code>origin/BRANCH</code> diz</td></tr>
+<tr><td><code>! [rejected] … (remote ref updated since checkout)</code></td><td><code>--force-if-includes</code> recusado: você baixou commits e não os incorporou</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. O push forçado seguro</h3>
+<p>Complete o comando que força o push só se o branch do GitHub ainda estiver como você o viu:</p>
+<div class="ex-code">git push <input data-answer="--force-with-lease" aria-label="opção"></div>
+</div>
+
+<div class="exercise">
+<h3>2. A trava extra</h3>
+<p>Complete com a opção que, junto com a anterior, também exige que você tenha incorporado o que baixou:</p>
+<div class="ex-code">git push --force-with-lease <input data-answer="--force-if-includes" aria-label="opção"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. O que <code>(stale info)</code> quer dizer?</p>
+<label><input type="radio" name="q3"> Que a sua internet está lenta</label>
+<label><input type="radio" name="q3"> Que o branch no GitHub mudou desde a última vez que o seu Git o viu, e por isso o push forçado foi recusado</label>
+<label><input type="radio" name="q3"> Que o push foi feito com sucesso</label>
+<label><input type="radio" name="q3"> Que o seu repositório está corrompido</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. Depois de um rebase do seu branch só seu, já enviado, o <code>git push</code> foi recusado com <code>non-fast-forward</code>. O que fazer?</p>
+<label><input type="radio" name="q4"> <code>git pull</code> e depois <code>git push</code></label>
+<label><input type="radio" name="q4"> Apagar o repositório no GitHub</label>
+<label><input type="radio" name="q4"> <code>git push --force-with-lease</code></label>
+<label><input type="radio" name="q4"> <code>git push --force</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. Por que o <code>--force-with-lease</code> sozinho deixou passar o push da seção 4?</p>
+<label><input type="radio" name="q5"> Porque o <code>git fetch</code> atualizou o <code>origin/chocolate</code> e a comparação bateu, mesmo sem a Ana ter incorporado a calda</label>
+<label><input type="radio" name="q5"> Porque o <code>--force-with-lease</code> não confere nada</label>
+<label><input type="radio" name="q5"> Porque o Bruno não tinha enviado nada</label>
+<label><input type="radio" name="q5"> Porque o rebase apagou o commit do Bruno</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">6. Num branch que você e o Bruno usam juntos, você quer as novidades do <code>main</code>. O que evita precisar de push forçado?</p>
+<label><input type="radio" name="q6"> <code>git rebase main</code></label>
+<label><input type="radio" name="q6"> <code>git commit --amend</code></label>
+<label><input type="radio" name="q6"> <code>git push --force</code></label>
+<label><input type="radio" name="q6"> <code>git merge main</code></label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Depois de um rebase ou amend em algo já enviado, o push normal é recusado (<code>non-fast-forward</code>), e é preciso forçar, <strong>só</strong> em branches seus.</li>
+  <li><code>git push --force</code> troca o branch do GitHub sem conferir nada: apaga em silêncio os commits que outra pessoa enviou.</li>
+  <li><code>git push --force-with-lease</code> força só se o GitHub ainda estiver onde o seu <code>origin/BRANCH</code> diz; se alguém enviou antes, recusa com <code>(stale info)</code>.</li>
+  <li>Um <code>git fetch</code> sem atenção "renova" a garantia; o <code>--force-if-includes</code> (Git 2.30+) fecha essa brecha com <code>(remote ref updated since checkout)</code>.</li>
+  <li>Depois de uma recusa: <code>git fetch</code>, olhe o <code>origin/BRANCH</code> e junte o trabalho do colega antes de enviar. Em branch compartilhado, prefira merge e push normal.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
