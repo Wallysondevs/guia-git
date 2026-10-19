@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git branch — listar e criar branches | Guia Git</title>
+<meta name="description" content="O comando git branch para quem nunca usou Git: listar os branches (o asterisco do atual), criar um branch no commit atual ou num commit antigo, git branch -v, --show-current, --merged e --no-merged, --list com curinga, nomes que o Git aceita e recusa, e os erros reais (branch que já existe, nome inválido, repositório sem commits).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">branch</span></h1>
+
+<p class="intro">Na aula <a href="branches.html">O que é um Branch</a> você viu que um branch (ramo) é uma etiqueta que aponta para um commit. O comando que <strong>lista</strong> e <strong>cria</strong> essas etiquetas é o <code>git branch</code>. Ele é o "inventário" dos ramos: mostra quais existem, em qual você está, onde cada um aponta e quais já foram juntados ao <code>main</code>.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Listar os branches com <code>git branch</code> e reconhecer o atual pelo <code>*</code>.</li>
+  <li>Criar um branch no commit atual (<code>git branch NOME</code>) ou num commit antigo (<code>git branch NOME COMMIT</code>).</li>
+  <li>Ver mais detalhes: <code>-v</code>, <code>--show-current</code>, <code>--merged</code>, <code>--no-merged</code>, <code>--list</code>.</li>
+  <li>Quais nomes o Git aceita, e as mensagens reais quando algo dá errado.</li>
+</ul>
+</div>
+
+<p>As saídas desta aula vieram do Git real do Ubuntu 26.04, na máquina da Ana, com o sistema em português. Renomear e apagar branches (<code>-m</code>, <code>-d</code>, <code>-D</code>) ficam para a aula <a href="apagar-branch.html">Renomeando e Apagando Branches</a>.</p>
+
+<hr>
+
+<h2>A ideia: o quadro de etiquetas da cozinha</h2>
+<p>Pense numa caixa de fotos (os commits) e num punhado de etiquetas adesivas com nomes. O <code>git branch</code> é o quadro onde você vê todas as etiquetas e cola etiquetas novas:</p>
+<ul>
+  <li><strong>sem nada depois</strong>, ele mostra o quadro: quais etiquetas existem, e em qual você está trabalhando;</li>
+  <li><strong>com um nome</strong>, ele cola uma etiqueta nova, por padrão na foto em que você está agora.</li>
+</ul>
+<p>Colar a etiqueta não leva você até ela. Para <strong>mudar</strong> de branch, o comando é outro: <a href="git-switch.html">git switch</a>.</p>
+
+<hr>
+
+<h2>1. Listar os branches</h2>
+<p>A Ana está na pasta <code>receitas</code>, com três commits (o mesmo repositório da aula anterior):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git branch
+* main
+</pre>
+
+<dl class="anatomy">
+  <dt>git</dt><dd>O programa Git.</dd>
+  <dt>branch</dt><dd>O subcomando: "ramos". Sem nenhum argumento, ele <strong>lista</strong>.</dd>
+  <dt>* main</dt><dd>O único branch até agora. O <code>*</code> (e, no terminal colorido, a cor verde) marca o branch <strong>atual</strong>, aquele para onde o HEAD aponta.</dd>
+</dl>
+
+<div class="tip">
+<strong>A lista não abre um "pager"?</strong>
+<p>Quando a lista é comprida, o Git pode mostrá-la num paginador (o <code>less</code>), como faz com o <code>git log</code>: role com as setas e saia com <kbd>q</kbd>. Com poucos branches, ela aparece direto.</p>
+</div>
+
+<hr>
+
+<h2>2. Criar um branch</h2>
+
+<pre class="term" data-cwd="~/receitas">$ git branch sobremesas
+$ git branch
+* main                « o atual continua sendo o main
+  sobremesas          « o branch novo
+$ git branch --show-current
+main
+$ git log --oneline --graph --all
+* 0244251 (HEAD -&gt; main, sobremesas) Adiciona receita de pão de queijo
+* 7225e04 Adiciona receita de bolo
+* 700bbd5 Cria o README
+</pre>
+
+<dl class="anatomy">
+  <dt>git branch sobremesas</dt><dd>Cria o branch <code>sobremesas</code> apontando para o commit em que você está (o mesmo do HEAD). Não mostra nada quando dá certo.</dd>
+  <dt>* main / sobremesas</dt><dd>Agora são dois. A lista sai em ordem alfabética, e o <code>*</code> <strong>continua no main</strong>: criar não muda de branch.</dd>
+  <dt>git branch --show-current</dt><dd>Mostra só o nome do branch atual, sem lista e sem <code>*</code>. Útil quando você só quer saber "onde estou".</dd>
+</dl>
+
+<p>O antes e o depois:</p>
+
+<pre>Antes:   A---B---C   ← main ← HEAD
+
+Depois:  A---B---C   ← main ← HEAD
+                     ← sobremesas
+
+A = 700bbd5 (README)   B = 7225e04 (bolo)   C = 0244251 (pão de queijo)
+</pre>
+<p>No <code>git log</code>, o <code>(HEAD -&gt; main, sobremesas)</code> mostra as duas etiquetas no mesmo commit; a seta diz que o HEAD está no <code>main</code>.</p>
+
+<hr>
+
+<h2>3. Criar um branch num commit antigo</h2>
+<p>Por padrão o branch nasce no commit atual, mas dá para escolher outro ponto de partida: basta pôr o commit depois do nome. A Ana quer um ramo <code>versao-antiga</code> que comece no primeiro commit, só com o README:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+0244251 (HEAD -&gt; main, sobremesas) Adiciona receita de pão de queijo
+7225e04 Adiciona receita de bolo
+700bbd5 Cria o README                  « o primeiro commit: HEAD~2
+$ git branch versao-antiga HEAD~2
+$ git branch
+* main
+  sobremesas
+  versao-antiga
+$ git log --oneline --graph --all
+* 0244251 (HEAD -&gt; main, sobremesas) Adiciona receita de pão de queijo
+* 7225e04 Adiciona receita de bolo
+* 700bbd5 (versao-antiga) Cria o README     « a etiqueta nova, lá no começo
+</pre>
+
+<dl class="anatomy">
+  <dt>git branch versao-antiga HEAD~2</dt><dd>O segundo argumento é o <strong>ponto de partida</strong>: qualquer jeito de apontar um commit serve. <code>HEAD~2</code> quer dizer "dois commits antes do HEAD"; daria no mesmo usar o hash curto do commit, que aparece no <code>git log --oneline</code>.</dd>
+</dl>
+
+<pre>Antes:   A---B---C   ← main ← HEAD
+                     ← sobremesas
+
+Depois:  A---B---C   ← main ← HEAD
+         ↑           ← sobremesas
+         versao-antiga
+</pre>
+
+<p>O desenho do <code>git log --graph</code> continua uma linha reta, porque nenhum commit novo foi feito: só apareceu uma etiqueta lá no começo da fila.</p>
+
+<hr>
+
+<h2>4. Mais detalhes: <code>git branch -v</code></h2>
+<p>A opção <code>-v</code> (de <em>verbose</em>, "detalhado") mostra, para cada branch, o hash curto e a mensagem do commit para onde ele aponta:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git branch -v
+* main          0244251 Adiciona receita de pão de queijo
+  sobremesas    0244251 Adiciona receita de pão de queijo
+  versao-antiga 700bbd5 Cria o README
+</pre>
+<p>Três colunas: o nome (com o <code>*</code> no atual), o hash curto do commit para onde a etiqueta aponta e a primeira linha da mensagem desse commit. O <code>main</code> e o <code>sobremesas</code> estão no mesmo lugar.</p>
+
+<p>Depois de a Ana fazer um commit no <code>sobremesas</code>, o <code>-v</code> mostra que cada etiqueta está num lugar:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch -q sobremesas
+$ echo 'Pudim de leite' &gt; pudim.txt
+$ git add pudim.txt &amp;&amp; git commit -q -m 'Adiciona receita de pudim'
+$ git switch -q main
+$ git branch -v
+* main          0244251 Adiciona receita de pão de queijo
+  sobremesas    d6f2336 Adiciona receita de pudim       « andou com o commit
+  versao-antiga 700bbd5 Cria o README
+$ git log --oneline --graph --all
+* d6f2336 (sobremesas) Adiciona receita de pudim
+* 0244251 (HEAD -&gt; main) Adiciona receita de pão de queijo
+* 7225e04 Adiciona receita de bolo
+* 700bbd5 (versao-antiga) Cria o README
+</pre>
+<p>(O <code>-q</code>, de <em>quiet</em>, "quieto", só faz o <code>git switch</code> e o <code>git commit</code> não mostrarem mensagens; a troca de branch é assunto da próxima aula.)</p>
+
+<pre>A---B---C   ← main ← HEAD
+↑        \
+│         D   ← sobremesas     (D = d6f2336, o pudim)
+versao-antiga
+</pre>
+
+<hr>
+
+<h2>5. Quem já foi juntado: <code>--merged</code> e <code>--no-merged</code></h2>
+<p>Com o tempo, um repositório acumula branches. Para faxinar, a pergunta é: <strong>o trabalho deste branch já está no meu branch atual?</strong></p>
+
+<pre class="term" data-cwd="~/receitas">$ git branch --merged
+* main
+  versao-antiga
+$ git branch --no-merged
+  sobremesas
+</pre>
+
+<dl class="anatomy">
+  <dt>--merged</dt><dd>Lista os branches cujos commits <strong>todos</strong> já fazem parte do branch atual. Esses podem ser apagados sem perder nada. O <code>versao-antiga</code> aparece porque o commit dele é um antepassado do <code>main</code>.</dd>
+  <dt>--no-merged</dt><dd>O contrário: branches com commits que o atual ainda não tem. Aqui, o <code>sobremesas</code>, por causa do commit do pudim. Juntar esse trabalho é assunto do <a href="git-merge.html">git merge</a>.</dd>
+</dl>
+
+<hr>
+
+<h2>6. Filtrar e ordenar</h2>
+
+<pre class="term" data-cwd="~/receitas">$ git branch --list 's*'
+  sobremesas
+$ git branch --list 'v*'
+  versao-antiga
+$ git branch --contains d6f2336
+  sobremesas
+$ git branch --contains 7225e04
+* main
+  sobremesas
+$ git branch -a
+* main
+  sobremesas
+  versao-antiga
+</pre>
+
+<dl class="anatomy">
+  <dt>--list 's*'</dt><dd>Só os branches cujo nome casa com o padrão (<code>*</code> = "qualquer coisa"). As aspas impedem que o terminal troque o <code>*</code> por nomes de arquivos antes de o Git ver.</dd>
+  <dt>--contains d6f2336</dt><dd>Os branches que têm aquele commit na sua história. O commit do pudim só está no <code>sobremesas</code>; o do bolo (<code>7225e04</code>) está no <code>main</code> e no <code>sobremesas</code>, mas não no <code>versao-antiga</code>, que parou antes dele.</dd>
+  <dt>-a</dt><dd>Mostra também os branches de um <strong>repositório remoto</strong> (o GitHub, por exemplo), que aparecem como <code>remotes/origin/…</code>. Sem remoto, a lista é a mesma do <code>git branch</code>. Veja <a href="remotos.html">Repositórios Remotos</a>.</dd>
+</dl>
+
+<hr>
+
+<h2>7. Bons nomes de branch</h2>
+<p>O nome do branch vira um arquivo dentro de <code>.git/refs/heads/</code>, por isso o Git tem regras. As principais:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Pode</th><th>Não pode</th></tr>
+<tr><td>letras, números, <code>-</code>, <code>_</code>, <code>.</code> e barras: <code>sobremesas</code>, <code>receita-bolo</code>, <code>ana/cardapio</code></td><td>espaço, <code>~</code>, <code>^</code>, <code>:</code>, <code>?</code>, <code>*</code>, <code>[</code>, <code>\</code></td></tr>
+<tr><td>maiúsculas (mas <code>Sobremesas</code> e <code>sobremesas</code> seriam dois branches diferentes, o que confunde)</td><td>dois pontos seguidos (<code>..</code>), começar com <code>-</code>, terminar com <code>.lock</code> ou com <code>/</code></td></tr>
+</table>
+</div>
+<p>O costume é usar <strong>minúsculas e hífen</strong>, com um nome que diga o assunto: <code>sobremesas</code>, <code>corrige-foto-bolo</code>. Muitas equipes usam um prefixo com barra: <code>feature/sobremesas</code>, <code>fix/foto-bolo</code>.</p>
+
+<hr>
+
+<h2>Experimente</h2>
+<p>O terminal abaixo está na pasta <code>receitas</code>, com os três commits da Ana. Antes e depois de cada comando, olhe <code>git branch -v</code> e <code>git log --oneline --graph --all</code>.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;echo 'Pão de queijo' &gt; pao.txt;;git add pao.txt;;git commit -q -m 'Adiciona receita de pão de queijo'" data-goal="branch:sobremesas,branch:versao-antiga,head:main,ran:git branch.*(-v|--show-current)" data-solucao="git branch sobremesas;;git branch versao-antiga HEAD~2;;git branch -v">
+<p class="try-task"><strong>Missão:</strong> crie o branch <code>sobremesas</code> no commit atual e o branch <code>versao-antiga</code> no primeiro commit (<code>HEAD~2</code>, ou o hash que o <code>git log --oneline</code> mostrar). Continue no <code>main</code>. No fim, confira com <code>git branch -v</code>.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;git branch bebidas;;git branch lanches;;git switch -q lanches;;echo 'Coxinha' &gt; coxinha.txt;;git add coxinha.txt;;git commit -q -m 'Adiciona coxinha';;git switch -q main" data-goal="ran:--no-merged,out:lanches" data-solucao="git branch --no-merged">
+<p class="try-task"><strong>Missão:</strong> este repositório tem os branches <code>main</code>, <code>bebidas</code> e <code>lanches</code>. Descubra qual deles tem trabalho que o <code>main</code> ainda não tem (use a opção certa do <code>git branch</code>). Depois, confira com <code>git log --oneline --graph --all</code>.</p>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de criar um branch</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th><th>Muda para ele?</th></tr>
+<tr><td><code>git branch NOME</code></td><td>Cria no commit atual</td><td>Não</td></tr>
+<tr><td><code>git branch NOME COMMIT</code></td><td>Cria no commit indicado</td><td>Não</td></tr>
+<tr><td><code>git switch -c NOME</code></td><td>Cria e já muda (aula <a href="git-switch.html">git switch</a>)</td><td>Sim</td></tr>
+<tr><td><code>git checkout -b NOME</code></td><td>O mesmo, com o comando antigo (aula <a href="git-checkout.html">git checkout</a>)</td><td>Sim</td></tr>
+</table>
+</div>
+<p><strong>Qual usar?</strong> No dia a dia, quase sempre você cria um branch para trabalhar nele logo em seguida: use <code>git switch -c</code>. O <code>git branch NOME</code> é bom para marcar um ponto e continuar onde está (por exemplo, guardar um "antes de mexer" antes de uma mudança arriscada).</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>fatal: a branch named 'sobremesas' already exists</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git branch sobremesas
+fatal: a branch named 'sobremesas' already exists
+</pre>
+<p>"Um branch chamado 'sobremesas' já existe". O Git nunca cria dois branches com o mesmo nome, nem mexe no que já existe: nada mudou. <strong>Como resolver:</strong> escolha outro nome, ou, se você queria <strong>ir</strong> até ele, use <code>git switch sobremesas</code>. (Existe o <code>git branch -f NOME</code>, que força a etiqueta a pular para o commit atual, mas ele pode deixar commits sem etiqueta; só use se souber o que está fazendo.)</p>
+</div>
+
+<div class="cenario">
+<strong><code>fatal: 'receitas doces' is not a valid branch name</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git branch 'receitas doces'
+fatal: 'receitas doces' is not a valid branch name
+hint: See 'git help check-ref-format'
+hint: Disable this message with "git config set advice.refSyntax false"
+$ git branch receitas..doces
+fatal: 'receitas..doces' is not a valid branch name
+hint: See 'git help check-ref-format'
+hint: Disable this message with "git config set advice.refSyntax false"
+</pre>
+<p>"'receitas doces' não é um nome de branch válido". Espaços e dois pontos seguidos são proibidos (a tabela da seção 7 tem as regras). As linhas <code>hint:</code> são <strong>dicas</strong>: a primeira manda ler a ajuda do <code>git check-ref-format</code>, que lista todas as regras; a segunda ensina a desligar a dica. <strong>Como resolver:</strong> troque o espaço por hífen: <code>git branch receitas-doces</code>.</p>
+</div>
+
+<div class="cenario">
+<strong><code>fatal: not a valid object name: 'main'</code> (repositório sem commits)</strong>
+<pre class="term">$ mkdir vazio &amp;&amp; cd vazio &amp;&amp; git init -q
+$ git branch                       « não mostra nada!
+$ git branch teste
+fatal: not a valid object name: 'main'
+</pre>
+<p>Num repositório recém-criado, o <code>git branch</code> não lista nem o <code>main</code>, e criar um branch dá erro: "<code>main</code> não é um nome de objeto válido". <strong>O que aconteceu:</strong> um branch é uma etiqueta num commit, e ainda não existe nenhum commit para colar a etiqueta. O <code>main</code> só passa a existir de verdade no primeiro commit. <strong>Como resolver:</strong> faça o primeiro commit (<a href="primeiro-commit.html">Seu Primeiro Commit</a>) e depois crie o branch.</p>
+</div>
+
+<div class="cenario">
+<strong><code>fatal: not a valid object name: '700bbdx'</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git branch versao-nova 700bbdx
+fatal: not a valid object name: '700bbdx'
+</pre>
+<p>O ponto de partida não existe: aqui, um hash digitado errado (o certo era <code>700bbd5</code>). <strong>Como resolver:</strong> copie o hash do <code>git log --oneline</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Dois branches que só diferem na maiúscula</strong>
+<pre class="term" data-cwd="~/receitas">$ git branch Sobremesas
+$ git branch
+  Sobremesas
+* main
+  sobremesas
+  versao-antiga
+</pre>
+<p>Não é erro para o Git (no Linux), mas é uma armadilha: <code>Sobremesas</code> e <code>sobremesas</code> são branches diferentes, e no Windows e no macOS, onde o sistema de arquivos não diferencia maiúsculas, eles brigam pelo mesmo arquivo. <strong>Como resolver:</strong> apague o que sobrou com <code>git branch -d Sobremesas</code> (<a href="apagar-branch.html">Renomeando e Apagando Branches</a>) e use sempre minúsculas.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git branch</code></td><td>Lista os branches locais; <code>*</code> marca o atual</td></tr>
+<tr><td><code>git branch NOME</code></td><td>Cria um branch no commit atual</td></tr>
+<tr><td><code>git branch NOME COMMIT</code></td><td>Cria um branch num commit escolhido (hash, <code>HEAD~2</code>, outro branch…)</td></tr>
+<tr><td><code>git branch --show-current</code></td><td>Mostra só o nome do branch atual</td></tr>
+<tr><td><code>git branch -v</code></td><td>Lista com o hash e a mensagem do último commit de cada um</td></tr>
+<tr><td><code>git branch --merged</code> / <code>--no-merged</code></td><td>Branches já juntados / ainda não juntados ao atual</td></tr>
+<tr><td><code>git branch --list 'PADRÃO'</code></td><td>Filtra pelo nome</td></tr>
+<tr><td><code>git branch --contains COMMIT</code></td><td>Branches que têm aquele commit</td></tr>
+<tr><td><code>git branch -a</code></td><td>Inclui os branches remotos</td></tr>
+<tr><td><code>git branch -m</code> / <code>-d</code> / <code>-D</code></td><td>Renomear / apagar / apagar à força (<a href="apagar-branch.html">aula própria</a>)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete os comandos</h3>
+<div class="ex-code">Listar os branches: git <input data-answer="branch" aria-label="subcomando"><br>Criar o branch cardapio: git branch <input data-answer="cardapio" aria-label="nome"><br>Mostrar só o branch atual: git branch --<input data-answer="show-current" aria-label="opção"><br>Listar com hash e mensagem: git branch -<input data-answer="v" aria-label="opção"></div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">2. Na saída do <code>git branch</code>, o que quer dizer o <code>*</code> na frente de um nome?</p>
+<label><input type="radio" name="q2"> Que o branch tem mudanças não commitadas</label>
+<label><input type="radio" name="q2"> Que o branch é o mais novo</label>
+<label><input type="radio" name="q2"> Que é o branch atual, onde o HEAD está</label>
+<label><input type="radio" name="q2"> Que o branch é o <code>main</code></label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. Qual destes nomes o Git <strong>recusa</strong>?</p>
+<label><input type="radio" name="q3"> <code>receita-bolo</code></label>
+<label><input type="radio" name="q3"> <code>receita bolo</code></label>
+<label><input type="radio" name="q3"> <code>ana/receita-bolo</code></label>
+<label><input type="radio" name="q3"> <code>receita_bolo</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. A Ana quer apagar os branches que já foram juntados ao <code>main</code>. Qual comando lista esses branches (estando no <code>main</code>)?</p>
+<label><input type="radio" name="q4"> <code>git branch --merged</code></label>
+<label><input type="radio" name="q4"> <code>git branch --no-merged</code></label>
+<label><input type="radio" name="q4"> <code>git branch -a</code></label>
+<label><input type="radio" name="q4"> <code>git branch --contains main</code></label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">5. A Ana criou um repositório com <code>git init</code> e, antes de qualquer commit, rodou <code>git branch teste</code>. O que acontece?</p>
+<label><input type="radio" name="q5"> O branch <code>teste</code> é criado</label>
+<label><input type="radio" name="q5"> O branch <code>teste</code> é criado e vira o atual</label>
+<label><input type="radio" name="q5"> O <code>main</code> é renomeado para <code>teste</code></label>
+<label><input type="radio" name="q5"> Erro <code>fatal: not a valid object name: 'main'</code>: ainda não há commit para o branch apontar</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git branch</code> sozinho lista os branches; o <code>*</code> marca o atual. <code>--show-current</code> mostra só o nome dele.</li>
+  <li><code>git branch NOME</code> cria um branch no commit atual, <strong>sem mudar</strong> para ele; <code>git branch NOME COMMIT</code> escolhe o ponto de partida.</li>
+  <li><code>-v</code> mostra para onde cada etiqueta aponta; <code>--merged</code> e <code>--no-merged</code> dizem quais já foram juntados ao branch atual.</li>
+  <li>Nomes: minúsculas e hífen, sem espaço nem <code>..</code>; o Git recusa nomes inválidos e nomes repetidos.</li>
+  <li>Num repositório sem nenhum commit não dá para criar branch: faça o primeiro commit antes.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
