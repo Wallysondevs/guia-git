@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git tag — marcando versões do projeto | Guia Git</title>
+<meta name="description" content="O git tag para iniciantes: o que é uma tag, tag leve × tag anotada (-a -m), listar (-l, -n), ver com git show, marcar um commit antigo, apagar (-d), enviar para o GitHub (git push origin v1.0, --tags, --delete), visitar uma versão (detached HEAD), git describe e os erros reais (already exists, not a valid tag name).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Marcando Versões (git tag)</span></h1>
+
+<p class="intro">O site de receitas da Ana chegou a um ponto bonito: bolo e pudim, tudo funcionando. Ela quer <strong>marcar esse momento</strong> para sempre: "esta é a versão 1.0". Daqui a três meses, com vinte commits a mais, ela vai poder dizer "me mostra como estava a 1.0" sem procurar hash nenhum. É para isso que serve a <strong>tag</strong> (em inglês, "etiqueta"): um nome fixo, como <code>v1.0</code>, colado num commit.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é uma tag e qual a diferença para um branch.</li>
+  <li>Os dois tipos: a tag <strong>leve</strong> e a tag <strong>anotada</strong> (<code>-a -m</code>), e quando usar cada uma.</li>
+  <li>Como listar, ver (<code>git show</code>), marcar um commit antigo e apagar tags.</li>
+  <li>Como enviar tags para o GitHub (o <code>git push</code> comum não envia!).</li>
+  <li>Como visitar uma versão antiga e o que o <code>git describe</code> conta.</li>
+</ul>
+</div>
+
+<p>Todas as saídas desta aula vieram do Git 2.53.0 da máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português, e do "GitHub de mentira" do laboratório. A tradução do Git no Ubuntu é <strong>incompleta</strong>: quase todas as mensagens desta aula saem em inglês, copiadas como saíram e traduzidas na explicação.</p>
+
+<hr>
+
+<h2>A ideia: a etiqueta na caixa de fotos</h2>
+<p>Pense nos commits como fotos numa caixa, em ordem. Você cola uma <strong>etiqueta</strong> numa delas: "Formatura". A etiqueta não muda de foto: daqui a dez anos, "Formatura" continua sendo aquela foto, por mais fotos que você ponha na caixa depois.</p>
+<p>Um branch também é um nome colado num commit, mas é uma etiqueta que <strong>anda</strong>: a cada commit novo, o <code>main</code> passa para o commit mais recente (aula <a href="branches.html">O que é um Branch</a>). A tag <strong>não anda</strong>. É por isso que ela serve para versões:</p>
+
+<pre>                 v0.9        v1.0
+                  │           │
+    700bbd5 ─── c34349b ─── bbf4ec7 ─── 4949f73
+                                           │
+                                         main  (anda a cada commit)</pre>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th></th><th>Branch</th><th>Tag</th></tr>
+<tr><td>O que é</td><td>Um nome que aponta para um commit</td><td>Um nome que aponta para um commit</td></tr>
+<tr><td>Anda com os commits novos?</td><td>Sim</td><td><strong>Não</strong>: fica para sempre no mesmo commit</td></tr>
+<tr><td>Serve para</td><td>Trabalhar (uma linha de desenvolvimento)</td><td>Marcar um ponto (uma versão lançada)</td></tr>
+<tr><td>Exemplo</td><td><code>main</code>, <code>receita-bolo</code></td><td><code>v1.0</code>, <code>v2.3.1</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>1. A tag leve: só um nome</h2>
+<p>O repositório da Ana tem três commits. O <code>git tag</code> sozinho lista as tags; ainda não há nenhuma, então ele não mostra nada. Com um nome, ele cria uma tag no commit atual (o <code>HEAD</code>):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git tag
+$ git tag revisado
+$ git tag
+revisado
+</pre>
+
+<dl class="anatomy">
+  <dt>git tag</dt><dd>Sem argumentos: lista as tags, em ordem alfabética.</dd>
+  <dt>git tag revisado</dt><dd>Cria a tag <code>revisado</code> no commit atual. Não mostra nada quando dá certo. Este é o tipo <strong>leve</strong> (em inglês, <em>lightweight</em>): só um nome, mais nada.</dd>
+</dl>
+
+<p>Num terminal de verdade, o <code>git log</code> mostra as tags ao lado dos commits:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+bbf4ec7 (HEAD -&gt; main, tag: revisado) Adiciona a receita de pudim
+c34349b Adiciona a receita de bolo
+700bbd5 Cria o README
+</pre>
+
+<p>O <code>tag: revisado</code> está colado no <code>bbf4ec7</code>, o commit onde a Ana estava. E o <code>git show</code> com o nome da tag mostra o commit:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git show revisado
+commit bbf4ec7677f7e692ad5643513bfad21c6657510a
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Adiciona a receita de pudim
+
+diff --git a/pudim.txt b/pudim.txt
+new file mode 100644
+index 0000000..533e6e4
+--- /dev/null
++++ b/pudim.txt
+@@ -0,0 +1 @@
++Pudim
+</pre>
+
+<p>Exatamente o mesmo que <code>git show bbf4ec7</code> (aula <a href="git-show.html">git show</a>): a tag leve é só um apelido para o commit. Tags leves servem para marcações pessoais e temporárias ("revisado", "antes-da-mudança").</p>
+
+<hr>
+
+<h2>2. A tag anotada: nome, autor, data e mensagem</h2>
+<p>Para versões de verdade, use a tag <strong>anotada</strong> (em inglês, <em>annotated</em>). Ela guarda também quem criou, quando e uma mensagem, como um commit:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git tag -a v1.0 -m 'Primeira versão do site: bolo e pudim'
+$ git tag
+revisado
+v1.0
+</pre>
+
+<dl class="anatomy">
+  <dt>-a</dt><dd>De <em>annotated</em>, "anotada": cria uma tag com autor, data e mensagem.</dd>
+  <dt>v1.0</dt><dd>O nome. O <code>v</code> de "versão" na frente é um costume muito comum (<code>v1.0</code>, <code>v2.3.1</code>); a próxima aula, <a href="versionamento-semantico.html">Versionamento Semântico</a>, explica o que os números querem dizer.</dd>
+  <dt>-m '…'</dt><dd>A mensagem, como no <code>git commit -m</code>. Sem o <code>-m</code>, o Git abre o editor para você escrevê-la (no terminal do guia não há editor: use sempre <code>-m</code>).</dd>
+</dl>
+
+<pre class="term" data-cwd="~/receitas">$ git show v1.0
+tag v1.0
+Tagger: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+Primeira versão do site: bolo e pudim
+
+commit bbf4ec7677f7e692ad5643513bfad21c6657510a
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Adiciona a receita de pudim
+
+diff --git a/pudim.txt b/pudim.txt
+new file mode 100644
+index 0000000..533e6e4
+--- /dev/null
++++ b/pudim.txt
+@@ -0,0 +1 @@
++Pudim
+</pre>
+
+<p>Agora o <code>git show</code> tem duas partes:</p>
+<dl class="anatomy">
+  <dt>tag v1.0 / Tagger / Date / mensagem</dt><dd>A <strong>tag em si</strong>: o nome, quem a criou (<em>Tagger</em>, "quem etiquetou"), quando e a mensagem.</dd>
+  <dt>commit bbf4ec7… e o resto</dt><dd>O commit para onde ela aponta, igual ao da tag leve.</dd>
+</dl>
+
+<p>Por dentro, a diferença é que a tag anotada é um <strong>objeto</strong> próprio no repositório (veja <a href="como-git-guarda.html">Como o Git Guarda as Coisas</a>), enquanto a leve é só um nome que aponta direto para o commit. O <code>git cat-file -t</code> ("tipo do objeto") mostra isso:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git cat-file -t revisado
+commit
+$ git cat-file -t v1.0
+tag
+</pre>
+
+<div class="tip">
+<strong>Qual usar?</strong>
+<p>Para <strong>versões</strong> (o que você lança, publica, entrega): tag <strong>anotada</strong>, sempre. Ela diz quem lançou, quando e o que mudou, e alguns comandos (como o <code>git describe</code>, na seção 6) só olham para as anotadas. Para marcações <strong>pessoais</strong> e passageiras: a leve serve.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona a receita de bolo';;echo 'Pudim' &gt; pudim.txt;;git add pudim.txt;;git commit -q -m 'Adiciona a receita de pudim'" data-goal="tag:v1.0,ran:tag -a" data-solucao="git tag -a v1.0 -m 'Primeira versão do site'">
+<p class="try-task"><strong>Missão:</strong> o site da Ana está pronto para a primeira versão. Crie uma tag <strong>anotada</strong> chamada <code>v1.0</code> no commit atual, com a mensagem <code>Primeira versão do site</code>. Depois, veja-a com <code>git tag</code> e <code>git show v1.0</code>.</p>
+</div>
+
+<hr>
+
+<h2>3. Marcando um commit antigo</h2>
+<p>Esqueceu de marcar uma versão na hora? Dê o commit no fim do comando: um hash, ou um caminho como <code>HEAD~1</code> ("um antes do HEAD"). A Ana quer marcar como <code>v0.9</code> o commit em que o site só tinha o bolo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git tag -a v0.9 -m 'Versão de teste, só com o bolo' HEAD~1
+$ git log --oneline
+bbf4ec7 (HEAD -&gt; main, tag: v1.0, tag: revisado) Adiciona a receita de pudim
+c34349b (tag: v0.9) Adiciona a receita de bolo
+700bbd5 Cria o README
+</pre>
+
+<p>O <code>tag: v0.9</code> foi parar no <code>c34349b</code>, um commit atrás. Repare também que um commit pode ter várias tags (o <code>bbf4ec7</code> tem <code>v1.0</code> e <code>revisado</code>).</p>
+
+<hr>
+
+<h2>4. Listando e apagando</h2>
+
+<pre class="term" data-cwd="~/receitas">$ git tag -n
+revisado        Adiciona a receita de pudim
+v0.9            Versão de teste, só com o bolo
+v1.0            Primeira versão do site: bolo e pudim
+$ git tag -l 'v1.*'
+v1.0
+$ git tag -d revisado
+Deleted tag 'revisado' (was bbf4ec7)
+$ git tag
+v0.9
+v1.0
+</pre>
+
+<dl class="anatomy">
+  <dt>git tag -n</dt><dd>Lista as tags com a primeira linha da mensagem. Para a tag leve (<code>revisado</code>), que não tem mensagem própria, mostra a mensagem do commit.</dd>
+  <dt>git tag -l 'v1.*'</dt><dd><code>-l</code> de <em>list</em>: lista só as tags que combinam com o padrão. O <code>*</code> quer dizer "qualquer coisa": <code>v1.*</code> pega <code>v1.0</code>, <code>v1.1</code>, <code>v1.10</code>… As aspas impedem o terminal de tentar interpretar o <code>*</code>.</dd>
+  <dt>git tag -d revisado</dt><dd><code>-d</code> de <em>delete</em>: apaga a tag. <code>Deleted tag 'revisado' (was bbf4ec7)</code>: "apaguei a tag <code>revisado</code> (ela apontava para o <code>bbf4ec7</code>)". Só o nome some; o commit continua lá.</dd>
+</dl>
+
+<hr>
+
+<h2>5. Enviando as tags para o GitHub</h2>
+<p>Uma surpresa para quase todo mundo: o <code>git push</code> comum <strong>não envia as tags</strong>. A Ana ligou o repositório ao GitHub (aula <a href="git-remote.html">git remote</a>) e enviou o <code>main</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git push -u origin main
+Enumerating objects: 9, done.
+Counting objects: 100% (9/9), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (5/5), done.
+Writing objects: 100% (9/9), 716 bytes | 716.00 KiB/s, done.
+Total 9 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/receitas.git
+ * [new branch]      main -&gt; main
+branch 'main' set up to track 'origin/main'.
+$ git ls-remote --tags origin
+</pre>
+
+<p>O <code>git ls-remote --tags origin</code> lista as tags que existem <strong>no GitHub</strong>: nenhuma. O <code>push</code> só levou o branch (<code>[new branch]</code>). Para enviar tags, peça:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git push origin v1.0
+Enumerating objects: 1, done.
+Counting objects: 100% (1/1), done.
+Writing objects: 100% (1/1), 182 bytes | 182.00 KiB/s, done.
+Total 1 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/receitas.git
+ * [new tag]         v1.0 -&gt; v1.0
+$ git push --tags
+Enumerating objects: 1, done.
+Counting objects: 100% (1/1), done.
+Writing objects: 100% (1/1), 180 bytes | 180.00 KiB/s, done.
+Total 1 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/receitas.git
+ * [new tag]         v0.9 -&gt; v0.9
+$ git ls-remote --tags origin
+39c889654be05ba63ad0996475045aac51e879a4        refs/tags/v0.9
+c34349be182fbe4bb6cb8705c96e597cf72fccb4        refs/tags/v0.9^{}
+9578fdc8f57c2c659f999087460aa4280d8a4709        refs/tags/v1.0
+bbf4ec7677f7e692ad5643513bfad21c6657510a        refs/tags/v1.0^{}
+</pre>
+
+<dl class="anatomy">
+  <dt>git push origin v1.0</dt><dd>Envia <strong>uma</strong> tag. A saída termina com <code>[new tag] v1.0 -&gt; v1.0</code>: "tag nova". (Os números do <code>Writing objects</code> mudam a cada vez; o "1 objeto" enviado é o objeto da tag anotada, porque o commit já estava lá.)</dd>
+  <dt>git push --tags</dt><dd>Envia <strong>todas</strong> as tags que o GitHub ainda não tem: aqui, só faltava a <code>v0.9</code>. Cuidado: ele envia também tags leves e pessoais que você talvez não quisesse publicar.</dd>
+  <dt>refs/tags/v1.0 e refs/tags/v1.0^{}</dt><dd>Cada tag anotada aparece duas vezes: a primeira linha é o objeto da tag; a segunda, com <code>^{}</code>, é o commit para onde ela aponta (o <code>bbf4ec7</code>, como você viu no <code>git show</code>).</dd>
+</dl>
+
+<h3>Apagando uma tag que já está no GitHub</h3>
+<p>O <code>git tag -d</code> só apaga na sua máquina. Para apagar no GitHub, use o <code>push</code> com <code>--delete</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git push origin --delete v0.9
+To https://github.com/ana-souza/receitas.git
+ - [deleted]         v0.9
+$ git tag -d v0.9
+Deleted tag 'v0.9' (was 39c8896)
+$ git ls-remote --tags origin
+9578fdc8f57c2c659f999087460aa4280d8a4709        refs/tags/v1.0
+bbf4ec7677f7e692ad5643513bfad21c6657510a        refs/tags/v1.0^{}
+</pre>
+
+<p><code>- [deleted] v0.9</code>: "apagada" no GitHub. Depois, a Ana apagou também a sua cópia local. Repare que o <code>was 39c8896</code> é o hash do <strong>objeto da tag</strong> anotada (o mesmo da primeira linha do <code>ls-remote</code>), e não o do commit.</p>
+
+<div class="warning">
+<strong>Não mude uma versão publicada</strong>
+<p>Apagar e recriar uma tag com o mesmo nome em outro commit é possível, mas quem já baixou a <code>v1.0</code> antiga continua com ela, e as duas "v1.0" passam a ser diferentes. Se a versão publicada tinha um erro, lance outra: <code>v1.0.1</code>. É a mesma ideia da <a href="regra-de-ouro.html">Regra de Ouro</a>.</p>
+</div>
+
+<p>No site do GitHub, as tags enviadas aparecem na página do repositório, e a partir de uma tag dá para criar uma <strong>release</strong> ("lançamento"): uma página com notas da versão e arquivos para baixar. Essa parte é ilustrativa (o site não roda no laboratório); veja "Sobre versões" na documentação do GitHub (docs.github.com/pt).</p>
+
+<hr>
+
+<h2>6. Visitando uma versão e o <code>git describe</code></h2>
+
+<h3>Voltando no tempo para ver a <code>v0.9</code></h3>
+<p>Antes de apagar a <code>v0.9</code>, a Ana quis ver como o site era nela. Como a tag não é um branch, o <code>git switch</code> reclama:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch v0.9
+fatal: a branch is expected, got tag 'v0.9'
+hint: If you want to detach HEAD at the commit, try again with the --detach option.
+$ git switch --detach v0.9
+HEAD is now at c34349b Adiciona a receita de bolo
+$ git status
+HEAD detached at v0.9
+nothing to commit, working tree clean
+$ ls
+README.md
+bolo.txt
+$ git switch main
+Previous HEAD position was c34349b Adiciona a receita de bolo
+Switched to branch 'main'
+</pre>
+
+<dl class="anatomy">
+  <dt>fatal: a branch is expected, got tag 'v0.9'</dt><dd>"Era esperado um branch, recebi a tag <code>v0.9</code>." A dica sugere o <code>--detach</code>.</dd>
+  <dt>git switch --detach v0.9</dt><dd>Vai até o commit da tag, em modo <strong>HEAD destacado</strong>: você está num commit, não num branch (aula <a href="head-destacado.html">HEAD Destacado</a>). O <code>git status</code> confirma: <code>HEAD detached at v0.9</code>.</dd>
+  <dt>ls</dt><dd>A pasta como era na <code>v0.9</code>: só o README e o bolo; o pudim ainda não existia.</dd>
+  <dt>git switch main</dt><dd>Volta ao presente. <code>Previous HEAD position was …</code>: "a posição anterior do HEAD era…".</dd>
+</dl>
+<p>O comando antigo, <code>git checkout v0.9</code>, vai direto (sem precisar de <code>--detach</code>) e mostra um aviso longo sobre o <code>detached HEAD</code>, explicado na aula <a href="head-destacado.html">HEAD Destacado</a>. Para <strong>mudar</strong> uma versão antiga (corrigir um erro na <code>v1.0</code>, por exemplo), crie um branch a partir dela: <code>git switch -c correcao-v1 v1.0</code>.</p>
+
+<h3>"Em que versão eu estou?" <code>git describe</code></h3>
+
+<pre class="term" data-cwd="~/receitas">$ git describe
+v1.0
+$ printf 'Brigadeiro\n' &gt; brigadeiro.txt
+$ git add brigadeiro.txt
+$ git commit -q -m 'Adiciona o brigadeiro'
+$ git describe
+v1.0-1-g4949f73
+</pre>
+
+<p>O <code>git describe</code> descreve o commit atual a partir da tag <strong>anotada</strong> mais próxima. No commit da tag, a resposta é só <code>v1.0</code>. Depois de um commit novo, é <code>v1.0-1-g4949f73</code>: "<code>v1.0</code>, mais <code>1</code> commit, e o commit atual é o <code>4949f73</code>" (o <code>g</code> na frente do hash é de "git"). Muitos projetos usam isso para mostrar a versão exata no rodapé de um programa.</p>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer a mesma coisa</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Você quer…</th><th>Comando</th></tr>
+<tr><td>Marcar uma versão (recomendado)</td><td><code>git tag -a v1.0 -m "mensagem"</code></td></tr>
+<tr><td>Uma marcação pessoal, rápida</td><td><code>git tag nome</code> (tag leve)</td></tr>
+<tr><td>Marcar um commit antigo</td><td><code>git tag -a v0.9 -m "…" HEAD~1</code> (ou o hash)</td></tr>
+<tr><td>Enviar uma tag</td><td><code>git push origin v1.0</code></td></tr>
+<tr><td>Enviar todas as tags</td><td><code>git push --tags</code></td></tr>
+<tr><td>Enviar commits e as tags anotadas deles, de uma vez</td><td><code>git push --follow-tags</code></td></tr>
+<tr><td>Ver o código de uma versão</td><td><code>git switch --detach v1.0</code> (ou o antigo <code>git checkout v1.0</code>)</td></tr>
+<tr><td>Trabalhar a partir de uma versão</td><td><code>git switch -c nome-do-branch v1.0</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>A tag já existe: <code>fatal: tag 'v1.0' already exists</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git tag v1.0
+fatal: tag 'v1.0' already exists
+</pre>
+<p>"A tag <code>v1.0</code> já existe." Duas tags não podem ter o mesmo nome. <strong>Como confirmar:</strong> <code>git tag</code> ou <code>git show v1.0</code>. <strong>Como resolver:</strong> se é uma versão nova, use outro nome (<code>v1.1</code>); se a tag foi criada no commit errado e <strong>ainda não foi enviada</strong>, apague e crie de novo (<code>git tag -d v1.0</code> e <code>git tag -a v1.0 -m "…"</code>). Existe o <code>-f</code> ("forçar"), que move a tag, mas não o use em tags já publicadas.</p>
+</div>
+
+<div class="cenario">
+<strong>Nome inválido: <code>is not a valid tag name</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git tag 'versão 1'
+fatal: 'versão 1' is not a valid tag name.
+</pre>
+<p>"<code>versão 1</code> não é um nome de tag válido." Nomes de tag não podem ter espaços (nem alguns símbolos, como <code>~</code>, <code>^</code>, <code>:</code> e <code>?</code>). <strong>Como resolver:</strong> use pontos, hífens ou nada: <code>v1</code>, <code>versao-1</code>, <code>v1.0.0</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Commit que não existe: <code>Failed to resolve 'HEAD~9' as a valid ref</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git tag teste HEAD~9
+fatal: Failed to resolve 'HEAD~9' as a valid ref.
+</pre>
+<p>"Não consegui entender <code>HEAD~9</code> como uma referência válida." O repositório não tem 9 commits antes do atual. <strong>Como resolver:</strong> confira o commit no <code>git log --oneline</code> e use o hash dele.</p>
+</div>
+
+<div class="cenario">
+<strong>"Criei a tag, mas ela não aparece no GitHub"</strong>
+<p>O <code>git push</code> comum não envia tags (seção 5). <strong>Como confirmar:</strong> <code>git ls-remote --tags origin</code>. <strong>Como resolver:</strong> <code>git push origin v1.0</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git tag</code></td><td>Lista as tags</td></tr>
+<tr><td><code>git tag -n</code> / <code>git tag -l 'v1.*'</code></td><td>Lista com a mensagem / só as que combinam com o padrão</td></tr>
+<tr><td><code>git tag nome</code></td><td>Cria uma tag leve no commit atual</td></tr>
+<tr><td><code>git tag -a v1.0 -m "texto"</code></td><td>Cria uma tag anotada no commit atual</td></tr>
+<tr><td><code>git tag -a v0.9 -m "texto" &lt;commit&gt;</code></td><td>Cria a tag num commit antigo</td></tr>
+<tr><td><code>git show v1.0</code></td><td>Mostra a tag (se anotada) e o commit</td></tr>
+<tr><td><code>git tag -d v1.0</code></td><td>Apaga a tag local</td></tr>
+<tr><td><code>git push origin v1.0</code> / <code>git push --tags</code></td><td>Envia uma tag / todas as tags</td></tr>
+<tr><td><code>git push origin --delete v1.0</code></td><td>Apaga a tag no GitHub</td></tr>
+<tr><td><code>git ls-remote --tags origin</code></td><td>Lista as tags do remoto</td></tr>
+<tr><td><code>git switch --detach v1.0</code></td><td>Visita a versão (HEAD destacado)</td></tr>
+<tr><td><code>git describe</code></td><td>Descreve o commit atual a partir da tag anotada mais próxima</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o comando</h3>
+<p>Crie uma tag anotada <code>v2.0</code> com a mensagem "Site novo":</p>
+<div class="ex-code">git tag <input data-answer="-a" aria-label="opção"> v2.0 <input data-answer="-m" aria-label="opção"> "Site novo"</div>
+</div>
+
+<div class="exercise">
+<h3>2. Enviando</h3>
+<p>Complete para enviar a tag <code>v2.0</code> ao GitHub:</p>
+<div class="ex-code">git <input data-answer="push" aria-label="subcomando"> origin v2.0</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. Qual a principal diferença entre uma tag e um branch?</p>
+<label><input type="radio" name="q3"> A tag guarda uma cópia dos arquivos; o branch não</label>
+<label><input type="radio" name="q3"> A tag fica sempre no mesmo commit; o branch anda a cada commit novo</label>
+<label><input type="radio" name="q3"> A tag só existe no GitHub</label>
+<label><input type="radio" name="q3"> Não há diferença</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. A Ana criou a tag <code>v1.0</code> e rodou <code>git push</code>. A tag está no GitHub?</p>
+<label><input type="radio" name="q4"> Sim, o push envia tudo</label>
+<label><input type="radio" name="q4"> Sim, mas só se for anotada</label>
+<label><input type="radio" name="q4"> Não: é preciso <code>git push origin v1.0</code> (ou <code>--tags</code>)</label>
+<label><input type="radio" name="q4"> Não: tags nunca vão para o GitHub</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. O <code>git describe</code> respondeu <code>v1.0-3-g1a2b3c4</code>. O que isso quer dizer?</p>
+<label><input type="radio" name="q5"> O commit atual está 3 commits depois da tag <code>v1.0</code>, e o hash dele começa com <code>1a2b3c4</code></label>
+<label><input type="radio" name="q5"> Existem 3 tags <code>v1.0</code></label>
+<label><input type="radio" name="q5"> A versão é a 1.0.3</label>
+<label><input type="radio" name="q5"> A tag <code>v1.0</code> tem 3 arquivos</label>
+</div>
+
+<h3>Missão final: arrumando as etiquetas</h3>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona a receita de bolo';;echo 'Pudim' &gt; pudim.txt;;git add pudim.txt;;git commit -q -m 'Adiciona a receita de pudim';;git tag teste" data-goal="tag:v0.9,tag:v1.0,ran:tag -d teste" data-solucao="git tag -d teste;;git tag -a v1.0 -m 'Primeira versão';;git tag -a v0.9 -m 'Só com o bolo' HEAD~1">
+<p class="try-task"><strong>Missão:</strong> o repositório tem uma tag leve <code>teste</code>, esquecida. Apague-a. Depois crie a tag anotada <code>v1.0</code> no commit atual e a tag anotada <code>v0.9</code> no commit anterior (o da receita de bolo). Confira com <code>git tag -n</code>.</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Uma <strong>tag</strong> é um nome fixo colado num commit; diferente do branch, ela <strong>não anda</strong>. Serve para marcar versões.</li>
+  <li><code>git tag nome</code> cria uma tag <strong>leve</strong> (só o nome); <code>git tag -a v1.0 -m "…"</code> cria uma <strong>anotada</strong> (com autor, data e mensagem): use a anotada para versões.</li>
+  <li><code>git tag</code>, <code>-n</code> e <code>-l 'padrão'</code> listam; <code>git show v1.0</code> mostra; <code>git tag -d</code> apaga; um commit no fim do comando marca um commit antigo.</li>
+  <li>O <code>git push</code> comum não envia tags: <code>git push origin v1.0</code> ou <code>git push --tags</code>; para apagar no GitHub, <code>git push origin --delete v1.0</code>.</li>
+  <li><code>git switch --detach v1.0</code> visita uma versão; <code>git describe</code> diz a que distância você está da última tag anotada.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
