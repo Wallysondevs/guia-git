@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git checkout — o comando antigo de trocar de branch | Guia Git</title>
+<meta name="description" content="O git checkout para quem nunca usou Git: o comando antigo que troca de branch (git checkout NOME, checkout -b, checkout -), descarta mudanças (git checkout -- arquivo), traz arquivos de outro branch e vai para commits antigos. Por que o Git criou o switch e o restore, a armadilha do nome de branch igual a nome de arquivo, o -- que separa os dois, e a tabela de equivalências.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">checkout</span>: o Comando Antigo</h1>
+
+<p class="intro">Antes de 2019, não existiam o <a href="git-switch.html">git switch</a> nem o <a href="git-restore.html">git restore</a>. Um comando só fazia o trabalho dos dois: o <code>git checkout</code> (em inglês, algo como "conferir", "retirar para uso"). Ele continua no Git e funciona muito bem, e você vai encontrá-lo em quase todo tutorial, livro e resposta de fórum escritos antes disso. Esta aula ensina a <strong>reconhecer</strong> e a <strong>traduzir</strong> o <code>git checkout</code> para os comandos novos, e mostra por que ele confunde.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Trocar de branch com <code>git checkout NOME</code>, criar com <code>git checkout -b</code> e voltar com <code>git checkout -</code>.</li>
+  <li>Descartar mudanças com <code>git checkout -- arquivo</code>, e trazer um arquivo de outro branch.</li>
+  <li>Por que um comando que faz tudo é perigoso: a armadilha do branch com nome de arquivo, e o <code>--</code> que separa os dois.</li>
+  <li>A tabela de tradução: <code>checkout</code> → <code>switch</code> / <code>restore</code>.</li>
+</ul>
+</div>
+
+<p>As saídas vieram do Git 2.53 do Ubuntu 26.04, na máquina da Ana, com o sistema em português (algumas mensagens do Git ainda não têm tradução e saem em inglês).</p>
+
+<hr>
+
+<h2>A ideia: o canivete suíço e as ferramentas separadas</h2>
+<p>O <code>git checkout</code> é um canivete suíço: troca de branch, cria branch, descarta mudança de arquivo, traz arquivo de outro commit, visita um commit antigo. É prático, mas fácil de abrir a lâmina errada: <code>git checkout receitas</code> pode querer dizer "vá para o branch <code>receitas</code>" ou "jogue fora as mudanças do arquivo <code>receitas</code>", dependendo do que existe no seu repositório.</p>
+<p>No Git 2.23, o canivete foi dividido em duas ferramentas, cada uma com um trabalho só:</p>
+<ul>
+  <li><code>git switch</code>: tudo o que é <strong>trocar de branch</strong>;</li>
+  <li><code>git restore</code>: tudo o que é <strong>restaurar arquivos</strong>.</li>
+</ul>
+<p>O guia usa os comandos novos. Mas o <code>git checkout</code> não vai sumir (o Git leva compatibilidade a sério), então você precisa reconhecê-lo.</p>
+
+<hr>
+
+<h2>1. Trocar de branch: <code>git checkout NOME</code></h2>
+<p>O repositório <code>receitas</code> da Ana tem três commits no <code>main</code>. Ela cria o branch <code>sobremesas</code> e vai até ele com o <code>checkout</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git branch sobremesas
+$ git checkout sobremesas
+Switched to branch 'sobremesas'
+$ git checkout sobremesas
+Already on 'sobremesas'
+$ git status
+No ramo sobremesas
+nothing to commit, working tree clean
+</pre>
+
+<dl class="anatomy">
+  <dt>git checkout sobremesas</dt><dd>Muda o HEAD para o branch <code>sobremesas</code> e deixa a pasta igual a ele. É exatamente o <code>git switch sobremesas</code>: até as mensagens são as mesmas (<code>Switched to branch …</code>, "mudado para o ramo…"; <code>Already on …</code>, "já em…").</dd>
+</dl>
+
+<pre>Antes:   A---B---C   ← main ← HEAD
+                     ← sobremesas
+
+Depois:  A---B---C   ← main
+                     ← sobremesas ← HEAD
+
+A = 700bbd5 (README)   B = 7225e04 (bolo)   C = 0244251 (pão de queijo)
+</pre>
+
+<p>Voltar para o anterior também é igual: <code>git checkout -</code>.</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'Pudim de leite' &gt; pudim.txt
+$ git add pudim.txt &amp;&amp; git commit -q -m 'Adiciona receita de pudim'
+$ git checkout main
+Switched to branch 'main'
+$ git checkout -
+Switched to branch 'sobremesas'
+$ git checkout -
+Switched to branch 'main'
+</pre>
+
+<hr>
+
+<h2>2. Criar e trocar: <code>git checkout -b</code></h2>
+<p>O equivalente do <code>git switch -c</code> é o <code>-b</code> (de <em>branch</em>):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git checkout -b salgados
+Switched to a new branch 'salgados'
+$ git log --oneline --graph --all
+* d6f2336 (sobremesas) Adiciona receita de pudim
+* 0244251 (HEAD -&gt; salgados, main) Adiciona receita de pão de queijo
+* 7225e04 Adiciona receita de bolo
+* 700bbd5 Cria o README
+</pre>
+
+<pre>Antes:   A---B---C   ← main ← HEAD
+                  \
+                   D   ← sobremesas
+
+Depois:  A---B---C   ← main
+                  \  ← salgados ← HEAD
+                   D   ← sobremesas         (D = d6f2336, o pudim)
+</pre>
+
+<p>Como no <code>switch</code>, dá para dar o ponto de partida no fim (<code>git checkout -b bebidas sobremesas</code>), e o <code>-B</code> maiúsculo recria um branch que já existe (o <code>-C</code> do <code>switch</code>):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git checkout -B salgados
+Switched to and reset branch 'salgados'
+</pre>
+
+<p>Você vai ver muito <code>git checkout -b</code> em tutoriais: é a linha mais famosa do Git antigo.</p>
+
+<hr>
+
+<h2>3. Descartar mudanças: <code>git checkout -- arquivo</code></h2>
+<p>Aqui o <code>checkout</code> faz um trabalho completamente diferente: em vez de trocar de branch, ele <strong>joga fora</strong> as mudanças não commitadas de um arquivo, voltando-o para a versão da área de preparo (que, sem <code>git add</code>, é a do último commit). Hoje, isso é o <code>git restore arquivo</code> (<a href="git-restore.html">aula própria</a>).</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'Bolo queimado' &gt; bolo.txt
+$ git status --short
+ M bolo.txt
+$ git checkout -- bolo.txt
+$ git status --short                   « nada: a mudança sumiu
+$ cat bolo.txt
+Bolo de cenoura
+</pre>
+
+<dl class="anatomy">
+  <dt>--</dt><dd>Dois hifens separados por espaço querem dizer "daqui para frente, só <strong>nomes de arquivos</strong>". É assim que o <code>checkout</code> sabe que <code>bolo.txt</code> é um arquivo, e não um branch.</dd>
+  <dt>bolo.txt</dt><dd>O arquivo a restaurar. Dá para dar vários, ou <code>.</code> para a pasta inteira (<code>git checkout -- .</code>: descarta <strong>tudo</strong>).</dd>
+</dl>
+
+<div class="warning">
+<strong>Sem volta</strong>
+<p>Mudança descartada com <code>git checkout -- arquivo</code> não vai para lixeira nenhuma: nunca foi commitada, então o Git não tem cópia. O <code>git checkout</code> não pergunta "tem certeza?".</p>
+</div>
+
+<p>Sem o <code>--</code>, também funciona, desde que não exista um branch com o mesmo nome. Repare que o Git até avisa quantos caminhos restaurou:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'Bolo queimado' &gt; bolo.txt
+$ git checkout bolo.txt
+Updated 1 path from the index            « "1 caminho atualizado a partir do índice"
+$ cat bolo.txt
+Bolo de cenoura
+</pre>
+
+<p>(O <strong>índice</strong>, ou <em>index</em>, é outro nome da área de preparo.)</p>
+
+<hr>
+
+<h2>4. A armadilha: branch com nome de arquivo</h2>
+<p>Agora o motivo de o Git ter criado o <code>switch</code> e o <code>restore</code>. A Ana, por engano, criou um branch chamado <code>bolo.txt</code>. Depois, estragou o arquivo <code>bolo.txt</code> e quis desfazer com o comando da seção anterior, sem o <code>--</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git branch bolo.txt
+$ echo 'Bolo queimado' &gt; bolo.txt
+$ git checkout bolo.txt
+M       bolo.txt
+Switched to branch 'bolo.txt'           « ela queria restaurar o arquivo, e trocou de branch!
+$ git status
+No ramo bolo.txt
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+        modified:   bolo.txt
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+</pre>
+
+<p>Quando existe um branch com aquele nome, o <code>git checkout</code> escolhe o branch. O bolo continua queimado, e a Ana foi parar em outro ramo sem perceber. (Repare também no <code>git status</code>: metade das dicas está traduzida e metade não. A segunda dica já ensina o comando novo: <code>git restore &lt;file&gt;</code>.)</p>
+
+<p>Para sair da armadilha, volte ao <code>main</code>, apague o branch que não devia existir (<code>-D</code>: aula <a href="apagar-branch.html">Renomeando e Apagando Branches</a>) e restaure com o <code>--</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git checkout -q main
+$ git branch -D bolo.txt
+Deleted branch bolo.txt (was 0244251).
+$ git checkout -- bolo.txt
+$ git status --short
+</pre>
+
+<p>Com os comandos novos, a confusão não existe: <code>git switch bolo.txt</code> só pode ser um branch, e <code>git restore bolo.txt</code> só pode ser um arquivo.</p>
+
+<hr>
+
+<h2>5. Trazer um arquivo de outro branch</h2>
+<p>Com um branch <strong>e</strong> um arquivo, o <code>checkout</code> copia aquele arquivo, na versão daquele branch, para a pasta e para a área de preparo, sem trocar de branch:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git checkout sobremesas -- pudim.txt
+$ git status --short
+A  pudim.txt                    « o pudim veio do sobremesas, já preparado para commit
+</pre>
+
+<p>O equivalente novo é <code>git restore --source=sobremesas --staged --worktree pudim.txt</code> (mais comprido, mas diz exatamente o que faz). A Ana desistiu e desfez com <code>git restore --staged pudim.txt</code> e <code>rm pudim.txt</code>.</p>
+
+<hr>
+
+<h2>6. Visitar um commit antigo: <code>git checkout HASH</code></h2>
+<p>Com um commit no lugar do branch, o <code>checkout</code> vai até ele e deixa o HEAD "solto", sem branch. O Git mostra um aviso comprido:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git checkout HEAD~1
+Note: switching to 'HEAD~1'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c &lt;new-branch-name&gt;
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at 7225e04 Adiciona receita de bolo
+$ git status
+HEAD detached at 7225e04
+nothing to commit, working tree clean
+</pre>
+
+<p>Esse estado tem nome, <strong>HEAD destacado</strong>, e aula própria, que traduz esse aviso linha por linha: <a href="head-destacado.html">HEAD Destacado</a>. Com o <code>switch</code>, o mesmo exige pedir explicitamente: <code>git switch --detach HEAD~1</code>.</p>
+
+<hr>
+
+<h2>Experimente</h2>
+<p>O terminal está na pasta <code>receitas</code>, com três commits no <code>main</code>. Use só o <code>git checkout</code>, para treinar a leitura de tutoriais antigos.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;echo 'Pão de queijo' &gt; pao.txt;;git add pao.txt;;git commit -q -m 'Adiciona receita de pão de queijo'" data-goal="branch:salgados,head:main,ran:checkout -b" data-solucao="git checkout -b salgados;;git checkout main">
+<p class="try-task"><strong>Missão:</strong> com o <code>git checkout</code>, crie o branch <code>salgados</code> e vá para ele com um comando só. Depois, volte para o <code>main</code> (dica: <code>git checkout -</code> também serve).</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;echo 'Bolo queimado' &gt; bolo.txt" data-goal="limpo,contains:~/receitas/bolo.txt=Bolo de cenoura,head:main" data-solucao="git checkout -- bolo.txt">
+<p class="try-task"><strong>Missão:</strong> o <code>bolo.txt</code> está estragado ("Bolo queimado") e ainda não foi commitado. Descarte a mudança com o <code>git checkout</code>, do jeito seguro (com o <code>--</code>). Confira com <code>cat bolo.txt</code> e <code>git status</code>. Depois, para comparar, faça o mesmo com o comando novo: estrague de novo (<code>echo 'Bolo queimado' &gt; bolo.txt</code>) e use <code>git restore bolo.txt</code>.</p>
+</div>
+
+<hr>
+
+<h2 id="formas">Tradução: <code>checkout</code> → <code>switch</code> e <code>restore</code></h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando antigo</th><th>Comando novo</th><th>O que faz</th></tr>
+<tr><td><code>git checkout NOME</code></td><td><code>git switch NOME</code></td><td>Troca de branch</td></tr>
+<tr><td><code>git checkout -b NOME</code></td><td><code>git switch -c NOME</code></td><td>Cria e troca</td></tr>
+<tr><td><code>git checkout -b NOME PONTO</code></td><td><code>git switch -c NOME PONTO</code></td><td>Cria a partir de PONTO e troca</td></tr>
+<tr><td><code>git checkout -B NOME</code></td><td><code>git switch -C NOME</code></td><td>Recria o branch no ponto atual</td></tr>
+<tr><td><code>git checkout -</code></td><td><code>git switch -</code></td><td>Volta para o branch anterior</td></tr>
+<tr><td><code>git checkout HASH</code></td><td><code>git switch --detach HASH</code></td><td>Visita um commit (HEAD destacado)</td></tr>
+<tr><td><code>git checkout -- arquivo</code></td><td><code>git restore arquivo</code></td><td>Descarta as mudanças não preparadas</td></tr>
+<tr><td><code>git checkout -- .</code></td><td><code>git restore .</code></td><td>Descarta todas as mudanças não preparadas</td></tr>
+<tr><td><code>git checkout NOME -- arquivo</code></td><td><code>git restore --source=NOME --staged --worktree arquivo</code></td><td>Traz o arquivo de outro branch ou commit</td></tr>
+</table>
+</div>
+<p><strong>Qual usar?</strong> No seu dia a dia, <code>switch</code> e <code>restore</code>: o nome já diz o que vai acontecer, e não existe a armadilha da seção 4. Use o <code>checkout</code> quando estiver num Git anterior ao 2.23 (servidores antigos, por exemplo; confira com <code>git --version</code>) e saiba lê-lo nos tutoriais.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>error: pathspec 'bebidas' did not match any file(s) known to git</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git checkout bebidas
+error: pathspec 'bebidas' did not match any file(s) known to git
+</pre>
+<p>"O caminho 'bebidas' não corresponde a nenhum arquivo conhecido pelo Git". A mensagem fala de <strong>arquivo</strong> porque, como não achou branch nenhum chamado <code>bebidas</code>, o <code>checkout</code> tentou o seu outro trabalho: restaurar um arquivo com esse nome. Também não achou. (Compare com a mensagem do <code>git switch bebidas</code>, que é direta: <code>fatal: invalid reference: bebidas</code>.) <strong>Como resolver:</strong> confira o nome com <code>git branch</code>; para criar, <code>git checkout -b bebidas</code>.</p>
+</div>
+
+<div class="cenario">
+<strong><code>fatal: a branch named 'salgados' already exists</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git checkout -b salgados
+fatal: a branch named 'salgados' already exists
+</pre>
+<p>O <code>-b</code> só cria branches novos. <strong>Como resolver:</strong> tire o <code>-b</code> para ir até o que existe: <code>git checkout salgados</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Queria restaurar um arquivo e troquei de branch</strong>
+<p>A armadilha da seção 4: <code>Switched to branch 'bolo.txt'</code> quando você queria desfazer as mudanças do arquivo. <strong>Como confirmar:</strong> a primeira linha do <code>git status</code> mostra o branch em que você caiu. <strong>Como resolver:</strong> volte com <code>git checkout -</code> (suas mudanças vêm junto, como em qualquer troca) e restaure com o <code>--</code>: <code>git checkout -- bolo.txt</code>, ou melhor, <code>git restore bolo.txt</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>"You are in 'detached HEAD' state"</strong>
+<p>Você deu um hash, uma tag ou algo como <code>HEAD~1</code> para o <code>checkout</code>, e ele foi até o commit sem branch. Não é erro, mas commits feitos ali podem se perder. Tudo sobre isso: <a href="head-destacado.html">HEAD Destacado</a>. Para voltar: <code>git switch -</code> (ou <code>git checkout main</code>).</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git checkout NOME</code></td><td>Troca para o branch</td></tr>
+<tr><td><code>git checkout -b NOME [PONTO]</code></td><td>Cria e troca</td></tr>
+<tr><td><code>git checkout -</code></td><td>Volta para o branch anterior</td></tr>
+<tr><td><code>git checkout HASH</code></td><td>Visita um commit (HEAD destacado)</td></tr>
+<tr><td><code>git checkout -- arquivo</code></td><td>Descarta as mudanças do arquivo (sem volta)</td></tr>
+<tr><td><code>git checkout NOME -- arquivo</code></td><td>Traz o arquivo do branch NOME (para a pasta e a área de preparo)</td></tr>
+<tr><td><code>git checkout -q …</code></td><td>Sem mensagens</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Traduza para o comando novo</h3>
+<div class="ex-code">git checkout salgados → git <input data-answer="switch" aria-label="comando novo"> salgados<br>git checkout -b bebidas → git switch <input data-answer="-c" aria-label="opção"> bebidas<br>git checkout -- bolo.txt → git <input data-answer="restore" aria-label="comando novo"> bolo.txt</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">2. Para que serve o <code>--</code> em <code>git checkout -- bolo.txt</code>?</p>
+<label><input type="radio" name="q2"> Para forçar a troca de branch</label>
+<label><input type="radio" name="q2"> Para mostrar menos mensagens</label>
+<label><input type="radio" name="q2"> Para dizer que o que vem depois é nome de arquivo, e não de branch</label>
+<label><input type="radio" name="q2"> Para descartar só a área de preparo</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. O repositório tem um branch chamado <code>notas</code> e um arquivo <code>notas</code> modificado. O que faz <code>git checkout notas</code>?</p>
+<label><input type="radio" name="q3"> Descarta as mudanças do arquivo <code>notas</code></label>
+<label><input type="radio" name="q3"> Troca para o branch <code>notas</code> (e o arquivo continua modificado)</label>
+<label><input type="radio" name="q3"> Dá erro de ambiguidade</label>
+<label><input type="radio" name="q3"> Apaga o branch</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. Por que o Git criou o <code>git switch</code> e o <code>git restore</code>?</p>
+<label><input type="radio" name="q4"> Porque o <code>git checkout</code> foi removido</label>
+<label><input type="radio" name="q4"> Porque eles são mais rápidos</label>
+<label><input type="radio" name="q4"> Porque o <code>checkout</code> não funciona no Windows</label>
+<label><input type="radio" name="q4"> Para separar as duas tarefas do <code>checkout</code> (trocar de branch e restaurar arquivos) em comandos que não se confundem</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O <code>git checkout</code> é o comando antigo que faz o trabalho do <code>git switch</code> <strong>e</strong> do <code>git restore</code>. Ele continua funcionando, e aparece em quase todo tutorial antigo.</li>
+  <li><code>git checkout NOME</code> troca de branch; <code>-b</code> cria e troca; <code>-</code> volta para o anterior; um hash leva ao HEAD destacado.</li>
+  <li><code>git checkout -- arquivo</code> descarta mudanças, sem volta. O <code>--</code> separa os nomes de arquivos.</li>
+  <li>Se existir um branch com o mesmo nome do arquivo, o <code>checkout</code> sem <code>--</code> troca de branch em vez de restaurar o arquivo.</li>
+  <li>Prefira <code>switch</code> (branches) e <code>restore</code> (arquivos): <span class="versao">git 2.23+</span>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
