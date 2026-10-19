@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Projeto: Versionando um Site — do primeiro commit ao GitHub | Guia Git</title>
+<meta name="description" content="Projeto passo a passo: a Ana coloca o site de receitas (HTML e CSS) no Git, ignora a pasta de rascunhos, faz commits de cada mudança, desfaz um erro publicado com git revert, marca a versão v1.0 com tag, envia ao GitHub e recebe uma correção do Bruno com git pull, com saídas reais e cinco missões encadeadas.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Projeto: Versionando um Site</span></h1>
+
+<p class="intro">O site de receitas da Ana já existe: uma página inicial, uma folha de estilo e uma página por receita. Até hoje, cada mudança era feita "no escuro": se algo quebrasse, não havia como voltar. Neste projeto, a Ana coloca o site <strong>que já existe</strong> no Git, versiona cada mudança, desfaz um erro do jeito seguro, marca a primeira versão oficial, envia tudo ao GitHub e recebe uma correção do Bruno. São cinco missões encadeadas: faça junto.</p>
+
+<div class="note">
+<strong>Neste projeto você vai praticar</strong>
+<ul>
+  <li>Colocar uma pasta com arquivos e subpastas no Git, ignorando o que não deve entrar (<a href="gitignore.html">.gitignore</a>).</li>
+  <li>Commits pequenos: um para a cor, outro para a página nova (com dois arquivos juntos, porque são um assunto só).</li>
+  <li>Desfazer um commit com <a href="git-revert.html">git revert</a>, sem apagar o histórico.</li>
+  <li>Marcar a versão com <a href="git-tag.html">git tag</a>, enviar com <a href="git-push.html">git push</a> e receber com <a href="git-pull.html">git pull</a>.</li>
+</ul>
+</div>
+
+<div class="tip">
+<strong>Antes de começar</strong>
+<p>Este projeto continua o <a href="projeto-primeiro-repo.html">Seu Primeiro Repositório do Zero</a>. Se o ciclo <code>status</code> → <code>add</code> → <code>commit</code> ainda é novidade, faça aquele primeiro. Cada missão daqui começa pronta, no ponto onde a etapa anterior terminou.</p>
+</div>
+
+<hr>
+
+<h2>O site da Ana</h2>
+<p>A pasta <code>~/site</code> tem estes arquivos. Os de dentro de <code>rascunhos/</code> são ideias que a Ana não quer publicar:</p>
+<pre class="term" data-cwd="~/site">$ find . -type f
+./rascunhos/ideias.txt
+./css/estilo.css
+./receitas/bolo.html
+./index.html</pre>
+<pre class="file" data-name="index.html">&lt;!doctype html&gt;
+&lt;title&gt;Receitas da Ana&lt;/title&gt;
+&lt;link rel="stylesheet" href="css/estilo.css"&gt;
+&lt;h1&gt;Receitas da Ana&lt;/h1&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href="receitas/bolo.html"&gt;Bolo de cenoura&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;</pre>
+<pre class="file" data-name="css/estilo.css">body { font-family: sans-serif; }
+h1 { color: #c0392b; }</pre>
+
+<hr>
+
+<h2>Etapa 1: o site entra no Git</h2>
+<p>Primeiro o <code>git init</code>, e logo depois um <code>git status</code> para ver o que o Git encontrou:</p>
+<pre class="term" data-cwd="~/site">$ git init
+Repositório vazio Git inicializado em  /home/ana/site/.git/
+$ git status
+No ramo main
+
+No commits yet
+
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	css/
+	index.html
+	rascunhos/                               « isto não deve ir para o site!
+	receitas/
+
+nada adicionado ao envio mas arquivos não registrados estão presentes (use "git add" to registrar)</pre>
+<p>Para pastas novas, o Git mostra só o nome da pasta (<code>css/</code>), não cada arquivo. Antes de qualquer <code>git add</code>, a Ana cria o <code>.gitignore</code> com a pasta de rascunhos (a barra no fim quer dizer "a pasta e tudo o que há dentro"):</p>
+<pre class="term" data-cwd="~/site">$ echo 'rascunhos/' &gt; .gitignore
+$ git status
+No ramo main
+
+No commits yet
+
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	.gitignore
+	css/
+	index.html
+	receitas/                                « rascunhos/ sumiu da lista
+
+nada adicionado ao envio mas arquivos não registrados estão presentes (use "git add" to registrar)
+$ git add .
+$ git status
+No ramo main
+
+No commits yet
+
+Mudanças a serem submetidas:
+  (utilize "git rm --cached &lt;arquivo&gt;..." para não apresentar)
+	new file:   .gitignore
+	new file:   css/estilo.css
+	new file:   index.html
+	new file:   receitas/bolo.html               « agora aparecem os arquivos, um por um
+
+$ git commit -m 'Versão inicial do site'
+[main (root-commit) 10874b7] Versão inicial do site
+ 4 files changed, 14 insertions(+)
+ create mode 100644 .gitignore
+ create mode 100644 css/estilo.css
+ create mode 100644 index.html
+ create mode 100644 receitas/bolo.html</pre>
+<p>O <code>git add .</code> ("adicione tudo desta pasta para baixo") é seguro aqui por dois motivos: o <code>.gitignore</code> já estava pronto e a Ana conferiu a lista com <code>git status</code> antes do commit. O <code>4 files changed, 14 insertions(+)</code> confirma: quatro arquivos, 14 linhas, nenhum rascunho.</p>
+
+<div class="try" data-setup="mkdir -p site/css site/receitas site/rascunhos;;cd site;;printf '&lt;!doctype html&gt;\n&lt;title&gt;Receitas da Ana&lt;/title&gt;\n&lt;link rel=&quot;stylesheet&quot; href=&quot;css/estilo.css&quot;&gt;\n&lt;h1&gt;Receitas da Ana&lt;/h1&gt;\n&lt;ul&gt;\n  &lt;li&gt;&lt;a href=&quot;receitas/bolo.html&quot;&gt;Bolo de cenoura&lt;/a&gt;&lt;/li&gt;\n&lt;/ul&gt;\n' &gt; index.html;;printf 'body { font-family: sans-serif; }\nh1 { color: #c0392b; }\n' &gt; css/estilo.css;;printf '&lt;!doctype html&gt;\n&lt;title&gt;Bolo de cenoura&lt;/title&gt;\n&lt;h1&gt;Bolo de cenoura&lt;/h1&gt;\n&lt;p&gt;3 cenouras, 2 xícaras de farinha, 3 ovos.&lt;/p&gt;\n' &gt; receitas/bolo.html;;echo 'fazer página de pudim' &gt; rascunhos/ideias.txt" data-goal="commits:1,limpo,rastreado:index.html,rastreado:css/estilo.css,rastreado:receitas/bolo.html,ignorado:rascunhos/ideias.txt" data-solucao="git init;;echo 'rascunhos/' &gt; .gitignore;;git add .;;git commit -m 'Versão inicial do site'">
+<p class="try-task"><strong>Missão 1:</strong> você está na pasta <code>~/site</code>, que ainda não é um repositório. Crie o repositório, faça o Git ignorar a pasta <code>rascunhos/</code> e faça o primeiro commit com todo o resto. Confira com <code>git status</code> antes do commit: nada de <code>rascunhos/</code> na lista.</p>
+</div>
+
+<h2>Etapa 2: uma mudança de estilo</h2>
+<p>A Ana quer o título verde. Ela troca a cor no CSS (aqui com <code>sed</code>, que substitui texto num arquivo; no dia a dia, ela usaria o editor) e confere a diferença:</p>
+<pre class="term" data-cwd="~/site">$ sed -i 's/#c0392b/#27ae60/' css/estilo.css
+$ git diff
+diff --git a/css/estilo.css b/css/estilo.css
+index ff7aefe..28b20c5 100644
+--- a/css/estilo.css
++++ b/css/estilo.css
+@@ -1,2 +1,2 @@
+ body { font-family: sans-serif; }
+-h1 { color: #c0392b; }                         « a linha antiga (vermelho)
++h1 { color: #27ae60; }                         « a linha nova (verde)
+$ git commit -am 'Muda a cor do título para verde'
+[main 0ebfbdd] Muda a cor do título para verde
+ 1 file changed, 1 insertion(+), 1 deletion(-)</pre>
+<p>Uma linha trocada aparece no Git como uma remoção (<code>-</code>) mais uma inclusão (<code>+</code>): daí o <code>1 insertion(+), 1 deletion(-)</code>. O <code>-am</code> é <code>-a</code> (prepara sozinho os arquivos <strong>já rastreados</strong> que mudaram) mais <code>-m</code> (a mensagem): um atalho que só é seguro quando você acabou de ver o <code>git diff</code>.</p>
+
+<div class="try" data-setup="mkdir -p site/css site/receitas site/rascunhos;;cd site;;printf '&lt;!doctype html&gt;\n&lt;title&gt;Receitas da Ana&lt;/title&gt;\n&lt;link rel=&quot;stylesheet&quot; href=&quot;css/estilo.css&quot;&gt;\n&lt;h1&gt;Receitas da Ana&lt;/h1&gt;\n&lt;ul&gt;\n  &lt;li&gt;&lt;a href=&quot;receitas/bolo.html&quot;&gt;Bolo de cenoura&lt;/a&gt;&lt;/li&gt;\n&lt;/ul&gt;\n' &gt; index.html;;printf 'body { font-family: sans-serif; }\nh1 { color: #c0392b; }\n' &gt; css/estilo.css;;printf '&lt;!doctype html&gt;\n&lt;title&gt;Bolo de cenoura&lt;/title&gt;\n&lt;h1&gt;Bolo de cenoura&lt;/h1&gt;\n&lt;p&gt;3 cenouras, 2 xícaras de farinha, 3 ovos.&lt;/p&gt;\n' &gt; receitas/bolo.html;;echo 'fazer página de pudim' &gt; rascunhos/ideias.txt;;git init -q;;echo 'rascunhos/' &gt; .gitignore;;git add .;;git commit -q -m 'Versão inicial do site'" data-goal="commits:2,limpo,contem:HEAD:css/estilo.css=#27ae60" data-solucao="sed -i 's/#c0392b/#27ae60/' css/estilo.css;;git diff;;git commit -am 'Muda a cor do título para verde'">
+<p class="try-task"><strong>Missão 2:</strong> troque a cor do título de <code>#c0392b</code> para <code>#27ae60</code> no <code>css/estilo.css</code> (use o <code>sed</code> da etapa), confira com <code>git diff</code> e commite.</p>
+</div>
+
+<h2>Etapa 3: uma página nova (dois arquivos, um assunto)</h2>
+<p>A Ana cria a página do pudim e coloca o link na página inicial. São dois arquivos, mas <strong>um assunto só</strong>: um sem o outro deixaria o site quebrado (um link para página inexistente, ou uma página sem link). Por isso, vão juntos no mesmo commit:</p>
+<pre class="term" data-cwd="~/site">$ git status
+No ramo main
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   index.html                       « o link novo
+
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	receitas/pudim.html                          « a página nova
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+$ git diff
+diff --git a/index.html b/index.html
+index 040fc49..abb816a 100644
+--- a/index.html
++++ b/index.html
+@@ -4,4 +4,5 @@
+ &lt;h1&gt;Receitas da Ana&lt;/h1&gt;
+ &lt;ul&gt;
+   &lt;li&gt;&lt;a href="receitas/bolo.html"&gt;Bolo de cenoura&lt;/a&gt;&lt;/li&gt;
++  &lt;li&gt;&lt;a href="receitas/pudim.html"&gt;Pudim de leite&lt;/a&gt;&lt;/li&gt;
+ &lt;/ul&gt;
+$ git add index.html receitas/pudim.html
+$ git commit -m 'Adiciona a página do pudim'
+[main 580b96c] Adiciona a página do pudim
+ 2 files changed, 5 insertions(+)
+ create mode 100644 receitas/pudim.html</pre>
+<p>Repare: o <code>git diff</code> mostrou só o <code>index.html</code>. Arquivos novos (não rastreados) não aparecem no <code>git diff</code>; para eles, o <code>git status</code> é quem avisa. E aqui o atalho <code>-a</code> <strong>não</strong> serviria: ele não pega arquivos novos, e o <code>pudim.html</code> ficaria de fora.</p>
+
+<div class="try" data-setup="mkdir -p site/css site/receitas site/rascunhos;;cd site;;printf '&lt;!doctype html&gt;\n&lt;title&gt;Receitas da Ana&lt;/title&gt;\n&lt;link rel=&quot;stylesheet&quot; href=&quot;css/estilo.css&quot;&gt;\n&lt;h1&gt;Receitas da Ana&lt;/h1&gt;\n&lt;ul&gt;\n  &lt;li&gt;&lt;a href=&quot;receitas/bolo.html&quot;&gt;Bolo de cenoura&lt;/a&gt;&lt;/li&gt;\n&lt;/ul&gt;\n' &gt; index.html;;printf 'body { font-family: sans-serif; }\nh1 { color: #c0392b; }\n' &gt; css/estilo.css;;printf '&lt;!doctype html&gt;\n&lt;title&gt;Bolo de cenoura&lt;/title&gt;\n&lt;h1&gt;Bolo de cenoura&lt;/h1&gt;\n&lt;p&gt;3 cenouras, 2 xícaras de farinha, 3 ovos.&lt;/p&gt;\n' &gt; receitas/bolo.html;;echo 'fazer página de pudim' &gt; rascunhos/ideias.txt;;git init -q;;echo 'rascunhos/' &gt; .gitignore;;git add .;;git commit -q -m 'Versão inicial do site';;sed -i 's/#c0392b/#27ae60/' css/estilo.css;;git commit -q -am 'Muda a cor do título para verde';;printf '&lt;!doctype html&gt;\n&lt;title&gt;Pudim de leite&lt;/title&gt;\n&lt;h1&gt;Pudim de leite&lt;/h1&gt;\n&lt;p&gt;1 lata de leite condensado, 3 ovos.&lt;/p&gt;\n' &gt; receitas/pudim.html;;printf '&lt;!doctype html&gt;\n&lt;title&gt;Receitas da Ana&lt;/title&gt;\n&lt;link rel=&quot;stylesheet&quot; href=&quot;css/estilo.css&quot;&gt;\n&lt;h1&gt;Receitas da Ana&lt;/h1&gt;\n&lt;ul&gt;\n  &lt;li&gt;&lt;a href=&quot;receitas/bolo.html&quot;&gt;Bolo de cenoura&lt;/a&gt;&lt;/li&gt;\n  &lt;li&gt;&lt;a href=&quot;receitas/pudim.html&quot;&gt;Pudim de leite&lt;/a&gt;&lt;/li&gt;\n&lt;/ul&gt;\n' &gt; index.html" data-goal="commits:3,limpo,rastreado:receitas/pudim.html,contem:HEAD:index.html=pudim.html" data-solucao="git status;;git add index.html receitas/pudim.html;;git commit -m 'Adiciona a página do pudim'">
+<p class="try-task"><strong>Missão 3:</strong> a página <code>receitas/pudim.html</code> já foi criada e o link já está no <code>index.html</code>. Faça <strong>um único commit</strong> com os dois arquivos. Dica: o <code>git commit -am</code> não serve aqui. Por quê?</p>
+</div>
+
+<h2>Etapa 4: um erro, desfeito com segurança</h2>
+<p>Num impulso, a Ana trocou o nome do site para "Receitas da Vovó" e commitou. No dia seguinte, desistiu. Como esse commit pode já estar no GitHub (e no computador do Bruno), ela não apaga nada: cria um commit <strong>que desfaz</strong> o outro, com o <a href="git-revert.html">git revert</a>:</p>
+<pre class="term" data-cwd="~/site">$ git log --oneline -1
+98a83bd Muda o título para Receitas da Vovó
+$ git revert --no-edit HEAD
+[main 80103de] Revert "Muda o título para Receitas da Vovó"
+ Date: Thu Oct 15 10:30:00 2026 -0300
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+$ git log --oneline
+80103de Revert "Muda o título para Receitas da Vovó"     « o commit que desfaz
+98a83bd Muda o título para Receitas da Vovó              « o erro continua no histórico
+580b96c Adiciona a página do pudim
+0ebfbdd Muda a cor do título para verde
+10874b7 Versão inicial do site
+$ grep Receitas index.html
+&lt;title&gt;Receitas da Ana&lt;/title&gt;                       « o nome voltou
+&lt;h1&gt;Receitas da Ana&lt;/h1&gt;</pre>
+<dl class="anatomy">
+  <dt>git revert</dt><dd>Cria um commit novo com o <strong>contrário</strong> das mudanças do commit indicado.</dd>
+  <dt>--no-edit</dt><dd>Aceita a mensagem automática (<code>Revert "…"</code>) sem abrir o editor.</dd>
+  <dt>HEAD</dt><dd>O commit a desfazer: aqui, o último. Pode ser qualquer hash, por exemplo <code>git revert 98a83bd</code>.</dd>
+</dl>
+<p>O histórico conta a verdade: houve uma mudança e ela foi desfeita. Ninguém que já tinha o commit <code>98a83bd</code> é prejudicado. (Para erros que nunca saíram do seu computador, há outras ferramentas: veja <a href="desfazer.html">Desfazendo: o Mapa</a>.)</p>
+
+<div class="try" data-setup="mkdir -p site/css site/receitas site/rascunhos;;cd site;;printf '&lt;!doctype html&gt;\n&lt;title&gt;Receitas da Ana&lt;/title&gt;\n&lt;link rel=&quot;stylesheet&quot; href=&quot;css/estilo.css&quot;&gt;\n&lt;h1&gt;Receitas da Ana&lt;/h1&gt;\n&lt;ul&gt;\n  &lt;li&gt;&lt;a href=&quot;receitas/bolo.html&quot;&gt;Bolo de cenoura&lt;/a&gt;&lt;/li&gt;\n&lt;/ul&gt;\n' &gt; index.html;;printf 'body { font-family: sans-serif; }\nh1 { color: #c0392b; }\n' &gt; css/estilo.css;;printf '&lt;!doctype html&gt;\n&lt;title&gt;Bolo de cenoura&lt;/title&gt;\n&lt;h1&gt;Bolo de cenoura&lt;/h1&gt;\n&lt;p&gt;3 cenouras, 2 xícaras de farinha, 3 ovos.&lt;/p&gt;\n' &gt; receitas/bolo.html;;echo 'fazer página de pudim' &gt; rascunhos/ideias.txt;;git init -q;;echo 'rascunhos/' &gt; .gitignore;;git add .;;git commit -q -m 'Versão inicial do site';;sed -i 's/#c0392b/#27ae60/' css/estilo.css;;git commit -q -am 'Muda a cor do título para verde';;printf '&lt;!doctype html&gt;\n&lt;title&gt;Pudim de leite&lt;/title&gt;\n&lt;h1&gt;Pudim de leite&lt;/h1&gt;\n&lt;p&gt;1 lata de leite condensado, 3 ovos.&lt;/p&gt;\n' &gt; receitas/pudim.html;;printf '&lt;!doctype html&gt;\n&lt;title&gt;Receitas da Ana&lt;/title&gt;\n&lt;link rel=&quot;stylesheet&quot; href=&quot;css/estilo.css&quot;&gt;\n&lt;h1&gt;Receitas da Ana&lt;/h1&gt;\n&lt;ul&gt;\n  &lt;li&gt;&lt;a href=&quot;receitas/bolo.html&quot;&gt;Bolo de cenoura&lt;/a&gt;&lt;/li&gt;\n  &lt;li&gt;&lt;a href=&quot;receitas/pudim.html&quot;&gt;Pudim de leite&lt;/a&gt;&lt;/li&gt;\n&lt;/ul&gt;\n' &gt; index.html;;git add index.html receitas/pudim.html;;git commit -q -m 'Adiciona a página do pudim';;sed -i 's/Receitas da Ana/Receitas da Vovó/g' index.html;;git commit -q -am 'Muda o título para Receitas da Vovó'" data-goal="commits:5,limpo,msg:Revert,contem:HEAD:index.html=Receitas da Ana" data-solucao="git log --oneline;;git revert --no-edit HEAD">
+<p class="try-task"><strong>Missão 4:</strong> o último commit trocou o nome do site para "Receitas da Vovó". Desfaça-o <strong>sem apagar o histórico</strong>, com um commit novo que faz o contrário. Confira com <code>git log --oneline</code> e <code>grep Receitas index.html</code>.</p>
+</div>
+
+<h2>Etapa 5: a versão 1.0</h2>
+<p>O site está pronto para ir ao ar. A Ana marca este ponto do histórico com uma <a href="git-tag.html">tag</a>, uma etiqueta que, ao contrário de um branch, nunca anda:</p>
+<pre class="term" data-cwd="~/site">$ git tag -a v1.0 -m 'Primeira versão no ar'
+$ git tag
+v1.0
+$ git log --oneline --decorate -2
+80103de (HEAD -&gt; main, tag: v1.0) Revert "Muda o título para Receitas da Vovó"
+98a83bd Muda o título para Receitas da Vovó</pre>
+<p>O <code>-a</code> cria uma tag "anotada" (com autor, data e a mensagem do <code>-m</code>), a recomendada para versões. No <code>git log --decorate</code>, a linha do commit mostra as etiquetas presas a ele: o branch <code>main</code> (com o <code>HEAD</code>) e a tag <code>v1.0</code>. O nome segue o <a href="versionamento-semantico.html">versionamento semântico</a>.</p>
+
+<div class="try" data-setup="mkdir -p site/css site/receitas site/rascunhos;;cd site;;printf '&lt;!doctype html&gt;\n&lt;title&gt;Receitas da Ana&lt;/title&gt;\n&lt;link rel=&quot;stylesheet&quot; href=&quot;css/estilo.css&quot;&gt;\n&lt;h1&gt;Receitas da Ana&lt;/h1&gt;\n&lt;ul&gt;\n  &lt;li&gt;&lt;a href=&quot;receitas/bolo.html&quot;&gt;Bolo de cenoura&lt;/a&gt;&lt;/li&gt;\n&lt;/ul&gt;\n' &gt; index.html;;printf 'body { font-family: sans-serif; }\nh1 { color: #c0392b; }\n' &gt; css/estilo.css;;printf '&lt;!doctype html&gt;\n&lt;title&gt;Bolo de cenoura&lt;/title&gt;\n&lt;h1&gt;Bolo de cenoura&lt;/h1&gt;\n&lt;p&gt;3 cenouras, 2 xícaras de farinha, 3 ovos.&lt;/p&gt;\n' &gt; receitas/bolo.html;;echo 'fazer página de pudim' &gt; rascunhos/ideias.txt;;git init -q;;echo 'rascunhos/' &gt; .gitignore;;git add .;;git commit -q -m 'Versão inicial do site';;sed -i 's/#c0392b/#27ae60/' css/estilo.css;;git commit -q -am 'Muda a cor do título para verde';;printf '&lt;!doctype html&gt;\n&lt;title&gt;Pudim de leite&lt;/title&gt;\n&lt;h1&gt;Pudim de leite&lt;/h1&gt;\n&lt;p&gt;1 lata de leite condensado, 3 ovos.&lt;/p&gt;\n' &gt; receitas/pudim.html;;printf '&lt;!doctype html&gt;\n&lt;title&gt;Receitas da Ana&lt;/title&gt;\n&lt;link rel=&quot;stylesheet&quot; href=&quot;css/estilo.css&quot;&gt;\n&lt;h1&gt;Receitas da Ana&lt;/h1&gt;\n&lt;ul&gt;\n  &lt;li&gt;&lt;a href=&quot;receitas/bolo.html&quot;&gt;Bolo de cenoura&lt;/a&gt;&lt;/li&gt;\n  &lt;li&gt;&lt;a href=&quot;receitas/pudim.html&quot;&gt;Pudim de leite&lt;/a&gt;&lt;/li&gt;\n&lt;/ul&gt;\n' &gt; index.html;;git add index.html receitas/pudim.html;;git commit -q -m 'Adiciona a página do pudim';;sed -i 's/Receitas da Ana/Receitas da Vovó/g' index.html;;git commit -q -am 'Muda o título para Receitas da Vovó';;git revert --no-edit HEAD" data-goal="tag:v1.0,commits:5,limpo" data-solucao="git tag -a v1.0 -m 'Primeira versão no ar'">
+<p class="try-task"><strong>Missão 5:</strong> marque o commit atual com a tag anotada <code>v1.0</code> e a mensagem "Primeira versão no ar". Confira com <code>git tag</code> e <code>git log --oneline --decorate</code>.</p>
+</div>
+
+<h2>Etapa 6: para o GitHub</h2>
+<p>A Ana criou no GitHub um repositório vazio chamado <code>site-receitas</code> (veja <a href="github-repositorio.html">Criando um Repositório no GitHub</a>; a tela do site é descrita lá). Agora ela conecta a pasta ao GitHub e envia o branch e a tag:</p>
+<pre class="term" data-cwd="~/site">$ git remote add origin https://github.com/ana-souza/site-receitas.git
+$ git remote -v
+origin	https://github.com/ana-souza/site-receitas.git (fetch)
+origin	https://github.com/ana-souza/site-receitas.git (push)
+$ git push -u origin main
+Enumerating objects: 21, done.
+Counting objects: 100% (21/21), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (17/17), done.
+Writing objects: 100% (21/21), 2.02 KiB | 1.01 MiB/s, done.
+Total 21 (delta 4), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/site-receitas.git
+ * [new branch]      main -&gt; main                « o main foi criado no GitHub
+branch 'main' set up to track 'origin/main'.     « e ficou ligado ao seu main
+$ git push origin v1.0
+Enumerating objects: 1, done.
+Counting objects: 100% (1/1), done.
+Writing objects: 100% (1/1), 172 bytes | 172.00 KiB/s, done.
+Total 1 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/site-receitas.git
+ * [new tag]         v1.0 -&gt; v1.0                « as tags vão à parte!
+$ git status
+No ramo main
+Your branch is up to date with 'origin/main'.    « igual ao GitHub
+
+nothing to commit, working tree clean</pre>
+<ul>
+  <li><code>git remote add origin URL</code>: dá o apelido <code>origin</code> ao endereço do GitHub (veja <a href="git-remote.html">git remote</a>).</li>
+  <li><code>-u</code> no primeiro push: liga o <code>main</code> local ao <code>origin/main</code> (<a href="upstream.html">upstream</a>), e daí em diante basta <code>git push</code> e <code>git pull</code>.</li>
+  <li><code>git push origin v1.0</code>: o <code>git push</code> comum <strong>não</strong> envia tags; é preciso enviá-las pelo nome (ou todas com <code>--tags</code>).</li>
+</ul>
+<p>(As saídas desta etapa e da próxima vieram do laboratório, com um "GitHub de mentira" local. Para o site aparecer na internet, o próximo passo é ativar o <a href="github-pages.html">GitHub Pages</a>.)</p>
+
+<h2>Etapa 7: o Bruno ajuda</h2>
+<p>O Bruno clonou o repositório, acrescentou o açúcar que faltava na receita de bolo e enviou o commit dele ao GitHub. Para receber, a Ana faz <code>git pull</code>:</p>
+<pre class="term" data-cwd="~/site">$ git pull
+remote: Enumerating objects: 7, done.
+remote: Counting objects: 100% (7/7), done.
+remote: Compressing objects: 100% (4/4), done.
+remote: Total 4 (delta 2), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (4/4), 386 bytes | 386.00 KiB/s, done.
+From https://github.com/ana-souza/site-receitas
+   80103de..37e0186  main       -&gt; origin/main      « o GitHub andou
+Updating 80103de..37e0186
+Fast-forward                                         « só avançar: sem conflito
+ receitas/bolo.html | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+$ git log --oneline -3
+37e0186 (HEAD -&gt; main, origin/main, origin/HEAD) Acrescenta o açúcar ao bolo
+80103de (tag: v1.0) Revert "Muda o título para Receitas da Vovó"
+98a83bd Muda o título para Receitas da Vovó
+$ cat receitas/bolo.html
+&lt;!doctype html&gt;
+&lt;title&gt;Bolo de cenoura&lt;/title&gt;
+&lt;h1&gt;Bolo de cenoura&lt;/h1&gt;
+&lt;p&gt;3 cenouras, 2 xícaras de farinha, 3 ovos e 1 xícara de açúcar.&lt;/p&gt;</pre>
+<p>O <code>Fast-forward</code> quer dizer que a Ana não tinha nada novo, então o Git só "avançou" o <code>main</code> dela até o commit do Bruno (veja <a href="fast-forward.html">Merge Fast-forward</a>). A tag <code>v1.0</code> ficou onde estava: a versão 1.0 continua sendo a de antes do açúcar.</p>
+
+<hr>
+
+<h2>O histórico final</h2>
+<pre>10874b7 ── 0ebfbdd ── 580b96c ── 98a83bd ── 80103de ── 37e0186  ← main, origin/main
+ inicial     cor        pudim      Vovó      revert      açúcar
+                                               ↑
+                                              v1.0</pre>
+<p>Cada commit conta um passo do site, até o erro e o conserto. Se um dia a página do pudim der problema, a Ana sabe exatamente qual commit olhar.</p>
+
+<hr>
+
+<h2>Quando dá errado neste projeto</h2>
+
+<div class="cenario">
+<strong>Commitei a pasta <code>rascunhos/</code> sem querer</strong>
+<p><strong>O que aconteceu:</strong> o <code>git add .</code> veio antes do <code>.gitignore</code>.</p>
+<p><strong>Como resolver:</strong> crie o <code>.gitignore</code>, tire a pasta do Git sem apagá-la do disco com <code>git rm -r --cached rascunhos</code> e commite (veja <a href="git-rm.html">git rm</a>). Se havia algo sensível lá e você já fez push, veja <a href="senha-commitada.html">Commitei uma Senha!</a>.</p>
+</div>
+
+<div class="cenario">
+<strong>O <code>git commit -am</code> não levou a página nova</strong>
+<p><strong>O que aconteceu:</strong> o <code>-a</code> só prepara arquivos já rastreados; arquivos novos ficam de fora.</p>
+<p><strong>Como resolver:</strong> <code>git add receitas/pudim.html</code> e, se o commit anterior ainda não foi enviado, junte ao último com <code>git commit --amend --no-edit</code> (veja <a href="commit-amend.html">--amend</a>).</p>
+</div>
+
+<div class="cenario">
+<strong>A tag não aparece no GitHub</strong>
+<p><strong>O que aconteceu:</strong> o <code>git push</code> comum não envia tags.</p>
+<p><strong>Como resolver:</strong> <code>git push origin v1.0</code> (ou <code>git push --tags</code>).</p>
+</div>
+
+<div class="cenario">
+<strong>O <code>git push</code> foi rejeitado</strong>
+<p><strong>O que aconteceu:</strong> alguém (o Bruno) enviou commits que você ainda não tem.</p>
+<p><strong>Como resolver:</strong> <code>git pull</code> primeiro, depois <code>git push</code>. Os detalhes e as mensagens estão em <a href="push-rejeitado.html">Push Rejeitado</a>.</p>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Ignorar uma pasta</h3>
+<p>Complete a linha do <code>.gitignore</code> que ignora a pasta <code>rascunhos</code> inteira:</p>
+<div class="ex-code"><input data-answer="rascunhos/" aria-label="padrão"></div>
+</div>
+
+<div class="exercise">
+<h3>2. Desfazer com segurança</h3>
+<p>Complete para criar um commit que desfaz o último:</p>
+<div class="ex-code">git <input data-answer="revert" aria-label="subcomando"> --no-edit HEAD</div>
+</div>
+
+<div class="exercise">
+<h3>3. Enviar a tag</h3>
+<p>Complete para enviar a tag <code>v1.0</code> ao GitHub:</p>
+<div class="ex-code">git push origin <input data-answer="v1.0" aria-label="tag"></div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. Por que a página do pudim e o link no <code>index.html</code> foram no mesmo commit?</p>
+<label><input type="radio" name="q4"> Porque o Git não deixa commitar um arquivo novo sozinho.</label>
+<label><input type="radio" name="q4"> Para economizar commits.</label>
+<label><input type="radio" name="q4"> Porque são um assunto só: um sem o outro deixaria o site quebrado.</label>
+<label><input type="radio" name="q4"> Porque o <code>git add .</code> obriga.</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. Por que a Ana usou <code>git revert</code> em vez de apagar o commit errado?</p>
+<label><input type="radio" name="q5"> Porque o commit podia já estar no GitHub e com o Bruno; o revert não reescreve o histórico.</label>
+<label><input type="radio" name="q5"> Porque o <code>git revert</code> apaga o commit do GitHub.</label>
+<label><input type="radio" name="q5"> Porque não existe outra forma de desfazer no Git.</label>
+<label><input type="radio" name="q5"> Porque o revert é mais rápido.</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">6. Depois do <code>git pull</code> com o commit do Bruno, onde está a tag <code>v1.0</code>?</p>
+<label><input type="radio" name="q6"> Andou junto com o <code>main</code> para o commit do Bruno.</label>
+<label><input type="radio" name="q6"> Continua no mesmo commit de antes: tags nunca andam.</label>
+<label><input type="radio" name="q6"> Foi apagada pelo pull.</label>
+<label><input type="radio" name="q6"> Foi para o <code>origin/main</code>.</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Para colocar um projeto que já existe no Git: <code>git init</code>, <code>.gitignore</code> <strong>antes</strong> do <code>git add .</code>, <code>git status</code> e o primeiro commit.</li>
+  <li>Um assunto por commit, mesmo que envolva vários arquivos; o <code>-a</code> não pega arquivos novos.</li>
+  <li>Erro que pode estar publicado: <code>git revert</code>, que desfaz com um commit novo.</li>
+  <li>Versões: <code>git tag -a v1.0 -m '…'</code> e <code>git push origin v1.0</code>.</li>
+  <li>GitHub: <code>git remote add origin URL</code>, <code>git push -u origin main</code> e, para receber o trabalho dos outros, <code>git pull</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
