@@ -1044,7 +1044,7 @@
       var gitdir = g.o["--bare"] ? alvo : alvo + "/.git";
       var existia = noDe(sh, gitdir + "/HEAD");
       if (existia) {
-        if (!g.o["-q"]) io.out("Repositório Git existente reinicializado em " + gitdir + "/\n");
+        if (!g.o["-q"]) io.out("Reinitialized existing Git repository in " + gitdir + "/\n");
         return 0;
       }
       var ramo = g.o["-b"] || configSemRepo(sh, "init.defaultBranch");
@@ -1936,12 +1936,14 @@
       mud = mud.filter(function (m) { return conflitos.indexOf(m.para) < 0; });
       if (o.quiet) return mud.length ? 1 : 0;
       var out = "";
-      conflitos.forEach(function (k) { if (!specs.length || specs.some(function (s) { return casaSpec(s, k); })) out += combinadoConflito(repo, st, k); });
+      var semCC = "";
+      conflitos.forEach(function (k) { if (!specs.length || specs.some(function (s) { return casaSpec(s, k); })) { var e0 = st.conf[k]; if (e0[2] && e0[3] && st.W[k]) out += combinadoConflito(repo, st, k); else semCC += "* Unmerged path " + k + "\n"; } });
       if (o.nameOnly) mud.forEach(function (m) { out += repo.relCwd(m.para) + "\n"; });
       else if (o.nameStatus) mud.forEach(function (m) { out += m.tipo + "\t" + repo.relCwd(m.para) + "\n"; });
       else if (o.stat) out += repo.diffstat(mud);
       else if (o.shortstat) out += mud.length ? repo.shortstat(mud) : "";
       else out += repo.patch(mud, { ctx: o.ctx, palavras: o.wordDiff });
+      out += semCC;
       io.out(out);
       return o.exitCode && mud.length ? 1 : 0;
     };
@@ -2008,8 +2010,8 @@
       if (g.erro) { io.err("error: " + g.erro + "\n"); return 129; }
       var repo = precisaRepo(io); precisaArvore(repo);
       if (!g.ops.length) { io.err("usage: git rm [-f | --force] [-n] [-r] [--cached] [--ignore-unmatch]\n              [--quiet] [--pathspec-from-file=<file> [--pathspec-file-nul]]\n              [--] [<pathspec>...]\n\n    -n, --[no-]dry-run    dry run\n    -q, --[no-]quiet      do not list removed files\n    --[no-]cached         only remove from the index\n    -f, --[no-]force      override the up-to-date check\n    -r                    allow recursive removal\n    --[no-]ignore-unmatch exit with a zero status even if nothing matched\n    --[no-]sparse         allow updating entries outside of the sparse-checkout cone\n    --[no-]pathspec-from-file <file>\n                          read pathspec from file\n    --[no-]pathspec-file-nul\n                          with --pathspec-from-file, pathspec elements are separated with NUL character\n\n"); return 129; }
-      var st = repo.estado(), idx = {}, alvos = [];
-      st.idx.forEach(function (e) { if (!e.stage) idx[e.path] = e; });
+      var st = repo.estado(), idx = {}, alvos = [], confE = [];
+      st.idx.forEach(function (e) { if (!e.stage) idx[e.path] = e; else { confE.push(e); if (!idx[e.path]) idx[e.path] = { mode: e.mode, hash: e.hash, stage: 0, path: e.path, conflito: true }; } });
       for (var i = 0; i < g.ops.length; i++) {
         var sp = pathspec(repo, g.ops[i]), achou = Object.keys(idx).filter(function (k) { return casaSpec(sp, k); });
         if (!achou.length) { io.err("fatal: pathspec '" + g.ops[i] + "' não encontrou nenhum arquivo\n"); return 128; }
@@ -2033,7 +2035,7 @@
         if (!g.o["--cached"]) repo.apagarArquivo(k);
       });
       io.out(out);
-      if (!g.o["-n"]) repo.gravarIndice(Object.keys(idx).map(function (k) { return idx[k]; }));
+      if (!g.o["-n"]) repo.gravarIndice(Object.keys(idx).filter(function (k) { return !idx[k].conflito; }).map(function (k) { return idx[k]; }).concat(confE.filter(function (e) { return idx[e.path]; })));
       return 0;
     };
     CMDS.mv = function (args, io, sh) {
@@ -2415,8 +2417,8 @@
           return;
         }
         // apagado de um lado, modificado do outro
-        if (!o) { conflitos.push({ path: k, tipo: "modify/delete", ents: [b, null, t] }); msgs.push("CONFLITO (modificar/delete): " + k + " excluído em " + rotO + " e modificado em " + rotT + ". Versão " + rotT + " de " + k + " deixada na árvore.\n"); return; }
-        conflitos.push({ path: k, tipo: "modify/delete", ents: [b, o, null] }); msgs.push("CONFLITO (modificar/delete): " + k + " excluído em " + rotT + " e modificado em " + rotO + ". Versão " + rotO + " de " + k + " deixada na árvore.\n");
+        if (!o) { conflitos.push({ path: k, tipo: "modify/delete", ents: [b, null, t] }); msgs.push("CONFLICT (modify/delete): " + k + " deleted in " + rotO + " and modified in " + rotT + ".  Version " + rotT + " of " + k + " left in tree.\n"); return; }
+        conflitos.push({ path: k, tipo: "modify/delete", ents: [b, o, null] }); msgs.push("CONFLICT (modify/delete): " + k + " deleted in " + rotT + " and modified in " + rotO + ".  Version " + rotO + " of " + k + " left in tree.\n");
       });
       return { mapa: res, conflitos: conflitos, msgs: msgs };
     };
@@ -2543,6 +2545,7 @@
         if (ops.length) tags = tags.filter(function (t) { return ops.some(function (p) { return new RegExp("^" + globRe(p) + "$").test(t.nome.slice(10)); }); });
         if (o["--contains"]) { var hc0 = repo.commitDe(o["--contains"]); tags = tags.filter(function (t) { return hc0 && repo.ehAncestral(hc0, repo.descascar(t.hash)); }); }
         if (o["--points-at"]) { var hp0 = repo.rev(o["--points-at"]); tags = tags.filter(function (t) { return repo.descascar(t.hash) === repo.descascar(hp0); }); }
+        if (!o["--sort"] && repo.config("tag.sort")) o["--sort"] = repo.config("tag.sort");
         if (o["--sort"]) {
           var srt = lista(o["--sort"]).slice(-1)[0], inv = srt[0] === "-"; if (inv) srt = srt.slice(1);
           var cmpV = function (a, b) { var x = a.split(/(\d+)/), y = b.split(/(\d+)/); for (var i = 0; i < Math.max(x.length, y.length); i++) { var p = x[i] || "", q = y[i] || ""; if (p === q) continue; if (/^\d+$/.test(p) && /^\d+$/.test(q)) return +p - +q; return p < q ? -1 : 1; } return 0; };
@@ -3168,6 +3171,7 @@
       } else repo.gravar("HEAD", repo.descascar(hRamo) + "\n");
       repo.gravar("config", cfg);
       repo.logar("HEAD", ZERO, repo.descascar(hRamo), "clone: from " + urlCfg);
+      if (ehUrlLocal && !g.o["-q"]) io.err("done.\n");
       if (!g.o["--no-checkout"]) {
         var T = repo.arvoreDe(repo.descascar(hRamo));
         Object.keys(T).forEach(function (k) { repo.escreverArquivo(k, T[k]); });

@@ -1,0 +1,65 @@
+### config-subpasta-stash-clone-local
+mkdir r && cd r && git init -q
+git init
+git config get user.name
+git config list --global
+git config set user.name "Ana S."
+git config user.name
+git config --unset user.name
+git config user.name
+git config --local --list
+mkdir sub; cd sub
+echo a > a.txt; echo b > ../b.txt
+git status
+git status -s
+git add .
+git status -s
+cd ..
+git commit -qm um
+for i in $(seq 1 30); do echo "linha $i" >> longo.txt; done
+git add longo.txt; git commit -qm longo
+sed -i -e 's/linha 3$/LINHA 3/' -e 's/linha 25/LINHA 25/' longo.txt
+git diff
+git diff -U1
+git stash
+git stash list
+git stash show
+git stash show -p
+git stash pop
+git checkout -- longo.txt
+cd ..
+git clone r copia
+cd copia
+git log --oneline
+git remote -v
+git branch -vv
+cd ../r
+git branch -vv
+git status
+### merge-modify-delete-add-add
+mkdir r && cd r && git init -q
+echo base > comum.txt; echo apagar > apagar.txt; git add .; git commit -qm base
+git switch -qc outro
+echo outro > comum.txt; echo novo-outro > novo.txt; echo mudou >> apagar.txt
+git add .; git commit -qm outro
+git switch -q main
+echo main > comum.txt; echo novo-main > novo.txt; git rm -q apagar.txt
+git add .; git commit -qm main
+git merge outro
+git status
+git status -s
+git diff
+cat novo.txt
+git add comum.txt novo.txt
+git rm apagar.txt
+git status
+git commit --no-edit
+git log --oneline --graph
+git merge outro
+git switch -qc solo main
+git merge --no-ff -m 'nada' main
+git switch -q --orphan vazio
+echo x > x; git add x; git commit -qm x
+git merge main
+git merge main --allow-unrelated-histories -m junta
+git log --oneline --graph --all
