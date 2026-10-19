@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git revert — desfazendo um commit com segurança | Guia Git</title>
+<meta name="description" content="Como desfazer um commit com git revert sem apagar o histórico: o commit 'ao contrário', a mensagem Revert, reverter um commit do meio, reverter o revert, --no-edit e --no-commit, conflito no revert e --abort, e quando usar revert em vez de reset. Saídas reais do Git em português.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">revert</span></h1>
+
+<p class="intro">Três commits atrás, a Ana mudou o tempo do bolo de 40 para 90 minutos. Foi um erro: o bolo queimou. Desde então ela já fez outros commits, e o repositório já está no GitHub, onde o Bruno também trabalha. Ela não quer apagar nada do histórico; quer só <strong>desfazer aquela mudança</strong>. É para isso que serve o <code>git revert</code> (em inglês, <em>revert</em> = "reverter, voltar atrás"): ele cria um commit <strong>novo</strong> que faz exatamente o contrário do commit errado.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que o <code>git revert</code> faz: um commit "ao contrário", que desfaz outro sem apagar nada.</li>
+  <li>Como reverter o último commit e um commit do meio do histórico.</li>
+  <li>Como ler a mensagem <code>Revert "…"</code> que o Git cria, e como desfazer o desfazer.</li>
+  <li>O que fazer quando o revert dá conflito (e como desistir com <code>--abort</code>).</li>
+  <li>Quando usar <code>revert</code> e quando usar <a href="git-reset.html">reset</a>.</li>
+</ul>
+</div>
+
+<p>Todas as saídas desta aula vieram do Git real da máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português.</p>
+
+<hr>
+
+<h2>A ideia: o lançamento de estorno</h2>
+<p>No extrato do banco, quando uma compra é cobrada errado, o banco <strong>não apaga</strong> a linha da cobrança. Ele lança uma linha nova, um <strong>estorno</strong>, com o mesmo valor ao contrário. O saldo volta ao normal, e o extrato continua contando a história inteira: a cobrança errada e a correção.</p>
+<p>O <code>git revert</code> é o estorno do Git:</p>
+<ul>
+  <li>o commit errado <strong>continua</strong> no histórico;</li>
+  <li>um commit <strong>novo</strong> entra no topo, desfazendo as mudanças dele (o que foi acrescentado é tirado, o que foi tirado volta);</li>
+  <li>nenhum commit existente muda, então quem já baixou o histórico (o Bruno, o GitHub) <strong>não tem problema</strong> nenhum: recebe só mais um commit.</li>
+</ul>
+
+<hr>
+
+<h2>1. O repositório da Ana</h2>
+<p>O histórico tem cinco commits. O errado é o quarto, "Muda tempo do bolo para 90 minutos", e depois dele já veio o brigadeiro:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+8b27670 Adiciona receita de brigadeiro
+f5b361b Muda tempo do bolo para 90 minutos   « o commit errado
+44ce6c7 Adiciona receita de pudim
+da935f4 Adiciona receita de bolo
+fe996fb Primeiro commit
+$ cat bolo.txt
+Bolo de cenoura
+Forno: 180 graus
+Tempo: 90 minutos
+$ git show HEAD~1
+commit f5b361b814ce43c77dcf69671b11d3be7a305868
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Muda tempo do bolo para 90 minutos
+
+diff --git a/bolo.txt b/bolo.txt
+index 5219fcf..a4904ee 100644
+--- a/bolo.txt
++++ b/bolo.txt
+@@ -1,3 +1,3 @@
+ Bolo de cenoura
+ Forno: 180 graus
+-Tempo: 40 minutos   « saiu
++Tempo: 90 minutos   « entrou
+</pre>
+
+<p>O <code>git show</code> mostra o que aquele commit mudou: a linha com <code>-</code> (vermelha, no terminal) saiu, e a linha com <code>+</code> (verde) entrou (veja <a href="git-show.html">git show</a>). É exatamente isso que a Ana quer desfazer.</p>
+
+<h2>2. Revertendo um commit do meio</h2>
+<p>Para apontar o commit errado, a Ana pode usar o hash dele (<code>f5b361b</code>) ou o apelido <code>HEAD~1</code> ("um commit antes do HEAD"; veja <a href="head.html">O que é HEAD</a>). Ela usa a opção <code>--no-edit</code> para aceitar a mensagem que o Git sugere:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git revert --no-edit HEAD~1
+[main 188c31a] Revert "Muda tempo do bolo para 90 minutos"
+ Date: Thu Oct 15 10:30:00 2026 -0300
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+</pre>
+
+<dl class="anatomy">
+  <dt>git revert</dt><dd>O comando: "crie um commit que desfaça…".</dd>
+  <dt>--no-edit</dt><dd>Aceite a mensagem automática sem abrir o editor. Sem essa opção, o Git abre o editor (no Ubuntu, normalmente o <code>nano</code>) com a mensagem já escrita, para você completar com o <strong>porquê</strong>; basta salvar e fechar.</dd>
+  <dt>HEAD~1</dt><dd>O commit a desfazer. Pode ser o hash (<code>git revert f5b361b</code>), o hash curto, ou qualquer outro jeito de nomear um commit.</dd>
+</dl>
+
+<p>Linha por linha da resposta:</p>
+<dl class="anatomy">
+  <dt>[main 188c31a]</dt><dd>Um commit <strong>novo</strong> foi criado no branch <code>main</code>, com o hash <code>188c31a</code>.</dd>
+  <dt>Revert "Muda tempo do bolo para 90 minutos"</dt><dd>A mensagem automática: "Reverte" e, entre aspas, o título do commit desfeito.</dd>
+  <dt>Date: …</dt><dd>A data do commit novo (no laboratório do guia, o relógio é fixo em 15/10/2026 10:30).</dd>
+  <dt>1 file changed, 1 insertion(+), 1 deletion(-)</dt><dd>Um arquivo mudou: uma linha entrou (a dos 40 minutos) e uma saiu (a dos 90).</dd>
+</dl>
+
+<p>Agora o histórico e o arquivo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+188c31a Revert "Muda tempo do bolo para 90 minutos"   « o estorno
+8b27670 Adiciona receita de brigadeiro
+f5b361b Muda tempo do bolo para 90 minutos            « continua aqui
+44ce6c7 Adiciona receita de pudim
+da935f4 Adiciona receita de bolo
+fe996fb Primeiro commit
+$ cat bolo.txt
+Bolo de cenoura
+Forno: 180 graus
+Tempo: 40 minutos
+$ git status
+No ramo main
+nothing to commit, working tree clean
+</pre>
+
+<p>Seis commits: os cinco de antes, intactos (mesmos hashes), e o estorno no topo. O <code>bolo.txt</code> voltou a dizer 40 minutos. E o brigadeiro, que veio <strong>depois</strong> do commit errado, continua lá: o revert desfaz <strong>só</strong> as mudanças daquele commit, não "volta no tempo".</p>
+
+<p>Veja o commit que o Git criou:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git show HEAD
+commit 188c31a3404015f8effbbbd9591006100faa5489
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Revert "Muda tempo do bolo para 90 minutos"
+
+    This reverts commit f5b361b814ce43c77dcf69671b11d3be7a305868.
+
+diff --git a/bolo.txt b/bolo.txt
+index a4904ee..5219fcf 100644
+--- a/bolo.txt
++++ b/bolo.txt
+@@ -1,3 +1,3 @@
+ Bolo de cenoura
+ Forno: 180 graus
+-Tempo: 90 minutos   « o espelho do commit errado
++Tempo: 40 minutos
+</pre>
+
+<p>A mensagem tem duas partes: o título <code>Revert "Muda tempo do bolo para 90 minutos"</code> e o corpo <code>This reverts commit …</code> ("isto reverte o commit …"), com o hash completo do commit desfeito. Essa mensagem sai em inglês mesmo com o sistema em português: é um texto fixo do Git, e é bom que seja assim, porque ferramentas e pessoas do mundo inteiro reconhecem um revert por ele. A mudança é o espelho do commit original: o que era <code>+</code> virou <code>-</code>, e vice-versa.</p>
+
+<div class="tip">
+<strong>Diga o porquê</strong>
+<p>A mensagem automática diz <strong>o que</strong> foi desfeito, mas não <strong>por que</strong>. Sem o <code>--no-edit</code>, o editor abre e você pode acrescentar uma linha como "O bolo queima em 90 minutos; o certo é 40." Quem ler o histórico daqui a um ano vai agradecer (veja <a href="mensagens-commit.html">Boas Mensagens de Commit</a>).</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit';;echo 'Tempo: 40 minutos' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;echo 'Tempo: 90 minutos' &gt; bolo.txt;;git commit -q -am 'Muda tempo do bolo para 90 minutos';;echo 'Brigadeiro' &gt; brigadeiro.txt;;git add brigadeiro.txt;;git commit -q -m 'Adiciona receita de brigadeiro'" data-goal="commits:5,limpo,contem:HEAD:bolo.txt=40 minutos,contem:HEAD:brigadeiro.txt=Brigadeiro,msg:Revert" data-solucao="git revert --no-edit HEAD~1">
+<p class="try-task"><strong>Missão:</strong> desfaça o commit "Muda tempo do bolo para 90 minutos" com <code>git revert</code>, sem perder o brigadeiro que veio depois. Use <code>git log --oneline</code> para achar o commit. No fim, <code>cat bolo.txt</code> deve mostrar 40 minutos.</p>
+</div>
+
+<hr>
+
+<h2>3. Desfazendo o desfazer</h2>
+<p>E se a Ana mudar de ideia (o forno dela era fraco, e 90 minutos estava certo)? Um revert é um commit como outro qualquer, e também pode ser revertido:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git revert --no-edit HEAD
+[main 4b4fbf8] Reapply "Muda tempo do bolo para 90 minutos"
+ Date: Thu Oct 15 10:30:00 2026 -0300
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+$ cat bolo.txt
+Bolo de cenoura
+Forno: 180 graus
+Tempo: 90 minutos
+$ git log --oneline
+4b4fbf8 Reapply "Muda tempo do bolo para 90 minutos"
+188c31a Revert "Muda tempo do bolo para 90 minutos"
+8b27670 Adiciona receita de brigadeiro
+f5b361b Muda tempo do bolo para 90 minutos
+44ce6c7 Adiciona receita de pudim
+da935f4 Adiciona receita de bolo
+fe996fb Primeiro commit
+</pre>
+
+<p>O Git percebeu que é um revert de revert e escreveu <code>Reapply "…"</code> ("aplica de novo") no título. (Gits mais antigos, de antes da versão 2.43, escreviam <code>Revert "Revert "…""</code>, com as aspas dobradas; você pode ver as duas formas em projetos por aí.) O tempo voltou a 90 minutos, e o histórico conta tudo o que aconteceu: a mudança, o estorno e a volta. Nenhuma informação se perdeu em nenhum momento.</p>
+
+<hr>
+
+<h2>4. Revertendo sem commitar na hora: <code>--no-commit</code></h2>
+<p>Com <code>-n</code> (ou <code>--no-commit</code>), o Git aplica as mudanças "ao contrário" na pasta e na área de preparo, mas <strong>não</strong> cria o commit. Serve para desfazer vários commits e juntar tudo num estorno só, ou para conferir o resultado antes. A Ana testou num outro repositório, o <code>r2</code>, cujo último commit (<code>7564c62</code>) ajusta o tempo do bolo para 50 minutos (é o mesmo repositório da próxima seção):</p>
+
+<pre class="term" data-cwd="~/r2">$ git revert -n HEAD
+$ git status
+No ramo main
+You are currently reverting commit 7564c62.
+  (all conflicts fixed: run "git revert --continue")
+  (use "git revert --skip" to skip this patch)
+  (use "git revert --abort" to cancel the revert operation)
+
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	modified:   bolo.txt
+</pre>
+
+<p>O <code>git revert -n</code> não mostrou nada, e nenhum commit foi criado. O <code>git status</code> conta o resto (essas linhas o Git do Ubuntu ainda não traduziu): "você está revertendo o commit 7564c62", com as três saídas possíveis entre parênteses, e o <code>bolo.txt</code> modificado na área de preparo. As mudanças estão preparadas, e o Git avisa que há um revert em andamento. A partir daqui, há duas saídas: <code>git commit</code> (ou <code>git revert --continue</code>) para criar o commit, ou <code>git revert --abort</code> para desistir e voltar a tudo como estava.</p>
+
+<hr>
+
+<h2 id="conflito">5. Quando o revert dá conflito</h2>
+<p>O revert tenta aplicar "o contrário" de um commit antigo no código de <strong>hoje</strong>. Se, depois do commit errado, alguém mexeu nas mesmas linhas, o Git não sabe o que fazer e para no meio, com um <a href="conflitos.html">conflito</a>. Num outro repositório, a Ana mudou o tempo de 40 para 90 e, depois, de 90 para 50. Agora ela tenta reverter o "90":</p>
+
+<pre class="term" data-cwd="~/r2">$ git log --oneline
+7564c62 Ajusta tempo do bolo para 50 minutos
+aa77c8f Muda tempo do bolo para 90 minutos     « quer desfazer este
+5209e42 Adiciona receita de bolo
+$ git revert --no-edit HEAD~1
+Mesclagem automática de bolo.txt
+CONFLITO (conteúdo): conflito de mesclagem em bolo.txt
+error: não foi possível reverter aa77c8f... Muda tempo do bolo para 90 minutos
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm &lt;pathspec&gt;", then run
+hint: "git revert --continue".
+hint: You can instead skip this commit with "git revert --skip".
+hint: To abort and get back to the state before "git revert",
+hint: run "git revert --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+$ git status
+No ramo main
+You are currently reverting commit aa77c8f.
+  (fix conflicts and run "git revert --continue")
+  (use "git revert --skip" to skip this patch)
+  (use "git revert --abort" to cancel the revert operation)
+
+Caminhos não mesclados:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+  (usar "git add &lt;arquivo&gt;..." para marcar resolução)
+	ambos modificados:   bolo.txt
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+$ cat bolo.txt
+Bolo de cenoura
+&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+Tempo: 50 minutos
+=======
+Tempo: 40 minutos
+&gt;&gt;&gt;&gt;&gt;&gt;&gt; parent of aa77c8f (Muda tempo do bolo para 90 minutos)
+</pre>
+
+<p>Linha por linha:</p>
+<dl class="anatomy">
+  <dt>Mesclagem automática de bolo.txt</dt><dd>O Git tentou combinar sozinho as duas versões do arquivo.</dd>
+  <dt>CONFLITO (conteúdo): conflito de mesclagem em bolo.txt</dt><dd>…e não conseguiu: as duas versões mexem na mesma linha.</dd>
+  <dt>error: não foi possível reverter aa77c8f…</dt><dd>O revert parou no meio. Nenhum commit foi criado ainda.</dd>
+  <dt>hint: …</dt><dd>As dicas (em inglês): "depois de resolver os conflitos, marque-os com <code>git add</code>/<code>git rm</code> e rode <code>git revert --continue</code>; você pode pular este commit com <code>git revert --skip</code>; para desistir e voltar ao estado de antes do <code>git revert</code>, rode <code>git revert --abort</code>". A última linha ensina a desligar essas dicas.</dd>
+  <dt>You are currently reverting commit aa77c8f.</dt><dd>No <code>git status</code>: "você está no meio do revert do commit aa77c8f", com as mesmas saídas.</dd>
+  <dt>ambos modificados: bolo.txt</dt><dd>O arquivo em conflito: mudou dos dois lados.</dd>
+  <dt>&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD … ======= … &gt;&gt;&gt;&gt;&gt;&gt;&gt;</dt><dd>Dentro do arquivo, as marcas do conflito: em cima, a linha de hoje (<code>HEAD</code>: 50 minutos); embaixo, o que o revert queria pôr (a versão do "pai" do commit desfeito: 40 minutos).</dd>
+</dl>
+
+<p>Desfazer o "90" significaria pôr "40" no lugar de "90"; mas a linha agora diz "50". Qual deve ficar? Só a Ana sabe. Ela tem duas saídas:</p>
+<ul>
+  <li><strong>resolver</strong>: editar o <code>bolo.txt</code>, deixar a linha certa, apagar as marcas <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>, <code>=======</code> e <code>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code>, e então <code>git add bolo.txt</code> e <code>git revert --continue</code> (o passo a passo de resolver está em <a href="resolver-conflitos.html">Resolvendo Conflitos</a>);</li>
+  <li><strong>desistir</strong>: <code>git revert --abort</code>, que volta tudo ao estado de antes do revert:</li>
+</ul>
+
+<pre class="term" data-cwd="~/r2">$ git revert --abort
+$ git status
+No ramo main
+nothing to commit, working tree clean
+$ git log --oneline
+7564c62 Ajusta tempo do bolo para 50 minutos
+aa77c8f Muda tempo do bolo para 90 minutos
+5209e42 Adiciona receita de bolo
+</pre>
+
+<p>Tudo como antes: nenhum commit novo, pasta limpa.</p>
+
+<hr>
+
+<h2 id="formas">Revert ou reset?</h2>
+<p>Os dois "desfazem commits", de jeitos opostos:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th></th><th><code>git revert</code></th><th><a href="git-reset.html"><code>git reset</code></a></th></tr>
+<tr><td>O que faz</td><td>Cria um commit novo, ao contrário</td><td>Move o branch para trás; os commits de depois saem do histórico</td></tr>
+<tr><td>Histórico</td><td>Só cresce; nada é reescrito</td><td>É reescrito</td></tr>
+<tr><td>Commit do meio</td><td>Desfaz só ele; os de depois ficam</td><td>Leva junto todos os que vieram depois</td></tr>
+<tr><td>Já foi enviado (push)?</td><td><strong>Seguro</strong>: os outros recebem só mais um commit</td><td>Perigoso: exige <code>push --force</code> e atrapalha quem já baixou</td></tr>
+<tr><td>Quando usar</td><td>Commits já compartilhados; desfazer um commit específico</td><td>Commits só seus, ainda não enviados</td></tr>
+</table>
+</div>
+<p><strong>Regra prática:</strong> se o commit já foi para o GitHub, <code>revert</code>. Se ainda está só no seu computador, tanto faz, e o <code>reset</code> deixa o histórico mais limpo. O mapa completo de "como desfazer cada coisa" está em <a href="desfazer.html">Desfazendo: o Mapa</a>.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Esqueceu de dizer qual commit</strong>
+<pre class="term" data-cwd="~/receitas">$ git revert
+uso: git revert [--[no-]edit] [-n] [-m &lt;parent-number&gt;] [-s] [-S[&lt;keyid&gt;]] &lt;commit&gt;...
+   ou: git revert (--continue | --skip | --abort | --quit)
+
+    --quit                end revert or cherry-pick sequence
+    --continue            resume revert or cherry-pick sequence
+    --abort               cancel revert or cherry-pick sequence
+    --skip                skip current commit and continue
+    --[no-]cleanup &lt;mode&gt; how to strip spaces and #comments from message
+    -n, --no-commit       don't automatically commit
+    --commit              opposite of --no-commit
+    -e, --[no-]edit       edit the commit message
+    -s, --[no-]signoff    add a Signed-off-by trailer
+    -m, --[no-]mainline &lt;parent-number&gt;
+                          select mainline parent
+    --[no-]rerere-autoupdate
+                          update the index with reused conflict resolution if possible
+    --[no-]strategy &lt;strategy&gt;
+                          merge strategy
+    -X, --[no-]strategy-option &lt;option&gt;
+                          option for merge strategy
+    -S, --[no-]gpg-sign[=&lt;key-id&gt;]
+                          GPG sign commit
+    --[no-]reference      use the 'reference' format to refer to commits
+</pre>
+<p>O <code>git revert</code> precisa saber <strong>qual</strong> commit desfazer. Sem isso, ele mostra o jeito de usar (<code>uso:</code>): <code>git revert [opções] &lt;commit&gt;...</code>, ou uma das quatro saídas de um revert em andamento. Repare em <code>-n, --no-commit</code> ("não commitar automaticamente") e <code>-e, --[no-]edit</code> ("editar a mensagem"), que você viu nesta aula. <strong>Como resolver:</strong> <code>git revert HEAD</code> para o último commit, ou o hash do commit (pegue no <code>git log --oneline</code>).</p>
+</div>
+
+<div class="cenario">
+<strong>Hash errado ou digitado pela metade</strong>
+<pre class="term" data-cwd="~/receitas">$ git revert abc1234
+fatal: bad revision 'abc1234'
+</pre>
+<p>"Revisão inválida": o Git não achou nenhum commit com esse nome (<em>revision</em>, para o Git, é qualquer jeito de apontar um commit). <strong>Como resolver:</strong> copie o hash do <code>git log --oneline</code>; bastam os 7 primeiros caracteres (veja <a href="hash.html">O Hash do Commit</a>).</p>
+</div>
+
+<div class="cenario">
+<strong>Tentou reverter com mudanças não commitadas</strong>
+<pre class="term" data-cwd="~/r2">$ echo "Cobertura: chocolate" &gt;&gt; bolo.txt
+$ git status --short
+ M bolo.txt
+$ git revert --no-edit HEAD
+error: Your local changes to the following files would be overwritten by merge:
+	bolo.txt
+Please commit your changes or stash them before you merge.
+Aborting
+fatal: revert failed
+$ git status --short
+ M bolo.txt   « a mudança da Ana continua aqui
+</pre>
+<p>"Suas mudanças locais nos seguintes arquivos seriam sobrescritas: <code>bolo.txt</code>. Por favor, commite suas mudanças ou guarde-as com stash antes. Abortando. O revert falhou." O revert precisa mexer no <code>bolo.txt</code>, e a Ana tem uma mudança ainda não commitada nesse arquivo; ela seria perdida, e o Git se recusa (sem mexer em nada: a mudança continua lá). <strong>Como resolver:</strong> commite as mudanças, guarde-as com <a href="git-stash.html">git stash</a>, ou descarte-as com <a href="git-restore.html">git restore</a>, e rode o revert de novo.</p>
+</div>
+
+<div class="cenario">
+<strong>Conflito no meio do revert</strong>
+<p>Veja a seção <a href="#conflito">Quando o revert dá conflito</a>: <code>git status</code> para ver os arquivos em conflito, depois resolver e <code>git revert --continue</code>, ou desistir com <code>git revert --abort</code>.</p>
+</div>
+
+<div class="note">
+<strong>E os commits de merge?</strong>
+<p>Para reverter um commit de <a href="git-merge.html">merge</a> (que tem dois "pais"), o Git pede que você diga qual dos lados manter, com a opção <code>-m 1</code>. Isso fica para quando você conhecer os branches; por ora, saiba reconhecer a mensagem:</p>
+<pre class="term" data-cwd="~/r2">$ git revert --no-edit HEAD
+error: commit 77071b9898241a0a18d812ede2db00b1a4eab26b is a merge but no -m option was given.
+fatal: revert failed
+</pre>
+<p>"O commit … é um merge, mas a opção <code>-m</code> não foi dada. O revert falhou." Nada foi mudado.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git revert HEAD</code></td><td>Cria um commit que desfaz o último commit (abre o editor para a mensagem)</td></tr>
+<tr><td><code>git revert &lt;hash&gt;</code></td><td>Desfaz um commit qualquer do histórico</td></tr>
+<tr><td><code>git revert --no-edit &lt;hash&gt;</code></td><td>O mesmo, aceitando a mensagem automática</td></tr>
+<tr><td><code>git revert -n &lt;hash&gt;</code></td><td>Aplica o contrário na pasta e no preparo, sem commitar</td></tr>
+<tr><td><code>git revert --continue</code></td><td>Termina o revert depois de resolver o conflito</td></tr>
+<tr><td><code>git revert --abort</code></td><td>Desiste do revert e volta tudo como estava</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o comando</h3>
+<p>Complete para desfazer o último commit com um commit novo, aceitando a mensagem automática:</p>
+<div class="ex-code">git <input data-answer="revert" aria-label="subcomando"> --no-edit <input data-answer="HEAD" aria-label="commit"></div>
+</div>
+
+<div class="exercise">
+<h3>2. Desistindo</h3>
+<p>O revert deu conflito e a Ana quer desistir e voltar ao estado de antes. Complete:</p>
+<div class="ex-code">git revert <input data-answer="--abort" aria-label="opção"></div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. O histórico tem 5 commits e a Ana roda <code>git revert --no-edit HEAD~2</code>. Quantos commits o histórico passa a ter?</p>
+<label><input type="radio" name="q3"> 2</label>
+<label><input type="radio" name="q3"> 4</label>
+<label><input type="radio" name="q3"> 6</label>
+<label><input type="radio" name="q3"> 5</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. Por que o <code>revert</code> é seguro para commits que já foram enviados ao GitHub?</p>
+<label><input type="radio" name="q4"> Porque ele apaga o commit também no GitHub</label>
+<label><input type="radio" name="q4"> Porque ele não muda nenhum commit existente: só acrescenta um commit novo</label>
+<label><input type="radio" name="q4"> Porque ele faz o <code>push</code> sozinho</label>
+<label><input type="radio" name="q4"> Não é seguro: precisa de <code>--force</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. O que acontece com os commits que vieram <strong>depois</strong> do commit revertido?</p>
+<label><input type="radio" name="q5"> Continuam no histórico, com as mudanças deles</label>
+<label><input type="radio" name="q5"> São apagados</label>
+<label><input type="radio" name="q5"> São revertidos também</label>
+<label><input type="radio" name="q5"> Ganham hashes novos</label>
+</div>
+
+<h3>Missão final: o estorno do pudim</h3>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit';;echo 'Pudim de leite' &gt; pudim.txt;;git add pudim.txt;;git commit -q -m 'Adiciona receita de pudim';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;echo 'Brigadeiro' &gt; brigadeiro.txt;;git add brigadeiro.txt;;git commit -q -m 'Adiciona receita de brigadeiro'" data-goal="commits:5,limpo,absent:pudim.txt,file:bolo.txt,file:brigadeiro.txt,msg:Revert" data-solucao="git revert --no-edit HEAD~2">
+<p class="try-task"><strong>Missão:</strong> a Ana desistiu da receita de pudim. Desfaça o commit "Adiciona receita de pudim" com <code>git revert</code>: o <code>pudim.txt</code> deve sumir da pasta, mas o bolo e o brigadeiro, que vieram depois, ficam. Dica: <code>git log --oneline</code> mostra os hashes.</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git revert &lt;commit&gt;</code> cria um commit <strong>novo</strong> que faz o contrário do commit indicado. Nada é apagado; o histórico só cresce.</li>
+  <li>Dá para reverter qualquer commit, até um do meio: os commits de depois continuam lá.</li>
+  <li>A mensagem automática é <code>Revert "…"</code> + <code>This reverts commit &lt;hash&gt;.</code>; sem <code>--no-edit</code>, o editor abre para você explicar o porquê.</li>
+  <li>Se der conflito: resolva, <code>git add</code> e <code>git revert --continue</code>, ou desista com <code>git revert --abort</code>.</li>
+  <li>Commit já enviado ao GitHub? Use <code>revert</code>. Commit só seu? <code>reset</code> também serve.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
