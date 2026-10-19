@@ -106,12 +106,12 @@ $ git commit -m 'Cria o README'
   <li><code>[main (root-commit) 700bbd5]</code>: o commit foi para o branch <code>main</code>; <code>root-commit</code> quer dizer "commit raiz", o primeiro de todos; <code>700bbd5</code> é o começo do <a href="hash.html">hash</a> dele.</li>
 </ul>
 <pre class="term" data-cwd="~/receitas">$ git log
-commit 700bbd5eb7964a024ce4076aeeb11c490e1bac2e
+commit 700bbd5eb7964a024ce4076aeeb11c490e1bac2e (HEAD -&gt; main)
 Author: Ana Souza &lt;ana@exemplo.com&gt;
 Date:   Thu Oct 15 10:30:00 2026 -0300
 
     Cria o README</pre>
-<p>O <code>git log</code> mostra o commit inteiro: o hash completo, quem fez (o nome e o e-mail da etapa 1), quando, e a mensagem.</p>
+<p>O <code>git log</code> mostra o commit inteiro: o hash completo, quem fez (o nome e o e-mail da etapa 1), quando, e a mensagem. O <code>(HEAD -&gt; main)</code> avisa que este é o commit mais novo do branch <code>main</code>, onde você está.</p>
 
 <div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md" data-goal="commits:1,limpo,rastreado:README.md" data-solucao="git add README.md;;git commit -m 'Cria o README'">
 <p class="try-task"><strong>Missão 2:</strong> o <code>README.md</code> já está na pasta. Coloque-o na área de preparo e faça o primeiro commit, com a mensagem <code>Cria o README</code>. Use <code>git status</code> antes e depois de cada comando.</p>
