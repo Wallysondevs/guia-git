@@ -43,8 +43,7 @@ tcc-final.docx
 tcc-revisado-bruno.docx
 tcc-v2.docx
 tcc-v3-depois-da-reuniao.docx
-tcc.docx
-</pre>
+tcc.docx</pre>
 
 <p>Repare nas perguntas que essa pasta não responde:</p>
 <ul>
@@ -82,8 +81,7 @@ commit a65079a47fe7e5727e5276a4914f18eee2557865      « o primeiro registro
 Author: Ana Souza &lt;ana@exemplo.com&gt;
 Date:   Thu Oct 15 10:30:00 2026 -0300
 
-    Começa o TCC com o título e a introdução
-</pre>
+    Começa o TCC com o título e a introdução</pre>
 
 <p>Cada registro (cada <strong>commit</strong>) responde às quatro perguntas:</p>
 <div class="table-wrap">
@@ -109,8 +107,7 @@ Date:   Thu Oct 15 10:30:00 2026 -0300
     Acrescenta a conclusão pedida pelo orientador
 
  tcc.md | 2 ++                                        « o arquivo tcc.md ganhou 2 linhas
- 1 file changed, 2 insertions(+)                      « "1 arquivo mudou, 2 linhas inseridas"
-</pre>
+ 1 file changed, 2 insertions(+)                      « "1 arquivo mudou, 2 linhas inseridas"</pre>
 
 <dl class="anatomy">
   <dt>git log</dt><dd>Mostra o histórico.</dd>
@@ -190,8 +187,7 @@ Date:   Thu Oct 15 10:30:00 2026 -0300
 <div class="cenario">
 <strong>Rodei <code>git log</code> numa pasta que não é um repositório</strong>
 <pre class="term" data-cwd="~/tcc-sem-git">$ git log
-fatal: not a git repository (or any of the parent directories): .git
-</pre>
+fatal: not a git repository (or any of the parent directories): .git</pre>
 <p><strong>O que aconteceu:</strong> o controle de versão não "liga sozinho" em todas as pastas. A pasta <code>tcc-sem-git</code> nunca foi transformada em repositório, então o Git não tem história nenhuma para mostrar. A mensagem saiu em inglês (o Git 2.53 ainda não traduz esta) e quer dizer: "fatal: não é um repositório git (nem nenhuma das pastas acima dela): .git". O <code>.git</code> é a pasta escondida onde o Git guarda a história; ele procurou nela e nas pastas acima e não achou.</p>
 <p><strong>Como resolver:</strong> entre na pasta certa (<code>cd ~/tcc</code>) ou, se é um projeto novo, crie o repositório com <code>git init</code> (aula <a href="git-init.html">Criando um Repositório</a>).</p>
 </div>

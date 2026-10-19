@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Instalar — Windows, macOS e Linux | Guia Git</title>
+<meta name="description" content="Como instalar o Git no Windows (Git for Windows, Git Bash, winget), no macOS (Ferramentas de Linha de Comando do Xcode, Homebrew) e no Linux (apt, dnf, pacman), e como conferir a instalação com git --version.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Instalar o Git</span></h1>
+
+<p class="intro">Antes de usar o Git no seu computador, é preciso instalá-lo. Ele é gratuito e existe para Windows, macOS e Linux. Nesta aula você vai ver o jeito recomendado em cada sistema, como conferir se deu certo e o que fazer quando o terminal diz que o <code>git</code> não existe. Enquanto isso, o terminal do guia já tem um Git pronto para você praticar.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como saber se o Git já está instalado.</li>
+  <li>Como instalar no <strong>Windows</strong> (Git for Windows e o Git Bash), no <strong>macOS</strong> e no <strong>Linux</strong>.</li>
+  <li>Como conferir a instalação com <code>git --version</code> e descobrir onde o programa está.</li>
+  <li>O que fazer quando aparece "comando não encontrado".</li>
+</ul>
+</div>
+
+<hr>
+
+<h2>Primeiro: será que já está instalado?</h2>
+<p>Em muitos computadores, o Git já vem instalado ou foi instalado junto com outro programa. Abra o terminal (no Windows, o PowerShell ou o Prompt de Comando; no macOS, o app Terminal; no Linux, o terminal da sua distribuição) e pergunte a versão:</p>
+
+<pre class="term">$ git --version
+git version 2.53.0</pre>
+
+<p>Se aparecer uma linha como essa, o Git está instalado e você pode pular para <a href="terminal-basico.html">O Mínimo de Terminal para o Git</a>. Qualquer versão a partir da <strong>2.23</strong> serve para este guia (é a versão que trouxe o <code>git switch</code> e o <code>git restore</code>). Se aparecer uma mensagem dizendo que o comando não existe, siga a seção do seu sistema.</p>
+
+<div class="tip">
+<strong>Qual versão é a mais nova?</strong>
+<p>O Git lança uma versão "2.x" nova a cada poucos meses. A mais recente, segundo o site oficial <a href="https://git-scm.com/">git-scm.com</a>, é a 2.56.0 (outubro de 2026). Os sistemas costumam trazer uma um pouco mais antiga: o Ubuntu 26.04, usado neste guia, traz a 2.53.0. Para aprender, a diferença não importa.</p>
+</div>
+
+<hr>
+
+<h2>Windows: Git for Windows</h2>
+<p>No Windows, o Git oficial se chama <strong>Git for Windows</strong>. Ele traz, além do <code>git</code>, o <strong>Git Bash</strong>: um terminal com o Bash e os comandos básicos do Linux (<code>ls</code>, <code>cd</code>, <code>cat</code>…). É o terminal recomendado para seguir este guia no Windows, porque os comandos e o prompt ficam iguais aos das aulas.</p>
+
+<h3>Jeito 1: o instalador</h3>
+<ol class="passo">
+  <li>Abra <a href="https://git-scm.com/install/windows">git-scm.com/install/windows</a> e baixe o instalador (<em>Setup</em>) para o seu tipo de processador: <strong>x64</strong> (a maioria dos computadores) ou <strong>ARM64</strong>.</li>
+  <li>Rode o arquivo baixado. O instalador faz várias perguntas; <strong>as respostas que já vêm marcadas servem</strong> para quem está começando.</li>
+  <li>Se uma das telas perguntar o nome do ramo inicial dos repositórios novos, você pode escolher <code>main</code>, o nome usado pelo GitHub e por este guia (a aula <a href="git-init.html">git init</a> explica por quê).</li>
+  <li>No fim, abra o <strong>Git Bash</strong> pelo menu Iniciar e rode <code>git --version</code>.</li>
+</ol>
+
+<h3>Jeito 2: o winget, pelo terminal</h3>
+<p>O Windows 10 e 11 trazem o <strong>winget</strong>, um instalador de programas pela linha de comando. No PowerShell:</p>
+<pre class="syntax">winget install --id Git.Git -e --source winget</pre>
+<dl class="anatomy">
+  <dt>winget install</dt><dd>Instala um programa.</dd>
+  <dt>--id Git.Git</dt><dd>O identificador do Git for Windows no catálogo do winget.</dd>
+  <dt>-e</dt><dd><em>exact</em>: só aceita o identificador exatamente igual, sem adivinhar.</dd>
+  <dt>--source winget</dt><dd>Busca no catálogo oficial do winget.</dd>
+</dl>
+<p>Depois, <strong>feche e abra de novo</strong> o terminal, para ele enxergar o programa novo, e rode <code>git --version</code>.</p>
+
+<div class="note">
+<strong>Ilustrativo</strong>
+<p>A instalação no Windows não roda no laboratório deste guia. Os passos e o comando do winget foram conferidos na página oficial de instalação (git-scm.com/install/windows), que também cita a versão portátil, que não precisa de instalação, e o <code>choco install git</code>, para quem usa o Chocolatey.</p>
+</div>
+
+<div class="tip">
+<strong>E o WSL?</strong>
+<p>Se você usa o WSL (o Linux dentro do Windows), ele é um Linux completo e precisa do seu próprio Git: dentro dele, siga a seção do Linux. O Git do Windows e o do WSL são programas separados.</p>
+</div>
+
+<hr>
+
+<h2>macOS: as Ferramentas de Linha de Comando ou o Homebrew</h2>
+
+<h3>Jeito 1: as ferramentas da Apple</h3>
+<p>A Apple distribui o Git junto com as <strong>Command Line Tools</strong> ("ferramentas de linha de comando") do Xcode. Não é preciso instalar o Xcode inteiro. No app Terminal:</p>
+<pre class="syntax">xcode-select --install</pre>
+<p>Abre-se uma janela pedindo para confirmar a instalação. Muitas vezes, basta digitar <code>git --version</code> num Mac sem as ferramentas: o próprio sistema oferece a instalação.</p>
+
+<h3>Jeito 2: o Homebrew</h3>
+<p>O <a href="https://brew.sh/">Homebrew</a> é o gerenciador de pacotes mais usado no macOS. A versão do Git que ele instala costuma ser mais nova que a da Apple. Com o Homebrew já instalado:</p>
+<pre class="syntax">brew install git</pre>
+<p>Feche e abra o Terminal e confira com <code>git --version</code>. A página oficial também cita o MacPorts (<code>sudo port install git</code>).</p>
+
+<div class="note">
+<strong>Ilustrativo</strong>
+<p>O macOS não roda no laboratório. Os comandos acima são os da página oficial git-scm.com/install/mac.</p>
+</div>
+
+<hr>
+
+<h2>Linux: o gerenciador de pacotes</h2>
+<p>No Linux, o Git vem do <strong>gerenciador de pacotes</strong> da sua distribuição, o mesmo programa que instala qualquer outra coisa. Instalar precisa de permissão de administrador, por isso os comandos começam com <code>sudo</code> (ele vai pedir a sua senha).</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Distribuição</th><th>Comando</th></tr>
+<tr><td>Ubuntu, Debian, Linux Mint</td><td><code>sudo apt install git</code></td></tr>
+<tr><td>Fedora</td><td><code>sudo dnf install git</code></td></tr>
+<tr><td>Arch Linux, Manjaro</td><td><code>sudo pacman -S git</code></td></tr>
+<tr><td>openSUSE</td><td><code>sudo zypper install git</code></td></tr>
+<tr><td>Alpine</td><td><code>sudo apk add git</code></td></tr>
+</table>
+</div>
+
+<p>Anatomia do comando do Ubuntu, o deste guia:</p>
+<dl class="anatomy">
+  <dt>sudo</dt><dd>Roda o comando seguinte como administrador.</dd>
+  <dt>apt</dt><dd>O gerenciador de pacotes do Debian e do Ubuntu.</dd>
+  <dt>install</dt><dd>"Instale…"</dd>
+  <dt>git</dt><dd>…o pacote chamado <code>git</code>.</dd>
+</dl>
+
+<div class="tip">
+<strong>Quero um Git mais novo no Ubuntu</strong>
+<p>O Ubuntu mantém a mesma versão do Git durante a vida de cada lançamento (só com correções de segurança). A página oficial indica um PPA do projeto Git, com a versão estável mais recente: <code>sudo add-apt-repository ppa:git-core/ppa</code>, depois <code>sudo apt update</code> e <code>sudo apt install git</code>. Para seguir este guia, não precisa.</p>
+</div>
+
+<h3>Conferindo, no laboratório</h3>
+<p>Na máquina da Ana (Ubuntu 26.04, o laboratório deste guia), o Git já está instalado. O <code>apt policy</code> ("política") mostra a versão instalada e a que o <code>apt</code> instalaria hoje:</p>
+
+<pre class="term">$ apt policy git
+git:
+  Instalado: 1:2.53.0-1ubuntu1.1                « a versão instalada
+  Candidato: 1:2.53.0-1ubuntu1.1                « a versão que o apt instalaria agora
+  Tabela de versão:
+ *** 1:2.53.0-1ubuntu1.1 500</pre>
+
+<p>O número da versão do pacote tem três partes: <code>1:</code> (uma "época", detalhe interno do Debian), <code>2.53.0</code> (a versão do Git) e <code>-1ubuntu1.1</code> (a revisão do pacote feita pelo Ubuntu, por exemplo com correções de segurança). Quando o <code>Instalado</code> diz <code>(nenhum)</code>, o Git não está instalado.</p>
+
+<hr>
+
+<h2>Conferindo a instalação</h2>
+<p>Em qualquer sistema, depois de instalar, faça estas duas perguntas ao terminal.</p>
+
+<h3>1. Qual é a versão?</h3>
+<pre class="term">$ git --version
+git version 2.53.0</pre>
+
+<h3>2. Onde está o programa?</h3>
+<p>O comando <code>type</code> (do Bash, inclusive no Git Bash) diz o que é um nome de comando e onde ele está. O <code>which</code> faz algo parecido:</p>
+
+<pre class="term">$ type git
+git é /usr/bin/git                          « "git é o programa /usr/bin/git"
+$ which git
+/usr/bin/git</pre>
+
+<p>No Linux, o Git fica em <code>/usr/bin/git</code>. No Git Bash, aparece um caminho dentro da pasta de instalação do Git for Windows; no Mac, <code>/usr/bin/git</code> (o da Apple) ou o do Homebrew. Isso ajuda quando há <strong>dois Gits</strong> instalados e você quer saber qual está respondendo.</p>
+
+<div class="try" data-goal="ran:^\s*(type|which|command -v) git" data-solucao="type git">
+<p class="try-task"><strong>Missão:</strong> descubra onde está o programa <code>git</code> no terminal do guia, com <code>type git</code> ou <code>which git</code>. Depois rode <code>git --version</code>.</p>
+</div>
+
+<hr>
+
+<h2>Qual jeito usar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Sistema</th><th>Recomendado</th><th>Alternativa</th></tr>
+<tr><td>Windows</td><td>Instalador do Git for Windows (traz o Git Bash)</td><td><code>winget install --id Git.Git -e --source winget</code></td></tr>
+<tr><td>macOS</td><td><code>xcode-select --install</code></td><td><code>brew install git</code> (versão mais nova)</td></tr>
+<tr><td>Ubuntu / Debian</td><td><code>sudo apt install git</code></td><td>PPA <code>git-core/ppa</code> (versão mais nova)</td></tr>
+<tr><td>Fedora</td><td><code>sudo dnf install git</code></td><td>—</td></tr>
+<tr><td>Arch</td><td><code>sudo pacman -S git</code></td><td>—</td></tr>
+<tr><td>Sem instalar nada</td><td>O terminal do guia, nas missões</td><td>—</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Quando dá errado</h2>
+
+<div class="cenario">
+<strong>"comando não encontrado"</strong>
+<pre class="term">$ gitk
+Comando 'gitk' não encontrado, mas poder ser instalado com:
+sudo apt install gitk                       « o comando que instala o que falta
+$ echo $?
+127                                         « 127 = comando não encontrado</pre>
+<p>Para mostrar a mensagem real sem desinstalar o Git do laboratório, a Ana digitou <code>gitk</code>, um programa da família do Git (uma janela para ver o histórico) que não vem instalado. Num Ubuntu sem o Git, digitar <code>git</code> dá a mesma mensagem, com <code>git</code> no lugar de <code>gitk</code>. (O "poder ser" com erro de concordância está assim mesmo na tradução do Ubuntu.)</p>
+<p><strong>O que aconteceu:</strong> o terminal procurou um programa com esse nome nas pastas de programas e não achou. No Ubuntu, um ajudante chamado <em>command-not-found</em> ainda consulta a lista de pacotes e diz qual instalar. Em outros sistemas aparece só algo como <code>bash: git: comando não encontrado</code>. Ou o Git não está instalado, ou o terminal foi aberto antes da instalação.</p>
+<p><strong>Como resolver:</strong> instale o Git pelo jeito do seu sistema, <strong>feche e abra o terminal</strong> e tente de novo. No PowerShell do Windows, a mensagem é outra (algo como "O termo 'git' não é reconhecido…"), mas o motivo e a solução são os mesmos.</p>
+</div>
+
+<div class="cenario">
+<strong>Instalei, mas a versão continua a antiga</strong>
+<p><strong>O que aconteceu:</strong> há dois Gits no computador (por exemplo, o da Apple e o do Homebrew), e o terminal está achando primeiro o antigo.</p>
+<p><strong>Como confirmar:</strong> <code>type -a git</code> lista <strong>todos</strong> os <code>git</code> que o terminal enxerga, na ordem em que ele procura; o primeiro é o que responde. Na máquina da Ana:</p>
+<pre class="term">$ type -a git
+git é /usr/bin/git                          « este é o que responde
+git é /bin/git</pre>
+<p>Aqui não há dois Gits de verdade: no Ubuntu, a pasta <code>/bin</code> é um atalho para <code>/usr/bin</code>, então os dois caminhos levam ao mesmo arquivo. Num Mac com o Git da Apple e o do Homebrew, apareceriam dois caminhos realmente diferentes.</p>
+<p><strong>Como resolver:</strong> feche e abra o terminal. No Mac com Homebrew, confira se o comando de configuração que o próprio Homebrew mostra no fim da instalação dele foi feito. Detalhes sobre a ordem de busca ficam no <a href="https://wallysondevs.github.io/guia-bash/path.html">Guia Bash: PATH</a>.</p>
+</div>
+
+<div class="cenario">
+<strong>"Permissão negada" ao instalar no Linux</strong>
+<p><strong>O que aconteceu:</strong> faltou o <code>sudo</code>. Instalar programas mexe em pastas do sistema, e só o administrador pode.</p>
+<p><strong>Como resolver:</strong> repita com <code>sudo</code> na frente: <code>sudo apt install git</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git --version</code></td><td>Mostra a versão do Git (e confirma que ele está instalado).</td></tr>
+<tr><td><code>type git</code> / <code>which git</code></td><td>Mostra onde está o programa <code>git</code>.</td></tr>
+<tr><td><code>type -a git</code></td><td>Lista todos os <code>git</code> que o terminal enxerga.</td></tr>
+<tr><td><code>winget install --id Git.Git -e --source winget</code></td><td>Instala o Git for Windows pelo terminal.</td></tr>
+<tr><td><code>xcode-select --install</code></td><td>Instala as ferramentas de linha de comando da Apple, com o Git.</td></tr>
+<tr><td><code>brew install git</code></td><td>Instala o Git pelo Homebrew (macOS).</td></tr>
+<tr><td><code>sudo apt install git</code></td><td>Instala o Git no Ubuntu e no Debian.</td></tr>
+<tr><td><code>sudo dnf install git</code> / <code>sudo pacman -S git</code></td><td>Fedora / Arch.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">1. No Windows, que terminal vem com o Git for Windows e é recomendado para seguir este guia?</p>
+<label><input type="radio" name="q1"> O Bloco de Notas.</label>
+<label><input type="radio" name="q1"> O Git Bash.</label>
+<label><input type="radio" name="q1"> O Excel.</label>
+<label><input type="radio" name="q1"> O GitHub Desktop.</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">2. Depois de instalar o Git, o terminal ainda diz "comando não encontrado". Qual é a primeira coisa a tentar?</p>
+<label><input type="radio" name="q2"> Formatar o computador.</label>
+<label><input type="radio" name="q2"> Criar uma conta no GitHub.</label>
+<label><input type="radio" name="q2"> Fechar e abrir o terminal de novo.</label>
+<label><input type="radio" name="q2"> Desinstalar o Bash.</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">3. Qual comando instala o Git no Fedora?</p>
+<label><input type="radio" name="q3"> <code>sudo apt install git</code></label>
+<label><input type="radio" name="q3"> <code>brew install git</code></label>
+<label><input type="radio" name="q3"> <code>sudo pacman -S git</code></label>
+<label><input type="radio" name="q3"> <code>sudo dnf install git</code></label>
+</div>
+
+<div class="exercise">
+<h3>4. Instalar no Ubuntu</h3>
+<p>Complete o comando que instala o Git no Ubuntu:</p>
+<div class="ex-code">sudo apt <input data-answer="install" aria-label="ação"> git</div>
+</div>
+
+<div class="exercise">
+<h3>5. Onde está?</h3>
+<p>Complete para o Bash dizer onde está o programa <code>git</code>:</p>
+<div class="ex-code"><input data-answer="type|which|command -v|type -a|type -p" aria-label="comando"> git</div>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Teste antes: <code>git --version</code>. Se responder, já está instalado (qualquer 2.23 ou mais nova serve).</li>
+  <li><strong>Windows:</strong> Git for Windows, pelo instalador ou pelo <code>winget</code>; use o <strong>Git Bash</strong>.</li>
+  <li><strong>macOS:</strong> <code>xcode-select --install</code> ou <code>brew install git</code>.</li>
+  <li><strong>Linux:</strong> o gerenciador de pacotes: <code>sudo apt install git</code>, <code>sudo dnf install git</code>, <code>sudo pacman -S git</code>.</li>
+  <li>"comando não encontrado": instale, feche e abra o terminal; <code>type -a git</code> mostra qual Git está respondendo.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
