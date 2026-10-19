@@ -137,20 +137,20 @@ Arquivos não monitorados:                                    « 3) arquivos nov
 </div>
 <p>O resgate clássico, com saída real: a Ana apagou o último commit com <code>reset --hard</code> e o trouxe de volta pelo <code>reflog</code>, o diário de tudo por onde o <code>HEAD</code> passou.</p>
 <pre class="term" data-cwd="~/receitas">$ git log --oneline
-ae22181 Adiciona bolo
+ae22181 (HEAD -&gt; main) Adiciona bolo
 f0c33ea Primeiro commit
 $ git reset --hard HEAD~1
 HEAD is now at f0c33ea Primeiro commit             « "o HEAD agora está em f0c33ea"
 $ git log --oneline
-f0c33ea Primeiro commit                            « o commit do bolo sumiu do log…
+f0c33ea (HEAD -&gt; main) Primeiro commit             « o commit do bolo sumiu do log…
 $ git reflog
-f0c33ea HEAD@{0}: reset: moving to HEAD~1          « o que acabou de acontecer
+f0c33ea (HEAD -&gt; main) HEAD@{0}: reset: moving to HEAD~1 « o que acabou de acontecer
 ae22181 HEAD@{1}: commit: Adiciona bolo            « …mas está aqui: um passo antes
-f0c33ea HEAD@{2}: commit (initial): Primeiro commit
+f0c33ea (HEAD -&gt; main) HEAD@{2}: commit (initial): Primeiro commit
 $ git reset --hard HEAD@{1}                        « volta para onde o HEAD estava 1 passo atrás
 HEAD is now at ae22181 Adiciona bolo
 $ git log --oneline
-ae22181 Adiciona bolo                              « de volta
+ae22181 (HEAD -&gt; main) Adiciona bolo               « de volta
 f0c33ea Primeiro commit
 </pre>
 <p>E um branch apagado: a mensagem do <code>git branch -D</code> já diz o hash onde ele estava, e é com ele que se recria o branch.</p>
