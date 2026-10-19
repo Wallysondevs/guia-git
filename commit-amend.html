@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git commit --amend — corrigindo o último commit | Guia Git</title>
+<meta name="description" content="Como corrigir o último commit com git commit --amend: consertar a mensagem com erro de digitação, incluir o arquivo esquecido com --no-edit, por que o hash muda, como desfazer um amend com o reflog e por que não emendar um commit que já foi enviado ao GitHub. Saídas reais do Git em português.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">commit --amend</span></h1>
+
+<p class="intro">A Ana acabou de fazer um commit e, um segundo depois, percebeu: escreveu "recieta" na mensagem. Ou pior: esqueceu de incluir um dos arquivos. Ela não precisa fazer um segundo commit só para consertar o primeiro. O Git tem uma opção para isso: <code>git commit --amend</code> (em inglês, <em>amend</em> = "emendar, corrigir"). Ela <strong>refaz o último commit</strong>, com a mensagem nova, os arquivos que faltavam, ou as duas coisas.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como trocar a mensagem do último commit com <code>git commit --amend -m "…"</code>.</li>
+  <li>Como colocar no último commit um arquivo que ficou de fora, com <code>git commit --amend --no-edit</code>.</li>
+  <li>Por que o commit corrigido ganha um <strong>hash novo</strong>: o Git não edita, ele substitui.</li>
+  <li>Como desfazer um <code>--amend</code> feito sem querer.</li>
+  <li>Por que <strong>não</strong> se emenda um commit que já foi enviado para o GitHub.</li>
+</ul>
+</div>
+
+<p>Todas as saídas desta aula vieram do Git real da máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português. Com o sistema em inglês, as mensagens saem em inglês, com o mesmo sentido.</p>
+
+<hr>
+
+<h2>A ideia: refazer a última foto, não tirar outra</h2>
+<p>Pense numa foto de família. Alguém piscou. Você pode guardar a foto ruim e tirar outra (agora são duas no álbum, uma delas inútil), ou <strong>jogar a ruim fora e pôr a boa no lugar</strong>. O <code>--amend</code> é a segunda opção: o último commit sai do histórico e entra um commit novo, no mesmo lugar, já corrigido.</p>
+<p>Três coisas para guardar desde já:</p>
+<ul>
+  <li>Só funciona para o <strong>último</strong> commit (o que está no <a href="head.html">HEAD</a>). Para mexer em commits mais antigos existe o <a href="rebase-interativo.html">rebase interativo</a>.</li>
+  <li>O commit corrigido é <strong>outro commit</strong>, com outro <a href="hash.html">hash</a>. O antigo não é apagado na hora: ele só deixa de aparecer no <code>git log</code>.</li>
+  <li>Se o commit já foi enviado (<code>git push</code>) e outras pessoas já o baixaram, emendar complica a vida delas. A regra está na seção <a href="#publico">Quando dá errado</a>.</li>
+</ul>
+
+<hr>
+
+<h2>1. Corrigindo a mensagem</h2>
+<p>O repositório <code>receitas</code> da Ana já tinha o primeiro commit (o README). Ela criou a receita de bolo e commitou, com pressa:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'Bolo de cenoura: 3 cenouras, 3 ovos, 2 xícaras de açúcar' &gt; bolo.txt
+$ git add bolo.txt
+$ git commit -m "Adiciona recieta de bolo"
+[main cfa022b] Adiciona recieta de bolo
+ 1 file changed, 1 insertion(+)
+ create mode 100644 bolo.txt
+$ git log --oneline
+cfa022b Adiciona recieta de bolo   « o commit novo, com o erro
+fe996fb Primeiro commit
+</pre>
+
+<p>No <code>git log --oneline</code>, cada linha é um commit: o <a href="hash.html">hash curto</a> (o "RG" do commit) e a mensagem. O commit de cima é o mais novo. Lá está o erro: "recieta". Para consertar:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git commit --amend -m "Adiciona receita de bolo"
+[main 5bc05d8] Adiciona receita de bolo
+ Date: Thu Oct 15 10:30:00 2026 -0300
+ 1 file changed, 1 insertion(+)
+ create mode 100644 bolo.txt
+</pre>
+
+<dl class="anatomy">
+  <dt>git commit</dt><dd>O mesmo comando de sempre (veja <a href="git-commit.html">git commit</a>).</dd>
+  <dt>--amend</dt><dd>"Emende": em vez de criar um commit <strong>depois</strong> do último, refaça o último. O Git pega o conteúdo da <a href="area-de-preparo.html">área de preparo</a> (que, aqui, é exatamente o que já estava no commit) e cria um commit novo no lugar do antigo.</dd>
+  <dt>-m "Adiciona receita de bolo"</dt><dd>A mensagem nova. Ela <strong>substitui</strong> a antiga por inteiro.</dd>
+</dl>
+
+<p>A resposta do Git tem duas partes:</p>
+<dl class="anatomy">
+  <dt>[main 5bc05d8] Adiciona receita de bolo</dt><dd>O branch (<code>main</code>), o hash curto do commit <strong>novo</strong> e a mensagem nova.</dd>
+  <dt>Date: Thu Oct 15 10:30:00 2026 -0300</dt><dd>Esta linha aparece no <code>--amend</code> (num commit comum, não): o Git avisa que manteve a <strong>data de autoria</strong> do commit original (quinta-feira, 15 de outubro de 2026, 10:30, no fuso −03:00). Para o Git, você está corrigindo um trabalho feito naquela hora, não fazendo um trabalho novo.</dd>
+  <dt>1 file changed, 1 insertion(+)</dt><dd>O resumo do que o commit traz, comparado com o commit anterior (o do README): 1 arquivo mudado, 1 linha acrescentada. É o mesmo resumo de antes: o conteúdo não mudou, só a mensagem.</dd>
+  <dt>create mode 100644 bolo.txt</dt><dd>O commit cria o arquivo <code>bolo.txt</code> (o <code>100644</code> quer dizer "arquivo comum").</dd>
+</dl>
+
+<p>Agora o log:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+5bc05d8 Adiciona receita de bolo   « mensagem nova, hash novo
+fe996fb Primeiro commit             « este não mudou
+$ git status
+No ramo main
+nothing to commit, working tree clean
+</pre>
+
+<p>Ainda são <strong>dois</strong> commits, mas o de cima tem mensagem nova <strong>e hash novo</strong>: era <code>cfa022b</code>, virou <code>5bc05d8</code>. O commit do README não mudou nada (mesmo hash). E o <code>git status</code> diz que não há nada a commitar e a pasta está limpa (<em>nothing to commit, working tree clean</em>; esta frase o Git do Ubuntu ainda não traduziu): o <code>--amend</code> não mexeu em nenhum arquivo da pasta.</p>
+
+<div class="tip">
+<strong>Sem <code>-m</code>, o Git abre o editor</strong>
+<p>Se você digitar só <code>git commit --amend</code>, o Git abre o editor de texto configurado (no Ubuntu, normalmente o <code>nano</code>; veja <a href="git-config.html">git config</a>) já com a mensagem antiga escrita. Corrija o texto, salve e feche o editor (no nano: <kbd>Ctrl</kbd>+<kbd>O</kbd>, <kbd>Enter</kbd>, <kbd>Ctrl</kbd>+<kbd>X</kbd>), e o commit é refeito. É o jeito mais cômodo quando a mensagem é longa e o erro é uma letra só. Se você fechar o editor com a mensagem apagada, o Git desiste e nada muda.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona recieta de bolo'" data-goal="commits:2,msg:Adiciona receita de bolo,limpo" data-solucao="git commit --amend -m 'Adiciona receita de bolo'">
+<p class="try-task"><strong>Missão:</strong> o último commit da Ana saiu com a mensagem "Adiciona recieta de bolo". Confira com <code>git log --oneline</code> e corrija a mensagem para "Adiciona receita de bolo" <strong>sem</strong> criar um terceiro commit. Depois, rode o <code>git log --oneline</code> de novo e compare os hashes.</p>
+</div>
+
+<hr>
+
+<h2>2. Incluindo o arquivo que ficou de fora</h2>
+<p>Agora o outro clássico. A Ana escreveu a receita do pudim e a da calda que vai por cima, em dois arquivos. Mas só deu <code>git add</code> no pudim antes de commitar:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'Pudim: 1 lata de leite condensado, 3 ovos' &gt; pudim.txt
+$ echo 'Calda: 1 xícara de açúcar' &gt; calda.txt
+$ git add pudim.txt
+$ git commit -m "Adiciona receita de pudim"
+[main 118e295] Adiciona receita de pudim
+ 1 file changed, 1 insertion(+)
+ create mode 100644 pudim.txt
+$ git status
+No ramo main
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	calda.txt   « ficou de fora!
+
+nada adicionado ao envio mas arquivos não registrados estão presentes (use "git add" to registrar)
+</pre>
+
+<p>O <code>git status</code> denuncia: <code>calda.txt</code> ficou como "não rastreado", fora do commit. Os dois arquivos eram para estar <strong>juntos</strong>, no mesmo commit, porque são a mesma receita. A correção tem dois passos: pôr o arquivo esquecido na área de preparo, e emendar:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git add calda.txt
+$ git commit --amend --no-edit
+[main d5e44e9] Adiciona receita de pudim
+ Date: Thu Oct 15 10:30:00 2026 -0300
+ 2 files changed, 2 insertions(+)   « agora são 2 arquivos
+ create mode 100644 calda.txt
+ create mode 100644 pudim.txt
+$ git log --oneline
+d5e44e9 Adiciona receita de pudim   « era 118e295
+5bc05d8 Adiciona receita de bolo
+fe996fb Primeiro commit
+</pre>
+
+<dl class="anatomy">
+  <dt>git add calda.txt</dt><dd>Coloca a calda na área de preparo. O <code>--amend</code> usa a área de preparo como ela está: tudo o que já estava no commit <strong>mais</strong> o que você acabou de adicionar.</dd>
+  <dt>--no-edit</dt><dd>"Não edite a mensagem": mantenha a mensagem do commit antigo. Sem essa opção (e sem <code>-m</code>), o Git abriria o editor.</dd>
+</dl>
+
+<p>O resumo agora diz <code>2 files changed</code>: o commit novo traz o pudim <strong>e</strong> a calda. Confira com o <a href="git-show.html">git show</a>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git show --stat HEAD
+commit d5e44e9e36d79bfb6837c3912115a4c8fbe27bde
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Adiciona receita de pudim
+
+ calda.txt | 1 +
+ pudim.txt | 1 +
+ 2 files changed, 2 insertions(+)
+$ git status
+No ramo main
+nothing to commit, working tree clean
+</pre>
+
+<p>Os dois arquivos estão no commit, a mensagem é a mesma, e o histórico continua com 3 commits. Ninguém vai saber que a calda chegou atrasada.</p>
+
+<div class="note">
+<strong>Dá para fazer as duas coisas de uma vez</strong>
+<p><code>git add calda.txt</code> seguido de <code>git commit --amend -m "Adiciona receitas de pudim e calda"</code> inclui o arquivo <strong>e</strong> troca a mensagem num comando só. E o caminho contrário também existe: para <strong>tirar</strong> um arquivo que entrou por engano, tire-o do índice com <code>git rm --cached arquivo</code> (veja <a href="git-rm.html">git rm</a>) e emende.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit';;echo 'Pudim de leite' &gt; pudim.txt;;echo 'Calda de açúcar' &gt; calda.txt;;git add pudim.txt;;git commit -q -m 'Adiciona receita de pudim'" data-goal="commits:2,limpo,msg:Adiciona receita de pudim,contem:HEAD:calda.txt=Calda" data-solucao="git add calda.txt;;git commit --amend --no-edit">
+<p class="try-task"><strong>Missão:</strong> a Ana commitou o pudim, mas a <code>calda.txt</code> ficou de fora (veja com <code>git status</code>). Coloque a calda <strong>no mesmo commit</strong> do pudim, mantendo a mensagem "Adiciona receita de pudim". No fim, devem continuar existindo só 2 commits.</p>
+</div>
+
+<hr>
+
+<h2>3. O que aconteceu com o commit antigo?</h2>
+<p>O <code>--amend</code> não editou o commit antigo: commits do Git nunca mudam depois de criados (você vai entender por que em <a href="como-git-guarda.html">Como o Git Guarda as Coisas</a>). Ele criou um commit <strong>novo</strong>, com o mesmo "pai" do antigo, e mudou o branch <code>main</code> para apontar para o novo. Em desenho:</p>
+
+<pre>Antes do --amend:            Depois do --amend:
+
+A --- B   &lt;- main            A --- B'  &lt;- main
+                                \
+                                 B    (sem nome; some do git log)</pre>
+
+<p>O commit <code>B</code> continua guardado na pasta <code>.git</code> por um tempo (semanas), só que nenhum branch aponta mais para ele. Quem lembra dele é o <a href="git-reflog.html">reflog</a>, o diário de onde o HEAD esteve:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git reflog
+d5e44e9 HEAD@{0}: commit (amend): Adiciona receita de pudim
+118e295 HEAD@{1}: commit: Adiciona receita de pudim     « o pudim sem a calda
+5bc05d8 HEAD@{2}: commit (amend): Adiciona receita de bolo
+cfa022b HEAD@{3}: commit: Adiciona recieta de bolo      « o "recieta" ainda está aqui
+fe996fb HEAD@{4}: commit (initial): Primeiro commit
+</pre>
+
+<p>Leia de baixo para cima: o primeiro commit (<code>initial</code>), o bolo com "recieta", a emenda do bolo (<code>commit (amend)</code>), o pudim sem a calda, e a emenda do pudim. Os commits <code>cfa022b</code> e <code>118e295</code> sumiram do <code>git log</code>, mas não do reflog. Cada linha tem o hash e um apelido: <code>HEAD@{0}</code> é "onde o HEAD está agora", <code>HEAD@{1}</code> é "onde ele estava antes do último movimento", e assim por diante. É por isso que um <code>--amend</code> feito sem querer tem conserto (veja o cenário <a href="#desfazer-amend">Emendei sem querer</a>).</p>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de corrigir o último commit</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Como</th><th>Resultado no histórico</th></tr>
+<tr><td>Mensagem errada</td><td><code>git commit --amend -m "mensagem certa"</code></td><td>O último commit é substituído</td></tr>
+<tr><td>Mensagem errada, e é longa</td><td><code>git commit --amend</code> (abre o editor)</td><td>O último commit é substituído</td></tr>
+<tr><td>Faltou um arquivo ou uma mudança</td><td><code>git add …</code> e <code>git commit --amend --no-edit</code></td><td>O último commit é substituído</td></tr>
+<tr><td>Faltou um arquivo, e o commit <strong>já foi enviado</strong></td><td><code>git add …</code> e um commit novo: <code>git commit -m "Inclui calda do pudim"</code></td><td>Um commit a mais; nada é reescrito</td></tr>
+<tr><td>Quer refazer o commit do zero</td><td><code>git reset --soft HEAD~1</code>, ajustar, e <code>git commit</code> de novo (veja <a href="reset-modos.html">os modos do reset</a>)</td><td>O último commit é substituído</td></tr>
+<tr><td>O erro está num commit mais antigo</td><td><a href="rebase-interativo.html">Rebase interativo</a> (nível avançado)</td><td>Vários commits são reescritos</td></tr>
+</table>
+</div>
+
+<p><strong>Qual usar:</strong> enquanto o commit está só no seu computador, <code>--amend</code> sem medo. Depois do <code>git push</code>, prefira um commit novo de correção (ou o <a href="git-revert.html">git revert</a>, se a ideia é desfazer).</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Não há commit para emendar</strong>
+<pre class="term" data-cwd="~/vazio">$ git add a.txt
+$ git commit --amend -m "Primeiro commit"
+fatal: You have nothing to amend.
+</pre>
+<p>"Você não tem nada para emendar" (esta mensagem sai em inglês mesmo com o sistema em português). Num repositório recém-criado, sem nenhum commit, não existe "último commit" para corrigir. <strong>Como resolver:</strong> faça o primeiro commit normalmente (<code>git commit -m "…"</code>, sem <code>--amend</code>).</p>
+</div>
+
+<div class="cenario" id="desfazer-amend">
+<strong>Emendei sem querer (ou emendei o commit errado)</strong>
+<p>A Ana queria fazer um commit novo, mas digitou <code>--amend</code> por hábito e engoliu as mudanças no commit anterior. O commit antigo ainda está no reflog: <code>HEAD@{1}</code> é "onde o HEAD estava antes do amend". Para voltar o branch para ele <strong>sem perder</strong> as mudanças:</p>
+<pre class="term" data-cwd="~/receitas">$ echo 'Brigadeiro' &gt; brigadeiro.txt
+$ git add brigadeiro.txt
+$ git commit --amend -m "Adiciona receita de brigadeiro"   « ops: era para ser um commit novo
+[main 5c490a1] Adiciona receita de brigadeiro
+ Date: Thu Oct 15 10:30:00 2026 -0300
+ 3 files changed, 3 insertions(+)
+ create mode 100644 brigadeiro.txt
+ create mode 100644 calda.txt
+ create mode 100644 pudim.txt
+$ git log --oneline
+5c490a1 Adiciona receita de brigadeiro   « o pudim "virou" brigadeiro
+5bc05d8 Adiciona receita de bolo
+fe996fb Primeiro commit
+$ git reset --soft HEAD@{1}
+$ git log --oneline
+d5e44e9 Adiciona receita de pudim        « o pudim voltou
+5bc05d8 Adiciona receita de bolo
+fe996fb Primeiro commit
+$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	new file:   brigadeiro.txt   « o brigadeiro esperando o commit dele
+
+$ git commit -m "Adiciona receita de brigadeiro"
+[main b100c98] Adiciona receita de brigadeiro
+ 1 file changed, 1 insertion(+)
+ create mode 100644 brigadeiro.txt
+$ git log --oneline
+b100c98 Adiciona receita de brigadeiro
+d5e44e9 Adiciona receita de pudim
+5bc05d8 Adiciona receita de bolo
+fe996fb Primeiro commit
+</pre>
+<p>O resumo <code>3 files changed</code> denunciou o engano: o commit "do brigadeiro" levou junto a calda e o pudim, porque ele <strong>substituiu</strong> o commit do pudim. O <code>git reset --soft HEAD@{1}</code> põe o <code>main</code> de volta no commit de antes do amend e deixa as mudanças do amend <strong>na área de preparo</strong>, prontas para o commit novo que ela queria fazer. O <code>reset</code> e o <code>--soft</code> são explicados em <a href="git-reset.html">git reset</a> e <a href="reset-modos.html">reset --soft, --mixed e --hard</a>.</p>
+</div>
+
+<div class="cenario" id="publico">
+<strong>Emendei um commit que já tinha enviado (push rejeitado)</strong>
+<pre class="term" data-cwd="~/receitas">$ git push -q -u origin main          « o commit do brigadeiro foi para o GitHub
+$ git commit --amend -m "Adiciona a receita de brigadeiro"
+[main 608fade] Adiciona a receita de brigadeiro
+ Date: Thu Oct 15 10:30:00 2026 -0300
+ 1 file changed, 1 insertion(+)
+ create mode 100644 brigadeiro.txt
+$ git push
+To https://github.com/ana-souza/receitas.git
+ ! [rejected]        main -&gt; main (non-fast-forward)
+error: failed to push some refs to 'https://github.com/ana-souza/receitas.git'
+hint: Updates were rejected because the tip of your current branch is behind
+hint: its remote counterpart. If you want to integrate the remote changes,
+hint: use 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+</pre>
+<p>(O GitHub desta sessão é o "GitHub de mentira" do laboratório do guia, que se comporta como o de verdade.) <code>[rejected]</code> = "recusado"; <code>non-fast-forward</code> quer dizer que o seu <code>main</code> não é uma continuação do <code>main</code> do GitHub. As dicas (<code>hint:</code>) dizem: "as atualizações foram recusadas porque a ponta do seu branch atual está atrás da sua equivalente remota; se você quer integrar as mudanças remotas, use <code>git pull</code> antes de enviar de novo". O GitHub tem o commit antigo (<code>b100c98</code>); o seu computador tem o emendado (<code>608fade</code>) no lugar dele. Para o Git, os dois históricos <strong>divergiram</strong>, e o <code>git push</code> recusa para não apagar o commit que está lá. Atenção: aqui o <code>git pull</code> sugerido <strong>não</strong> é a solução, porque juntaria o commit antigo e o emendado, e a receita apareceria duas vezes no histórico. <strong>Como resolver:</strong></p>
+<ul>
+  <li>se o repositório é só seu e ninguém baixou o commit antigo, dá para forçar com <code>git push --force-with-lease</code> (veja <a href="push-force.html">push --force-with-lease</a>);</li>
+  <li>se outras pessoas trabalham no mesmo branch, <strong>não force</strong>: desfaça o amend com <code>git reset --soft HEAD@{1}</code> (como no cenário anterior), o que deixa o seu branch igual ao do GitHub, e faça a correção num commit novo. Essa é a <a href="regra-de-ouro.html">regra de ouro</a>: não reescreva o que já é público.</li>
+</ul>
+</div>
+
+<div class="cenario">
+<strong>Esqueci o <code>git add</code> antes do <code>--amend</code></strong>
+<pre class="term" data-cwd="~/receitas">$ echo 'Granulado' &gt; granulado.txt
+$ git commit --amend --no-edit
+[main b100c98] Adiciona receita de brigadeiro
+ Date: Thu Oct 15 10:30:00 2026 -0300
+ 1 file changed, 1 insertion(+)
+ create mode 100644 brigadeiro.txt   « nada de granulado.txt
+$ git status
+No ramo main
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	granulado.txt
+
+nada adicionado ao envio mas arquivos não registrados estão presentes (use "git add" to registrar)
+</pre>
+<p>O <code>--amend</code> usa a <strong>área de preparo</strong>, não a pasta. Como o <code>granulado.txt</code> não foi adicionado, o commit foi refeito <strong>sem ele</strong>, e o <code>git status</code> continua mostrando o arquivo como não monitorado. Não estragou nada: o commit refeito saiu igual ao anterior. (Aqui saiu até com o mesmo hash, <code>b100c98</code>, porque no laboratório do guia o relógio é fixo; no seu computador a hora do commit muda, e o hash também.) <strong>Como resolver:</strong> <code>git add granulado.txt</code> e <code>git commit --amend --no-edit</code> de novo.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git commit --amend -m "msg"</code></td><td>Refaz o último commit com a mensagem nova e o que estiver na área de preparo</td></tr>
+<tr><td><code>git commit --amend</code></td><td>O mesmo, abrindo o editor com a mensagem antiga</td></tr>
+<tr><td><code>git commit --amend --no-edit</code></td><td>Refaz o último commit mantendo a mensagem (para incluir o que ficou de fora)</td></tr>
+<tr><td><code>git commit --amend --reset-author --no-edit</code></td><td>Refaz o commit com o seu nome, e-mail e a data de agora como autoria (útil depois de corrigir o <code>git config user.email</code>)</td></tr>
+<tr><td><code>git reflog</code></td><td>Mostra o commit de antes do amend (<code>HEAD@{1}</code>)</td></tr>
+<tr><td><code>git reset --soft HEAD@{1}</code></td><td>Desfaz um amend, deixando as mudanças na área de preparo</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o comando</h3>
+<p>Complete para trocar a mensagem do último commit por "Corrige título":</p>
+<div class="ex-code">git commit <input data-answer="--amend" aria-label="opção"> -m "Corrige título"</div>
+</div>
+
+<div class="exercise">
+<h3>2. Sem mudar a mensagem</h3>
+<p>A Ana já deu <code>git add</code> no arquivo esquecido. Complete para incluí-lo no último commit mantendo a mensagem:</p>
+<div class="ex-code">git commit --amend <input data-answer="--no-edit" aria-label="opção"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. Depois de um <code>git commit --amend</code>, o que acontece com o hash do último commit?</p>
+<label><input type="radio" name="q3"> Continua o mesmo, só a mensagem muda</label>
+<label><input type="radio" name="q3"> Muda: o commit corrigido é um commit novo</label>
+<label><input type="radio" name="q3"> Some: o commit fica sem hash</label>
+<label><input type="radio" name="q3"> Muda o hash de todos os commits do histórico</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. A Ana editou <code>bolo.txt</code> e rodou <code>git commit --amend --no-edit</code> sem dar <code>git add</code>. O que entrou no commit?</p>
+<label><input type="radio" name="q4"> A versão nova do <code>bolo.txt</code></label>
+<label><input type="radio" name="q4"> Nada: o Git dá erro</label>
+<label><input type="radio" name="q4"> O mesmo conteúdo de antes: o amend só pega o que está na área de preparo</label>
+<label><input type="radio" name="q4"> O Git faz o <code>git add</code> sozinho</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. O commit errado já foi enviado com <code>git push</code> e o Bruno já o baixou. Qual é a correção mais segura?</p>
+<label><input type="radio" name="q5"> Fazer um commit novo com a correção</label>
+<label><input type="radio" name="q5"> <code>git commit --amend</code> e <code>git push --force</code></label>
+<label><input type="radio" name="q5"> Apagar o repositório e criar outro</label>
+<label><input type="radio" name="q5"> <code>git commit --amend</code> e mais nada</label>
+</div>
+
+<h3>Missão final: as duas correções juntas</h3>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit';;echo 'Torta de limão' &gt; torta.txt;;echo 'Massa da torta' &gt; massa.txt;;git add torta.txt;;git commit -q -m 'Adiciona trota'" data-goal="commits:2,limpo,msg:Adiciona receita de torta,contem:HEAD:massa.txt=Massa" data-solucao="git add massa.txt;;git commit --amend -m 'Adiciona receita de torta'">
+<p class="try-task"><strong>Missão:</strong> a Ana errou duas vezes no último commit: escreveu "Adiciona trota" e esqueceu o arquivo <code>massa.txt</code>. Corrija as duas coisas com <strong>um</strong> <code>--amend</code>: a mensagem deve ficar "Adiciona receita de torta" e o commit deve conter a massa. Continuam existindo só 2 commits.</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git commit --amend</code> refaz o <strong>último</strong> commit com o que está na área de preparo; <code>-m</code> troca a mensagem, <code>--no-edit</code> mantém a antiga, e sem nenhum dos dois o Git abre o editor.</li>
+  <li>Para incluir um arquivo esquecido: <code>git add arquivo</code> e <code>git commit --amend --no-edit</code>.</li>
+  <li>O commit corrigido é um commit <strong>novo</strong>, com hash novo; o antigo some do <code>git log</code>, mas fica no <code>git reflog</code> (e dá para voltar com <code>git reset --soft HEAD@{1}</code>).</li>
+  <li>Emende à vontade o que ainda não foi enviado. Depois do <code>git push</code>, prefira um commit novo de correção.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
