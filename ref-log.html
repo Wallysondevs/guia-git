@@ -207,17 +207,16 @@ $ git log --oneline --until=2026-09-30          « nenhum commit antes de outubr
 </table>
 </div>
 <pre class="term" data-cwd="~/receitas">$ git log --oneline main..bolo                  « o que o bolo tem e o main não
-70a65a8 Ajusta a farinha do bolo
+70a65a8 (bolo) Ajusta a farinha do bolo
 $ git log --oneline bolo..main                  « o contrário: o que o main tem e o bolo não
-152d79c Atualiza o título do README
+152d79c (HEAD -&gt; main) Atualiza o título do README
 $ git log --oneline --left-right main...bolo    « os dois lados, marcados
-&lt; 152d79c Atualiza o título do README          « &lt; = do lado esquerdo (main)
-&gt; 70a65a8 Ajusta a farinha do bolo             « &gt; = do lado direito (bolo)
+&lt; 152d79c (HEAD -&gt; main) Atualiza o título do README « &lt; = do lado esquerdo (main)
+&gt; 70a65a8 (bolo) Ajusta a farinha do bolo      « &gt; = do lado direito (bolo)
 $ git log --oneline HEAD~2..                    « sem nada depois dos pontos = HEAD
-152d79c Atualiza o título do README
-c8d0fdc Adiciona receita de pudim
+152d79c (HEAD -&gt; main) Atualiza o título do README
+c8d0fdc (tag: v1.0) Adiciona receita de pudim
 </pre>
-<p>(Nessas quatro saídas, colhidas com a saída indo para um arquivo, os nomes entre parênteses não aparecem; no terminal eles aparecem.)</p>
 
 <h2 id="datas">Formatos de data (--date)</h2>
 <p>Valem para o formato completo e para os marcadores <code>%ad</code>/<code>%cd</code>. Para deixar um formato como padrão: <code>git config --global log.date iso</code> (veja <a href="ref-config.html">Configurações</a>). Exemplos com o commit das 10:30 de 15/10/2026, fuso de Brasília (−03:00):</p>
