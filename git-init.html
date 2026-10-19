@@ -264,7 +264,7 @@ Arquivos não monitorados:
 	receitas/
 
 nada adicionado ao envio mas arquivos não registrados estão presentes (use "git add" to registrar)</pre>
-<p><strong>O que aconteceu:</strong> a Ana estava na pasta pessoal (<code>~</code>), não na do projeto. Agora a pasta pessoal inteira virou um repositório, e o <code>git status</code> lista os arquivos de configuração dela como "não monitorados". (As pastas <code>Documentos</code>, <code>Imagens</code> etc. não aparecem só porque estão vazias: o Git não acompanha pastas vazias.) Pior: como o Git procura a <code>.git</code> nas pastas acima, <strong>qualquer</strong> pasta dentro da pessoal passa a parecer parte desse repositório.</p>
+<p><strong>O que aconteceu:</strong> a Ana estava na pasta pessoal (<code>~</code>), não na do projeto. Agora a pasta pessoal inteira virou um repositório, e o <code>git status</code> lista os arquivos de configuração dela como "não monitorados". (As pastas <code>Documentos</code>, <code>Imagens</code> etc. não aparecem aqui porque, nesta máquina, estão vazias, e o Git não acompanha pastas vazias. Com arquivos dentro, elas apareceriam também.) Pior: como o Git procura a <code>.git</code> nas pastas acima, <strong>qualquer</strong> pasta dentro da pessoal passa a parecer parte desse repositório.</p>
 <p><strong>Como resolver:</strong> se você <strong>acabou</strong> de criar e ainda não fez nenhum commit, apague só a pasta <code>.git</code> criada por engano. Confira duas vezes que está na pasta certa e que é a <code>.git</code> nova, antes de apagar:</p>
 <pre class="term">$ rm -rf .git
 $ git status
