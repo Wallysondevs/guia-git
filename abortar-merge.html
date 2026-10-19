@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Desistindo de um Merge — git merge --abort e como desfazer um merge | Guia Git</title>
+<meta name="description" content="Como desistir de um merge no Git: git merge --abort no meio de um conflito (o git status antes e depois), o que acontece com o que você já tinha resolvido e com mudanças não commitadas, o erro There is no merge to abort, git reset --merge, git merge --quit e como desfazer um merge que já terminou com git reset --hard ORIG_HEAD.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Desistindo de um Merge</span></h1>
+
+<p class="intro">Você rodou <code>git merge</code>, apareceram conflitos em dez arquivos, já é tarde e você não sabe o que o colega quis fazer em metade deles. Calma: um merge em andamento <strong>não é um caminho sem volta</strong>. O <code>git merge --abort</code> ("cancelar", "abortar") desfaz tudo e deixa o repositório exatamente como estava antes do merge. Nesta aula você vai ver o <code>--abort</code> em ação, o que ele leva embora junto, e o que fazer quando o merge já terminou e você se arrependeu.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como cancelar um merge com conflito usando <code>git merge --abort</code>, e o <code>git status</code> antes e depois.</li>
+  <li>O que acontece com o que você já tinha resolvido, e com as mudanças que não eram do merge.</li>
+  <li>O erro <code>There is no merge to abort</code> e o que ele quer dizer.</li>
+  <li>Os primos do <code>--abort</code>: <code>git reset --merge</code> e <code>git merge --quit</code>.</li>
+  <li>Como desfazer um merge que <strong>já terminou</strong>: <code>git reset --hard ORIG_HEAD</code>.</li>
+</ul>
+</div>
+
+<p>Todas as saídas desta aula vieram do Git 2.53.0 da máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português. A tradução do Git no Ubuntu é <strong>incompleta</strong>: várias mensagens saem em inglês; elas estão copiadas como saíram e ganham tradução na explicação.</p>
+
+<hr>
+
+<h2>A ideia: o botão "Cancelar" da mudança de móveis</h2>
+<p>A Ana está juntando os móveis de dois apartamentos num só. No meio da mudança, ela percebe que o sofá não passa na porta e que ninguém sabe onde vai a estante. Ela tem duas saídas: continuar e resolver cada problema, ou <strong>desistir hoje</strong>, devolver tudo para o lugar e tentar outro dia, com mais calma. O <code>git merge --abort</code> é a segunda saída: tudo volta para onde estava, como se a mudança nunca tivesse começado. Os dois apartamentos (os dois branches) continuam intactos.</p>
+<p>Lembre como fica o repositório durante um conflito (aula <a href="conflitos.html">Conflitos de Merge</a>): o merge está <strong>em andamento</strong>, o commit de merge ainda não existe, a pasta tem arquivos com marcadores e a área de preparo tem o que o Git já juntou sozinho. Desistir é só desfazer essas três coisas. Os commits não são tocados, porque nenhum commit novo foi criado.</p>
+
+<hr>
+
+<h2>1. <code>git merge --abort</code> no meio de um conflito</h2>
+<p>O repositório é o das aulas anteriores: o <code>main</code> e o branch <code>forno</code> mudaram a mesma linha do <code>bolo.txt</code>. Antes do merge, o <code>git status</code> está limpo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main
+nothing to commit, working tree clean
+$ git merge forno
+Mesclagem automática de bolo.txt
+CONFLITO (conteúdo): conflito de mesclagem em bolo.txt
+Automatic merge failed; fix conflicts and then commit the result.
+$ git status
+No ramo main
+Você tem caminhos não mesclados.
+  (fixar conflitos e executar "git commit")
+  (use "git merge --abort" to abort the merge)
+
+Mudanças a serem submetidas:
+        new file:   cobertura.txt
+
+Caminhos não mesclados:
+  (usar "git add &lt;arquivo&gt;..." para marcar resolução)
+        ambos modificados:   bolo.txt
+
+</pre>
+
+<p>A própria dica do <code>git status</code> mostra a saída: <code>(use "git merge --abort" to abort the merge)</code>, "use <code>git merge --abort</code> para cancelar o merge". A Ana decide desistir:</p>
+
+<dl class="anatomy">
+  <dt>git merge</dt><dd>O mesmo comando do merge.</dd>
+  <dt>--abort</dt><dd>"Abortar, cancelar": em vez de começar um merge, cancela o que está em andamento. Não leva nome de branch.</dd>
+</dl>
+
+<pre class="term" data-cwd="~/receitas">$ git merge --abort
+$ git status
+No ramo main
+nothing to commit, working tree clean
+$ cat bolo.txt
+Bolo de cenoura
+- 3 cenouras
+- 3 ovos
+- 2 xícaras de açúcar
+Forno: 180 graus por 45 minutos
+$ git log --oneline --graph --all
+* 70c15e0 (forno) Assa mais quente e mais rápido
+| * aa84752 (HEAD -&gt; main) Aumenta o tempo de forno
+|/
+* a071866 Adiciona a receita de bolo
+</pre>
+
+<p>O <code>git merge --abort</code> não mostra nada quando dá certo. Confira o resultado peça por peça:</p>
+<dl class="anatomy">
+  <dt>git status</dt><dd>Limpo de novo (<code>nothing to commit, working tree clean</code>): nada de "Caminhos não mesclados", nada de "você continua mesclando". A <code>cobertura.txt</code>, que estava preparada para o commit de merge, também sumiu da pasta, porque ela só existe no <code>forno</code>.</dd>
+  <dt>cat bolo.txt</dt><dd>Sem marcadores: o arquivo voltou à versão do <code>main</code>, com <code>180 graus por 45 minutos</code>.</dd>
+  <dt>git log --oneline --graph --all</dt><dd>O mesmo desenho de antes do merge. O <code>forno</code> continua lá, com o commit dele; nada foi perdido. Quando quiser, tente o merge de novo.</dd>
+</dl>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo 'Forno: 180 graus' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Receita de bolo';;git switch -q -c forno;;echo 'Forno: 200 graus' &gt; bolo.txt;;git commit -q -am 'Forno mais quente';;git switch -q main;;echo 'Forno: 160 graus' &gt; bolo.txt;;git commit -q -am 'Forno mais baixo';;git merge forno" data-goal="semconflito,limpo,head:main,commits:2,contem:HEAD:bolo.txt=Forno: 160 graus,ran:merge --abort" data-solucao="git merge --abort">
+<p class="try-task"><strong>Missão:</strong> o merge do <code>forno</code> no <code>main</code> parou num conflito. Olhe o <code>git status</code> e o <code>cat bolo.txt</code>, desista do merge e confira de novo: o status deve ficar limpo e o arquivo, sem marcadores.</p>
+</div>
+
+<hr>
+
+<h2>2. O que o <code>--abort</code> leva embora (e o que ele deixa)</h2>
+
+<h3>Leva: o que você já tinha resolvido</h3>
+<p>O <code>--abort</code> volta para <strong>antes</strong> do merge. Tudo o que você fez durante o merge vai junto. A Ana começou o merge de novo, mexeu no <code>bolo.txt</code> (escreveu só a primeira linha, como quem começa a resolver) e desistiu:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git merge forno
+Mesclagem automática de bolo.txt
+CONFLITO (conteúdo): conflito de mesclagem em bolo.txt
+Automatic merge failed; fix conflicts and then commit the result.
+$ printf 'Bolo de cenoura\n' &gt; bolo.txt
+$ git merge --abort
+$ git status
+No ramo main
+nothing to commit, working tree clean
+</pre>
+
+<p>A edição sumiu sem aviso: o <code>bolo.txt</code> voltou a ser o do <code>main</code>. Se você passou uma hora resolvendo conflitos, pense duas vezes antes do <code>--abort</code>. Se quiser guardar uma resolução, copie o arquivo para fora do repositório antes.</p>
+
+<h3>Deixa: mudanças que não tinham nada a ver com o merge</h3>
+<p>O Git deixa começar um merge com mudanças não commitadas, <strong>desde que o merge não mexa nesses arquivos</strong> (se mexer, ele recusa antes de começar; veja <a href="merge-tres-vias.html">Merge de Três Vias</a>). Aqui a Ana estava mudando o <code>LEIA.txt</code>, que o <code>forno</code> não toca:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status --short
+ M LEIA.txt
+$ git merge forno
+Mesclagem automática de bolo.txt
+CONFLITO (conteúdo): conflito de mesclagem em bolo.txt
+Automatic merge failed; fix conflicts and then commit the result.
+$ git status --short
+ M LEIA.txt
+UU bolo.txt
+A  cobertura.txt
+$ git merge --abort
+$ git status --short
+ M LEIA.txt
+$ cat LEIA.txt
+Receitas da Ana e do Bruno
+</pre>
+
+<p>O <code>--abort</code> desfez o merge (sumiram o <code>UU bolo.txt</code> e o <code>A  cobertura.txt</code>) e deixou a mudança do <code>LEIA.txt</code> em paz. Mesmo assim, o manual do Git avisa que, em alguns casos, o <code>--abort</code> <strong>não consegue</strong> reconstruir as mudanças que existiam antes do merge. Por isso a regra de ouro continua: <strong>comece o merge com o <code>git status</code> limpo</strong> (faça commit ou guarde com <a href="git-stash.html">git stash</a>).</p>
+
+<hr>
+
+<h2>3. Os primos do <code>--abort</code></h2>
+
+<h3><code>git reset --merge</code></h3>
+<p>Em tutoriais antigos, de antes de o <code>--abort</code> existir, você vai ver este comando. Num merge com conflito, ele faz o mesmo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git merge forno
+Mesclagem automática de bolo.txt
+CONFLITO (conteúdo): conflito de mesclagem em bolo.txt
+Automatic merge failed; fix conflicts and then commit the result.
+$ git reset --merge
+$ git status --short
+</pre>
+
+<p>O <code>git status --short</code> vazio quer dizer "nada mudou": o merge foi cancelado. Prefira o <code>git merge --abort</code>: o nome diz o que ele faz, e ele recusa (com erro) se não houver merge em andamento, em vez de fazer outra coisa. (O <code>git reset</code> tem vários modos e aula própria: <a href="git-reset.html">git reset</a>.)</p>
+
+<h3><code>git merge --quit</code>: "esquece o merge, mas deixa tudo como está"</h3>
+<p>O <code>--quit</code> ("sair") também tira o repositório do estado "merge em andamento", mas <strong>não desfaz nada</strong> na pasta nem na área de preparo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git merge forno
+Mesclagem automática de bolo.txt
+CONFLITO (conteúdo): conflito de mesclagem em bolo.txt
+Automatic merge failed; fix conflicts and then commit the result.
+$ git merge --quit
+$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+        new file:   cobertura.txt
+
+Caminhos não mesclados:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+  (usar "git add &lt;arquivo&gt;..." para marcar resolução)
+        ambos modificados:   bolo.txt
+
+</pre>
+
+<p>Repare na diferença: sumiram as linhas <code>Você tem caminhos não mesclados</code> e a dica do <code>git merge --abort</code>, e apareceu <code>(use "git restore --staged &lt;file&gt;..." to unstage)</code>, "para tirar da área de preparo". O Git esqueceu que havia um merge, mas o <code>bolo.txt</code> continua com os marcadores, e a <code>cobertura.txt</code> continua preparada. Se você fizer um commit agora, ele será um <strong>commit comum</strong>, com um pai só, e não um commit de merge. É um comando para casos raros (como o <code>git switch</code> sugeriu na aula <a href="conflitos.html">Conflitos de Merge</a>); para desistir, use o <code>--abort</code>.</p>
+
+<hr>
+
+<h2>4. O merge já terminou e eu me arrependi</h2>
+<p>O <code>--abort</code> só funciona <strong>durante</strong> o merge. Se o merge terminou (sem conflito, ou depois do <code>git commit</code>), o commit de merge já existe. A Ana fez um merge com <code>-X theirs</code> (aula <a href="resolver-conflitos.html">Resolvendo Conflitos</a>) e não gostou do resultado:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git merge --no-edit -X theirs forno
+Mesclagem automática de bolo.txt
+Merge made by the 'ort' strategy.
+ bolo.txt      | 2 +-
+ cobertura.txt | 1 +
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+ create mode 100644 cobertura.txt
+$ git log --oneline --graph
+*   7877581 (HEAD -&gt; main) Merge branch 'forno'
+|\
+| * 70c15e0 (forno) Assa mais quente e mais rápido
+* | aa84752 Aumenta o tempo de forno
+|/
+* a071866 Adiciona a receita de bolo
+$ git reset --hard ORIG_HEAD
+HEAD is now at aa84752 Aumenta o tempo de forno
+$ git log --oneline --graph
+* aa84752 (HEAD -&gt; main) Aumenta o tempo de forno
+* a071866 Adiciona a receita de bolo
+</pre>
+
+<dl class="anatomy">
+  <dt>git reset --hard</dt><dd>Move o branch atual para outro commit e deixa a pasta e a área de preparo iguais a ele. O <code>--hard</code> <strong>joga fora</strong> mudanças não commitadas: use com o <code>git status</code> limpo (detalhes em <a href="reset-modos.html">reset --soft, --mixed e --hard</a>).</dd>
+  <dt>ORIG_HEAD</dt><dd>Um "marcador" que o Git cria sozinho antes de operações grandes, como o merge: ele guarda <strong>onde o HEAD estava antes</strong>. Depois do merge, <code>ORIG_HEAD</code> é o <code>aa84752</code>, o <code>main</code> de antes. (Como o primeiro pai do commit de merge é sempre o <code>main</code> de antes, <code>HEAD~1</code> chegaria ao mesmo lugar.)</dd>
+  <dt>HEAD is now at aa84752 Aumenta o tempo de forno</dt><dd>"O HEAD agora está em <code>aa84752</code>". O commit de merge saiu do <code>main</code>; o desenho voltou a ter só o caminho do <code>main</code>. (O <code>git log --graph</code> sem <code>--all</code> mostra só o branch atual; o <code>forno</code> continua existindo.)</dd>
+</dl>
+
+<div class="warning">
+<strong>Só para merges que ainda não foram enviados</strong>
+<p>O <code>git reset</code> <strong>apaga commits do histórico</strong>. Se o commit de merge já foi enviado com <code>git push</code> e outras pessoas já o têm, não use o <code>reset</code>: desfaça com um commit novo, usando <code>git revert -m 1 &lt;commit-de-merge&gt;</code> (o <code>-m 1</code> diz "o lado certo é o primeiro pai"). Veja <a href="git-revert.html">git revert</a> e <a href="regra-de-ouro.html">A Regra de Ouro</a>.</p>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer a mesma coisa</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Comando</th><th>O que acontece</th></tr>
+<tr><td>Merge parado num conflito, quero desistir</td><td><code>git merge --abort</code></td><td>Volta a pasta, a área de preparo e o estado a antes do merge (o jeito recomendado)</td></tr>
+<tr><td>O mesmo, em tutoriais antigos</td><td><code>git reset --merge</code></td><td>Igual, num merge com conflito</td></tr>
+<tr><td>Quero só "esquecer" que havia um merge, sem mexer em nada</td><td><code>git merge --quit</code></td><td>Sai do estado de merge; pasta e preparo ficam como estão</td></tr>
+<tr><td>O merge terminou, ainda não fiz <code>push</code></td><td><code>git reset --hard ORIG_HEAD</code></td><td>O branch volta a antes do merge; o commit de merge sai do histórico</td></tr>
+<tr><td>O merge terminou e já foi enviado</td><td><code>git revert -m 1 &lt;commit&gt;</code></td><td>Um commit novo desfaz as mudanças do merge (aula <a href="git-revert.html">git revert</a>)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Não há merge para cancelar: <code>There is no merge to abort (MERGE_HEAD missing)</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git merge --abort
+fatal: There is no merge to abort (MERGE_HEAD missing).
+</pre>
+<p>"Fatal: não há merge para cancelar (falta o <code>MERGE_HEAD</code>)." O <code>MERGE_HEAD</code> é o arquivo, dentro da pasta <code>.git</code>, que marca um merge em andamento (aula <a href="conflitos.html">Conflitos de Merge</a>). Duas situações comuns: você já cancelou (aqui, a Ana rodou o <code>--abort</code> duas vezes), ou o merge <strong>já terminou</strong>. <strong>Como confirmar:</strong> <code>git status</code>: se não aparece "Caminhos não mesclados" nem "você continua mesclando", não há merge em andamento. <strong>Como resolver:</strong> se o merge terminou e você quer desfazê-lo, veja a seção 4.</p>
+</div>
+
+<div class="cenario">
+<strong>"Cancelei e perdi o que tinha resolvido"</strong>
+<p>Como você viu na seção 2, o <code>--abort</code> descarta as resoluções em andamento sem perguntar. Não há comando do Git que as traga de volta, porque elas nunca entraram num commit. <strong>Como evitar:</strong> antes de desistir de um merge grande, copie para fora do repositório os arquivos que você já resolveu; na próxima tentativa, aproveite-os.</p>
+</div>
+
+<div class="cenario">
+<strong>Apagou a mensagem no editor achando que cancelava o merge</strong>
+<p>Ao terminar um merge, salvar a mensagem <strong>vazia</strong> no editor não cancela o merge: o Git responde <code>Not committing merge; use 'git commit' to complete the merge.</code> e o merge continua em andamento (está na aula <a href="merge-tres-vias.html">Merge de Três Vias</a>). <strong>Como resolver:</strong> para desistir de verdade, <code>git merge --abort</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git merge --abort</code></td><td>Cancela o merge em andamento e volta a como estava antes</td></tr>
+<tr><td><code>git reset --merge</code></td><td>O jeito antigo de cancelar um merge com conflito</td></tr>
+<tr><td><code>git merge --quit</code></td><td>Sai do estado de merge sem mexer na pasta nem na área de preparo</td></tr>
+<tr><td><code>git reset --hard ORIG_HEAD</code></td><td>Desfaz um merge que já terminou (antes do <code>push</code>)</td></tr>
+<tr><td><code>git revert -m 1 &lt;commit&gt;</code></td><td>Desfaz um merge já enviado, com um commit novo</td></tr>
+<tr><td><code>fatal: There is no merge to abort</code></td><td>Não há merge em andamento</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o comando</h3>
+<p>O merge parou com conflito em dez arquivos e você quer voltar a como estava antes:</p>
+<div class="ex-code">git merge <input data-answer="--abort" aria-label="opção"></div>
+</div>
+
+<div class="exercise">
+<h3>2. O marcador do "antes"</h3>
+<p>Depois de um merge que terminou, qual nome o Git dá ao commit onde o HEAD estava antes do merge?</p>
+<div class="ex-code">git reset --hard <input data-answer="ORIG_HEAD" aria-label="nome"></div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. Você resolveu 3 dos 5 arquivos em conflito e rodou <code>git merge --abort</code>. O que aconteceu com os 3 arquivos resolvidos?</p>
+<label><input type="radio" name="q3"> Foram guardados num commit</label>
+<label><input type="radio" name="q3"> Continuam resolvidos, esperando o próximo merge</label>
+<label><input type="radio" name="q3"> Voltaram à versão de antes do merge: a resolução foi perdida</label>
+<label><input type="radio" name="q3"> Foram para o stash</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. O que o <code>git merge --abort</code> faz com o branch que você estava trazendo (o <code>forno</code>)?</p>
+<label><input type="radio" name="q4"> Apaga o branch</label>
+<label><input type="radio" name="q4"> Nada: o branch continua igual</label>
+<label><input type="radio" name="q4"> Desfaz o último commit dele</label>
+<label><input type="radio" name="q4"> Junta o branch no <code>main</code> sem os conflitos</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">5. O merge terminou ontem e o commit de merge já foi enviado com <code>git push</code>. Como desfazê-lo?</p>
+<label><input type="radio" name="q5"> <code>git merge --abort</code></label>
+<label><input type="radio" name="q5"> <code>git reset --hard ORIG_HEAD</code> e <code>git push --force</code></label>
+<label><input type="radio" name="q5"> <code>git merge --quit</code></label>
+<label><input type="radio" name="q5"> <code>git revert -m 1</code> com o hash do commit de merge</label>
+</div>
+
+<h3>Missão final: desfazer um merge que já terminou</h3>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;git switch -q -c bolo;;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona a receita de bolo';;git switch -q main;;echo 'Pudim' &gt; pudim.txt;;git add pudim.txt;;git commit -q -m 'Adiciona a receita de pudim';;git merge -q --no-edit bolo" data-goal="head:main,commits:2,limpo,branch:bolo,msg:Adiciona a receita de pudim" data-solucao="git reset --hard HEAD~1">
+<p class="try-task"><strong>Missão:</strong> a Ana juntou o branch <code>bolo</code> no <code>main</code> cedo demais: o merge já terminou (veja com <code>git log --oneline --graph --all</code>). Ela ainda não fez <code>push</code>. Desfaça o merge para o <code>main</code> voltar ao commit <code>Adiciona a receita de pudim</code> (use <code>git reset --hard ORIG_HEAD</code> ou <code>git reset --hard HEAD~1</code>). O branch <code>bolo</code> deve continuar existindo.</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Durante um merge com conflito, <code>git merge --abort</code> volta tudo a antes do merge: a pasta, a área de preparo e o estado "merge em andamento". Os branches não são tocados.</li>
+  <li>O <code>--abort</code> descarta as resoluções que você já tinha feito; mudanças em arquivos que o merge não tocou costumam sobreviver, mas o seguro é começar o merge com o <code>git status</code> limpo.</li>
+  <li><code>fatal: There is no merge to abort (MERGE_HEAD missing)</code>: não há merge em andamento (já foi cancelado ou já terminou).</li>
+  <li><code>git reset --merge</code> é o jeito antigo de cancelar; <code>git merge --quit</code> só esquece o merge, sem desfazer nada.</li>
+  <li>Merge que já terminou: <code>git reset --hard ORIG_HEAD</code>, se ainda não foi enviado; <code>git revert -m 1</code>, se já foi.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
