@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Vários Stashes — list, show, apply, pop, drop e clear | Guia Git</title>
+<meta name="description" content="Como trabalhar com vários stashes no Git: a pilha stash@{0}, stash@{1}…, git stash list, show, apply × pop, drop e clear, conflito no stash pop (The stash entry is kept in case you need it again), git stash branch e como recuperar um stash apagado pelo hash, com saídas reais.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Vários Stashes (list, apply, pop, drop)</span></h1>
+
+<p class="intro">Na aula <a href="git-stash.html">git stash</a>, a Ana guardou uma coisa na gaveta e tirou logo depois. Mas a gaveta aceita <strong>vários</strong> itens: hoje o fermento do bolo, amanhã o leite do pudim, depois uma frase no README. Cada <code>git stash</code> põe um item novo <strong>em cima</strong> dos outros, como uma pilha de pratos. Nesta aula você vai ver a pilha inteira, escolher qual item aplicar, apagar os que não servem mais, e o que fazer quando um stash não "encaixa" mais no arquivo.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como a pilha funciona: <code>stash@{0}</code>, <code>stash@{1}</code>, <code>stash@{2}</code>… e o <code>git stash list</code>.</li>
+  <li>Como espiar um item específico com <code>git stash show</code>.</li>
+  <li>A diferença entre <code>apply</code> (aplica e mantém) e <code>pop</code> (aplica e apaga); e como apagar com <code>drop</code> e <code>clear</code>.</li>
+  <li>O que fazer quando o <code>pop</code> dá conflito, e o atalho <code>git stash branch</code>.</li>
+  <li>Como recuperar um stash apagado sem querer.</li>
+</ul>
+</div>
+
+<p>Todas as saídas desta aula vieram do Git 2.53.0 da máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português. A tradução do Git no Ubuntu é <strong>incompleta</strong>, e as mensagens do <code>stash</code> saem quase todas em inglês: estão copiadas como saíram e ganham tradução na explicação.</p>
+
+<hr>
+
+<h2>A ideia: uma pilha de pratos</h2>
+<p>Numa pilha de pratos, o último que você põe fica em cima, e é o primeiro que você tira. O stash é igual:</p>
+<ul>
+  <li>cada <code>git stash</code> põe um item <strong>no topo</strong>;</li>
+  <li>o item do topo se chama <code>stash@{0}</code>; o de baixo dele, <code>stash@{1}</code>; e assim por diante;</li>
+  <li>quando você guarda um item novo, <strong>todos os outros descem uma posição</strong> (o que era <code>stash@{0}</code> vira <code>stash@{1}</code>), e quando você tira um, os de baixo sobem.</li>
+</ul>
+<p>Diferente da pilha de pratos, você pode tirar um item <strong>do meio</strong>, dizendo o nome dele. Os comandos sem nome (<code>pop</code>, <code>apply</code>, <code>drop</code>, <code>show</code>) usam sempre o <code>stash@{0}</code>, o do topo.</p>
+
+<hr>
+
+<h2>1. Enchendo a pilha e listando: <code>git stash list</code></h2>
+<p>A Ana tem um repositório com <code>README.md</code>, <code>bolo.txt</code> e <code>pudim.txt</code>. Ao longo do dia, ela começa três mudanças e guarda cada uma antes de terminar:</p>
+
+<pre class="term" data-cwd="~/receitas">$ printf -- '- 1 colher de fermento\n' &gt;&gt; bolo.txt
+$ git stash push -m 'fermento no bolo'
+Saved working directory and index state On main: fermento no bolo
+$ printf -- '- 1 lata de leite\n' &gt;&gt; pudim.txt
+$ git stash push -m 'leite no pudim'
+Saved working directory and index state On main: leite no pudim
+$ printf 'Site de receitas da família.\n' &gt;&gt; README.md
+$ git stash
+Saved working directory and index state WIP on main: c36bc0c Primeiras receitas
+$ git stash list
+stash@{0}: WIP on main: c36bc0c Primeiras receitas
+stash@{1}: On main: leite no pudim
+stash@{2}: On main: fermento no bolo
+</pre>
+
+<p>(O <code>printf … &gt;&gt; arquivo</code> acrescenta uma linha no fim do arquivo; o <code>-m</code> dá um nome ao stash, como na aula anterior.) Leia a lista de cima para baixo:</p>
+<dl class="anatomy">
+  <dt>stash@{0}: WIP on main: c36bc0c Primeiras receitas</dt><dd>O topo da pilha: o último guardado, a frase do README. Como foi guardado sem <code>-m</code>, ganhou o nome automático: <em>WIP</em> (<em>work in progress</em>, "trabalho em andamento") no <code>main</code>, a partir do commit <code>c36bc0c</code>.</dd>
+  <dt>stash@{1}: On main: leite no pudim</dt><dd>O segundo, com o nome que a Ana deu. Quando ele foi guardado, ele era o <code>stash@{0}</code>; desceu quando o do README chegou.</dd>
+  <dt>stash@{2}: On main: fermento no bolo</dt><dd>O primeiro que foi guardado, agora no fundo da pilha.</dd>
+</dl>
+<p>Viu por que vale a pena usar <code>-m</code>? Com três itens chamados <code>WIP on main: c36bc0c Primeiras receitas</code>, a Ana não saberia qual é qual.</p>
+
+<hr>
+
+<h2>2. Espiando um item: <code>git stash show stash@{N}</code></h2>
+
+<pre class="term" data-cwd="~/receitas">$ git stash show stash@{1}
+ pudim.txt | 1 +
+ 1 file changed, 1 insertion(+)
+$ git stash show -p stash@{2}
+diff --git a/bolo.txt b/bolo.txt
+index 92e7eaf..84a5a0b 100644
+--- a/bolo.txt
++++ b/bolo.txt
+@@ -1,3 +1,4 @@
+ Bolo de cenoura
+ - 3 cenouras
+ - 3 ovos
++- 1 colher de fermento
+</pre>
+
+<dl class="anatomy">
+  <dt>git stash show stash@{1}</dt><dd>O resumo do item 1: ele muda o <code>pudim.txt</code>, com uma linha a mais (<code>1 +</code>).</dd>
+  <dt>git stash show -p stash@{2}</dt><dd>Com <code>-p</code> (<em>patch</em>), as mudanças linha a linha, no formato do <a href="git-diff.html">git diff</a>: o item 2 acrescenta <code>- 1 colher de fermento</code> no <code>bolo.txt</code> (a linha com <code>+</code>).</dd>
+</dl>
+<p>Em vez de <code>stash@{2}</code>, dá para escrever só o número: <code>git stash show -p 2</code>. Sem número nenhum, é o topo (<code>stash@{0}</code>).</p>
+
+<hr>
+
+<h2>3. <code>apply</code> × <code>pop</code></h2>
+<p>Os dois aplicam um stash na pasta. A diferença está no que acontece com o item <strong>depois</strong>:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>Aplica as mudanças?</th><th>O item continua na lista?</th></tr>
+<tr><td><code>git stash apply</code></td><td>Sim</td><td><strong>Sim</strong>: você pode aplicar de novo, em outro branch, por exemplo</td></tr>
+<tr><td><code>git stash pop</code></td><td>Sim</td><td><strong>Não</strong>: se aplicou sem problemas, o item é apagado</td></tr>
+</table>
+</div>
+
+<h3><code>git stash apply stash@{1}</code></h3>
+
+<pre class="term" data-cwd="~/receitas">$ git stash apply stash@{1}
+No ramo main
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   pudim.txt
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+$ git status --short
+ M pudim.txt
+$ git stash list
+stash@{0}: WIP on main: c36bc0c Primeiras receitas
+stash@{1}: On main: leite no pudim
+stash@{2}: On main: fermento no bolo
+</pre>
+
+<p>O leite voltou para o <code>pudim.txt</code> (<code> M pudim.txt</code>, modificado), e a lista continua com <strong>três</strong> itens: o <code>apply</code> não apagou nada. Repare que o <code>apply</code> mostra um <code>git status</code>, mas não tem a linha <code>Dropped …</code> do <code>pop</code>.</p>
+
+<h3>Apagando um item: <code>git stash drop</code></h3>
+<p>A Ana desiste do leite no pudim. Ela descarta a mudança da pasta (<a href="git-restore.html">git restore</a>) e apaga o item da lista:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git restore pudim.txt
+$ git stash drop stash@{1}
+Dropped stash@{1} (f07f80aa3a8bdfbb6f7fa0899e68a91e6a9cf83b)
+$ git stash list
+stash@{0}: WIP on main: c36bc0c Primeiras receitas
+stash@{1}: On main: fermento no bolo
+</pre>
+
+<p><code>Dropped stash@{1}</code>: "descartei o <code>stash@{1}</code>", com o hash dele entre parênteses. Olhe a lista: o fermento, que era o <code>stash@{2}</code>, <strong>subiu</strong> para <code>stash@{1}</code>. Os números mudam sempre que a pilha muda: confira o <code>git stash list</code> antes de usar um número.</p>
+
+<h3><code>git stash pop</code>: aplica o topo e apaga</h3>
+
+<pre class="term" data-cwd="~/receitas">$ git stash pop
+No ramo main
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   README.md
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+Dropped refs/stash@{0} (20e40409a13c3d4ca38869dd539f3232b69a8ade)
+$ git stash list
+stash@{0}: On main: fermento no bolo
+</pre>
+
+<p>Sem número, o <code>pop</code> pegou o topo, a frase do README, e apagou o item (<code>Dropped refs/stash@{0}</code>). O fermento subiu para <code>stash@{0}</code>. Mais um <code>pop</code>, e a pilha esvazia:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git stash pop
+No ramo main
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   README.md
+	modified:   bolo.txt
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+Dropped refs/stash@{0} (6f3bbdf30d8a343ebd70a4254599f742bbc5ec01)
+$ cat bolo.txt
+Bolo de cenoura
+- 3 cenouras
+- 3 ovos
+- 1 colher de fermento
+$ git stash list
+</pre>
+
+<p>Agora a pasta tem as duas mudanças juntas (o README do <code>pop</code> anterior e o fermento), e a lista está vazia. Dá para aplicar stashes um por cima do outro, desde que não mexam nas mesmas linhas.</p>
+
+<h3>Esvaziando tudo: <code>git stash clear</code></h3>
+
+<pre class="term" data-cwd="~/receitas">$ git stash clear
+$ git stash list
+$ git log --oneline
+c36bc0c Primeiras receitas
+</pre>
+
+<p>O <code>clear</code> ("limpar") apaga <strong>todos</strong> os itens de uma vez, sem perguntar e sem mostrar nada. (Aqui a lista já estava vazia.) Use com cuidado. E repare no <code>git log</code>: depois de tudo isso, o histórico continua com um commit só. Os stashes nunca entram no histórico do branch.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas' &gt; README.md;;echo 'Bolo de cenoura' &gt; bolo.txt;;echo 'Pudim' &gt; pudim.txt;;git add README.md bolo.txt pudim.txt;;git commit -q -m 'Primeiras receitas';;echo '- 1 colher de fermento' &gt;&gt; bolo.txt;;git stash push -q -m 'fermento no bolo';;echo '- 1 lata de leite' &gt;&gt; pudim.txt;;git stash push -q -m 'leite no pudim';;echo 'Site de receitas.' &gt;&gt; README.md;;git stash -q" data-goal="stash:2,naopreparado:pudim.txt,contains:receitas/pudim.txt=leite" data-solucao="git stash pop stash@{1}">
+<p class="try-task"><strong>Missão:</strong> a pilha tem três itens. Veja a lista, descubra qual é o do leite no pudim e aplique <strong>só ele</strong>, tirando-o da pilha (os outros dois devem continuar guardados).</p>
+</div>
+
+<hr>
+
+<h2>4. Quando o <code>pop</code> dá conflito</h2>
+<p>Um stash guarda <strong>mudanças</strong> em relação a um commit. Se, enquanto ele estava guardado, o branch ganhou um commit que mexe nas <strong>mesmas linhas</strong>, aplicar o stash vira um pequeno merge, e pode dar conflito. A Ana guardou "4 ovos" no stash; depois, mudou a mesma linha para "2 ovos" e commitou:</p>
+
+<pre class="term" data-cwd="~/receitas">$ sed -i 's/3 ovos/4 ovos/' bolo.txt
+$ git stash push -m 'quatro ovos'
+Saved working directory and index state On main: quatro ovos
+$ sed -i 's/3 ovos/2 ovos/' bolo.txt
+$ git commit -q -am 'Bolo com 2 ovos'
+$ git stash pop
+Mesclagem automática de bolo.txt
+CONFLITO (conteúdo): conflito de mesclagem em bolo.txt
+No ramo main
+Caminhos não mesclados:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+  (usar "git add &lt;arquivo&gt;..." para marcar resolução)
+	ambos modificados:   bolo.txt
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+The stash entry is kept in case you need it again.
+</pre>
+
+<dl class="anatomy">
+  <dt>CONFLITO (conteúdo): conflito de mesclagem em bolo.txt</dt><dd>A mesma mensagem de um merge (aula <a href="conflitos.html">Conflitos de Merge</a>): o commit e o stash mudaram a mesma linha.</dd>
+  <dt>ambos modificados: bolo.txt</dt><dd>O <code>bolo.txt</code> está em "Caminhos não mesclados", com marcadores.</dd>
+  <dt>The stash entry is kept in case you need it again.</dt><dd>"O item do stash foi mantido, caso você precise dele de novo." Importante: <strong>com conflito, o <code>pop</code> não apaga o stash</strong>. Não aparece a linha <code>Dropped</code>.</dd>
+</dl>
+
+<pre class="term" data-cwd="~/receitas">$ cat bolo.txt
+Bolo de cenoura
+- 3 cenouras
+&lt;&lt;&lt;&lt;&lt;&lt;&lt; Updated upstream
+- 2 ovos
+=======
+- 4 ovos
+&gt;&gt;&gt;&gt;&gt;&gt;&gt; Stashed changes
+$ git stash list
+stash@{0}: On main: quatro ovos
+</pre>
+
+<p>Os marcadores têm nomes diferentes dos do merge: em cima, <code>Updated upstream</code> ("a versão atualizada", a do commit atual); embaixo, <code>Stashed changes</code> ("as mudanças guardadas", as do stash). Resolver é como num merge, com uma diferença no final, porque não há commit de merge a fazer:</p>
+<ol class="passo">
+  <li>Edite o arquivo e deixe-o como deve ficar, sem marcadores (aula <a href="resolver-conflitos.html">Resolvendo Conflitos</a>).</li>
+  <li>Marque como resolvido com <code>git add bolo.txt</code> (ou, se não quiser a mudança preparada, tire o conflito com <code>git restore --staged bolo.txt</code>).</li>
+  <li>Como o stash foi mantido, apague-o quando tiver certeza: <code>git stash drop</code>.</li>
+</ol>
+<p>A Ana preferiu outro caminho: desistir de aplicar o stash agora. Ela voltou o arquivo à versão do último commit (o <code>--source=HEAD --staged --worktree</code> diz "pegue do HEAD, e restaure a área de preparo e a pasta"; veja <a href="git-restore.html">git restore</a>). O stash continua lá:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git restore --source=HEAD --staged --worktree bolo.txt
+$ git status --short
+$ git stash list
+stash@{0}: On main: quatro ovos
+</pre>
+
+<h3>A saída elegante: <code>git stash branch</code></h3>
+<p>O conflito aconteceu porque o branch andou depois do stash. O <code>git stash branch</code> cria um branch novo <strong>a partir do commit onde o stash foi feito</strong>, aplica o stash nele (lá não há conflito, porque é o mesmo ponto de partida) e o apaga da lista:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git stash branch quatro-ovos
+Switched to a new branch 'quatro-ovos'
+No ramo quatro-ovos
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   bolo.txt
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+Dropped refs/stash@{0} (c7aeff9b7e4662b69976839f4a459c1e5b3f71f3)
+$ git log --oneline --decorate --all
+3bf0b65 (main) Bolo com 2 ovos
+ed9221a (HEAD -&gt; quatro-ovos) Receita de bolo
+$ git stash list
+</pre>
+
+<dl class="anatomy">
+  <dt>Switched to a new branch 'quatro-ovos'</dt><dd>"Mudei para um branch novo, <code>quatro-ovos</code>." Ele começa no <code>ed9221a</code>, o commit em que a Ana estava quando guardou o stash, e não no <code>main</code> atual (o <code>--decorate</code> mostra os nomes dos branches ao lado dos commits).</dd>
+  <dt>modified: bolo.txt</dt><dd>As mudanças do stash, aplicadas sem conflito. Agora a Ana pode commitá-las nesse branch e, depois, juntá-lo ao <code>main</code> com um merge, resolvendo o conflito no lugar certo.</dd>
+  <dt>Dropped refs/stash@{0}</dt><dd>Como deu certo, o stash saiu da lista.</dd>
+</dl>
+
+<hr>
+
+<h2>5. Apaguei um stash sem querer!</h2>
+<p>Lembra do hash entre parênteses no <code>Dropped</code>? Ele é a sua salvação. Um stash apagado não some na hora: ele continua guardado no repositório por um tempo (até o Git fazer uma faxina, normalmente semanas depois). Com o hash, dá para aplicá-lo de novo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git stash push -m 'fermento no bolo'
+Saved working directory and index state On main: fermento no bolo
+$ git stash drop
+Dropped refs/stash@{0} (42c430a515e7e35d6480de18d3cfc6c9180ea554)
+$ git stash list
+$ git stash apply 42c430a
+No ramo main
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   bolo.txt
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+$ cat bolo.txt
+Bolo de cenoura
+- 3 cenouras
+- 3 ovos
+- 1 colher de fermento
+</pre>
+
+<p>Os 7 primeiros caracteres do hash bastam (veja <a href="hash.html">O Hash do Commit</a>). Se o terminal já foi fechado e você não tem mais o hash, ainda há esperança: a aula <a href="recuperar-commit.html">Recuperando Commits Perdidos</a> mostra como procurar o que se perdeu. Moral: <strong>não use <code>drop</code> e <code>clear</code> no automático</strong>.</p>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer a mesma coisa</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Você quer…</th><th>Comando</th></tr>
+<tr><td>Aplicar o do topo e tirá-lo da lista</td><td><code>git stash pop</code></td></tr>
+<tr><td>Aplicar o do topo e manter na lista (para usar em outro lugar também)</td><td><code>git stash apply</code></td></tr>
+<tr><td>Aplicar um do meio</td><td><code>git stash pop stash@{2}</code> ou <code>git stash pop 2</code> (o mesmo com <code>apply</code>)</td></tr>
+<tr><td>Apagar um sem aplicar</td><td><code>git stash drop stash@{1}</code> (sem nome: o do topo)</td></tr>
+<tr><td>Apagar todos</td><td><code>git stash clear</code></td></tr>
+<tr><td>Aplicar num branch novo, a partir de onde o stash foi feito</td><td><code>git stash branch nome</code></td></tr>
+<tr><td>Recuperar um apagado</td><td><code>git stash apply &lt;hash do Dropped&gt;</code></td></tr>
+</table>
+</div>
+<p>Na dúvida entre <code>apply</code> e <code>pop</code>, use <code>apply</code>, confira o resultado e só então <code>drop</code>. É um passo a mais, mas nada se perde.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Número que não existe: <code>log for 'stash' only has 1 entries</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git stash list
+stash@{0}: On main: fermento no bolo
+$ git stash drop stash@{5}
+fatal: log for 'stash' only has 1 entries
+</pre>
+<p>"Fatal: o registro do stash só tem 1 item." A Ana pediu o <code>stash@{5}</code>, mas a pilha só tem o <code>stash@{0}</code>. Lembre que os números mudam quando você guarda ou tira itens. <strong>Como resolver:</strong> <code>git stash list</code> e use um número que aparece lá.</p>
+</div>
+
+<div class="cenario">
+<strong>Conflito no <code>pop</code>: <code>The stash entry is kept in case you need it again.</code></strong>
+<p>Visto na seção 4: o stash e um commit mudaram as mesmas linhas. O stash <strong>não</strong> é apagado. <strong>Como resolver:</strong> resolva o arquivo e rode <code>git stash drop</code>; ou volte o arquivo ao último commit (<code>git restore --source=HEAD --staged --worktree arquivo</code>) e use <code>git stash branch</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Hash errado: <code>is not a valid reference</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git stash apply e1b1a1b
+error: e1b1a1b is not a valid reference
+</pre>
+<p>"<code>e1b1a1b</code> não é uma referência válida." Não existe stash (nem commit) com esse hash: costuma ser erro de digitação. <strong>Como resolver:</strong> copie o hash da linha <code>Dropped</code> com cuidado.</p>
+</div>
+
+<div class="cenario">
+<strong>A pilha virou um cemitério</strong>
+<p>Ninguém avisa, mas é comum: um <code>git stash list</code> com 15 itens chamados <code>WIP on main: …</code>, de meses atrás, e ninguém sabe o que tem em cada um. <strong>Como evitar:</strong> use <code>-m</code> sempre; trate o stash como algo de horas, não de semanas (para coisas longas, faça um commit num branch); e, de vez em quando, olhe a lista e apague o que não serve com <code>drop</code>, conferindo antes com <code>git stash show -p</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git stash list</code></td><td>Lista a pilha; <code>stash@{0}</code> é o mais recente</td></tr>
+<tr><td><code>git stash show [-p] [stash@{N}]</code></td><td>Mostra o resumo (ou, com <code>-p</code>, as linhas) de um item</td></tr>
+<tr><td><code>git stash apply [stash@{N}]</code></td><td>Aplica e mantém o item na lista</td></tr>
+<tr><td><code>git stash pop [stash@{N}]</code></td><td>Aplica e apaga o item (se não houver conflito)</td></tr>
+<tr><td><code>git stash drop [stash@{N}]</code></td><td>Apaga um item sem aplicar</td></tr>
+<tr><td><code>git stash clear</code></td><td>Apaga todos os itens</td></tr>
+<tr><td><code>git stash branch nome [stash@{N}]</code></td><td>Cria um branch no commit de origem do stash, aplica e apaga o item</td></tr>
+<tr><td><code>git stash apply &lt;hash&gt;</code></td><td>Aplica um stash apagado, pelo hash da linha <code>Dropped</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Aplicar sem apagar</h3>
+<p>Complete para aplicar o segundo item da pilha <strong>sem</strong> tirá-lo da lista:</p>
+<div class="ex-code">git stash <input data-answer="apply" aria-label="subcomando"> stash@{<input data-answer="1" aria-label="número">}</div>
+</div>
+
+<div class="exercise">
+<h3>2. Os números andam</h3>
+<p>A lista tem <code>stash@{0}</code>, <code>stash@{1}</code> e <code>stash@{2}</code>. Você roda <code>git stash drop stash@{0}</code>. Qual número passa a ter o item que era o <code>stash@{2}</code>?</p>
+<div class="ex-code">stash@{<input data-answer="1" aria-label="número">}</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. O <code>git stash pop</code> deu conflito. O que aconteceu com o item do stash?</p>
+<label><input type="radio" name="q3"> Foi apagado, como em todo <code>pop</code></label>
+<label><input type="radio" name="q3"> Continua na lista: o Git avisa <code>The stash entry is kept in case you need it again.</code></label>
+<label><input type="radio" name="q3"> Virou um commit</label>
+<label><input type="radio" name="q3"> Foi para o fundo da pilha</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. Qual comando apaga todos os stashes de uma vez?</p>
+<label><input type="radio" name="q4"> <code>git stash drop --all</code></label>
+<label><input type="radio" name="q4"> <code>git stash pop</code></label>
+<label><input type="radio" name="q4"> <code>git stash reset</code></label>
+<label><input type="radio" name="q4"> <code>git stash clear</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. Onde o <code>git stash branch quatro-ovos</code> cria o branch novo?</p>
+<label><input type="radio" name="q5"> No commit em que você estava quando fez o stash</label>
+<label><input type="radio" name="q5"> No commit atual do <code>main</code></label>
+<label><input type="radio" name="q5"> No primeiro commit do repositório</label>
+<label><input type="radio" name="q5"> Em nenhum: ele só renomeia o stash</label>
+</div>
+
+<h3>Missão final: o stash que não encaixa mais</h3>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '- 3 ovos' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Receita de bolo';;echo '- 4 ovos' &gt; bolo.txt;;git stash push -q -m 'quatro ovos';;echo '- 2 ovos' &gt; bolo.txt;;git commit -q -am 'Bolo com 2 ovos'" data-goal="head:quatro-ovos,stash:0,naopreparado:bolo.txt,contains:receitas/bolo.txt=4 ovos" data-solucao="git stash branch quatro-ovos">
+<p class="try-task"><strong>Missão:</strong> a Ana guardou "4 ovos" no stash, mas depois commitou "2 ovos" na mesma linha, então um <code>pop</code> aqui daria conflito. Em vez disso, aplique o stash num branch novo chamado <code>quatro-ovos</code>, criado a partir do commit onde o stash foi feito. No fim, a pilha deve estar vazia. (Se você já tentou o <code>pop</code> e deu conflito, volte o arquivo com <code>git restore --source=HEAD --staged --worktree bolo.txt</code> antes.)</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O stash é uma <strong>pilha</strong>: o último guardado é o <code>stash@{0}</code>, e os números mudam quando você guarda ou tira itens. <code>git stash list</code> mostra tudo; use <code>-m</code> para saber o que é cada item.</li>
+  <li><code>git stash show -p stash@{N}</code> mostra o conteúdo de um item.</li>
+  <li><code>apply</code> aplica e mantém; <code>pop</code> aplica e apaga; <code>drop</code> apaga sem aplicar; <code>clear</code> apaga tudo.</li>
+  <li>Se o <code>pop</code> dá conflito, o stash é mantido: resolva e rode <code>git stash drop</code>, ou use <code>git stash branch</code> para aplicar no commit de origem.</li>
+  <li>Um stash apagado sem querer volta com <code>git stash apply &lt;hash&gt;</code>, usando o hash da linha <code>Dropped</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
