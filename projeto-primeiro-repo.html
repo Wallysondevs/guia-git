@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Projeto: Primeiro Repositório — do zero ao histórico | Guia Git</title>
+<meta name="description" content="Projeto passo a passo: a Ana cria o repositório do site de receitas do zero, com git init, o primeiro commit, novos arquivos, git diff, .gitignore e git restore, com saídas reais e seis missões encadeadas no terminal do guia.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Projeto: Seu Primeiro Repositório do Zero</span></h1>
+
+<p class="intro">A Ana guarda as receitas da família em arquivos soltos: <code>bolo.txt</code>, <code>bolo-final.txt</code>, <code>bolo-final-AGORA-VAI.txt</code>… Hoje ela decidiu fazer do jeito certo. Neste projeto você acompanha, passo a passo, a criação do repositório do site de receitas, do <strong>zero</strong> até um histórico com quatro commits, um <code>.gitignore</code> e um susto desfeito. A cada etapa há uma <strong>missão</strong>: faça você também no terminal do guia.</p>
+
+<div class="note">
+<strong>Neste projeto você vai praticar</strong>
+<ul>
+  <li>Conferir a configuração e criar o repositório (<a href="git-config.html">git config</a>, <a href="git-init.html">git init</a>).</li>
+  <li>O ciclo de todo dia: mudar → <a href="git-status.html">git status</a> → <a href="git-add.html">git add</a> → <a href="git-commit.html">git commit</a>.</li>
+  <li>Ver o que mudou antes de commitar (<a href="git-diff.html">git diff</a>) e ler o histórico (<a href="git-log.html">git log</a>, <a href="git-show.html">git show</a>).</li>
+  <li>Ignorar um arquivo (<a href="gitignore.html">.gitignore</a>) e desfazer uma mudança (<a href="git-restore.html">git restore</a>).</li>
+</ul>
+</div>
+
+<div class="tip">
+<strong>Como funcionam as missões deste projeto</strong>
+<p>Cada missão começa exatamente onde a etapa anterior terminou: o terminal do guia já prepara a pasta para você. Assim você pode fazer o projeto inteiro de uma vez ou pular direto para a etapa que quiser.</p>
+</div>
+
+<hr>
+
+<h2>Etapa 1: o Git sabe quem é você?</h2>
+<p>Todo commit leva um nome e um e-mail. Antes de começar, a Ana confere se já configurou os dois (ela fez isso na aula <a href="git-config.html">Configurando Nome e E-mail</a>):</p>
+<pre class="term">$ git config get user.name
+Ana Souza
+$ git config get user.email
+ana@exemplo.com</pre>
+<p>Se nada aparecer, configure agora com <code>git config --global user.name "Seu Nome"</code> e <code>git config --global user.email "voce@exemplo.com"</code>. Sem isso, o primeiro commit falha com <code>Please tell me who you are</code>.</p>
+
+<h2>Etapa 2: criar a pasta e o repositório</h2>
+<p>Um repositório é só uma pasta comum com uma subpasta escondida, a <code>.git</code>, onde o Git guarda o histórico. A Ana cria a pasta do projeto, entra nela e, de propósito, pergunta o status <strong>antes</strong> do <code>git init</code>:</p>
+<pre class="term">$ mkdir receitas
+$ cd receitas
+$ git status
+fatal: not a git repository (or any of the parent directories): .git
+$ git init
+Repositório vazio Git inicializado em  /home/ana/receitas/.git/
+$ ls -a
+.  ..  .git</pre>
+<ul>
+  <li><code>fatal: not a git repository</code>: "não é um repositório Git (nem nenhuma das pastas acima)". Até aqui, <code>receitas</code> é uma pasta qualquer, e o Git não tem o que mostrar.</li>
+  <li><code>Repositório vazio Git inicializado em /home/ana/receitas/.git/</code>: o <code>git init</code> criou a pasta <code>.git</code>. "Vazio" porque ainda não há nenhum commit.</li>
+  <li>O <code>ls -a</code> (com <code>-a</code>, que mostra os ocultos) prova: a única coisa nova é a <code>.git</code>. Nunca mexa nela à mão.</li>
+</ul>
+
+<div class="try" data-goal="repo,dir:~/receitas/.git" data-solucao="mkdir receitas;;cd receitas;;git init">
+<p class="try-task"><strong>Missão 1:</strong> crie a pasta <code>receitas</code>, entre nela e transforme-a num repositório Git. Confira com <code>ls -a</code> e <code>git status</code>.</p>
+</div>
+
+<h2>Etapa 3: o primeiro arquivo e o primeiro commit</h2>
+<p>A Ana cria o <code>README.md</code>, a "capa" do projeto, e acompanha cada passo com o <code>git status</code>:</p>
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main
+
+No commits yet
+
+nada para enviar (crie/copie arquivos e use "git add" para registrar)
+$ echo '# Receitas da Ana' &gt; README.md
+$ git status
+No ramo main
+
+No commits yet
+
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	README.md                                « o Git viu o arquivo, mas não cuida dele
+
+nada adicionado ao envio mas arquivos não registrados estão presentes (use "git add" to registrar)
+$ git add README.md
+$ git status
+No ramo main
+
+No commits yet
+
+Mudanças a serem submetidas:
+  (utilize "git rm --cached &lt;arquivo&gt;..." para não apresentar)
+	new file:   README.md                    « na área de preparo: vai no próximo commit
+
+$ git commit -m 'Cria o README'
+[main (root-commit) 700bbd5] Cria o README
+ 1 file changed, 1 insertion(+)
+ create mode 100644 README.md</pre>
+<p>Repare como o <code>git status</code> conta a história:</p>
+<ul>
+  <li><code>No commits yet</code>: "nenhum commit ainda".</li>
+  <li><code>Arquivos não monitorados</code>: arquivos que o Git vê, mas não rastreia. A dica entre parênteses ensina o próximo passo: <code>git add</code>.</li>
+  <li><code>Mudanças a serem submetidas</code>: o que está na <a href="area-de-preparo.html">área de preparo</a>. "Submeter" é como esta tradução chama o commit.</li>
+  <li><code>[main (root-commit) 700bbd5]</code>: o commit foi para o branch <code>main</code>; <code>root-commit</code> quer dizer "commit raiz", o primeiro de todos; <code>700bbd5</code> é o começo do <a href="hash.html">hash</a> dele.</li>
+</ul>
+<pre class="term" data-cwd="~/receitas">$ git log
+commit 700bbd5eb7964a024ce4076aeeb11c490e1bac2e
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Cria o README</pre>
+<p>O <code>git log</code> mostra o commit inteiro: o hash completo, quem fez (o nome e o e-mail da etapa 1), quando, e a mensagem.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md" data-goal="commits:1,limpo,rastreado:README.md" data-solucao="git add README.md;;git commit -m 'Cria o README'">
+<p class="try-task"><strong>Missão 2:</strong> o <code>README.md</code> já está na pasta. Coloque-o na área de preparo e faça o primeiro commit, com a mensagem <code>Cria o README</code>. Use <code>git status</code> antes e depois de cada comando.</p>
+</div>
+
+<h2>Etapa 4: a primeira receita</h2>
+<p>Agora o conteúdo de verdade. O ciclo é o mesmo; para ir mais rápido, a Ana usa a versão curta do status (<code>--short</code>), em que <code>??</code> quer dizer "não rastreado":</p>
+<pre class="file" data-name="bolo.txt">Bolo de cenoura
+
+Ingredientes:
+- 3 cenouras
+- 2 xícaras de farinha</pre>
+<pre class="term" data-cwd="~/receitas">$ git status --short
+?? bolo.txt
+$ git add bolo.txt
+$ git commit -m 'Adiciona a receita de bolo de cenoura'
+[main 9795a07] Adiciona a receita de bolo de cenoura
+ 1 file changed, 5 insertions(+)                « 5 linhas novas
+ create mode 100644 bolo.txt</pre>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;printf 'Bolo de cenoura\n\nIngredientes:\n- 3 cenouras\n- 2 xícaras de farinha\n' &gt; bolo.txt" data-goal="commits:2,limpo,rastreado:bolo.txt" data-solucao="git add bolo.txt;;git commit -m 'Adiciona a receita de bolo de cenoura'">
+<p class="try-task"><strong>Missão 3:</strong> o arquivo <code>bolo.txt</code> já está escrito (veja com <code>cat bolo.txt</code>). Faça o commit dele com uma mensagem clara. Confira com <code>git log --oneline</code>.</p>
+</div>
+
+<h2>Etapa 5: mudar, conferir, commitar</h2>
+<p>A Ana lembrou dos ovos. Antes de commitar, ela confere <strong>o que</strong> mudou com o <code>git diff</code>:</p>
+<pre class="term" data-cwd="~/receitas">$ echo '- 3 ovos' &gt;&gt; bolo.txt
+$ git status
+No ramo main
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   bolo.txt                     « um arquivo rastreado mudou
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+$ git diff
+diff --git a/bolo.txt b/bolo.txt
+index 40a62aa..d750d46 100644
+--- a/bolo.txt
++++ b/bolo.txt
+@@ -3,3 +3,4 @@ Bolo de cenoura
+ Ingredientes:
+ - 3 cenouras
+ - 2 xícaras de farinha
++- 3 ovos                                       « o + marca a linha nova
+$ git add bolo.txt
+$ git commit -m 'Adiciona os ovos ao bolo'
+[main c69aa10] Adiciona os ovos ao bolo
+ 1 file changed, 1 insertion(+)</pre>
+<p><code>Changes not staged for commit</code> quer dizer "mudanças fora da área de preparo" (a tradução do Ubuntu deixa algumas frases em inglês). No <code>git diff</code>, as linhas sem sinal são o contexto, e a linha com <code>+</code> é a que entrou.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;printf 'Bolo de cenoura\n\nIngredientes:\n- 3 cenouras\n- 2 xícaras de farinha\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona a receita de bolo de cenoura'" data-goal="commits:3,limpo,contem:HEAD:bolo.txt=3 ovos,ran:\bgit diff\b" data-solucao="echo '- 3 ovos' &gt;&gt; bolo.txt;;git diff;;git add bolo.txt;;git commit -m 'Adiciona os ovos ao bolo'">
+<p class="try-task"><strong>Missão 4:</strong> acrescente a linha <code>- 3 ovos</code> ao fim do <code>bolo.txt</code> (com <code>echo '- 3 ovos' &gt;&gt; bolo.txt</code>; atenção aos <strong>dois</strong> <code>&gt;</code>, que acrescentam em vez de apagar). Confira com <code>git diff</code> e commite.</p>
+</div>
+
+<h2>Etapa 6: um arquivo que não deve entrar</h2>
+<p>A Ana anota ideias soltas num <code>rascunho.txt</code>, que não é para ninguém ver. Em vez de tomar cuidado para nunca adicioná-lo, ela avisa o Git com um <code>.gitignore</code>:</p>
+<pre class="term" data-cwd="~/receitas">$ echo 'testar com açúcar mascavo?' &gt; rascunho.txt
+$ git status --short
+?? rascunho.txt                                  « o Git oferece o rascunho
+$ echo 'rascunho.txt' &gt; .gitignore
+$ git status --short
+?? .gitignore                                    « o rascunho sumiu da lista
+$ git add .gitignore
+$ git commit -m 'Ignora o rascunho'
+[main e2fc370] Ignora o rascunho
+ 1 file changed, 1 insertion(+)
+ create mode 100644 .gitignore</pre>
+<p>O <code>.gitignore</code> é um arquivo comum, que vai para o histórico: assim, quem clonar o projeto (o Bruno, por exemplo) também ignora os mesmos arquivos.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;printf 'Bolo de cenoura\n\nIngredientes:\n- 3 cenouras\n- 2 xícaras de farinha\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona a receita de bolo de cenoura';;echo '- 3 ovos' &gt;&gt; bolo.txt;;git commit -q -am 'Adiciona os ovos ao bolo';;echo 'testar com açúcar mascavo?' &gt; rascunho.txt" data-goal="commits:4,limpo,ignorado:rascunho.txt,rastreado:.gitignore" data-solucao="echo 'rascunho.txt' &gt; .gitignore;;git add .gitignore;;git commit -m 'Ignora o rascunho'">
+<p class="try-task"><strong>Missão 5:</strong> o <code>rascunho.txt</code> aparece no <code>git status</code>. Crie um <code>.gitignore</code> que o ignore e commite o <code>.gitignore</code>. No fim, o <code>git status</code> deve dizer que não há nada a commitar.</p>
+</div>
+
+<h2>Etapa 7: o susto (e o Git salvando o dia)</h2>
+<p>Distraída, a Ana usou <code>&gt;</code> (que apaga) no lugar de <code>&gt;&gt;</code> (que acrescenta) e trocou a receita inteira por uma linha:</p>
+<pre class="term" data-cwd="~/receitas">$ echo "Bolo de chocolate" &gt; bolo.txt
+$ git status --short
+ M bolo.txt                                      « M = modificado
+$ git diff
+diff --git a/bolo.txt b/bolo.txt
+index d750d46..8816f39 100644
+--- a/bolo.txt
++++ b/bolo.txt
+@@ -1,6 +1 @@
+-Bolo de cenoura                                « tudo isto saiu…
+-
+-Ingredientes:
+-- 3 cenouras
+-- 2 xícaras de farinha
+-- 3 ovos
++Bolo de chocolate                              « …e só isto entrou
+$ git restore bolo.txt                          « volta à versão do último commit
+$ cat bolo.txt
+Bolo de cenoura
+
+Ingredientes:
+- 3 cenouras
+- 2 xícaras de farinha
+- 3 ovos
+$ git status
+No ramo main
+nothing to commit, working tree clean           « como se nada tivesse acontecido</pre>
+<p>Como a receita estava commitada, o <code>git restore</code> trouxe de volta a versão do último commit. É para isso que serve commitar cedo: <strong>o que foi commitado, o Git devolve</strong>. (Cuidado: o <code>git restore</code> joga fora a mudança atual para sempre; use só quando quiser mesmo descartá-la.)</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;printf 'Bolo de cenoura\n\nIngredientes:\n- 3 cenouras\n- 2 xícaras de farinha\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona a receita de bolo de cenoura';;echo '- 3 ovos' &gt;&gt; bolo.txt;;git commit -q -am 'Adiciona os ovos ao bolo';;echo 'rascunho.txt' &gt; .gitignore;;git add .gitignore;;git commit -q -m 'Ignora o rascunho';;echo 'Bolo de chocolate' &gt; bolo.txt" data-goal="commits:4,limpo,ran:\bgit restore\b" data-solucao="git diff;;git restore bolo.txt;;cat bolo.txt">
+<p class="try-task"><strong>Missão 6:</strong> o <code>bolo.txt</code> foi estragado (veja com <code>cat bolo.txt</code> e <code>git diff</code>). Traga de volta a receita do último commit com <code>git restore</code>, sem criar commit novo.</p>
+</div>
+
+<hr>
+
+<h2>O resultado</h2>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+e2fc370 Ignora o rascunho
+c69aa10 Adiciona os ovos ao bolo
+9795a07 Adiciona a receita de bolo de cenoura
+700bbd5 Cria o README
+$ git show --stat HEAD~1
+commit c69aa106233da6b2c7a270202b1dfefb0c481b12
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Adiciona os ovos ao bolo
+
+ bolo.txt | 1 +
+ 1 file changed, 1 insertion(+)</pre>
+<p>Quatro commits, cada um com um assunto e uma mensagem que explica o que fez. O <code>HEAD~1</code> quer dizer "um commit antes do atual" (veja <a href="head.html">O que é HEAD</a>), e o <code>--stat</code> resume quais arquivos o commit mudou. Desenhado, o histórico da Ana é uma linha reta:</p>
+<pre>700bbd5 ── 9795a07 ── c69aa10 ── e2fc370  ← main ← HEAD
+ README     bolo        ovos      .gitignore</pre>
+
+<hr>
+
+<h2>Quando dá errado neste projeto</h2>
+
+<div class="cenario">
+<strong><code>fatal: not a git repository</code></strong>
+<p><strong>O que aconteceu:</strong> você está fora da pasta do repositório (ou esqueceu o <code>git init</code>).</p>
+<p><strong>Como resolver:</strong> <code>pwd</code> para ver onde está; <code>cd ~/receitas</code> para entrar. Se a pasta não tem <code>.git</code> (<code>ls -a</code>), rode <code>git init</code>.</p>
+</div>
+
+<div class="cenario">
+<strong><code>nada adicionado ao envio mas arquivos não registrados estão presentes</code></strong>
+<p><strong>O que aconteceu:</strong> você rodou <code>git commit</code> sem ter feito <code>git add</code>: a área de preparo está vazia.</p>
+<p><strong>Como resolver:</strong> <code>git add arquivo</code> e depois o commit.</p>
+</div>
+
+<div class="cenario">
+<strong>Rodei <code>git init</code> na pasta errada (por exemplo, na pasta pessoal)</strong>
+<p><strong>O que aconteceu:</strong> a pasta inteira virou um repositório, e o <code>git status</code> mostra tudo o que há nela.</p>
+<p><strong>Como resolver:</strong> se ainda não há commits que você queira, apague só a pasta <code>.git</code> daquele lugar (<code>rm -rf ~/.git</code>, com muito cuidado no caminho) e rode o <code>git init</code> na pasta certa. Veja <a href="git-init.html">git init</a>.</p>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. A ordem do ciclo</h3>
+<p>Complete o comando que vem entre mudar o arquivo e fazer o commit:</p>
+<div class="ex-code">git <input data-answer="add" aria-label="subcomando"> bolo.txt</div>
+</div>
+
+<div class="exercise">
+<h3>2. O status curto</h3>
+<p>Complete para ver o status em formato curto:</p>
+<div class="ex-code">git status <input data-answer="--short" aria-label="opção"></div>
+</div>
+
+<div class="exercise">
+<h3>3. Desfazer uma mudança não commitada</h3>
+<p>Complete para voltar o <code>bolo.txt</code> à versão do último commit:</p>
+<div class="ex-code">git <input data-answer="restore" aria-label="subcomando"> bolo.txt</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. No <code>git status --short</code>, o que quer dizer <code>??</code> antes do nome do arquivo?</p>
+<label><input type="radio" name="q4"> O arquivo tem conflito.</label>
+<label><input type="radio" name="q4"> O arquivo não é rastreado pelo Git.</label>
+<label><input type="radio" name="q4"> O arquivo foi apagado.</label>
+<label><input type="radio" name="q4"> O arquivo está na área de preparo.</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">5. O que o <code>root-commit</code> em <code>[main (root-commit) 700bbd5]</code> indica?</p>
+<label><input type="radio" name="q5"> Que o commit foi feito pelo administrador.</label>
+<label><input type="radio" name="q5"> Que o commit apagou arquivos.</label>
+<label><input type="radio" name="q5"> Que houve um erro.</label>
+<label><input type="radio" name="q5"> Que é o primeiro commit do repositório.</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">6. Por que o <code>.gitignore</code> também é commitado?</p>
+<label><input type="radio" name="q6"> Para que quem clonar o projeto ignore os mesmos arquivos.</label>
+<label><input type="radio" name="q6"> Porque o Git exige um <code>.gitignore</code> em todo commit.</label>
+<label><input type="radio" name="q6"> Para esconder o <code>rascunho.txt</code> do <code>ls</code>.</label>
+<label><input type="radio" name="q6"> Ele não deve ser commitado.</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Confira nome e e-mail (<code>git config get</code>); crie a pasta e rode <code>git init</code>.</li>
+  <li>O ciclo: mudar → <code>git status</code> → <code>git add</code> → <code>git commit -m</code>.</li>
+  <li><code>git diff</code> antes de commitar; <code>git log</code> e <code>git show</code> depois.</li>
+  <li><code>.gitignore</code> para o que não deve entrar, commitado junto com o projeto.</li>
+  <li><code>git restore</code> devolve a versão do último commit: commite cedo e com frequência.</li>
+  <li>Próximo projeto: <a href="projeto-site.html">Versionando um Site</a>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
