@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git restore — descartando mudanças e recuperando arquivos | Guia Git</title>
+<meta name="description" content="O git restore para quem nunca usou Git: descartar as mudanças de um arquivo e voltar ao último commit, recuperar um arquivo apagado, restaurar vários de uma vez (. e '*.txt'), escolher pedaços com -p, pegar a versão de um commit antigo com --source, --staged --worktree, o antigo git checkout -- arquivo, e os erros reais do Git, com saídas em português.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">restore</span> <span class="versao">git 2.23+</span></h1>
+
+<p class="intro">A Ana mexeu na receita de bolo, testou, e o bolo virou uma pedra: 12 ovos e sal. Ela quer o arquivo de volta <strong>exatamente</strong> como estava no último commit. Sem Git, seria apagar linha por linha tentando lembrar do original. Com Git, é um comando: <code>git restore bolo.txt</code> (<em>restore</em> = "restaurar"). Ele também traz de volta arquivos apagados e versões de commits antigos.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A descartar as mudanças de um arquivo com <code>git restore arquivo</code> (e por que isso <strong>não tem volta</strong>).</li>
+  <li>A recuperar um arquivo apagado sem querer.</li>
+  <li>A restaurar vários arquivos de uma vez (<code>.</code> e <code>'*.txt'</code>) ou só alguns trechos (<code>-p</code>).</li>
+  <li>A pegar a versão de um commit antigo com <code>--source</code>.</li>
+  <li>O que o <code>git restore</code> faz quando o arquivo também está na área de preparo, e o comando antigo, <code>git checkout -- arquivo</code>.</li>
+</ul>
+</div>
+
+<p>Todas as saídas desta aula saíram do Git do Ubuntu 26.04 (Git 2.53), na máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português. Algumas mensagens do Git ainda não têm tradução e saem em inglês. O <code>git restore</code> existe desde o Git 2.23 (de 2019); se o seu Git for mais antigo, use o <code>git checkout -- arquivo</code> da seção 7.</p>
+
+<hr>
+
+<h2>A ideia: o "voltar ao salvo" do videogame</h2>
+<p>Num videogame, você salva antes de enfrentar o chefão. Se tudo dá errado, você carrega o jogo salvo e volta àquele ponto, como se a luta desastrosa nunca tivesse acontecido. O commit é o jogo salvo; o <code>git restore</code> é o "carregar".</p>
+<p>E, como no videogame, <strong>o que você fez depois de salvar se perde</strong>. As mudanças descartadas pelo <code>git restore</code> nunca foram commitadas, então o Git não tem cópia delas. Antes de restaurar, sempre olhe o que vai perder com <code>git diff</code>.</p>
+
+<hr>
+
+<h2>1. Descartando as mudanças de um arquivo</h2>
+<p>A versão commitada do <code>bolo.txt</code> tem 4 linhas. A Ana mexeu, e o <code>git status</code> e o <code>git diff</code> mostram o estrago:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   bolo.txt
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+$ git diff
+diff --git a/bolo.txt b/bolo.txt
+index 2fc5146..73525db 100644
+--- a/bolo.txt
++++ b/bolo.txt
+@@ -1,4 +1,4 @@
+ Bolo de cenoura
+ 3 cenouras
+-4 ovos
+-2 xícaras de farinha
++12 ovos
++sal a gosto
+</pre>
+
+<p>Repare na segunda dica do <code>git status</code>: <code>(use "git restore &lt;file&gt;..." to discard changes in working directory)</code>, "use <code>git restore</code> para <strong>descartar</strong> as mudanças na pasta de trabalho". É exatamente o que a Ana quer:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git restore bolo.txt
+$ cat bolo.txt
+Bolo de cenoura
+3 cenouras
+4 ovos
+2 xícaras de farinha
+$ git status
+No ramo main
+nothing to commit, working tree clean
+</pre>
+
+<dl class="anatomy">
+  <dt>git restore</dt><dd>O comando: "restaure".</dd>
+  <dt>bolo.txt</dt><dd>O arquivo a restaurar. Sem outras opções, o <code>git restore</code> copia a versão da <strong>área de preparo</strong> por cima do arquivo da pasta. Como a Ana não tinha dado <code>git add</code>, a área de preparo tem a versão do último commit.</dd>
+</dl>
+
+<p>O <code>git restore</code> não mostra nada quando dá certo. O <code>cat</code> mostra a receita original, e o <code>git status</code> diz <code>nothing to commit, working tree clean</code> ("nada a submeter, pasta de trabalho limpa"; esta frase ainda não tem tradução). Os 12 ovos sumiram <strong>para sempre</strong>.</p>
+
+<div class="warning">
+<strong>Não há "desfazer o restore"</strong>
+<p>As mudanças descartadas não vão para lixeira nenhuma: o Git nunca as guardou. Se você não tem certeza, em vez de descartar, guarde-as com um commit num branch à parte ou com o <a href="git-stash.html">git stash</a>. E sempre confira antes com <code>git diff arquivo</code> o que vai embora.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;printf 'Bolo de cenoura\n3 cenouras\n4 ovos\n2 xícaras de farinha\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Receita de bolo';;printf 'Bolo de cenoura\n3 cenouras\n12 ovos\nsal a gosto\n' &gt; bolo.txt" data-goal="limpo,contains:~/receitas/bolo.txt=4 ovos,ran:^git restore" data-solucao="git diff;;git restore bolo.txt">
+<p class="try-task"><strong>Missão:</strong> o <code>bolo.txt</code> foi estragado. Veja o que mudou com <code>git diff</code> e devolva o arquivo ao último commit com <code>git restore</code>. Confira com <code>cat bolo.txt</code> e <code>git status</code>.</p>
+</div>
+
+<hr>
+
+<h2>2. Recuperando um arquivo apagado</h2>
+<p>Apagar um arquivo também é uma "mudança na pasta", e o <code>git restore</code> desfaz:</p>
+
+<pre class="term" data-cwd="~/receitas">$ rm pudim.txt
+$ ls
+bolo.txt
+$ git status
+No ramo main
+Changes not staged for commit:
+  (utilize "git add/rm &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	deleted:    pudim.txt
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+$ git restore pudim.txt
+$ ls
+bolo.txt  pudim.txt
+$ cat pudim.txt
+Pudim de leite
+1 lata de leite condensado
+3 ovos
+</pre>
+
+<p>O pudim voltou, com o conteúdo do último commit. Isso vale para qualquer arquivo que o Git rastreia, apagado pelo <code>rm</code>, pela lixeira ou pelo editor. (Se a remoção foi feita com <code>git rm</code>, ela também está preparada, e é preciso desfazer nos dois lugares: veja a seção 6.)</p>
+
+<hr>
+
+<h2>3. Vários arquivos de uma vez</h2>
+<p>Como o <code>git add</code>, o <code>git restore</code> aceita vários nomes, uma pasta ou um padrão:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'linha estragada' &gt;&gt; bolo.txt
+$ echo 'linha estragada' &gt;&gt; pudim.txt
+$ git status --short
+ M bolo.txt
+ M pudim.txt
+$ git restore .
+$ git status --short
+$
+</pre>
+
+<p>O <code>.</code> quer dizer "a pasta atual e tudo dentro dela". Com um padrão entre aspas, como <code>git restore '*.txt'</code>, só os arquivos que casam são restaurados (o Git expande o <code>*</code> entre os arquivos que ele rastreia, inclusive em subpastas).</p>
+
+<div class="warning">
+<strong><code>git restore .</code> é uma borracha grande</strong>
+<p>Ele descarta <strong>todas</strong> as mudanças não preparadas de todos os arquivos rastreados da pasta, de uma vez. Rode <code>git status</code> e <code>git diff</code> antes. Arquivos novos (não rastreados) não são afetados; para eles existe o <a href="git-clean.html">git clean</a>.</p>
+</div>
+
+<h3>Só alguns trechos: <code>-p</code></h3>
+<p>Na lojinha, a Ana fez duas mudanças no <code>produtos.txt</code>: uma boa (o frete grátis) e uma ruim (a caneca preta a R$ 99, um erro de digitação). Com o <code>-p</code> (de <em>patch</em>, "remendo"), o Git mostra cada trecho do diff e pergunta, um por um, se é para descartar:</p>
+
+<pre class="term" data-cwd="~/loja">$ git restore -p produtos.txt
+diff --git a/produtos.txt b/produtos.txt
+index ad1ef9e..22bc0a9 100644
+--- a/produtos.txt
++++ b/produtos.txt
+@@ -2,7 +2,7 @@ Lojinha da Ana
+
+ Produtos:
+ - caneca branca: R$ 25
+-- caneca preta: R$ 25
++- caneca preta: R$ 99
+ - camiseta P: R$ 40
+ - camiseta M: R$ 40
+ - camiseta G: R$ 45
+(1/2) Discard this hunk from worktree [y,n,q,a,d,k,K,j,J,g,/,e,p,P,?]? y
+@@ -11,5 +11,5 @@ Produtos:
+ - adesivo: R$ 5
+ - bolsa de pano: R$ 35
+
+-Entrega em todo o Brasil.
++Entrega em todo o Brasil (frete grátis acima de R$ 100).
+ Contato: ana@exemplo.com
+(2/2) Discard this hunk from worktree [y,n,q,a,d,K,J,g,/,e,p,P,?]? n
+$ git diff
+diff --git a/produtos.txt b/produtos.txt
+index ad1ef9e..0da2c17 100644
+--- a/produtos.txt
++++ b/produtos.txt
+@@ -11,5 +11,5 @@ Produtos:
+ - adesivo: R$ 5
+ - bolsa de pano: R$ 35
+
+-Entrega em todo o Brasil.
++Entrega em todo o Brasil (frete grátis acima de R$ 100).
+ Contato: ana@exemplo.com
+</pre>
+
+<p>A pergunta <code>(1/2) Discard this hunk from worktree</code> quer dizer "(trecho 1 de 2) descartar este trecho da pasta de trabalho?". As respostas principais: <kbd>y</kbd> (<em>yes</em>, sim: descarta), <kbd>n</kbd> (<em>no</em>, não: mantém), <kbd>q</kbd> (<em>quit</em>: para de perguntar), <kbd>a</kbd> (descarta este e todos os seguintes do arquivo), <kbd>d</kbd> (não descarta nenhum dos seguintes) e <kbd>?</kbd> (mostra a ajuda com todas as letras). A Ana respondeu <kbd>y</kbd> para a caneca e <kbd>n</kbd> para o frete: o <code>git diff</code> seguinte mostra que só sobrou a mudança boa. (Os trechos são os mesmos <code>@@</code> da aula <a href="git-diff.html">git diff</a>.)</p>
+
+<hr>
+
+<h2>4. Pegando a versão de um commit antigo: <code>--source</code></h2>
+<p>Por padrão, o <code>git restore</code> busca o conteúdo na área de preparo (que, sem <code>git add</code>, é igual ao último commit). Com <code>--source</code> ("origem"), você escolhe <strong>de qual commit</strong> pegar. A Ana commitou a mudança de 4 para 3 ovos e agora quer reconsiderar:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+8b163ca Menos ovos no bolo
+9d54245 Receitas iniciais
+$ git restore --source=HEAD~1 bolo.txt
+$ cat bolo.txt
+Bolo de cenoura
+3 cenouras
+4 ovos
+2 xícaras de farinha
+$ git status --short
+ M bolo.txt
+$ git diff
+diff --git a/bolo.txt b/bolo.txt
+index c8726b3..2fc5146 100644
+--- a/bolo.txt
++++ b/bolo.txt
+@@ -1,4 +1,4 @@
+ Bolo de cenoura
+ 3 cenouras
+-3 ovos
++4 ovos
+ 2 xícaras de farinha
+</pre>
+
+<dl class="anatomy">
+  <dt>--source=HEAD~1</dt><dd>"Pegue o conteúdo do commit <code>HEAD~1</code>": o commit <strong>anterior</strong> ao último (<code>HEAD</code> é o último; o <code>~1</code> quer dizer "um para trás"; veja <a href="head.html">O que é HEAD</a>). Também vale o hash: <code>--source=9d54245</code>. A forma curta é <code>-s HEAD~1</code>.</dd>
+</dl>
+
+<p>O arquivo da pasta ficou como no commit antigo, mas o <strong>histórico não mudou</strong>: o commit <code>Menos ovos no bolo</code> continua lá. Para o Git, é só uma mudança nova na pasta (<code> M</code>), e o diff mostra a volta dos 4 ovos. Se a Ana gostar, faz <code>git add</code> e um commit novo; se não gostar, <code>git restore bolo.txt</code> volta ao último commit. É uma forma segura de "voltar no tempo" com um arquivo só, sem mexer no histórico.</p>
+
+<h3>Recuperando um arquivo apagado num commit</h3>
+<p>Se a remoção já foi commitada, o arquivo não está mais no último commit, e o <code>git restore</code> simples não o encontra. Mas ele existe no commit de antes:</p>
+
+<pre class="term" data-cwd="~/loja">$ git rm -q promocao.txt
+$ git commit -q -m 'Fim da promoção'
+$ git restore promocao.txt
+error: pathspec 'promocao.txt' did not match any file(s) known to git
+$ git restore --source=HEAD~1 promocao.txt
+$ git status --short
+ M produtos.txt
+?? promocao.txt
+$ cat promocao.txt
+promo
+</pre>
+
+<p>O <code>promocao.txt</code> voltou para a pasta como um arquivo <strong>novo</strong> (<code>??</code>), porque no último commit ele não existe. Se quiser que ele volte ao projeto, <code>git add</code> e commit. (O <code> M produtos.txt</code> é a mudança do frete, que ficou pendente da seção 3.)</p>
+
+<hr>
+
+<h2>5. Quando o arquivo também está na área de preparo</h2>
+<p>Lembre: sem opções, o <code>git restore</code> copia a versão da <strong>área de preparo</strong> para a pasta. Quando o arquivo tem uma parte preparada e outra não, isso faz diferença:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'Mudança A' &gt;&gt; bolo.txt
+$ git add bolo.txt
+$ echo 'Mudança B' &gt;&gt; bolo.txt
+$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	modified:   bolo.txt
+
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   bolo.txt
+
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	lasanha.txt
+
+$ git restore bolo.txt
+$ cat bolo.txt
+Bolo de cenoura
+3 cenouras
+3 ovos
+2 xícaras de farinha
+Mudança A
+$ git status --short
+M  bolo.txt
+?? lasanha.txt
+</pre>
+
+<p>A <code>Mudança B</code> (não preparada) sumiu, mas a <code>Mudança A</code> (preparada) ficou: o <code>git restore</code> só descartou o que <strong>não</strong> estava na área de preparo. O <code>M</code> na primeira coluna confirma que a Mudança A continua pronta para o commit. (A <code>lasanha.txt</code> é um arquivo novo da Ana, que o <code>git restore</code> não toca.)</p>
+
+<h3>Descartando tudo: <code>--staged --worktree</code></h3>
+<p>Para voltar ao último commit nos <strong>dois</strong> lugares (área de preparo e pasta), diga isso ao <code>git restore</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git restore --staged --worktree bolo.txt
+$ cat bolo.txt
+Bolo de cenoura
+3 cenouras
+3 ovos
+2 xícaras de farinha
+$ git status --short
+?? lasanha.txt
+</pre>
+
+<dl class="anatomy">
+  <dt>--staged</dt><dd>(ou <code>-S</code>) Restaura a <strong>área de preparo</strong>, copiando o último commit para ela. Sozinho, é o "tirar da área de preparo" da próxima aula, <a href="restore-staged.html">Tirando da Área de Preparo</a>.</dd>
+  <dt>--worktree</dt><dd>(ou <code>-W</code>) Restaura a <strong>pasta de trabalho</strong> (<em>working tree</em>). É o que o <code>git restore</code> faz quando você não diz nada.</dd>
+  <dt>juntos</dt><dd>As duas coisas: a Mudança A e qualquer outra mudança no arquivo se vão. Forma curta: <code>git restore -SW bolo.txt</code>.</dd>
+</dl>
+
+<hr>
+
+<h2>6. Desfazendo um <code>git rm</code></h2>
+<p>O <code>git rm</code> (aula <a href="git-rm.html">git rm</a>) apaga da pasta <strong>e</strong> prepara a remoção. Para desfazer antes do commit, restaure os dois lugares: <code>git restore --staged --worktree arquivo</code>. Na aula do <code>git rm</code> você vê isso passo a passo.</p>
+
+<hr>
+
+<h2>7. O comando antigo: <code>git checkout -- arquivo</code></h2>
+<p>Antes do Git 2.23, o jeito de descartar mudanças era o <code>git checkout</code>, e você ainda vai vê-lo em muitos tutoriais:</p>
+
+<pre class="term" data-cwd="~/receitas">$ printf '3 cenouras\n4 ovos\n' &gt; bolo.txt
+$ git checkout -- bolo.txt
+$ git status --short
+?? lasanha.txt
+$ cat bolo.txt
+Bolo de cenoura
+3 cenouras
+3 ovos
+2 xícaras de farinha
+</pre>
+
+<p>Mesmo efeito do <code>git restore bolo.txt</code>. O <code>--</code> separa as opções do nome do arquivo, e é importante aqui: o <code>git checkout</code> também troca de branch (<code>git checkout main</code>), e sem o <code>--</code> um arquivo com o mesmo nome de um branch confundiria o comando. Foi para acabar com essa confusão que o Git criou o <code>git restore</code> (só arquivos) e o <a href="git-switch.html">git switch</a> (só branches). Veja <a href="git-checkout.html">git checkout: o Comando Antigo</a>.</p>
+
+<hr>
+
+<h2 id="formas">Formas diferentes, e qual usar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Você quer…</th><th>Use</th></tr>
+<tr><td>Descartar as mudanças não preparadas de um arquivo</td><td><code>git restore arquivo</code> (antigo: <code>git checkout -- arquivo</code>)</td></tr>
+<tr><td>Descartar só alguns trechos</td><td><code>git restore -p arquivo</code></td></tr>
+<tr><td>Descartar tudo de todos os arquivos rastreados</td><td><code>git restore .</code> (cuidado)</td></tr>
+<tr><td>Voltar ao último commit, inclusive o que foi preparado</td><td><code>git restore --staged --worktree arquivo</code></td></tr>
+<tr><td>Tirar da área de preparo, mantendo as mudanças</td><td><code>git restore --staged arquivo</code> (aula <a href="restore-staged.html">Tirando da Área de Preparo</a>)</td></tr>
+<tr><td>Pegar a versão de um commit antigo</td><td><code>git restore --source=COMMIT arquivo</code></td></tr>
+<tr><td>Guardar as mudanças em vez de jogá-las fora</td><td><a href="git-stash.html">git stash</a></td></tr>
+<tr><td>Apagar arquivos novos (não rastreados)</td><td><a href="git-clean.html">git clean</a></td></tr>
+<tr><td>Voltar o projeto inteiro (e o histórico) para um commit antigo</td><td><a href="git-reset.html">git reset</a> ou <a href="git-revert.html">git revert</a> (veja <a href="desfazer.html">o mapa</a>)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>error: pathspec '…' did not match any file(s) known to git</code></strong>
+<pre class="term" data-cwd="~/receitas">$ echo 'Lasanha' &gt; lasanha.txt
+$ git restore lasanha.txt
+error: pathspec 'lasanha.txt' did not match any file(s) known to git
+$ git restore nada.txt
+error: pathspec 'nada.txt' did not match any file(s) known to git
+</pre>
+<p>"O caminho não corresponde a nenhum arquivo conhecido pelo Git" (esta mensagem ainda não tem tradução). Três causas: o nome está errado (<code>nada.txt</code>); o arquivo é <strong>novo</strong> e nunca foi commitado (<code>lasanha.txt</code>: não existe "versão anterior" para restaurar); ou ele foi apagado num commit (use <code>--source</code>, seção 4). <strong>Como resolver:</strong> confira o nome com <code>git status</code>; para apagar um arquivo novo, use o <code>rm</code> comum ou o <a href="git-clean.html">git clean</a>.</p>
+</div>
+
+<div class="cenario">
+<strong>Num repositório sem nenhum commit</strong>
+<pre class="term" data-cwd="~/novo">$ git init -q
+$ echo oi &gt; a.txt
+$ git restore a.txt
+error: pathspec 'a.txt' did not match any file(s) known to git
+</pre>
+<p>Sem commit e sem <code>git add</code>, o Git não conhece nenhuma versão do arquivo. Não há para onde "voltar".</p>
+</div>
+
+<div class="cenario">
+<strong>"Rodei <code>git restore</code> e a mudança não saiu"</strong>
+<p>A mudança provavelmente estava <strong>preparada</strong> (seção 5): o <code>git restore</code> sozinho copia a área de preparo para a pasta, e a mudança está justamente lá. <strong>Como confirmar:</strong> <code>git status</code> mostra o arquivo em <code>Mudanças a serem submetidas</code>. <strong>Como resolver:</strong> <code>git restore --staged --worktree arquivo</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>"Descartei sem querer!"</strong>
+<p>O Git não tem cópia de mudanças que nunca foram preparadas nem commitadas. Tente o <kbd>Ctrl</kbd>+<kbd>Z</kbd> do editor (se o arquivo ainda estiver aberto nele) ou o histórico local do editor. Se você tinha dado <code>git add</code> antes, e depois o <code>git restore --staged --worktree</code> apagou também a área de preparo, o conteúdo ainda pode estar nos objetos internos do Git por um tempo, mas a recuperação é trabalhosa (assunto avançado; veja <a href="recuperar-commit.html">Recuperando Commits Perdidos</a>). Moral: commits frequentes.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git restore arquivo</code></td><td>Descarta as mudanças não preparadas (volta à versão da área de preparo)</td></tr>
+<tr><td><code>git restore .</code></td><td>O mesmo, para tudo na pasta atual</td></tr>
+<tr><td><code>git restore '*.txt'</code></td><td>Para os arquivos rastreados que casam com o padrão</td></tr>
+<tr><td><code>git restore -p arquivo</code></td><td>Pergunta trecho por trecho (<kbd>y</kbd>/<kbd>n</kbd>/<kbd>q</kbd>/<kbd>a</kbd>/<kbd>d</kbd>/<kbd>?</kbd>)</td></tr>
+<tr><td><code>git restore --source=COMMIT arquivo</code></td><td>Põe na pasta a versão do arquivo nesse commit (<code>-s</code>)</td></tr>
+<tr><td><code>git restore --staged arquivo</code></td><td>Tira da área de preparo (<code>-S</code>)</td></tr>
+<tr><td><code>git restore --staged --worktree arquivo</code></td><td>Volta ao último commit nos dois lugares (<code>-SW</code>)</td></tr>
+<tr><td><code>git checkout -- arquivo</code></td><td>Forma antiga de <code>git restore arquivo</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete</h3>
+<div class="ex-code">Descartar as mudanças do <code>bolo.txt</code>: git <input data-answer="restore" aria-label="subcomando"> bolo.txt<br>Pegar o <code>bolo.txt</code> do commit anterior ao último: git restore --source=<input data-answer="HEAD~1|HEAD^" aria-label="commit"> bolo.txt<br>Escolher trecho por trecho: git restore <input data-answer="-p|--patch" aria-label="opção"> bolo.txt</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. Depois de um <code>git restore bolo.txt</code>, dá para recuperar as mudanças descartadas?</p>
+<label><input type="radio" name="q2"> Sim, com <code>git restore --undo</code></label>
+<label><input type="radio" name="q2"> Não pelo Git: elas nunca foram commitadas nem preparadas</label>
+<label><input type="radio" name="q2"> Sim, pelo <code>git log</code></label>
+<label><input type="radio" name="q2"> Sim, elas vão para a lixeira do sistema</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. A Ana deu <code>git add bolo.txt</code> e depois mudou mais uma linha. O que o <code>git restore bolo.txt</code> descarta?</p>
+<label><input type="radio" name="q3"> Todas as mudanças desde o último commit</label>
+<label><input type="radio" name="q3"> Só as mudanças preparadas</label>
+<label><input type="radio" name="q3"> Só a mudança feita depois do <code>git add</code></label>
+<label><input type="radio" name="q3"> Nada: dá erro</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. <code>git restore --source=HEAD~1 bolo.txt</code> muda o histórico de commits?</p>
+<label><input type="radio" name="q4"> Não: só muda o arquivo na pasta; para registrar, é preciso <code>git add</code> e commit</label>
+<label><input type="radio" name="q4"> Sim: apaga o último commit</label>
+<label><input type="radio" name="q4"> Sim: cria um commit novo automaticamente</label>
+<label><input type="radio" name="q4"> Sim: move o HEAD para o commit anterior</label>
+</div>
+
+<h3>Missão final: o pudim de volta</h3>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo 'Bolo de cenoura' &gt; bolo.txt;;echo 'Pudim de leite' &gt; pudim.txt;;git add .;;git commit -q -m 'Receitas';;git rm -q pudim.txt;;git commit -q -m 'Remove pudim';;echo 'Bolo de chocolate' &gt; bolo.txt" data-goal="contains:~/receitas/bolo.txt=cenoura,contains:~/receitas/pudim.txt=Pudim de leite,ran:--source" data-solucao="git restore bolo.txt;;git restore --source=HEAD~1 pudim.txt">
+<p class="try-task"><strong>Missão:</strong> duas coisas deram errado. (1) O <code>bolo.txt</code> foi sobrescrito por engano: devolva-o ao último commit. (2) O <code>pudim.txt</code> foi apagado num commit (veja o <code>git log --oneline</code>): traga-o de volta para a pasta usando <code>--source</code>.</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git restore arquivo</code> descarta as mudanças não preparadas e devolve o arquivo à versão da área de preparo (sem <code>git add</code>, a do último commit). Também recupera arquivos apagados.</li>
+  <li>As mudanças descartadas <strong>não têm volta</strong>: confira com <code>git diff</code> antes.</li>
+  <li><code>git restore .</code> restaura tudo; <code>-p</code> pergunta trecho por trecho.</li>
+  <li><code>--source=COMMIT</code> pega a versão de um commit antigo, sem mexer no histórico.</li>
+  <li><code>--staged --worktree</code> volta ao último commit nos dois lugares; <code>--staged</code> sozinho só tira da área de preparo (<a href="restore-staged.html">próxima aula</a>).</li>
+  <li>Em tutoriais antigos: <code>git checkout -- arquivo</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
