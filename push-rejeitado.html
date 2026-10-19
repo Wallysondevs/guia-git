@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git push rejeitado — o que fazer quando o push é recusado | Guia Git</title>
+<meta name="description" content="Push rejeitado no Git para quem nunca passou por isso: o que significam ! [rejected] (fetch first), (non-fast-forward) e (stale info), por que o Git recusa, como resolver com git pull e git push, por que nunca usar git push --force num branch compartilhado (com a prova), e o caso do repositório criado com README no GitHub (refusing to merge unrelated histories).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Push Rejeitado: o que Fazer</span></h1>
+
+<p class="intro">Mais cedo ou mais tarde, você vai dar <code>git push</code> e ver um <code>! [rejected]</code> em vez do "pronto". Calma: <strong>nada se perdeu</strong>. O push rejeitado é o Git protegendo o trabalho de outra pessoa. Nesta aula você entende por que ele acontece, como ler a mensagem e a receita para sair dele em dois comandos. E vê, na prática, por que o atalho <code>--force</code> é uma péssima ideia.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Por que o Git recusa um push: o remoto tem commits que você não tem.</li>
+  <li>A ler as variações: <code>(fetch first)</code>, <code>(non-fast-forward)</code> e <code>(stale info)</code>.</li>
+  <li>A receita: <code>git pull</code> e depois <code>git push</code>.</li>
+  <li>O que o <code>git push --force</code> faz com o trabalho do colega (com a prova) e a alternativa segura.</li>
+  <li>O caso clássico do repositório criado <strong>com README</strong> no GitHub: <code>refusing to merge unrelated histories</code>.</li>
+</ul>
+</div>
+
+<hr>
+
+<h2>A ideia antes do comando</h2>
+<p>Volte ao álbum de fotos da avó, da aula de <a href="git-push.html">git push</a>. Você chega para colar as suas fotos e descobre que, desde a sua última visita, o seu primo colou fotos novas na página seguinte. Se você colasse as suas por cima, as dele sumiriam. O certo é olhar as fotos dele, encaixar as suas depois delas e só então colar.</p>
+<p>O Git faz exatamente isso. O push só é aceito se for um <strong>avanço</strong> (<em>fast-forward</em>) do branch remoto: tudo o que está lá precisa estar também no que você envia. Se o remoto tem um commit que você não tem, aceitar o push apagaria esse commit. Então o Git recusa.</p>
+
+<pre>GitHub:  A---B---S          main   (S = sal, do Bruno)
+Ana:     A---B---M          main   (M = mousse, da Ana)
+                            push de M?  aceitar = apagar S  →  rejeitado</pre>
+
+<hr>
+
+<h2>Acontecendo de verdade</h2>
+<p>O Bruno acrescentou sal ao bolo e enviou. A Ana, sem saber, fez o commit da mousse e tentou enviar:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git push
+To https://github.com/ana-souza/receitas.git
+ ! [rejected]        main -&gt; main (fetch first)                   « recusado
+error: failed to push some refs to 'https://github.com/ana-souza/receitas.git'
+hint: Updates were rejected because the remote contains work that you do not
+hint: have locally. This is usually caused by another repository pushing to
+hint: the same ref. If you want to integrate the remote changes, use
+hint: 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.</pre>
+
+<h3>A mensagem, linha por linha</h3>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Linha</th><th>Em português</th></tr>
+<tr><td><code> ! [rejected]        main -&gt; main (fetch first)</code></td><td>O <code>!</code> e o <code>[rejected]</code> dizem "recusado". O envio do <code>main</code> para o <code>main</code> de lá não foi feito. <code>fetch first</code> = "busque primeiro".</td></tr>
+<tr><td><code>error: failed to push some refs to '…'</code></td><td>"Falha ao enviar algumas referências (branches) para …".</td></tr>
+<tr><td><code>hint: Updates were rejected because the remote contains work that you do not have locally.</code></td><td>"As atualizações foram recusadas porque o remoto contém trabalho que você não tem localmente."</td></tr>
+<tr><td><code>hint: This is usually caused by another repository pushing to the same ref.</code></td><td>"Normalmente, isso acontece porque outro repositório (o do Bruno!) enviou para o mesmo branch."</td></tr>
+<tr><td><code>hint: If you want to integrate the remote changes, use 'git pull' before pushing again.</code></td><td>"Se você quer integrar as mudanças do remoto, use <code>git pull</code> antes de enviar de novo." <strong>Essa é a solução.</strong></td></tr>
+<tr><td><code>hint: See the 'Note about fast-forwards' in 'git push --help' for details.</code></td><td>"Veja a nota sobre fast-forwards no manual do push." (Opcional.)</td></tr>
+</table>
+</div>
+
+<div class="note">
+<strong>Por que em inglês?</strong> A tradução brasileira do Git não está completa, e as mensagens do <code>push</code> saem em inglês mesmo num sistema em português. Com o sistema em inglês, as do <code>git status</code> também saem em inglês.
+</div>
+
+<h3>O <code>git status</code> não sabia de nada</h3>
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main
+Seu ramo está à frente de 'origin/main' por 1 submissão.         « só sabe da mousse
+  (use "git push" to publish your local commits)
+
+nothing to commit, working tree clean</pre>
+<p>O status compara com a <strong>lembrança</strong> do remoto (<code>origin/main</code>), que ainda não tem o sal do Bruno. Por isso, ele manda dar push, e o push é recusado de novo, quantas vezes você tentar. Depois de um <code>git fetch</code>, o quadro fica claro:</p>
+<pre class="term" data-cwd="~/receitas">$ git fetch -q
+$ git status
+No ramo main
+O seu branch e 'origin/main' divergiram-se,
+e cada um tem 1 e 1 submissões, respectivamente.                « 1 da Ana, 1 do Bruno
+  (use "git pull" if you want to integrate the remote branch with yours)
+
+nothing to commit, working tree clean
+$ git log --oneline --graph --all
+* 455dc5d (HEAD -&gt; main) Adiciona receita de mousse
+| * 8689ab9 (origin/main, origin/HEAD) Adiciona sal ao bolo
+|/
+* 4f68d0e Adiciona receita de bolo
+* 0e8cf93 Adiciona README</pre>
+
+<h3>A mesma recusa, com outro nome: <code>(non-fast-forward)</code></h3>
+<p>Agora que o Git da Ana <strong>conhece</strong> o commit do Bruno, o push recusado ganha outra explicação:</p>
+<pre class="term" data-cwd="~/receitas">$ git push
+To https://github.com/ana-souza/receitas.git
+ ! [rejected]        main -&gt; main (non-fast-forward)              « não é um avanço
+error: failed to push some refs to 'https://github.com/ana-souza/receitas.git'
+hint: Updates were rejected because the tip of your current branch is behind
+hint: its remote counterpart. If you want to integrate the remote changes,
+hint: use 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.</pre>
+<p>"As atualizações foram recusadas porque a ponta do seu branch atual está atrás do par remoto". A diferença entre as duas é só o que o seu Git já sabe: <code>fetch first</code> quando ele nem viu o commit novo; <code>non-fast-forward</code> quando já viu. A solução é a mesma.</p>
+
+<hr>
+
+<h2>A receita: <code>git pull</code>, depois <code>git push</code></h2>
+<ol class="passo">
+  <li><strong>Traga e junte</strong> o trabalho do remoto: <code>git pull</code> (escolhendo merge ou rebase; veja <a href="git-pull.html">git pull</a>).</li>
+  <li>Se der <strong>conflito</strong>, resolva (veja <a href="resolver-conflitos.html">Resolvendo Conflitos</a>).</li>
+  <li><strong>Envie</strong>: <code>git push</code>. Agora é um avanço, e o Git aceita.</li>
+</ol>
+
+<pre class="term" data-cwd="~/receitas">$ git pull --no-rebase
+Merge made by the 'ort' strategy.                                  « juntou com um commit de mesclagem
+ bolo.txt | 1 +
+ 1 file changed, 1 insertion(+)
+$ git log --oneline --graph
+*   fec59c7 Merge branch 'main' of https://github.com/ana-souza/receitas
+|\
+| * 8689ab9 Adiciona sal ao bolo                                   « o do Bruno
+* | 455dc5d Adiciona receita de mousse                             « o da Ana
+|/
+* 4f68d0e Adiciona receita de bolo
+* 0e8cf93 Adiciona README
+$ git push
+Enumerating objects: 7, done.
+Counting objects: 100% (7/7), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (4/4), done.
+Writing objects: 100% (5/5), 659 bytes | 659.00 KiB/s, done.
+Total 5 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/receitas.git
+   8689ab9..fec59c7  main -&gt; main                                « aceito!
+$ git status
+No ramo main
+Your branch is up to date with 'origin/main'.
+
+nothing to commit, working tree clean</pre>
+<p>No seu terminal, o <code>git pull --no-rebase</code> pode abrir o editor de texto com a mensagem <code>Merge branch 'main' of …</code> já escrita: salve e feche. Se preferir histórico em linha reta, use <code>git pull --rebase</code> no primeiro passo: o resultado no GitHub é o mesmo trabalho, sem o commit de mesclagem.</p>
+
+<hr>
+
+<h2>Experimente</h2>
+<p>No terminal abaixo, o "GitHub" é uma pasta de treino (<code>~/servidor/receitas.git</code>). A Ana fez o commit do pudim, mas o Bruno enviou o do suco antes.</p>
+
+<div class="try" data-setup="git init -q --bare ~/servidor/receitas.git;;git clone -q ~/servidor/receitas.git bruno;;cd bruno;;echo '# Receitas' &gt; README.md;;git add README.md;;git commit -qm 'Adiciona README';;git push -q -u origin main;;cd ~;;git clone -q ~/servidor/receitas.git receitas;;cd bruno;;echo 'Suco de laranja' &gt; suco.txt;;git add suco.txt;;git commit -qm 'Adiciona suco';;git push -q;;cd ~/receitas;;echo 'Pudim' &gt; pudim.txt;;git add pudim.txt;;git commit -qm 'Adiciona receita de pudim'" data-goal="contem:origin/main:suco.txt=laranja,contem:origin/main:pudim.txt=Pudim,limpo" data-solucao="git pull --rebase;;git push">
+<p class="try-task"><strong>Missão:</strong> tente <code>git push</code> e leia a recusa. Depois, siga a receita: traga o commit do Bruno (<code>git pull --rebase</code> ou <code>git pull --no-rebase</code>) e envie de novo, até o remoto ter o suco <strong>e</strong> o pudim.</p>
+</div>
+
+<hr>
+
+<h2>O atalho proibido: <code>git push --force</code></h2>
+<p>Na internet, muita gente "resolve" o push rejeitado com <code>git push --force</code> (<em>force</em> = "forçar"). Ele manda o remoto aceitar o seu branch <strong>do jeito que está</strong>, mesmo que isso apague commits de lá. Veja o que acontece. O Bruno enviou o commit dos ovos; a Ana, sem buscar, fez o do pavê e forçou:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git push --force
+Enumerating objects: 17, done.
+Counting objects: 100% (17/17), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (11/11), done.
+Writing objects: 100% (17/17), 1.47 KiB | 753.00 KiB/s, done.
+Total 17 (delta 3), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/receitas.git
+ + 71e8d25...1958348 main -&gt; main (forced update)                « + e "forced update" = sobrescrito</pre>
+
+<p>Repare nos detalhes: o <code>+</code> no começo, os <strong>três</strong> pontos (<code>...</code>) em vez de dois e o <code>(forced update)</code>, "atualização forçada". Todos querem dizer: o branch de lá não avançou, foi <strong>substituído</strong>. O histórico do GitHub, antes e depois (visto direto no servidor de treino):</p>
+<pre>Antes do --force                                Depois do --force
+* 71e8d25 Adiciona ovos ao bolo     « do Bruno   * 1958348 Adiciona receita de pavê   « da Ana
+*   fec59c7 Merge branch 'main' of …            *   fec59c7 Merge branch 'main' of …
+…                                               …
+                                                (o commit dos ovos sumiu do GitHub)</pre>
+
+<p>O commit do Bruno <strong>sumiu</strong> do GitHub. Ele ainda existe no computador dele, mas o histórico do GitHub não bate mais com o dele, e alguém vai ter de resgatar o trabalho à mão. Por isso a regra do guia: <strong>nunca use <code>--force</code> num branch que outras pessoas usam</strong>. Veja <a href="regra-de-ouro.html">A Regra de Ouro</a>.</p>
+
+<h3>A versão segura: <code>--force-with-lease</code></h3>
+<p>Existem situações legítimas para sobrescrever o remoto (por exemplo, depois de um <a href="git-rebase.html">rebase</a> no <strong>seu</strong> branch). Para elas existe o <code>--force-with-lease</code> ("forçar, com garantia"): ele só sobrescreve se o remoto estiver exatamente como o seu Git lembra. Se alguém enviou algo que você ainda não viu, ele recusa:</p>
+<pre class="term" data-cwd="~/receitas">$ git push --force-with-lease
+To https://github.com/ana-souza/receitas.git
+ ! [rejected]        main -&gt; main (stale info)                    « informação desatualizada
+error: failed to push some refs to 'https://github.com/ana-souza/receitas.git'</pre>
+<p><code>stale info</code> = "informação velha": o Bruno enviou um commit que a lembrança da Ana (<code>origin/main</code>) não tem, e o Git se recusou a apagá-lo. Os detalhes estão em <a href="push-force.html">push --force-with-lease</a>.</p>
+
+<hr>
+
+<h2>O caso clássico: criei o repositório no GitHub com README</h2>
+<p>A Ana começou a lojinha no notebook e depois criou o repositório no GitHub, marcando a opção de adicionar um README. O GitHub fez um commit lá (<code>Initial commit</code>) que não tem nada a ver com os commits dela:</p>
+<pre class="term" data-cwd="~/lojinha">$ git remote add origin https://github.com/ana-souza/lojinha.git
+$ git push -u origin main
+To https://github.com/ana-souza/lojinha.git
+ ! [rejected]        main -&gt; main (fetch first)
+error: failed to push some refs to 'https://github.com/ana-souza/lojinha.git'
+hint: Updates were rejected because the remote contains work that you do not
+hint: have locally. This is usually caused by another repository pushing to
+hint: the same ref. If you want to integrate the remote changes, use
+hint: 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+$ git pull --no-rebase origin main
+remote: Enumerating objects: 3, done.
+remote: Counting objects: 100% (3/3), done.
+remote: Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (3/3), 203 bytes | 203.00 KiB/s, done.
+From https://github.com/ana-souza/lojinha
+ * branch            main       -&gt; FETCH_HEAD
+ * [new branch]      main       -&gt; origin/main
+fatal: refusing to merge unrelated histories                     « histórias sem parentesco</pre>
+<p>"Recusando juntar históricos sem relação": os dois <code>main</code> não têm <strong>nenhum</strong> commit em comum (cada um nasceu de um lado). O Git desconfia que você misturou projetos diferentes. Se tem certeza de que é o mesmo projeto, autorize:</p>
+<pre class="term" data-cwd="~/lojinha">$ git pull --no-rebase --allow-unrelated-histories origin main
+From https://github.com/ana-souza/lojinha
+ * branch            main       -&gt; FETCH_HEAD
+Merge made by the 'ort' strategy.
+ README.md | 1 +
+ 1 file changed, 1 insertion(+)
+ create mode 100644 README.md
+$ git log --oneline --graph
+*   7831a2c Merge branch 'main' of https://github.com/ana-souza/lojinha
+|\
+| * 07cdf3a Initial commit                                       « o commit do GitHub
+* 6dadb57 Cria a página inicial                                  « o da Ana
+$ git push -u origin main
+Enumerating objects: 6, done.
+Counting objects: 100% (6/6), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (3/3), done.
+Writing objects: 100% (5/5), 535 bytes | 535.00 KiB/s, done.
+Total 5 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/lojinha.git
+   07cdf3a..7831a2c  main -&gt; main                                « aceito
+branch 'main' set up to track 'origin/main'.</pre>
+<p>Para não passar por isso: quando o projeto já existe no computador, crie o repositório no GitHub <strong>vazio</strong> (veja <a href="github-repositorio.html">Criando um Repositório no GitHub</a>).</p>
+
+<hr>
+
+<h2>Formas diferentes de sair do push rejeitado</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Forma</th><th>Resultado</th><th>Quando usar</th></tr>
+<tr><td><code>git pull --no-rebase</code> + <code>git push</code></td><td>Junta com commit de mesclagem</td><td>Sempre funciona; histórico mostra o que aconteceu</td></tr>
+<tr><td><code>git pull --rebase</code> + <code>git push</code></td><td>Seus commits replantados em cima dos do colega</td><td>Equipes que preferem histórico em linha reta</td></tr>
+<tr><td><code>git fetch</code>, olhar, <code>git merge origin/main</code> + <code>git push</code></td><td>Igual ao primeiro, conferindo antes</td><td>Quando quer ver o que o colega mudou</td></tr>
+<tr><td><code>git push --force-with-lease</code></td><td>Sobrescreve, mas só se ninguém enviou nada novo</td><td>Só no <strong>seu</strong> branch, depois de reescrever o histórico</td></tr>
+<tr><td><code>git push --force</code></td><td>Sobrescreve sem perguntar</td><td><strong>Evite.</strong> Apaga o trabalho dos outros</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Fiz o pull e deu conflito</strong>
+<p><strong>O que aconteceu:</strong> você e o colega mudaram as mesmas linhas.</p>
+<p><strong>Como resolver:</strong> resolva o conflito, <code>git add</code>, <code>git commit</code> (ou <code>git rebase --continue</code>, se usou <code>--rebase</code>) e só então <code>git push</code>. Para desistir: <code>git merge --abort</code> ou <code>git rebase --abort</code>. Veja <a href="resolver-conflitos.html">Resolvendo Conflitos</a>.</p>
+</div>
+
+<div class="cenario">
+<strong>O pull respondeu "Need to specify how to reconcile divergent branches"</strong>
+<p><strong>O que aconteceu:</strong> o Git quer que você escolha entre merge e rebase.</p>
+<p><strong>Como resolver:</strong> <code>git pull --no-rebase</code> ou <code>git pull --rebase</code>; e, para não ser perguntado de novo, <code>git config --global pull.rebase false</code> (ou <code>true</code>). Veja <a href="git-pull.html">git pull</a>.</p>
+</div>
+
+<div class="cenario">
+<strong>Rejeitado depois de um <code>commit --amend</code> ou de um rebase</strong>
+<p><strong>O que aconteceu:</strong> você reescreveu um commit que já tinha enviado (veja <a href="commit-amend.html">--amend</a>). Para o GitHub, o seu branch agora é outro histórico, e o push vira <code>non-fast-forward</code>.</p>
+<p><strong>Como resolver:</strong> se o branch é <strong>só seu</strong>, <code>git push --force-with-lease</code>. Se outras pessoas usam o branch, não reescreva: desfaça com <a href="git-revert.html">git revert</a>. Veja <a href="regra-de-ouro.html">A Regra de Ouro</a>.</p>
+</div>
+
+<div class="cenario">
+<strong>Usei <code>--force</code> e apaguei o commit do colega</strong>
+<p><strong>O que aconteceu:</strong> o remoto foi sobrescrito.</p>
+<p><strong>Como resolver:</strong> avise o colega na hora. O commit ainda existe no computador dele: com o <code>git log</code> ele acha o hash, traz o <code>main</code> novo do remoto e copia o commit para cima dele com <a href="cherry-pick.html">cherry-pick</a>, e depois envia com <code>git push</code>. No seu computador, o <a href="git-reflog.html">reflog</a> também guarda por onde o <code>origin/main</code> passou.</p>
+</div>
+
+<hr>
+
+<h2>Referência</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Mensagem</th><th>Quer dizer</th><th>Faça</th></tr>
+<tr><td><code>! [rejected] … (fetch first)</code></td><td>O remoto tem commits que o seu Git nem viu</td><td><code>git pull</code>, depois <code>git push</code></td></tr>
+<tr><td><code>! [rejected] … (non-fast-forward)</code></td><td>Seu branch está atrás do par remoto (ou o histórico foi reescrito)</td><td><code>git pull</code>, depois <code>git push</code></td></tr>
+<tr><td><code>! [rejected] … (stale info)</code></td><td>O <code>--force-with-lease</code> achou commits novos lá</td><td><code>git fetch</code>, olhe, decida</td></tr>
+<tr><td><code>+ a...b main -&gt; main (forced update)</code></td><td>Um <code>--force</code> sobrescreveu o remoto</td><td>Confira se nada se perdeu</td></tr>
+<tr><td><code>fatal: refusing to merge unrelated histories</code></td><td>Os dois lados não têm commit em comum</td><td><code>git pull --allow-unrelated-histories …</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. O primeiro passo</h3>
+<p>O push foi rejeitado com <code>(fetch first)</code>. Complete o comando que traz e junta o trabalho do remoto:</p>
+<div class="ex-code">git <input data-answer="pull" aria-label="subcomando"></div>
+</div>
+
+<div class="exercise">
+<h3>2. Forçar com segurança</h3>
+<p>Complete a opção que só sobrescreve o remoto se ninguém tiver enviado nada novo:</p>
+<div class="ex-code">git push <input data-answer="--force-with-lease" aria-label="opção"></div>
+</div>
+
+<div class="exercise">
+<h3>3. Históricos sem parentesco</h3>
+<p>Complete para juntar o README criado no GitHub ao projeto da Ana:</p>
+<div class="ex-code">git pull --no-rebase <input data-answer="--allow-unrelated-histories" aria-label="opção"> origin main</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. Por que o Git rejeita o push quando o remoto tem um commit que você não tem?</p>
+<label><input type="radio" name="q4"> Porque você não tem permissão no repositório.</label>
+<label><input type="radio" name="q4"> Porque há arquivos sem commit na sua pasta.</label>
+<label><input type="radio" name="q4"> Porque aceitar o push apagaria esse commit do remoto.</label>
+<label><input type="radio" name="q4"> Porque o branch não tem upstream.</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">5. A Ana viu <code>! [rejected] main -&gt; main (fetch first)</code> e o <code>git status</code> diz "à frente de 'origin/main' por 1". Por que o status não fala do commit do Bruno?</p>
+<label><input type="radio" name="q5"> Porque o commit do Bruno foi apagado.</label>
+<label><input type="radio" name="q5"> Porque o status compara com a lembrança (<code>origin/main</code>), que só se atualiza com fetch/pull.</label>
+<label><input type="radio" name="q5"> Porque o status nunca mostra commits dos outros.</label>
+<label><input type="radio" name="q5"> Porque a Ana está em outro branch.</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">6. O que aconteceu com o commit do Bruno depois do <code>git push --force</code> da Ana?</p>
+<label><input type="radio" name="q6"> Sumiu do GitHub (continua só no computador do Bruno).</label>
+<label><input type="radio" name="q6"> Foi juntado automaticamente ao da Ana.</label>
+<label><input type="radio" name="q6"> Virou um conflito para a Ana resolver.</label>
+<label><input type="radio" name="q6"> Nada: o <code>--force</code> só afeta os commits da Ana.</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Push rejeitado = o remoto tem commits que você não tem; aceitar o push apagaria esses commits.</li>
+  <li><code>(fetch first)</code> e <code>(non-fast-forward)</code> têm a mesma solução: <code>git pull</code> (merge ou rebase) e depois <code>git push</code>.</li>
+  <li>O <code>git status</code> só percebe o problema depois de um <code>fetch</code>.</li>
+  <li><code>git push --force</code> apaga o trabalho dos outros: nunca num branch compartilhado. Se precisar sobrescrever o seu próprio branch, use <code>--force-with-lease</code>.</li>
+  <li>Repositório criado com README e projeto já existente: <code>git pull --allow-unrelated-histories</code>, ou crie o repositório vazio da próxima vez.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
