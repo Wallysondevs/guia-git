@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Boas Práticas — commits pequenos, mensagens claras e segurança | Guia Git</title>
+<meta name="description" content="As boas práticas do Git com o porquê de cada uma: commits pequenos e de um assunto só, mensagens claras no imperativo, git status e git diff --staged antes de commitar, .gitignore desde o início, nada de senhas, branches por tarefa, pull antes e push sempre, e nunca reescrever o que é público. Com saídas reais e missões.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Boas Práticas</span></h1>
+
+<p class="intro">O Git deixa você fazer quase tudo de quase qualquer jeito. Mas, seis meses depois, a Ana vai abrir o histórico do site de receitas para descobrir quando o bolo começou a dar errado, e o Bruno vai precisar entender o que ela fez sem perguntar. É aí que as boas práticas pagam a conta. Esta aula reúne as principais, <strong>sempre com o porquê</strong> e com um exemplo real, e aponta a aula de cada assunto para você se aprofundar.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Como fazer commits <strong>pequenos e de um assunto só</strong>, mesmo quando você mexeu em várias coisas.</li>
+  <li>O que é uma boa mensagem de commit, e por que <code>asdf</code> e <code>final2</code> custam caro.</li>
+  <li>O hábito de conferir (<code>git status</code>, <code>git diff --staged</code>) antes de cada commit.</li>
+  <li>O que nunca deve entrar no repositório, e como o <code>.gitignore</code> ajuda.</li>
+  <li>As regras de convivência com outras pessoas: branches, pull, push e histórico público.</li>
+</ul>
+</div>
+
+<hr>
+
+<h2>A ideia: um caderno que outra pessoa vai ler</h2>
+<p>Pense no histórico do Git como o caderno de receitas da família, que passa de mão em mão. Se cada página tiver uma receita só, com título claro ("Bolo de cenoura da vó"), qualquer um acha o que quer. Se as páginas tiverem três receitas misturadas e títulos como "coisas", "mais coisas" e "agora vai", o caderno existe, mas não serve para nada.</p>
+<p>Quem vai ler o seu histórico é, quase sempre, <strong>você mesmo no futuro</strong>. As práticas abaixo são gentilezas com essa pessoa.</p>
+
+<hr>
+
+<h2>1. Um commit = um assunto</h2>
+<p>Um commit deve contar <strong>uma</strong> mudança completa: "adiciona a farinha ao bolo", não "farinha + README + conserto do pudim". Por quê?</p>
+<ul>
+  <li>Se a mudança der problema, você desfaz <strong>só ela</strong> com <a href="git-revert.html">git revert</a>, sem levar o resto junto.</li>
+  <li>O <a href="git-bisect.html">git bisect</a> aponta o commit culpado; se o commit tem um assunto só, o culpado fica óbvio.</li>
+  <li>Quem revisa o seu <a href="pull-request.html">pull request</a> entende cada passo.</li>
+</ul>
+<p>Na prática, você vai mexer em várias coisas ao mesmo tempo, e tudo bem: o segredo é a <a href="area-de-preparo.html">área de preparo</a>. Você escolhe o que entra em cada commit. A Ana mexeu no bolo e no README:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   README.md                  « assunto 1: a descrição do site
+	modified:   bolo.txt                   « assunto 2: a receita
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+$ git add bolo.txt                              « só o bolo
+$ git commit -m 'Adiciona a farinha à receita de bolo'
+[main 69e7cac] Adiciona a farinha à receita de bolo
+ 1 file changed, 1 insertion(+)
+$ git add README.md                             « agora o README
+$ git commit -m 'Descreve o site no README'
+[main 6cf7a44] Descreve o site no README
+ 1 file changed, 1 insertion(+)
+$ git log --oneline
+6cf7a44 Descreve o site no README
+69e7cac Adiciona a farinha à receita de bolo
+14654f8 Corrige a quantidade de ovos do pudim
+fcea9c3 Adiciona receita de pudim
+44f770a Cria o README e a receita de bolo</pre>
+
+<p>Dois commits, cada um com um assunto. Se as duas mudanças estivessem no <strong>mesmo arquivo</strong>, o <code>git add -p</code> deixaria você escolher pedaço por pedaço (veja <a href="git-add.html">git add</a>).</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;echo 'Bolo de cenoura' &gt; bolo.txt;;git add .;;git commit -q -m 'Cria o README e a receita de bolo';;echo '- 2 xícaras de farinha' &gt;&gt; bolo.txt;;echo 'Site com as receitas da família.' &gt;&gt; README.md" data-goal="commits:3,limpo,contem:HEAD~1:bolo.txt=farinha" data-solucao="git add bolo.txt;;git commit -m 'Adiciona a farinha à receita de bolo';;git add README.md;;git commit -m 'Descreve o site no README'">
+<p class="try-task"><strong>Missão:</strong> a Ana mudou o <code>bolo.txt</code> e o <code>README.md</code>. Faça <strong>dois commits</strong>, um para cada assunto: primeiro o do bolo, depois o do README, com mensagens claras. Confira com <code>git log --oneline</code> e <code>git show --stat</code>.</p>
+</div>
+
+<hr>
+
+<h2>2. Mensagens que explicam</h2>
+<p>Compare dois históricos reais, do laboratório:</p>
+<pre class="term" data-cwd="~/bagunca">$ git log --oneline
+69115fb final2
+d485feb agora vai
+d952ff8 mudanças
+098d740 asdf
+9814226 arrumei</pre>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+14654f8 Corrige a quantidade de ovos do pudim
+fcea9c3 Adiciona receita de pudim
+44f770a Cria o README e a receita de bolo</pre>
+<p>No primeiro, para saber o que cada commit fez, só abrindo um por um. No segundo, o <code>git log --oneline</code> já é a história do projeto. As regras de bolso (detalhadas em <a href="mensagens-commit.html">Boas Mensagens de Commit</a>):</p>
+<ul>
+  <li>Verbo no <strong>imperativo</strong> ou no presente, completando a frase "este commit…": "Adiciona", "Corrige", "Remove".</li>
+  <li>Uma primeira linha curta (até uns 50 caracteres), que diz <strong>o quê</strong>; se precisar, uma linha em branco e um parágrafo com o <strong>porquê</strong>.</li>
+  <li>Se a equipe usa um padrão, como os <a href="conventional-commits.html">Conventional Commits</a> (<code>feat:</code>, <code>fix:</code>), siga o padrão.</li>
+</ul>
+
+<hr>
+
+<h2>3. Confira antes de commitar</h2>
+<p>O <a href="git-status.html">git status</a> diz <strong>quais</strong> arquivos vão entrar; o <a href="git-diff-staged.html">git diff --staged</a> diz <strong>o que</strong> mudou dentro deles. Juntos, levam cinco segundos e evitam a maioria dos acidentes. Veja o que a conferência pegou:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git add .
+$ git diff --staged
+diff --git a/bolo.txt b/bolo.txt
+index 3b56571..0c9fbf0 100644
+--- a/bolo.txt
++++ b/bolo.txt
+@@ -1,3 +1,4 @@
+ Bolo de cenoura
+ - 3 cenouras
+ - 2 xícaras de farinha
++- 1 colher de fermento                          « isto era para entrar
+diff --git a/busca.js b/busca.js
+new file mode 100644
+index 0000000..f7bda0a
+--- /dev/null
++++ b/busca.js
+@@ -0,0 +1 @@
++console.log("teste")                           « isto não: era um teste
+$ git restore --staged busca.js                 « tira o teste da área de preparo
+$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	modified:   bolo.txt                   « só o que interessa vai para o commit
+
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	busca.js</pre>
+
+<p>O <code>git add .</code> pegou tudo, inclusive um arquivo de teste. A conferência mostrou, e o <a href="restore-staged.html">git restore --staged</a> o tirou da área de preparo sem apagar nada. Por isso, cuidado com atalhos que pulam a conferência, como <code>git commit -a</code> e <code>git add .</code> seguido direto de commit.</p>
+
+<hr>
+
+<h2>4. O que nunca entra no repositório</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Não commite</th><th>Por quê</th><th>O que fazer</th></tr>
+<tr><td>Senhas, tokens, chaves (<code>.env</code>, <code>credenciais.txt</code>)</td><td>Quem tiver o repositório tem a senha, para sempre no histórico.</td><td><code>.gitignore</code> + um <code>.env.exemplo</code> sem senha. Se aconteceu: <a href="senha-commitada.html">Commitei uma Senha!</a></td></tr>
+<tr><td>Arquivos gerados (<code>*.log</code>, <code>node_modules/</code>, <code>build/</code>, <code>*.class</code>)</td><td>Podem ser recriados a qualquer momento; só incham o repositório e causam conflitos.</td><td><code>.gitignore</code> (há modelos em <a href="ref-gitignore.html">Modelos de .gitignore</a>).</td></tr>
+<tr><td>Arquivos do seu computador (<code>.DS_Store</code>, <code>Thumbs.db</code>, configurações do editor)</td><td>Não têm a ver com o projeto.</td><td>Um <code>.gitignore</code> global (veja <a href="config-util.html">Configurações Úteis</a>).</td></tr>
+<tr><td>Arquivos grandes (vídeos, bancos de dados, ZIPs)</td><td>Cada versão fica para sempre no histórico, e todo clone baixa tudo.</td><td>Deixe fora, ou use o <a href="git-lfs.html">Git LFS</a>.</td></tr>
+</table>
+</div>
+
+<p>O melhor momento para o <a href="gitignore.html">.gitignore</a> é <strong>antes</strong> do primeiro <code>git add</code>: o <code>.gitignore</code> não tira do Git o que já foi commitado. Veja o efeito na lista curta do <code>git status</code> (<code>--short</code>, em que <code>??</code> quer dizer "não rastreado"):</p>
+<pre class="term" data-cwd="~/receitas">$ git status --short
+?? .env                                         « a chave da API
+?? busca.js
+?? debug.log                                    « um log de erro
+$ printf '*.log\n.env\n' &gt; .gitignore
+$ git status --short
+?? .gitignore                                   « o .env e o log sumiram da lista
+?? busca.js</pre>
+
+<div class="try" data-setup="mkdir lojinha;;cd lojinha;;git init -q;;echo '&lt;h1&gt;Lojinha&lt;/h1&gt;' &gt; index.html;;echo 'erro na linha 3' &gt; debug.log;;echo 'SENHA=senha-de-exemplo-123' &gt; .env" data-goal="ignorado:debug.log,ignorado:.env,rastreado:.gitignore,rastreado:index.html,limpo,commits:1" data-solucao="printf '*.log\n.env\n' &gt; .gitignore;;git add .;;git commit -m 'Cria a página inicial e o .gitignore'">
+<p class="try-task"><strong>Missão:</strong> a lojinha da Ana ainda não tem nenhum commit. Antes do primeiro, crie um <code>.gitignore</code> que ignore os arquivos <code>.log</code> e o <code>.env</code>. Depois, faça o primeiro commit com o <code>index.html</code> e o <code>.gitignore</code>. Use <code>git status --short</code> para conferir que só eles vão entrar.</p>
+</div>
+
+<hr>
+
+<h2>5. Trabalhando com outras pessoas</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Prática</th><th>Por quê</th><th>Aula</th></tr>
+<tr><td><strong>Um branch por tarefa</strong> (<code>git switch -c receita-lasanha</code>); o <code>main</code> sempre funcionando.</td><td>Você experimenta à vontade sem quebrar o que está no ar, e cada tarefa vira um pull request separado.</td><td><a href="branches.html">O que é um Branch</a>, <a href="github-flow.html">GitHub Flow</a></td></tr>
+<tr><td><strong>Pull antes de começar</strong> o dia (ou a tarefa).</td><td>Você parte da versão mais nova e evita conflitos e <a href="push-rejeitado.html">push rejeitado</a>.</td><td><a href="git-pull.html">git pull</a></td></tr>
+<tr><td><strong>Push com frequência.</strong></td><td>O GitHub vira o seu backup, e os colegas veem o seu progresso.</td><td><a href="git-push.html">git push</a></td></tr>
+<tr><td><strong>Não reescreva o que já é público</strong> (rebase, amend, reset em commits enviados).</td><td>Os colegas têm cópias dos commits antigos; reescrever faz os históricos divergirem.</td><td><a href="regra-de-ouro.html">A Regra de Ouro</a></td></tr>
+<tr><td>Se precisar forçar, <strong><code>--force-with-lease</code></strong>, nunca <code>--force</code> puro.</td><td>Ele recusa se alguém enviou algo que você ainda não viu.</td><td><a href="push-force.html">push --force-with-lease</a></td></tr>
+<tr><td><strong>Marque as versões</strong> lançadas com tags.</td><td>"O que estava no ar na versão 1.2?" vira uma pergunta de um comando.</td><td><a href="git-tag.html">git tag</a></td></tr>
+</table>
+</div>
+
+<pre class="term" data-cwd="~/receitas">$ git pull
+Already up to date.                             « "já está atualizado": pode começar
+$ git switch -c receita-lasanha
+Switched to a new branch 'receita-lasanha'
+$ git branch
+  main
+* receita-lasanha                               « a tarefa nova, longe do main</pre>
+
+<hr>
+
+<h2>Formas diferentes: o mínimo × o completo</h2>
+<p>Ninguém precisa seguir tudo no primeiro dia. Uma sugestão de por onde começar:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Nível</th><th>Hábitos</th></tr>
+<tr><td>Primeira semana</td><td><code>git status</code> antes de tudo; mensagens claras; <code>.gitignore</code> no primeiro commit; nada de senhas.</td></tr>
+<tr><td>Primeiro mês</td><td>Commits de um assunto só (<code>git add arquivo</code>, <code>git add -p</code>); <code>git diff --staged</code> antes do commit; pull antes, push sempre.</td></tr>
+<tr><td>Trabalhando em equipe</td><td>Branch por tarefa e pull request; nada de reescrever o que é público; <code>--force-with-lease</code>; tags nas versões; um padrão de mensagens combinado.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Commitei duas coisas juntas</strong>
+<p><strong>O que aconteceu:</strong> o último commit misturou assuntos.</p>
+<p><strong>Como resolver:</strong> se ainda não fez push, desfaça só o commit mantendo as mudanças (<code>git reset HEAD~1</code>, veja <a href="reset-modos.html">os modos do reset</a>) e refaça em dois commits, como na seção 1. Se já fez push, deixe como está: reescrever histórico público é pior que um commit misturado.</p>
+</div>
+
+<div class="cenario">
+<strong>Coloquei no <code>.gitignore</code>, mas o arquivo continua aparecendo</strong>
+<p><strong>O que aconteceu:</strong> o arquivo já tinha sido commitado; o <code>.gitignore</code> só vale para arquivos <strong>não rastreados</strong>.</p>
+<p><strong>Como resolver:</strong> <code>git rm --cached arquivo</code> e um commit (veja <a href="gitignore.html">.gitignore</a>). Se era uma senha, siga <a href="senha-commitada.html">Commitei uma Senha!</a>.</p>
+</div>
+
+<div class="cenario">
+<strong>A mensagem do último commit ficou ruim</strong>
+<p><strong>Como resolver:</strong> antes do push, <code>git commit --amend -m 'Mensagem melhor'</code> (veja <a href="commit-amend.html">--amend</a>). Depois do push, deixe estar e capriche na próxima.</p>
+</div>
+
+<hr>
+
+<h2>Referência: faça × evite</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Faça</th><th>Evite</th></tr>
+<tr><td>Um assunto por commit</td><td>"Commit do dia" com tudo misturado</td></tr>
+<tr><td>"Corrige a quantidade de ovos do pudim"</td><td>"arrumei", "asdf", "final2"</td></tr>
+<tr><td><code>git status</code> e <code>git diff --staged</code> antes do commit</td><td><code>git add .</code> + commit sem olhar</td></tr>
+<tr><td><code>.gitignore</code> antes do primeiro commit</td><td>Commitar <code>.env</code>, logs, <code>node_modules/</code></td></tr>
+<tr><td>Branch por tarefa, <code>main</code> funcionando</td><td>Trabalhar direto no <code>main</code> em equipe</td></tr>
+<tr><td><code>git pull</code> antes, <code>git push</code> sempre</td><td>Ficar dias sem sincronizar</td></tr>
+<tr><td><code>--force-with-lease</code>, e só no seu branch</td><td><code>--force</code> em branch compartilhado</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Conferir o que vai no commit</h3>
+<p>Complete para ver as mudanças que estão na área de preparo:</p>
+<div class="ex-code">git diff <input data-answer="--staged" aria-label="opção"></div>
+</div>
+
+<div class="exercise">
+<h3>2. Tirar da área de preparo</h3>
+<p>Complete para tirar o <code>busca.js</code> da área de preparo, sem apagar o arquivo:</p>
+<div class="ex-code">git restore <input data-answer="--staged" aria-label="opção"> busca.js</div>
+</div>
+
+<div class="exercise">
+<h3>3. Ignorar logs</h3>
+<p>Complete a linha do <code>.gitignore</code> que ignora todos os arquivos terminados em <code>.log</code>:</p>
+<div class="ex-code"><input data-answer="*.log" aria-label="padrão"></div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. Qual destas é a melhor mensagem de commit?</p>
+<label><input type="radio" name="q4"> <code>mudanças</code></label>
+<label><input type="radio" name="q4"> <code>arrumei umas coisas no site e no bolo</code></label>
+<label><input type="radio" name="q4"> <code>Corrige a quantidade de ovos do pudim</code></label>
+<label><input type="radio" name="q4"> <code>final2</code></label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">5. Por que fazer commits pequenos, de um assunto só?</p>
+<label><input type="radio" name="q5"> Porque o Git não aceita commits grandes.</label>
+<label><input type="radio" name="q5"> Para poder desfazer, revisar e investigar cada mudança separadamente.</label>
+<label><input type="radio" name="q5"> Para o repositório ocupar menos espaço.</label>
+<label><input type="radio" name="q5"> Porque o GitHub cobra por commit grande.</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">6. Você já fez push de um commit com uma mensagem ruim. O que é melhor fazer?</p>
+<label><input type="radio" name="q6"> <code>git commit --amend</code> e <code>git push --force</code> no <code>main</code> da equipe.</label>
+<label><input type="radio" name="q6"> Apagar o repositório e criar de novo.</label>
+<label><input type="radio" name="q6"> <code>git reset --hard HEAD~1</code>.</label>
+<label><input type="radio" name="q6"> Deixar como está e caprichar nas próximas mensagens.</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Um commit, um assunto: use a área de preparo para separar (<code>git add arquivo</code>, <code>git add -p</code>).</li>
+  <li>Mensagens claras, no imperativo, que digam o quê (e, se preciso, o porquê).</li>
+  <li><code>git status</code> e <code>git diff --staged</code> antes de cada commit.</li>
+  <li><code>.gitignore</code> antes do primeiro commit; senhas, arquivos gerados e grandes ficam fora.</li>
+  <li>Branch por tarefa, pull antes, push sempre, tags nas versões.</li>
+  <li>Não reescreva o que é público; se precisar forçar, <code>--force-with-lease</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
