@@ -45,27 +45,29 @@
 
 <hr>
 
+<div class="note"><strong>Português e inglês misturados?</strong> A tradução do Git que vem no Ubuntu é parcial: algumas mensagens saem em português, outras em inglês (e algumas em português de Portugal, como "submissões"). As saídas abaixo estão exatamente como apareceram; as mensagens em inglês ganham tradução no texto. Em outros sistemas, as frases podem sair diferentes ou todas em inglês.</div>
+
 <h2>Caso 1: o <code>reset --hard</code> levou dois commits</h2>
 <p>O repositório da Ana tinha três commits. Ela queria descartar uma mudança no arquivo, mas digitou <code>HEAD~2</code>:</p>
 
 <pre class="term" data-cwd="~/receitas">$ git log --oneline
-42fd4f8 Adiciona pudim
+42fd4f8 (HEAD -&gt; main) Adiciona pudim
 095ebcf Adiciona bolo de cenoura
 0cea70a Cria o README
 $ git reset --hard HEAD~2
 HEAD is now at 0cea70a Cria o README             « "o HEAD agora está em 0cea70a"
 $ git log --oneline
-0cea70a Cria o README                            « cadê o bolo e o pudim?!
+0cea70a (HEAD -&gt; main) Cria o README             « cadê o bolo e o pudim?!
 $ ls
 README.md</pre>
 
 <p>O <code>git log</code> mostra só o primeiro commit, e os arquivos <code>bolo.txt</code> e <code>pudim.txt</code> sumiram da pasta. Agora, o diário:</p>
 
 <pre class="term" data-cwd="~/receitas">$ git reflog
-0cea70a HEAD@{0}: reset: moving to HEAD~2        « o movimento errado
+0cea70a (HEAD -&gt; main) HEAD@{0}: reset: moving to HEAD~2     « o movimento errado
 42fd4f8 HEAD@{1}: commit: Adiciona pudim         « onde a Ana estava antes!
 095ebcf HEAD@{2}: commit: Adiciona bolo de cenoura
-0cea70a HEAD@{3}: commit (initial): Cria o README</pre>
+0cea70a (HEAD -&gt; main) HEAD@{3}: commit (initial): Cria o README</pre>
 <p>(As descrições do reflog, como <code>reset: moving to</code>, "reset: movendo para", são sempre em inglês, mesmo com o sistema em português.)</p>
 
 <p>Lendo de cima para baixo (do mais novo para o mais antigo):</p>
@@ -80,9 +82,9 @@ README.md</pre>
 
 <pre class="term" data-cwd="~/receitas">$ git branch resgate HEAD@{1}                    « nenhuma mensagem = deu certo
 $ git log --oneline resgate
-42fd4f8 Adiciona pudim                           « os commits voltaram a ter etiqueta
+42fd4f8 (resgate) Adiciona pudim                 « os commits voltaram a ter etiqueta
 095ebcf Adiciona bolo de cenoura
-0cea70a Cria o README</pre>
+0cea70a (HEAD -&gt; main) Cria o README</pre>
 <p>Pronto: os commits estão salvos no branch <code>resgate</code>. Agora você pode olhar com <a href="git-show.html">git show</a>, trazer só um arquivo, ou juntar com <a href="git-merge.html">git merge resgate</a>.</p>
 
 <p><strong>Forma direta:</strong> se você tem certeza de que quer voltar exatamente para onde estava, mova o <code>main</code> de volta com o próprio <code>reset --hard</code>, apontando para a entrada do diário:</p>
@@ -93,7 +95,7 @@ nothing to commit, working tree clean           « nada a perder: pode seguir
 $ git reset --hard HEAD@{1}
 HEAD is now at 42fd4f8 Adiciona pudim
 $ git log --oneline
-42fd4f8 Adiciona pudim
+42fd4f8 (HEAD -&gt; main, resgate) Adiciona pudim
 095ebcf Adiciona bolo de cenoura
 0cea70a Cria o README
 $ ls
@@ -148,16 +150,16 @@ $ git branch
 
 <pre class="term" data-cwd="~/receitas">$ git branch sobremesas 0b9c470
 $ git log --oneline sobremesas
-0b9c470 Adiciona mousse                          « o branch voltou, com o commit
-42fd4f8 Adiciona pudim
+0b9c470 (sobremesas) Adiciona mousse             « o branch voltou, com o commit
+42fd4f8 (HEAD -&gt; main) Adiciona pudim
 095ebcf Adiciona bolo de cenoura
 0cea70a Cria o README</pre>
 
 <p>Se a mensagem já sumiu da tela, o reflog também guarda a pista. Logo depois de apagar o branch, as três últimas anotações eram estas (<code>-3</code> limita a três linhas):</p>
 <pre class="term" data-cwd="~/receitas">$ git reflog -3
-42fd4f8 HEAD@{0}: checkout: moving from sobremesas to main     « saiu do branch
+42fd4f8 (HEAD -&gt; main) HEAD@{0}: checkout: moving from sobremesas to main     « saiu do branch
 0b9c470 HEAD@{1}: commit: Adiciona mousse                      « a ponta do branch apagado
-42fd4f8 HEAD@{2}: checkout: moving from main to sobremesas</pre>
+42fd4f8 (HEAD -&gt; main) HEAD@{2}: checkout: moving from main to sobremesas</pre>
 <p>Procure a linha <code>checkout: moving from sobremesas to …</code> ("saindo de sobremesas para…"): o commit <strong>logo abaixo</strong> dela é a ponta do branch apagado, aqui o <code>0b9c470</code> (ou <code>HEAD@{1}</code>).</p>
 
 <div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;git switch -q -c sobremesas;;echo 'Mousse de maracujá' &gt; mousse.txt;;git add mousse.txt;;git commit -q -m 'Adiciona mousse';;git switch -q main;;git branch -q -D sobremesas" data-goal="branch:sobremesas,contem:sobremesas:mousse.txt=Mousse" data-solucao="git reflog;;git branch sobremesas HEAD@{1}">
@@ -176,7 +178,7 @@ $ git commit --amend -m 'Troca o pudim por pudim de leite condensado'
  Date: Thu Oct 15 10:30:00 2026 -0300
  1 file changed, 1 insertion(+), 1 deletion(-)
 $ git reflog -3
-e54a538 HEAD@{0}: commit (amend): Troca o pudim por pudim de leite condensado
+e54a538 (HEAD -&gt; main) HEAD@{0}: commit (amend): Troca o pudim por pudim de leite condensado
 deda689 HEAD@{1}: commit: Muda o pudim             « o commit de antes do amend
 42fd4f8 HEAD@{2}: checkout: moving from sobremesas to main
 $ git show HEAD@{1} --stat --oneline
