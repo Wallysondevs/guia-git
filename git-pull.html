@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git pull — trazendo e juntando o trabalho do remoto | Guia Git</title>
+<meta name="description" content="O git pull para quem nunca usou Git: fetch + merge numa tacada só, o pull fast-forward, branches divergentes e a mensagem 'Need to specify how to reconcile divergent branches', pull com merge (--no-rebase), com rebase (--rebase) e --ff-only, conflito no pull e os erros reais (local changes would be overwritten, no tracking information).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">pull</span></h1>
+
+<p class="intro">Na aula de <a href="git-fetch.html">git fetch</a>, a Ana trouxe o commit do Bruno em dois passos: buscar (<code>git fetch</code>) e juntar (<code>git merge origin/main</code>). O <code>git pull</code> (em inglês, "puxar") faz <strong>os dois de uma vez</strong>. É o comando que você vai digitar toda manhã, antes de começar a trabalhar num projeto em equipe.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que o <code>git pull</code> faz por dentro: <code>fetch</code> + <code>merge</code> (ou <code>rebase</code>).</li>
+  <li>O caso fácil: o pull que só avança o seu branch (<em>fast-forward</em>).</li>
+  <li>O caso que assusta: <strong>branches divergentes</strong>, a mensagem <code>Need to specify how to reconcile divergent branches</code> e as três escolhas (<code>--no-rebase</code>, <code>--rebase</code>, <code>--ff-only</code>).</li>
+  <li>O que fazer quando o pull dá <strong>conflito</strong>.</li>
+  <li>Os erros mais comuns e como sair de cada um.</li>
+</ul>
+</div>
+
+<hr>
+
+<h2>A ideia antes do comando</h2>
+<p>Volte à caixa de correio da aula de fetch. O <code>fetch</code> é pegar as cartas. O <code>pull</code> é pegar as cartas <strong>e já guardar tudo no lugar</strong>: as contas na gaveta, os convites na geladeira. É mais rápido, mas você não olha antes. Na maior parte dos dias, tudo bem.</p>
+
+<pre>git pull   =   git fetch            +   git merge origin/main
+               (busca os commits)       (junta no seu branch)</pre>
+
+<dl class="anatomy">
+  <dt>git pull</dt><dd>Busca e junta, usando o par do branch atual (o <a href="upstream.html">upstream</a>, configurado no <code>git push -u</code> ou no <code>git clone</code>).</dd>
+  <dt>git pull origin main</dt><dd>O mesmo, dizendo de onde: o branch <code>main</code> do remoto <code>origin</code>.</dd>
+</dl>
+
+<hr>
+
+<h2>O caso fácil: só avançar</h2>
+<p>O Bruno enviou o óleo do bolo. A Ana não fez nada de novo desde a última vez. Um comando:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git pull
+remote: Enumerating objects: 5, done.                          « parte 1: o fetch
+remote: Counting objects: 100% (5/5), done.
+remote: Compressing objects: 100% (3/3), done.
+remote: Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (3/3), 306 bytes | 306.00 KiB/s, done.
+From https://github.com/ana-souza/receitas
+   4f68d0e..3dbde00  main       -&gt; origin/main                « origin/main andou
+Updating 4f68d0e..3dbde00                                       « parte 2: o merge
+Fast-forward                                                    « só avançou
+ bolo.txt | 1 +
+ 1 file changed, 1 insertion(+)
+$ cat bolo.txt
+Bolo de cenoura
+- 3 cenouras
+- 1 xícara de óleo                                              « a mudança do Bruno, na pasta
+$ git log --oneline
+3dbde00 (HEAD -&gt; main, origin/main, origin/HEAD) Adiciona óleo ao bolo
+4f68d0e Adiciona receita de bolo
+0e8cf93 Adiciona README</pre>
+
+<p>A saída tem duas metades. Até a linha <code>4f68d0e..3dbde00  main -&gt; origin/main</code>, é o <strong>fetch</strong> (igual ao da aula anterior). De <code>Updating</code> para baixo, é o <strong>merge</strong>: <code>Updating 4f68d0e..3dbde00</code> ("atualizando de … até …"), <code>Fast-forward</code> ("avanço rápido": o <code>main</code> só andou para a frente, sem commit de mesclagem) e o resumo dos arquivos mudados. No fim, <code>main</code> e <code>origin/main</code> estão no mesmo commit.</p>
+
+<div class="note">
+<strong>Mensagens em inglês?</strong> A tradução brasileira do Git não está completa: num sistema em português, parte das mensagens sai em português e parte em inglês. O guia mostra o que o Git realmente escreve.
+</div>
+
+<hr>
+
+<h2>Experimente</h2>
+<p>O "GitHub" dos terminais abaixo é uma pasta de treino (<code>~/servidor/receitas.git</code>), e o Bruno já enviou um commit que a Ana não tem.</p>
+
+<div class="try" data-setup="git init -q --bare ~/servidor/receitas.git;;git clone -q ~/servidor/receitas.git bruno;;cd bruno;;echo '# Receitas' &gt; README.md;;git add README.md;;git commit -qm 'Adiciona README';;git push -q -u origin main;;cd ~;;git clone -q ~/servidor/receitas.git receitas;;cd bruno;;echo 'Suco de laranja' &gt; suco.txt;;git add suco.txt;;git commit -qm 'Adiciona suco';;git push -q;;cd ~/receitas" data-goal="commits:2,contem:HEAD:suco.txt=laranja,ran:git pull" data-solucao="git pull">
+<p class="try-task"><strong>Missão:</strong> traga o commit do Bruno para o seu <code>main</code> com um comando só. Depois, confira com <code>ls</code> e <code>git log --oneline</code>.</p>
+</div>
+
+<hr>
+
+<h2>O caso que assusta: branches divergentes</h2>
+<p>Agora as duas pessoas trabalharam ao mesmo tempo: a Ana fez o commit do pudim (sem enviar) e o Bruno enviou uma explicação no README. Cada lado tem um commit que o outro não tem: os branches <strong>divergiram</strong>.</p>
+
+<pre>              C   main (Ana: pudim)
+             /
+A---B---(óleo)
+             \
+              D   origin/main (Bruno: README)</pre>
+
+<pre class="term" data-cwd="~/receitas">$ git pull
+remote: Enumerating objects: 5, done.
+remote: Counting objects: 100% (5/5), done.
+remote: Compressing objects: 100% (3/3), done.
+remote: Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (3/3), 311 bytes | 311.00 KiB/s, done.
+From https://github.com/ana-souza/receitas
+   3dbde00..9b05483  main       -&gt; origin/main                « o fetch funcionou
+hint: You have divergent branches and need to specify how to reconcile them.
+hint: You can do so by running one of the following commands sometime before
+hint: your next pull:
+hint:
+hint:   git config pull.rebase false  # merge
+hint:   git config pull.rebase true   # rebase
+hint:   git config pull.ff only       # fast-forward only
+hint:
+hint: You can replace "git config" with "git config --global" to set a default
+hint: preference for all repositories. You can also pass --rebase, --no-rebase,
+hint: or --ff-only on the command line to override the configured default per
+hint: invocation.
+fatal: Need to specify how to reconcile divergent branches.     « o merge não foi feito
+$ git status
+No ramo main
+O seu branch e 'origin/main' divergiram-se,
+e cada um tem 1 e 1 submissões, respectivamente.               « 1 commit de cada lado
+  (use "git pull" if you want to integrate the remote branch with yours)
+
+nothing to commit, working tree clean</pre>
+
+<p>Calma: <strong>nada se perdeu</strong>. O fetch foi feito (o <code>origin/main</code> andou), mas o Git parou antes de juntar, porque existem jeitos diferentes de juntar e ele quer que <strong>você</strong> escolha. Traduzindo a dica:</p>
+<ul>
+  <li>"Você tem branches divergentes e precisa dizer como reconciliá-los. Rode um destes comandos antes do próximo pull:"</li>
+  <li><code>git config pull.rebase false  # merge</code>: juntar com um <strong>commit de mesclagem</strong>.</li>
+  <li><code>git config pull.rebase true   # rebase</code>: <strong>replantar</strong> os seus commits em cima dos do remoto.</li>
+  <li><code>git config pull.ff only       # fast-forward only</code>: <strong>só</strong> aceitar o caso fácil; recusar quando divergir.</li>
+  <li>"Troque <code>git config</code> por <code>git config --global</code> para valer em todos os repositórios. Você também pode passar <code>--rebase</code>, <code>--no-rebase</code> ou <code>--ff-only</code> só neste pull."</li>
+</ul>
+
+<h3>Escolha 1: juntar com merge (<code>--no-rebase</code>)</h3>
+<pre class="term" data-cwd="~/receitas">$ git pull --no-rebase
+Merge made by the 'ort' strategy.                              « commit de mesclagem criado
+ README.md | 1 +
+ 1 file changed, 1 insertion(+)
+$ git log --oneline --graph
+*   f3dead1 Merge branch 'main' of https://github.com/ana-souza/receitas    « o commit de mesclagem
+|\
+| * 9b05483 Explica o projeto no README                        « o do Bruno
+* | b2e2cc4 Adiciona receita de pudim                          « o da Ana
+|/
+* 3dbde00 Adiciona óleo ao bolo
+* 4f68d0e Adiciona receita de bolo
+* 0e8cf93 Adiciona README
+$ git status
+No ramo main
+Seu ramo está à frente de 'origin/main' por 2 submissões.      « o pudim e a mesclagem
+  (use "git push" to publish your local commits)
+
+nothing to commit, working tree clean</pre>
+<p>O Git criou um <strong>commit de mesclagem</strong> (veja <a href="merge-tres-vias.html">Merge de Três Vias</a>), com a mensagem automática <code>Merge branch 'main' of …</code>. No seu terminal, o editor de texto pode abrir com essa mensagem já escrita: é só salvar e fechar. O histórico ganha um "losango" e a Ana fica 2 commits à frente: falta só o <code>git push</code>.</p>
+
+<h3>Escolha 2: replantar com rebase (<code>--rebase</code>)</h3>
+<p>Na mesma situação (pudim da Ana × README do Bruno), outra forma:</p>
+<pre class="term" data-cwd="~/receitas">$ git pull --rebase
+Successfully rebased and updated refs/heads/main.              « commit da Ana replantado
+$ git log --oneline --graph
+* dbf0f16 (HEAD -&gt; main) Adiciona receita de pudim             « o da Ana, agora por último (hash novo)
+* 9b05483 (origin/main, origin/HEAD) Explica o projeto no README   « o do Bruno
+* 3dbde00 Adiciona óleo ao bolo
+* 4f68d0e Adiciona receita de bolo
+* 0e8cf93 Adiciona README</pre>
+<p>O Git tirou o commit da Ana do caminho, aplicou o do Bruno e <strong>replantou</strong> o da Ana em cima (por isso o hash mudou: era <code>b2e2cc4</code>, virou <code>dbf0f16</code>). O histórico fica uma <strong>linha reta</strong>, sem commit de mesclagem, como se a Ana tivesse começado o pudim depois do Bruno. É o que muita equipe prefere. Os detalhes estão em <a href="git-rebase.html">git rebase</a> e em <a href="rebase-ou-merge.html">Rebase ou Merge?</a>.</p>
+
+<h3>Escolha 3: só o caso fácil (<code>--ff-only</code>)</h3>
+<pre class="term" data-cwd="~/receitas">$ git pull --ff-only
+remote: Enumerating objects: 5, done.
+remote: Counting objects: 100% (5/5), done.
+remote: Compressing objects: 100% (3/3), done.
+remote: Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (3/3), 311 bytes | 311.00 KiB/s, done.
+From https://github.com/ana-souza/receitas
+   3dbde00..9b05483  main       -&gt; origin/main
+hint: Diverging branches can't be fast-forwarded, you need to either:
+hint:
+hint:   git merge --no-ff
+hint:
+hint: or:
+hint:
+hint:   git rebase
+hint:
+hint: Disable this message with "git config set advice.diverging false"
+fatal: Not possible to fast-forward, aborting.                 « recusou: precisaria misturar</pre>
+<p>"Branches divergentes não podem ser avançados; você precisa fazer <code>git merge --no-ff</code> ou <code>git rebase</code>". O <code>--ff-only</code> é o modo cauteloso: ele só junta quando é para avançar e, se houver divergência, para e deixa você decidir com calma.</p>
+
+<div class="tip">
+<strong>Escolha uma vez e esqueça.</strong> Para quem está começando, uma boa escolha é o merge, que nunca reescreve commits: <code>git config --global pull.rebase false</code>. Se a sua equipe pedir histórico linear, use <code>git config --global pull.rebase true</code>. Depois disso, o <code>git pull</code> sozinho não mostra mais a dica.
+</div>
+
+<div class="try" data-setup="git init -q --bare ~/servidor/receitas.git;;git clone -q ~/servidor/receitas.git bruno;;cd bruno;;echo '# Receitas' &gt; README.md;;git add README.md;;git commit -qm 'Adiciona README';;git push -q -u origin main;;cd ~;;git clone -q ~/servidor/receitas.git receitas;;cd bruno;;echo 'Suco de laranja' &gt; suco.txt;;git add suco.txt;;git commit -qm 'Adiciona suco';;git push -q;;cd ~/receitas;;echo 'Pudim' &gt; pudim.txt;;git add pudim.txt;;git commit -qm 'Adiciona receita de pudim'" data-goal="contem:HEAD:suco.txt=laranja,contem:HEAD:pudim.txt=Pudim,limpo" data-solucao="git pull --rebase">
+<p class="try-task"><strong>Missão:</strong> a Ana fez o commit do pudim e o Bruno enviou o do suco: os branches divergiram. Rode <code>git pull</code> e leia a dica. Depois, junte os dois trabalhos com <code>git pull --rebase</code> (ou <code>git pull --no-rebase</code>) e confira o resultado com <code>git log --oneline --graph</code>.</p>
+</div>
+
+<hr>
+
+<h2>Quando o pull dá conflito</h2>
+<p>Divergir em arquivos diferentes é tranquilo. Mas e se os dois mudaram <strong>a mesma linha</strong>? A Ana trocou "3 cenouras" por "2 cenouras"; o Bruno, por "4 cenouras".</p>
+<pre class="term" data-cwd="~/receitas">$ git pull --no-rebase
+remote: Enumerating objects: 5, done.
+remote: Counting objects: 100% (5/5), done.
+remote: Compressing objects: 100% (3/3), done.
+remote: Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (3/3), 329 bytes | 329.00 KiB/s, done.
+From https://github.com/ana-souza/receitas
+   dbf0f16..22ed7d7  main       -&gt; origin/main
+Mesclagem automática de bolo.txt
+CONFLITO (conteúdo): conflito de mesclagem em bolo.txt         « a mesma linha, dos dois lados
+Automatic merge failed; fix conflicts and then commit the result.
+$ git status
+No ramo main
+O seu branch e 'origin/main' divergiram-se,
+e cada um tem 1 e 1 submissões, respectivamente.
+  (use "git pull" if you want to integrate the remote branch with yours)
+
+Você tem caminhos não mesclados.
+  (fixar conflitos e executar "git commit")
+  (use "git merge --abort" to abort the merge)
+
+Caminhos não mesclados:
+  (usar "git add &lt;arquivo&gt;..." para marcar resolução)
+        ambos modificados:   bolo.txt                     « os dois mexeram aqui
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+$ cat bolo.txt
+Bolo de cenoura
+&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+- 2 cenouras                                                    « a versão da Ana
+=======
+- 4 cenouras                                                    « a versão do Bruno
+&gt;&gt;&gt;&gt;&gt;&gt;&gt; 22ed7d7c61a6d29fec3f46f623892220ca183a41    « o commit do Bruno
+- 1 xícara de óleo                                              « fora do conflito: igual nos dois</pre>
+<p>"A mesclagem automática falhou; corrija os conflitos e faça o commit do resultado". É um conflito de merge comum, só que veio pelo pull. Você tem duas saídas:</p>
+<ul>
+  <li><strong>Resolver:</strong> editar o <code>bolo.txt</code> deixando a versão certa (sem as linhas <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>, <code>=======</code> e <code>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code>), <code>git add bolo.txt</code> e <code>git commit</code>. Passo a passo em <a href="resolver-conflitos.html">Resolvendo Conflitos</a>.</li>
+  <li><strong>Desistir</strong> e voltar a como estava antes do pull: <code>git merge --abort</code>, como a própria dica diz (veja <a href="abortar-merge.html">Desistindo de um Merge</a>). O fetch fica feito; só o merge é desfeito.</li>
+</ul>
+
+<hr>
+
+<h2>Formas diferentes de fazer</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Forma</th><th>O que faz</th><th>Quando usar</th></tr>
+<tr><td><code>git pull</code></td><td>fetch + o modo configurado (merge, rebase ou ff-only)</td><td>No dia a dia, depois de escolher o modo</td></tr>
+<tr><td><code>git pull --no-rebase</code></td><td>fetch + merge (cria commit de mesclagem se divergir)</td><td>Quando quer o histórico exatamente como aconteceu</td></tr>
+<tr><td><code>git pull --rebase</code></td><td>fetch + rebase dos seus commits locais</td><td>Quando a equipe quer histórico em linha reta</td></tr>
+<tr><td><code>git pull --ff-only</code></td><td>Só junta se der para avançar</td><td>Modo cauteloso; bom para o <code>main</code> de quem só lê</td></tr>
+<tr><td><code>git fetch</code> + <code>git merge origin/main</code></td><td>Busca, você olha, depois junta</td><td>Quando quer conferir antes (veja <a href="git-fetch.html">git fetch</a>)</td></tr>
+<tr><td><code>git pull origin main</code></td><td>Puxa um branch específico</td><td>Branch sem upstream, ou outro remoto</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Quando dá errado</h2>
+
+<div class="cenario">
+<strong>"Need to specify how to reconcile divergent branches"</strong>
+<p><strong>O que aconteceu:</strong> você e o remoto têm commits diferentes, e o Git não sabe se você prefere merge ou rebase. O fetch foi feito; o merge, não.</p>
+<p><strong>Como resolver:</strong> rode de novo com <code>git pull --no-rebase</code> ou <code>git pull --rebase</code>, e configure a preferência de uma vez com <code>git config --global pull.rebase false</code> (ou <code>true</code>).</p>
+</div>
+
+<div class="cenario">
+<strong>"Your local changes … would be overwritten by merge"</strong>
+<pre class="term" data-cwd="~/receitas">$ echo "- 1 colher de fermento" &gt;&gt; bolo.txt
+$ git pull
+remote: Enumerating objects: 5, done.
+remote: Counting objects: 100% (5/5), done.
+remote: Compressing objects: 100% (3/3), done.
+remote: Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (3/3), 334 bytes | 334.00 KiB/s, done.
+From https://github.com/ana-souza/receitas
+   22ed7d7..a4031c8  main       -&gt; origin/main
+Updating 22ed7d7..a4031c8
+error: Your local changes to the following files would be overwritten by merge:
+        bolo.txt
+Please commit your changes or stash them before you merge.
+Aborting
+$ git status --short
+ M bolo.txt                                              « a mudança da Ana continua intacta</pre>
+<p><strong>O que aconteceu:</strong> "suas mudanças locais nos arquivos abaixo seriam sobrescritas pelo merge". A Ana tem uma mudança <strong>sem commit</strong> no <code>bolo.txt</code>, e o commit que chegou também mexe nele. Para não apagar o trabalho dela, o Git abortou (<code>Aborting</code>) e não mudou nada.</p>
+<p><strong>Como resolver:</strong> "faça o commit das suas mudanças ou guarde-as com stash antes do merge": <code>git commit -am "…"</code> e <code>git pull</code> de novo; ou <code>git stash</code>, <code>git pull</code>, <code>git stash pop</code> (veja <a href="git-stash.html">git stash</a>).</p>
+</div>
+
+<div class="cenario">
+<strong>"There is no tracking information for the current branch"</strong>
+<pre class="term" data-cwd="~/receitas">$ git switch -c teste
+Switched to a new branch 'teste'
+$ git pull
+There is no tracking information for the current branch.
+Please specify which branch you want to merge with.
+See git-pull(1) for details.
+
+    git pull &lt;remote&gt; &lt;branch&gt;
+
+If you wish to set tracking information for this branch you can do so with:
+
+    git branch --set-upstream-to=origin/&lt;branch&gt; teste</pre>
+<p><strong>O que aconteceu:</strong> "não há informação de rastreamento para o branch atual": o branch <code>teste</code> foi criado no notebook e não tem par no remoto, então o Git não sabe de onde puxar.</p>
+<p><strong>Como resolver:</strong> diga de onde (<code>git pull origin main</code>), ou ligue o branch a um branch remoto com <code>git branch --set-upstream-to=origin/NOME</code> (veja <a href="upstream.html">upstream</a>). Se o branch ainda não existe no remoto, envie com <code>git push -u origin teste</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Conflito no meio do pull</strong>
+<p><strong>O que aconteceu:</strong> você e o colega mudaram as mesmas linhas.</p>
+<p><strong>Como resolver:</strong> resolva o conflito e faça o commit, ou desista com <code>git merge --abort</code> (no pull com merge) ou <code>git rebase --abort</code> (no pull com rebase). Veja "Quando o pull dá conflito", acima.</p>
+</div>
+
+<hr>
+
+<h2>Referência</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git pull</code></td><td>Busca e junta do upstream do branch atual</td></tr>
+<tr><td><code>git pull REMOTO BRANCH</code></td><td>Busca e junta um branch específico</td></tr>
+<tr><td><code>git pull --no-rebase</code></td><td>Junta com merge</td></tr>
+<tr><td><code>git pull --rebase</code></td><td>Junta com rebase</td></tr>
+<tr><td><code>git pull --ff-only</code></td><td>Só avança; recusa se divergir</td></tr>
+<tr><td><code>git config --global pull.rebase false</code></td><td>Modo padrão: merge</td></tr>
+<tr><td><code>git config --global pull.rebase true</code></td><td>Modo padrão: rebase</td></tr>
+<tr><td><code>git config --global pull.ff only</code></td><td>Modo padrão: só avançar</td></tr>
+<tr><td><code>git merge --abort</code> / <code>git rebase --abort</code></td><td>Desiste do pull que deu conflito</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Em linha reta</h3>
+<p>Complete para trazer os commits do remoto replantando os seus por cima:</p>
+<div class="ex-code">git pull <input data-answer="--rebase" aria-label="opção"></div>
+</div>
+
+<div class="exercise">
+<h3>2. Escolher de uma vez</h3>
+<p>Complete para que, em todos os repositórios, o pull junte sempre com merge:</p>
+<div class="ex-code">git config --global pull.rebase <input data-answer="false" aria-label="valor"></div>
+</div>
+
+<div class="exercise">
+<h3>3. Desistir</h3>
+<p>O <code>git pull --no-rebase</code> deu conflito e a Ana quer voltar a como estava. Complete:</p>
+<div class="ex-code">git merge <input data-answer="--abort" aria-label="opção"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. <code>git pull</code> é o mesmo que:</p>
+<label><input type="radio" name="q4"> <code>git push</code> + <code>git fetch</code></label>
+<label><input type="radio" name="q4"> <code>git fetch</code> + <code>git merge</code> (ou <code>rebase</code>)</label>
+<label><input type="radio" name="q4"> <code>git clone</code> de novo</label>
+<label><input type="radio" name="q4"> <code>git fetch --prune</code></label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">5. O pull terminou com <code>fatal: Need to specify how to reconcile divergent branches.</code> O que aconteceu com os commits?</p>
+<label><input type="radio" name="q5"> Os commits locais da Ana foram apagados.</label>
+<label><input type="radio" name="q5"> O commit do Bruno foi recusado pelo GitHub.</label>
+<label><input type="radio" name="q5"> Nada se perdeu: o fetch foi feito e o Git parou antes de juntar.</label>
+<label><input type="radio" name="q5"> O Git fez um merge com conflito.</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">6. O pull respondeu <code>Your local changes to the following files would be overwritten by merge</code>. O que a Ana pode fazer?</p>
+<label><input type="radio" name="q6"> Fazer commit (ou <code>git stash</code>) das mudanças e rodar o pull de novo.</label>
+<label><input type="radio" name="q6"> <code>git push --force</code></label>
+<label><input type="radio" name="q6"> Nada: as mudanças dela já foram perdidas.</label>
+<label><input type="radio" name="q6"> <code>git fetch --prune</code></label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git pull</code> = <code>git fetch</code> + juntar (merge ou rebase) no branch atual.</li>
+  <li>Se só o remoto andou, o pull é um <em>fast-forward</em>: o seu branch só avança.</li>
+  <li>Se os dois lados têm commits novos, os branches divergiram: escolha <code>--no-rebase</code> (merge), <code>--rebase</code> (linha reta) ou <code>--ff-only</code> (recusar), e configure a preferência com <code>pull.rebase</code>.</li>
+  <li>Conflito no pull é conflito de merge: resolva e faça o commit, ou <code>git merge --abort</code>.</li>
+  <li>Com mudanças sem commit que o pull sobrescreveria, ele para sem estragar nada: faça o commit ou o stash antes.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
