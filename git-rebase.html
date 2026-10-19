@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git rebase — mudando a base de um branch | Guia Git</title>
+<meta name="description" content="O git rebase para quem nunca usou: replantar os commits de um branch em cima do main mais novo, o histórico em linha reta, por que os hashes mudam, o merge fast-forward depois do rebase, o reflog do rebase e os erros reais do Git 2.53 (invalid upstream, unstaged changes, is up to date).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">rebase</span></h1>
+
+<p class="intro">A Ana criou um branch para a receita de pudim. Enquanto ela trabalhava nele, o <code>main</code> andou: entrou a receita de pão de queijo. Agora os dois caminhos estão separados. Você já conhece um jeito de juntá-los: o <a href="git-merge.html">git merge</a>, que cria um commit de junção. O <code>git rebase</code> é o outro jeito: ele <strong>muda a base</strong> do branch, como se a Ana tivesse começado o pudim <strong>depois</strong> do pão de queijo. O resultado é um histórico em linha reta, sem o "galho" e sem commit de junção.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que quer dizer "base" de um branch e o que o <code>git rebase main</code> faz com ela.</li>
+  <li>Como ler o histórico antes e depois com <code>git log --oneline --graph --all</code>.</li>
+  <li>Por que os commits ganham <strong>hashes novos</strong> no rebase (e por que isso importa).</li>
+  <li>Como levar o branch para o <code>main</code> depois do rebase: o merge <em>fast-forward</em>.</li>
+  <li>Os erros reais mais comuns e como sair deles.</li>
+</ul>
+</div>
+
+<p>Todos os comandos desta aula rodaram no <strong>Git 2.53</strong> da máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português. Algumas mensagens do rebase saem em inglês, porque a tradução do Git do Ubuntu não cobre todas: cada uma está traduzida no texto.</p>
+
+<hr>
+
+<h2>A ideia: replantar a muda</h2>
+<p>Imagine um galho que nasceu do tronco de uma árvore. Enquanto o galho crescia, o tronco também cresceu, para cima. O jardineiro corta o galho e o <strong>replanta</strong> mais alto, no topo do tronco atual. O galho é o mesmo (as mesmas folhas, na mesma ordem), mas agora ele sai do ponto mais novo do tronco.</p>
+<p>No Git, o <strong>tronco</strong> é o <code>main</code>, o <strong>galho</strong> é o seu branch, e o ponto onde o galho nasceu é a <strong>base</strong> do branch. Antes do rebase, desenhado de lado:</p>
+
+<pre>          D---E   pudim
+         /
+A---B---C         main
+</pre>
+<p>O <code>pudim</code> nasceu do commit <code>B</code>; depois disso, o <code>main</code> ganhou o <code>C</code>. O <code>git rebase main</code>, rodado no <code>pudim</code>, refaz o <code>D</code> e o <code>E</code> em cima do <code>C</code>:</p>
+<pre>A---B---C---D'---E'   pudim
+        ↑
+       main
+</pre>
+<p>Repare nos apóstrofos: <code>D'</code> e <code>E'</code> têm as mesmas mudanças e as mesmas mensagens do <code>D</code> e do <code>E</code>, mas são <strong>commits novos</strong>. É isso que "reescrever o histórico" quer dizer, e é por isso que esta aula abre o grupo "Reescrevendo o Histórico".</p>
+
+<hr>
+
+<h2>1. A situação: dois caminhos separados</h2>
+<p>A Ana fez dois commits no branch <code>pudim</code>. Depois voltou ao <code>main</code> e commitou a receita de pão de queijo. Agora, de volta ao <code>pudim</code>, ela olha o desenho de todos os branches (aula <a href="log-graph.html">Vendo os Galhos</a>):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch pudim
+Switched to branch 'pudim'
+$ git log --oneline --graph --all --decorate
+* c07c3d1 (main) Adiciona receita de pão de queijo
+| * d2f91d9 (HEAD -&gt; pudim) Acrescenta a calda do pudim
+| * d08fcd4 Adiciona receita de pudim
+|/
+* 934a161 Adiciona receita de bolo                « a base do pudim: onde o galho nasceu
+* f0c33ea Primeiro commit
+</pre>
+<ul>
+  <li>A linha da esquerda é o <code>main</code>: <code>f0c33ea</code> → <code>934a161</code> → <code>c07c3d1</code>.</li>
+  <li>A da direita (depois do <code>|</code>) é o <code>pudim</code>, com os dois commits dele. O <code>|/</code> mostra onde ele saiu do <code>main</code>: do <code>934a161</code>.</li>
+  <li><code>(HEAD -&gt; pudim)</code>: a Ana está no <code>pudim</code> (aula <a href="head.html">O que é HEAD</a>).</li>
+  <li>O <code>pudim</code> não tem o <code>pao.txt</code>: ele nasceu antes da receita de pão de queijo existir.</li>
+</ul>
+
+<hr>
+
+<h2>2. O rebase</h2>
+
+<pre class="term" data-cwd="~/receitas">$ git rebase main
+Successfully rebased and updated refs/heads/pudim.
+</pre>
+
+<dl class="anatomy">
+  <dt>git rebase</dt><dd>"Mudar a base". Sempre age sobre o branch <strong>atual</strong> (aqui, o <code>pudim</code>).</dd>
+  <dt>main</dt><dd>A <strong>nova base</strong>: o branch em cima do qual os commits vão ser refeitos. Em inglês, a documentação chama esse argumento de <em>upstream</em>.</dd>
+</dl>
+
+<p>A mensagem quer dizer "rebase feito com sucesso; o <code>refs/heads/pudim</code> (o branch <code>pudim</code>) foi atualizado". Por baixo, o Git fez três coisas:</p>
+<ol class="passo">
+  <li>Separou os commits do <code>pudim</code> que o <code>main</code> não tem: <code>d08fcd4</code> e <code>d2f91d9</code>.</li>
+  <li>Foi para o último commit do <code>main</code> (<code>c07c3d1</code>).</li>
+  <li>Refez os dois commits, um de cada vez, na ordem, em cima dele, e moveu o <code>pudim</code> para o último.</li>
+</ol>
+<p>Se a saída não for para um terminal (num script, por exemplo), aparece também o progresso, um commit por vez: <code>Rebasing (1/2)Rebasing (2/2)Successfully rebased…</code>. No terminal, esse contador é apagado da tela assim que termina, e sobra só a última frase.</p>
+
+<p>O histórico depois:</p>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --graph --all --decorate
+* 7b4845b (HEAD -&gt; pudim) Acrescenta a calda do pudim     « era d2f91d9
+* 55ba953 Adiciona receita de pudim                        « era d08fcd4
+* c07c3d1 (main) Adiciona receita de pão de queijo         « a nova base
+* 934a161 Adiciona receita de bolo
+* f0c33ea Primeiro commit
+$ ls
+README.md
+bolo.txt
+pao.txt
+pudim.txt
+</pre>
+<ul>
+  <li>Uma linha só: o galho sumiu. O <code>pudim</code> agora sai do <code>c07c3d1</code>, o commit mais novo do <code>main</code>.</li>
+  <li>Os dois commits do pudim têm <strong>hashes novos</strong> (<code>55ba953</code> e <code>7b4845b</code>). As mensagens são as mesmas.</li>
+  <li>O <code>pao.txt</code> apareceu na pasta: o <code>pudim</code> agora contém tudo o que o <code>main</code> tem, mais as duas receitas dele.</li>
+  <li>O <code>main</code> <strong>não mudou</strong>: continua no <code>c07c3d1</code>. O rebase só mexe no branch atual.</li>
+</ul>
+
+<h3>Por que os hashes mudaram?</h3>
+<p>O hash de um commit é calculado a partir de tudo o que ele guarda: os arquivos, a mensagem, o autor, a data <strong>e o commit pai</strong> (aula <a href="hash.html">O Hash do Commit</a>). O <code>d08fcd4</code> tinha como pai o <code>934a161</code>; o novo commit tem como pai o <code>c07c3d1</code>. Mudou o pai, muda o hash: é outro commit. Os antigos (<code>d08fcd4</code> e <code>d2f91d9</code>) não foram apagados na hora; só ficaram sem branch apontando para eles. O diário do HEAD mostra o rebase passo a passo (aula <a href="git-reflog.html">git reflog</a>):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git reflog -4
+7b4845b HEAD@{0}: rebase (finish): returning to refs/heads/pudim     « 4) volta ao pudim, que agora aponta para cá
+7b4845b HEAD@{1}: rebase (pick): Acrescenta a calda do pudim          « 3) refez o 2º commit
+55ba953 HEAD@{2}: rebase (pick): Adiciona receita de pudim            « 2) refez o 1º commit
+c07c3d1 HEAD@{3}: rebase (start): checkout main                       « 1) começou indo para o main
+</pre>
+<p>Leia de baixo para cima. Cada <code>pick</code> ("pegar") é um commit refeito. Se você se arrepender do rebase, o <code>d2f91d9</code> ainda está lá no reflog, alguns passos acima.</p>
+
+<div class="warning">
+<strong>Hash novo = commit novo: cuidado com o que já foi enviado</strong>
+<p>Se o branch já estava no GitHub e alguém já baixou os commits antigos, o rebase cria uma versão diferente da história. O <code>git push</code> comum vai ser recusado, e quem tinha os antigos fica com dois históricos misturados. Por isso a regra: <strong>faça rebase só em commits que ainda não foram enviados</strong> (ou num branch só seu). A aula <a href="regra-de-ouro.html">A Regra de Ouro</a> explica em detalhe, e a <a href="push-force.html">push --force-with-lease</a> mostra como enviar com segurança quando precisar.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;git switch -q -c pudim;;echo 'Pudim de leite' &gt; pudim.txt;;git add pudim.txt;;git commit -q -m 'Adiciona receita de pudim';;echo 'Calda de caramelo' &gt;&gt; pudim.txt;;git commit -q -am 'Acrescenta a calda do pudim';;git switch -q main;;echo 'Pão de queijo' &gt; pao.txt;;git add pao.txt;;git commit -q -m 'Adiciona receita de pão de queijo';;git switch -q pudim" data-goal="head:pudim,commits:5,contem:HEAD:pao.txt=Pão de queijo" data-solucao="git rebase main">
+<p class="try-task"><strong>Missão:</strong> você está no branch <code>pudim</code>, e o <code>main</code> andou desde que ele nasceu. Veja os dois caminhos com <code>git log --oneline --graph --all</code>, faça o rebase do <code>pudim</code> em cima do <code>main</code> e olhe o desenho de novo: tem de ficar uma linha só, e o <code>pao.txt</code> tem de aparecer no <code>ls</code>.</p>
+</div>
+
+<hr>
+
+<h2>3. Levando o branch para o <code>main</code>: o fast-forward</h2>
+<p>O rebase arrumou o <code>pudim</code>, mas o <code>main</code> ainda não tem o pudim. Agora o <code>pudim</code> está exatamente "na frente" do <code>main</code>, na mesma linha. Então o merge não precisa juntar nada: basta <strong>avançar</strong> o <code>main</code> (aula <a href="fast-forward.html">Merge Fast-forward</a>):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch main
+Switched to branch 'main'
+$ git merge pudim
+Updating c07c3d1..7b4845b
+Fast-forward                                « "avanço rápido": só moveu o main para a frente
+ pudim.txt | 2 ++
+ 1 file changed, 2 insertions(+)
+ create mode 100644 pudim.txt
+$ git log --oneline --graph --decorate
+* 7b4845b (HEAD -&gt; main, pudim) Acrescenta a calda do pudim
+* 55ba953 Adiciona receita de pudim
+* c07c3d1 Adiciona receita de pão de queijo
+* 934a161 Adiciona receita de bolo
+* f0c33ea Primeiro commit
+</pre>
+<p>Nenhum commit de junção: o <code>main</code> e o <code>pudim</code> apontam para o mesmo commit, e o histórico é uma linha reta, fácil de ler. Essa dupla, <strong>rebase no branch + merge fast-forward no main</strong>, é o jeito mais comum de usar o rebase no dia a dia.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;git switch -q -c pudim;;echo 'Pudim de leite' &gt; pudim.txt;;git add pudim.txt;;git commit -q -m 'Adiciona receita de pudim';;git switch -q main;;echo 'Pão de queijo' &gt; pao.txt;;git add pao.txt;;git commit -q -m 'Adiciona receita de pão de queijo';;git switch -q pudim" data-goal="head:main,commits:4,contem:HEAD:pudim.txt=Pudim,logre:^[0-9a-f]+ Adiciona receita de pudim" data-solucao="git rebase main;;git switch main;;git merge pudim">
+<p class="try-task"><strong>Missão completa:</strong> faça o rebase do <code>pudim</code> sobre o <code>main</code>, volte ao <code>main</code> e traga o pudim com um merge. O <code>git merge</code> tem de dizer <code>Fast-forward</code>, e o último commit do <code>main</code> tem de ser o do pudim.</p>
+</div>
+
+<hr>
+
+<h2>Formas diferentes de fazer</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Forma</th><th>O que faz</th><th>Quando usar</th></tr>
+<tr><td><code>git rebase main</code> (estando no branch)</td><td>Refaz os commits do branch atual em cima do <code>main</code></td><td>O jeito mais comum</td></tr>
+<tr><td><code>git rebase main pudim</code></td><td>Primeiro troca para o <code>pudim</code>, depois faz o rebase dele sobre o <code>main</code></td><td>Para não precisar do <code>git switch</code> antes</td></tr>
+<tr><td><code>git pull --rebase</code></td><td>Baixa o que há de novo no GitHub e faz o rebase dos seus commits locais em cima, em vez de um merge</td><td>Atualizar o seu branch sem criar commits de junção (aula <a href="git-pull.html">git pull</a>)</td></tr>
+<tr><td><code>git rebase -i main</code></td><td>Rebase <strong>interativo</strong>: você escolhe o que fazer com cada commit (juntar, renomear, apagar)</td><td>Arrumar os commits antes de compartilhar (aula <a href="rebase-interativo.html">Rebase Interativo</a>)</td></tr>
+<tr><td><code>git merge main</code> (estando no branch)</td><td>Traz o <code>main</code> para o branch com um commit de junção, sem reescrever nada</td><td>Quando o branch já é público (aula <a href="rebase-ou-merge.html">Rebase ou Merge?</a>)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>fatal: invalid upstream 'mian'</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git rebase mian
+fatal: invalid upstream 'mian'
+</pre>
+<p>"Base inválida: <code>mian</code>". O Git não achou nenhum branch (nem commit) com esse nome: foi um erro de digitação. Nada mudou. <strong>Como confirmar:</strong> <code>git branch</code> lista os nomes certos. <strong>Como resolver:</strong> <code>git rebase main</code>.</p>
+</div>
+
+<div class="cenario">
+<strong><code>cannot rebase: You have unstaged changes</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git rebase main
+error: cannot rebase: You have unstaged changes.
+error: Please commit or stash them.
+$ git status --short
+ M bolo.txt
+?? brigadeiro.txt
+</pre>
+<p>"Não dá para fazer o rebase: há mudanças fora da área de preparo. Faça um commit delas ou guarde-as com <code>stash</code>." O rebase vai trocar os arquivos da pasta várias vezes, e o Git se recusa a fazer isso por cima de uma mudança não salva (o <code>M</code> do <code>bolo.txt</code>). O arquivo novo (<code>??</code>, não rastreado) não atrapalha. <strong>Como resolver:</strong> faça o commit da mudança, ou guarde-a com <code>git stash</code> (aula <a href="git-stash.html">git stash</a>), rode o rebase e depois traga de volta com <code>git stash pop</code>.</p>
+</div>
+
+<div class="cenario">
+<strong><code>Current branch … is up to date</code>: nada aconteceu</strong>
+<pre class="term" data-cwd="~/receitas">$ git rebase main
+Current branch pudim is up to date.
+</pre>
+<p>"O branch atual, <code>pudim</code>, já está em dia." Ele já sai do último commit do <code>main</code>: não há nada para replantar. Isso também aparece quando você roda o rebase <strong>estando no próprio <code>main</code></strong> (<code>Current branch main is up to date.</code>): você mudou a base do <code>main</code> para… o <code>main</code>. Confira em que branch está com <code>git status</code>.</p>
+<p>Se o <code>main</code> que você esperava ver tem commits novos no GitHub, lembre que o rebase usa o <code>main</code> do <strong>seu computador</strong>: traga as novidades antes (aula <a href="git-pull.html">git pull</a>).</p>
+</div>
+
+<div class="cenario">
+<strong>O rebase parou no meio com <code>CONFLICT</code></strong>
+<p>Se o seu branch e o <code>main</code> mudaram a mesma linha do mesmo arquivo, o Git para no commit que deu problema e espera você resolver. É assunto da próxima aula: <a href="rebase-conflitos.html">Conflitos no Rebase</a>. Para desistir e voltar exatamente para onde estava: <code>git rebase --abort</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git rebase main</code></td><td>Refaz os commits do branch atual em cima do último commit do <code>main</code></td></tr>
+<tr><td><code>git rebase main pudim</code></td><td>Troca para o <code>pudim</code> e faz o rebase dele sobre o <code>main</code></td></tr>
+<tr><td><code>git rebase --abort</code></td><td>Desiste de um rebase que parou no meio e volta ao estado de antes</td></tr>
+<tr><td><code>git rebase --continue</code></td><td>Continua um rebase que parou (depois de resolver um conflito)</td></tr>
+<tr><td><code>git rebase -i main</code></td><td>Rebase interativo</td></tr>
+<tr><td><code>git pull --rebase</code></td><td>Atualiza com rebase em vez de merge</td></tr>
+<tr><td><code>git log --oneline main..pudim</code></td><td>Lista os commits do <code>pudim</code> que o <code>main</code> não tem (os que o rebase vai refazer)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete</h3>
+<p>Você está no branch <code>pudim</code>. Complete para refazer os commits dele em cima do <code>main</code>:</p>
+<div class="ex-code">git <input data-answer="rebase" aria-label="subcomando"> <input data-answer="main" aria-label="nova base"></div>
+</div>
+
+<div class="exercise">
+<h3>2. Depois do rebase</h3>
+<p>Depois do rebase, a Ana rodou <code>git switch main</code> e <code>git merge pudim</code>. Que palavra o Git mostrou, indicando que só avançou o <code>main</code>?</p>
+<div class="ex-code"><input data-answer="Fast-forward" aria-label="tipo de merge"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. Por que os commits do branch ganham hashes novos no rebase?</p>
+<label><input type="radio" name="q3"> Porque o Git apaga as mudanças e as escreve de novo do zero</label>
+<label><input type="radio" name="q3"> Porque o commit pai mudou, e o pai faz parte do que gera o hash</label>
+<label><input type="radio" name="q3"> Porque o rebase muda as mensagens</label>
+<label><input type="radio" name="q3"> Não ganham: os hashes continuam os mesmos</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. A Ana roda <code>git rebase main</code> estando no branch <code>pudim</code>. Qual branch muda?</p>
+<label><input type="radio" name="q4"> Só o <code>main</code></label>
+<label><input type="radio" name="q4"> Os dois</label>
+<label><input type="radio" name="q4"> Só o <code>pudim</code></label>
+<label><input type="radio" name="q4"> Nenhum</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. Em qual situação é melhor <strong>não</strong> fazer rebase?</p>
+<label><input type="radio" name="q5"> Quando os commits do branch já foram enviados e outras pessoas já os baixaram</label>
+<label><input type="radio" name="q5"> Quando o branch só existe no seu computador</label>
+<label><input type="radio" name="q5"> Quando o <code>main</code> andou desde que o branch nasceu</label>
+<label><input type="radio" name="q5"> Quando você quer um histórico em linha reta</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git rebase main</code> refaz os commits do branch atual, um a um, em cima do último commit do <code>main</code>: muda a <strong>base</strong> do branch.</li>
+  <li>O resultado é um histórico em <strong>linha reta</strong>; depois, um <code>git merge</code> no <code>main</code> é só um <em>fast-forward</em>.</li>
+  <li>Os commits refeitos têm <strong>hashes novos</strong> (o pai mudou). Os antigos ficam no <code>git reflog</code> por um tempo.</li>
+  <li>Só faça rebase de commits que ainda não foram compartilhados.</li>
+  <li>Erros comuns: nome errado (<code>invalid upstream</code>), mudanças não salvas (<code>cannot rebase: You have unstaged changes</code>), nada a fazer (<code>is up to date</code>). Para desistir no meio: <code>git rebase --abort</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
