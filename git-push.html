@@ -76,7 +76,7 @@ nothing to commit, working tree clean                  « nenhuma palavra sobre 
 <pre class="term" data-cwd="~/receitas">$ git push -u origin main
 Enumerating objects: 6, done.
 Counting objects: 100% (6/6), done.
-Delta compression using up to 8 threads
+Delta compression using up to 4 threads
 Compressing objects: 100% (3/3), done.
 Writing objects: 100% (6/6), 504 bytes | 504.00 KiB/s, done.
 Total 6 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
@@ -90,7 +90,7 @@ Your branch is up to date with 'origin/main'.                 « linha nova!
 nothing to commit, working tree clean</pre>
 
 <div class="note">
-<strong>Por que tanta coisa em inglês?</strong> O Git do Ubuntu sai em português quando o sistema está em português, mas a tradução brasileira do Git <strong>não está completa</strong>: muitas mensagens, sobretudo as do <code>push</code>, continuam em inglês. É exatamente isso que você vai ver no seu terminal, e o guia mostra as mensagens como elas saem. Com o sistema em inglês, tudo sai em inglês (por exemplo, <code>No ramo main</code> vira <code>On branch main</code>).
+<strong>Por que tanta coisa em inglês?</strong> O Git do Ubuntu sai em português quando o sistema está em português, mas a tradução que o Ubuntu usa <strong>não está completa</strong> (e às vezes cai no português de Portugal, como em "submissão"): muitas mensagens, sobretudo as do <code>push</code>, continuam em inglês. Em outros sistemas (Windows, macOS) as frases podem ser diferentes ou todas em inglês. É exatamente isso que você vai ver no seu terminal, e o guia mostra as mensagens como elas saem. Com o sistema em inglês, tudo sai em inglês (por exemplo, <code>No ramo main</code> vira <code>On branch main</code>).
 </div>
 
 <h3>A saída, linha por linha</h3>
@@ -98,7 +98,7 @@ nothing to commit, working tree clean</pre>
 <table class="ref">
 <tr><th>Linha</th><th>O que quer dizer</th></tr>
 <tr><td><code>Enumerating objects: 6, done.</code></td><td>"Contando os objetos": o Git listou o que precisa ir. Dois commits viram 6 objetos (cada commit, cada pasta e cada arquivo é um objeto; veja <a href="como-git-guarda.html">Como o Git Guarda as Coisas</a>).</td></tr>
-<tr><td><code>Counting objects</code>, <code>Delta compression</code>, <code>Compressing objects</code></td><td>Preparação do pacote: o Git compacta os objetos para gastar menos internet. "using up to 8 threads" = usou até 8 núcleos do processador (o número muda de computador para computador).</td></tr>
+<tr><td><code>Counting objects</code>, <code>Delta compression</code>, <code>Compressing objects</code></td><td>Preparação do pacote: o Git compacta os objetos para gastar menos internet. "using up to 4 threads" = usou até 4 núcleos do processador (o número muda de computador para computador).</td></tr>
 <tr><td><code>Writing objects: 100% (6/6), 504 bytes</code></td><td>O envio de verdade: 6 objetos, 504 bytes ao todo. Num projeto grande, você vê a porcentagem subindo.</td></tr>
 <tr><td><code>Total 6 (delta 0), reused 0 …</code></td><td>Estatística do pacote. Pode ignorar.</td></tr>
 <tr><td><code>To https://github.com/ana-souza/receitas.git</code></td><td><strong>Para onde</strong> foi ("To" = "para").</td></tr>
@@ -134,7 +134,7 @@ nothing to commit, working tree clean</pre>
 <pre class="term" data-cwd="~/receitas">$ git push
 Enumerating objects: 4, done.
 Counting objects: 100% (4/4), done.
-Delta compression using up to 8 threads
+Delta compression using up to 4 threads
 Compressing objects: 100% (2/2), done.
 Writing objects: 100% (3/3), 346 bytes | 346.00 KiB/s, done.
 Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
@@ -229,7 +229,7 @@ upstream, see 'push.autoSetupRemote' in 'git help config'.
 <pre class="term" data-cwd="~/receitas">$ git push -u origin salgados
 Enumerating objects: 4, done.
 Counting objects: 100% (4/4), done.
-Delta compression using up to 8 threads
+Delta compression using up to 4 threads
 Compressing objects: 100% (2/2), done.
 Writing objects: 100% (3/3), 370 bytes | 370.00 KiB/s, done.
 Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
@@ -287,7 +287,7 @@ $ git commit -qm 'Adiciona brigadeiro'
 $ git push                                                    « sem -u, sem origin, sem nome
 Enumerating objects: 4, done.
 Counting objects: 100% (4/4), done.
-Delta compression using up to 8 threads
+Delta compression using up to 4 threads
 Compressing objects: 100% (2/2), done.
 Writing objects: 100% (3/3), 352 bytes | 352.00 KiB/s, done.
 Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
