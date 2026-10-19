@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Conflitos no Rebase — resolver, continuar, pular ou desistir | Guia Git</title>
+<meta name="description" content="O que fazer quando o git rebase para com CONFLITO: ler a mensagem e o git status do rebase, as marcas no arquivo (HEAD é o main!), resolver, git add, git rebase --continue (e o editor que abre), --skip, --abort, --ours e --theirs invertidos, com saídas reais do Git 2.53.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Conflitos no Rebase</span></h1>
+
+<p class="intro">Na aula <a href="git-rebase.html">git rebase</a>, o Git refez os commits do branch em cima do <code>main</code> sem pedir nada. Mas e se o seu branch e o <code>main</code> mudaram <strong>a mesma linha</strong> do mesmo arquivo? O Git não sabe qual versão vale, então ele <strong>para no meio do rebase</strong> e pede a sua ajuda. É um conflito, parecido com o do merge (aula <a href="conflitos.html">Conflitos de Merge</a>), com três diferenças importantes: ele pode acontecer <strong>um commit por vez</strong>, os lados <strong>trocam de nome</strong>, e no fim você usa <code>git rebase --continue</code> em vez de <code>git commit</code>.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Ler a mensagem do rebase que parou e o <code>git status</code> durante o rebase.</li>
+  <li>Entender as marcas <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>, <code>=======</code> e <code>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code> no rebase (o <code>HEAD</code> é o <code>main</code>, não o seu branch!).</li>
+  <li>Resolver e seguir com <code>git add</code> + <code>git rebase --continue</code>.</li>
+  <li>As outras saídas: <code>git rebase --skip</code> (pular o commit) e <code>git rebase --abort</code> (desistir de tudo).</li>
+  <li>O <code>--ours</code> e o <code>--theirs</code> invertidos, e os erros mais comuns no meio do caminho.</li>
+</ul>
+</div>
+
+<p>Todos os comandos rodaram no <strong>Git 2.53</strong> da máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português. Várias mensagens do rebase saem em inglês (a tradução do Git do Ubuntu não cobre todas): cada uma está explicada no texto.</p>
+
+<hr>
+
+<h2>A ideia: passar a limpo, folha por folha</h2>
+<p>O rebase é como passar um caderno de rascunho a limpo em cima de um caderno novo, que já tem algumas páginas escritas por outra pessoa. Você copia uma folha do rascunho de cada vez. Na maioria das folhas, nada atrapalha. Mas numa delas, o caderno novo já diz "3 xícaras de açúcar" no mesmo lugar onde o seu rascunho diz "1 xícara e meia". Você <strong>para</strong>, decide o que fica, escreve a versão final, e <strong>continua</strong> copiando as folhas seguintes. Se a confusão for grande demais, você pode <strong>desistir</strong> e deixar o rascunho como estava.</p>
+
+<hr>
+
+<h2>1. A situação</h2>
+<p>A Ana criou o branch <code>cobertura</code> com dois commits: um acrescenta a cobertura de chocolate ao bolo, outro diminui o açúcar para 1 xícara e meia. Enquanto isso, no <code>main</code>, o açúcar foi <strong>aumentado</strong> para 3 xícaras. A mesma linha mudou nos dois lados:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --graph --all --decorate
+* 8d43442 (HEAD -&gt; cobertura) Diminui o açúcar para 1 xícara e meia     « muda a linha do açúcar
+* 72e787e Acrescenta a cobertura
+| * 8796258 (main) Aumenta o açúcar para 3 xícaras                      « muda a MESMA linha
+|/
+* 9a47438 Adiciona receita de bolo
+</pre>
+
+<hr>
+
+<h2>2. O rebase para: lendo a mensagem</h2>
+
+<pre class="term" data-cwd="~/receitas">$ git rebase main
+Rebasing (1/2)Rebasing (2/2)Mesclagem automática de bolo.txt
+CONFLITO (conteúdo): conflito de mesclagem em bolo.txt
+error: não foi possível aplicar 8d43442... Diminui o açúcar para 1 xícara e meia
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm &lt;conflicted_files&gt;", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+hint: Disable this message with "git config set advice.mergeConflict false"
+Could not apply 8d43442... # Diminui o açúcar para 1 xícara e meia
+</pre>
+<p>Linha por linha:</p>
+<ul>
+  <li><code>Rebasing (1/2)Rebasing (2/2)</code>: o progresso. O 1º commit (a cobertura) foi refeito sem problema; o Git estava no 2º. (No terminal, o contador se apaga e você vê só o resto.)</li>
+  <li><code>Mesclagem automática de bolo.txt</code>: o Git tentou juntar as mudanças do <code>bolo.txt</code> sozinho…</li>
+  <li><code>CONFLITO (conteúdo): conflito de mesclagem em bolo.txt</code>: …e não conseguiu: os dois lados mexeram nas mesmas linhas.</li>
+  <li><code>error: não foi possível aplicar 8d43442...</code>: o commit que parou foi o <code>8d43442</code>, "Diminui o açúcar".</li>
+  <li>As dicas (<code>hint:</code>) dizem as três saídas: "resolva os conflitos à mão, marque como resolvidos com <code>git add</code> e rode <code>git rebase --continue</code>"; "ou pule este commit com <code>git rebase --skip</code>"; "ou desista e volte para antes do rebase com <code>git rebase --abort</code>". A última dica ensina a desligar essas mensagens.</li>
+</ul>
+<p>O Git deixou o trabalho <strong>pela metade</strong>, de propósito: a cobertura já foi refeita, o açúcar espera por você. Nada se perdeu.</p>
+
+<h3>O <code>git status</code> no meio do rebase</h3>
+<pre class="term" data-cwd="~/receitas">$ git status
+interactive rebase in progress; onto 8796258
+Last commands done (2 commands done):
+   pick 72e787e # Acrescenta a cobertura
+   pick 8d43442 # Diminui o açúcar para 1 xícara e meia
+No commands remaining.
+You are currently rebasing branch 'cobertura' on '8796258'.
+  (corrija os conflitos e então rode "git rebase --continue")
+  (use "git rebase --skip" para ignorar este patch)
+  (use "git rebase --abort" para verificar o ramo original)
+
+Caminhos não mesclados:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+  (usar "git add &lt;arquivo&gt;..." para marcar resolução)
+	ambos modificados:   bolo.txt                « os dois lados mudaram este arquivo
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+</pre>
+<ul>
+  <li><code>interactive rebase in progress; onto 8796258</code>: "rebase em andamento, sobre o <code>8796258</code>" (o último commit do <code>main</code>). Ele diz <em>interactive</em> mesmo num rebase comum: por dentro, o Git usa a mesma máquina do rebase interativo (aula <a href="rebase-interativo.html">Rebase Interativo</a>).</li>
+  <li><code>Last commands done</code>: a lista de tarefas do rebase. Dois <code>pick</code> ("pegar o commit") já foram tentados; o último é o que parou. <code>No commands remaining</code>: não há mais commits depois deste.</li>
+  <li><code>You are currently rebasing branch 'cobertura'</code>: você está no meio do rebase do <code>cobertura</code>. Enquanto isso, você está num <strong>HEAD destacado</strong> (aula <a href="head-destacado.html">HEAD Destacado</a>): o branch só é atualizado no fim.</li>
+  <li><code>ambos modificados: bolo.txt</code>: o arquivo do conflito.</li>
+</ul>
+
+<hr>
+
+<h2>3. As marcas no arquivo: aqui, o <code>HEAD</code> é o <code>main</code></h2>
+<pre class="term" data-cwd="~/receitas">$ cat bolo.txt
+Bolo de cenoura
+
+3 cenouras
+&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+3 xícaras de açúcar                                          « o lado do main (a nova base)
+=======
+1 xícara e meia de açúcar                                    « o lado do SEU commit
+&gt;&gt;&gt;&gt;&gt;&gt;&gt; 8d43442 (Diminui o açúcar para 1 xícara e meia)
+180 graus por 40 minutos
+Cobertura: 200 g de chocolate                                « o 1º commit já foi refeito
+</pre>
+<dl class="anatomy">
+  <dt>&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD</dt><dd>Começa o trecho do <strong>HEAD</strong>. No rebase, o HEAD é a <strong>nova base</strong> que está sendo construída: o <code>main</code> mais os commits seus que já foram refeitos. Por isso o "3 xícaras", que veio do <code>main</code>, está aqui.</dd>
+  <dt>=======</dt><dd>A divisa entre os dois lados.</dd>
+  <dt>&gt;&gt;&gt;&gt;&gt;&gt;&gt; 8d43442 (Diminui o açúcar…)</dt><dd>Termina o trecho do <strong>commit que está sendo refeito</strong>: o seu.</dd>
+</dl>
+
+<div class="warning">
+<strong>No rebase, os lados se invertem</strong>
+<p>No <strong>merge</strong>, você está no seu branch e o <code>HEAD</code> é o <strong>seu</strong> lado. No <strong>rebase</strong>, o Git vai para o <code>main</code> e reaplica os seus commits em cima: o <code>HEAD</code> passa a ser o lado do <code>main</code>, e o seu commit aparece embaixo, com o hash dele. Leia sempre o nome depois das marcas antes de decidir.</p>
+</div>
+
+<hr>
+
+<h2>4. Resolvendo e continuando</h2>
+<p>A Ana conversa com o Bruno: vale a versão dela, 1 xícara e meia. Ela edita o <code>bolo.txt</code> no editor, apaga as três marcas e a linha que não fica, e salva. O arquivo fica assim:</p>
+<pre class="term" data-cwd="~/receitas">$ cat bolo.txt
+Bolo de cenoura
+
+3 cenouras
+1 xícara e meia de açúcar
+180 graus por 40 minutos
+Cobertura: 200 g de chocolate
+</pre>
+<p>Agora ela avisa o Git que resolveu, com <code>git add</code>, e confere:</p>
+<pre class="term" data-cwd="~/receitas">$ git add bolo.txt
+$ git status
+interactive rebase in progress; onto 8796258
+Last commands done (2 commands done):
+   pick 72e787e # Acrescenta a cobertura
+   pick 8d43442 # Diminui o açúcar para 1 xícara e meia
+No commands remaining.
+You are currently rebasing branch 'cobertura' on '8796258'.
+  (todos os conflitos foram corrigidos: execute "git rebase --continue")     « a dica mudou
+
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	modified:   bolo.txt
+</pre>
+<p>"Todos os conflitos foram corrigidos: execute <code>git rebase --continue</code>". É o próximo passo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git rebase --continue
+[detached HEAD e84e410] Diminui o açúcar para 1 xícara e meia     « o commit refeito, com a sua resolução
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+Successfully rebased and updated refs/heads/cobertura.            « fim: o branch foi atualizado
+$ git log --oneline --graph --all --decorate
+* e84e410 (HEAD -&gt; cobertura) Diminui o açúcar para 1 xícara e meia
+* f101710 Acrescenta a cobertura
+* 8796258 (main) Aumenta o açúcar para 3 xícaras
+* 9a47438 Adiciona receita de bolo
+</pre>
+<p>Pronto: uma linha reta, e o commit da Ana agora muda o açúcar de 3 xícaras (o que o <code>main</code> tinha) para 1 xícara e meia. O <code>[detached HEAD e84e410]</code> lembra que o commit foi feito com o HEAD destacado, no meio do rebase; a linha seguinte confirma que o <code>cobertura</code> passou a apontar para o resultado.</p>
+
+<h3>O editor que abre no <code>--continue</code></h3>
+<p>Antes de refazer o commit que deu conflito, o <code>git rebase --continue</code> abre o <strong>editor de texto</strong> do Git (no Ubuntu da Ana, o <code>nano</code>; aula <a href="git-config.html">git config</a>) com a mensagem do commit, para você mudar se quiser. No laboratório, este foi o texto que o editor recebeu:</p>
+<pre class="file" data-file="mensagem do commit (no editor)">Diminui o açúcar para 1 xícara e meia
+
+# Conflicts:
+#	bolo.txt
+
+# Please enter the commit message for your changes. Lines starting
+# with '#' will be ignored, and an empty message aborts the commit.
+#
+# interactive rebase in progress; onto 8796258
+# Last commands done (2 commands done):
+#    pick 72e787e # Acrescenta a cobertura
+#    pick 8d43442 # Diminui o açúcar para 1 xícara e meia
+# No commands remaining.
+# You are currently rebasing branch 'cobertura' on '8796258'.
+#
+# Mudanças a serem submetidas:
+#	modified:   bolo.txt
+#
+</pre>
+<p>A primeira linha é a mensagem. As linhas com <code>#</code> são só informação e são ignoradas ("linhas começando com # serão ignoradas, e uma mensagem vazia cancela o commit"). Para manter a mensagem, é só salvar e sair (no <code>nano</code>: <kbd>Ctrl</kbd>+<kbd>O</kbd>, <kbd>Enter</kbd>, <kbd>Ctrl</kbd>+<kbd>X</kbd>).</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;printf 'Bolo de cenoura\n\n3 cenouras\n2 xícaras de açúcar\n180 graus por 40 minutos\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;git switch -q -c cobertura;;echo 'Cobertura: 200 g de chocolate' &gt;&gt; bolo.txt;;git commit -q -am 'Acrescenta a cobertura';;sed -i 's/2 xícaras/1 xícara e meia/' bolo.txt;;git commit -q -am 'Diminui o açúcar para 1 xícara e meia';;git switch -q main;;sed -i 's/2 xícaras/3 xícaras/' bolo.txt;;git commit -q -am 'Aumenta o açúcar para 3 xícaras';;git switch -q cobertura;;git rebase main" data-goal="semconflito,head:cobertura,commits:4,contem:HEAD:bolo.txt=1 xícara e meia,limpo" data-solucao="printf 'Bolo de cenoura\n\n3 cenouras\n1 xícara e meia de açúcar\n180 graus por 40 minutos\nCobertura: 200 g de chocolate\n' &gt; bolo.txt;;git add bolo.txt;;git rebase --continue">
+<p class="try-task"><strong>Missão:</strong> o rebase do <code>cobertura</code> parou com conflito no <code>bolo.txt</code>. Veja o <code>git status</code> e o <code>cat bolo.txt</code>. Fique com a versão de <strong>1 xícara e meia</strong>: tire as marcas e a linha do "3 xícaras" (por exemplo, com <code>sed -i '/^&lt;&lt;&lt;&lt;&lt;&lt;&lt;/d;/^=======/d;/^&gt;&gt;&gt;&gt;&gt;&gt;&gt;/d;/^3 xícaras/d' bolo.txt</code>), marque como resolvido e continue o rebase até o fim.</p>
+</div>
+
+<hr>
+
+<h2>5. As outras saídas: <code>--skip</code> e <code>--abort</code></h2>
+
+<h3>Desistir de tudo: <code>git rebase --abort</code></h3>
+<p>Conflito difícil, ou você nem queria fazer o rebase agora? O <code>--abort</code> ("abortar") cancela o rebase inteiro e devolve o branch ao estado de <strong>antes</strong>, como se nada tivesse acontecido:</p>
+<pre class="term" data-cwd="~/receitas">$ git status --short
+UU bolo.txt                                       « UU = conflito, os dois lados mudaram
+$ git rebase --abort
+$ git status
+No ramo cobertura
+nothing to commit, working tree clean
+$ git log --oneline --graph --all --decorate
+* 8d43442 (HEAD -&gt; cobertura) Diminui o açúcar para 1 xícara e meia     « os hashes de antes
+* 72e787e Acrescenta a cobertura
+| * 8796258 (main) Aumenta o açúcar para 3 xícaras
+|/
+* 9a47438 Adiciona receita de bolo
+</pre>
+<p>O <code>--abort</code> não mostra nada. O <code>git status</code> confirma: de volta ao branch <code>cobertura</code> (<code>No ramo cobertura</code>), pasta limpa ("nada a commitar"), e o desenho é o mesmo do começo da aula, com os hashes originais.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;printf 'Bolo de cenoura\n\n3 cenouras\n2 xícaras de açúcar\n180 graus por 40 minutos\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;git switch -q -c cobertura;;echo 'Cobertura: 200 g de chocolate' &gt;&gt; bolo.txt;;git commit -q -am 'Acrescenta a cobertura';;sed -i 's/2 xícaras/1 xícara e meia/' bolo.txt;;git commit -q -am 'Diminui o açúcar para 1 xícara e meia';;git switch -q main;;sed -i 's/2 xícaras/3 xícaras/' bolo.txt;;git commit -q -am 'Aumenta o açúcar para 3 xícaras';;git switch -q cobertura;;git rebase main" data-goal="semconflito,head:cobertura,limpo,contem:HEAD:bolo.txt=1 xícara e meia,contem:HEAD:bolo.txt=Cobertura" data-solucao="git rebase --abort">
+<p class="try-task"><strong>Missão:</strong> o mesmo conflito, mas agora a Ana desistiu: ela vai conversar com o Bruno antes. Cancele o rebase e confira com <code>git status</code> e <code>git log --oneline --graph --all</code> que tudo voltou a ser como antes.</p>
+</div>
+
+<h3>Pular o commit: <code>git rebase --skip</code></h3>
+<p>O <code>--skip</code> ("pular") <strong>descarta o commit que deu conflito</strong> e segue para o próximo. Use quando você decide que aquele commit não faz mais sentido. Por exemplo: o <code>main</code> já resolveu a questão do açúcar, e a Ana desiste da mudança dela:</p>
+<pre class="term" data-cwd="~/receitas">$ git rebase --skip
+Successfully rebased and updated refs/heads/cobertura.
+$ cat bolo.txt
+Bolo de cenoura
+
+3 cenouras
+3 xícaras de açúcar                               « ficou o do main
+180 graus por 40 minutos
+Cobertura: 200 g de chocolate
+$ git log --oneline --graph --all --decorate
+* f101710 (HEAD -&gt; cobertura) Acrescenta a cobertura     « o commit do açúcar sumiu do branch
+* 8796258 (main) Aumenta o açúcar para 3 xícaras
+* 9a47438 Adiciona receita de bolo
+</pre>
+<p>Cuidado: o commit pulado <strong>some do branch</strong>. Ele ainda dá para achar por um tempo no <code>git reflog</code> (aula <a href="recuperar-commit.html">Recuperando Commits Perdidos</a>), mas não confunda <code>--skip</code> com "resolver depois".</p>
+
+<hr>
+
+<h2>Formas diferentes de resolver</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Forma</th><th>Como</th><th>Quando usar</th></tr>
+<tr><td>À mão, no editor</td><td>Edite o arquivo, apague as marcas, salve; <code>git add</code>; <code>git rebase --continue</code></td><td>O jeito normal: você escolhe linha por linha (pode até juntar os dois lados)</td></tr>
+<tr><td>Ficar com a versão do <strong>seu commit</strong></td><td><code>git restore --theirs bolo.txt</code> (ou <code>git checkout --theirs bolo.txt</code>); <code>git add</code>; <code>--continue</code></td><td>Quando o seu lado inteiro está certo</td></tr>
+<tr><td>Ficar com a versão do <strong><code>main</code></strong></td><td><code>git restore --ours bolo.txt</code>; <code>git add</code>; <code>--continue</code></td><td>Quando o lado do <code>main</code> inteiro está certo</td></tr>
+<tr><td>No VS Code</td><td>Os botões que aparecem em cima do conflito (aula <a href="interfaces-graficas.html">Git no VS Code</a>)</td><td>Quem prefere clicar</td></tr>
+<tr><td>Pular o commit</td><td><code>git rebase --skip</code></td><td>O commit não faz mais sentido</td></tr>
+<tr><td>Desistir</td><td><code>git rebase --abort</code></td><td>Na dúvida: volta tudo para antes</td></tr>
+</table>
+</div>
+
+<p>O <code>--ours</code> ("o nosso") e o <code>--theirs</code> ("o deles") seguem a mesma inversão das marcas: no rebase, "o nosso" é a base (<code>main</code>) e "o deles" é o seu commit. No laboratório:</p>
+<pre class="term" data-cwd="~/receitas">$ git status --short
+UU bolo.txt
+$ git restore --theirs bolo.txt
+$ cat bolo.txt
+Bolo de cenoura
+
+3 cenouras
+1 xícara e meia de açúcar                         « --theirs = o commit da Ana
+180 graus por 40 minutos
+Cobertura: 200 g de chocolate
+$ git restore --ours bolo.txt
+$ cat bolo.txt
+Bolo de cenoura
+
+3 cenouras
+3 xícaras de açúcar                               « --ours = o main
+180 graus por 40 minutos
+Cobertura: 200 g de chocolate
+</pre>
+<p>Repare que a cobertura aparece nas duas versões: ela veio do 1º commit da Ana, que já tinha sido refeito sobre o <code>main</code>. Depois do <code>restore</code>, o arquivo continua marcado como conflito (<code>UU</code>) até o <code>git add</code>.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>needs merge</code>: continuou sem resolver</strong>
+<pre class="term" data-cwd="~/receitas">$ git rebase --continue
+bolo.txt: needs merge
+You must edit all merge conflicts and then
+mark them as resolved using git add
+</pre>
+<p>"<code>bolo.txt</code> precisa de mesclagem. Você precisa editar todos os conflitos e marcá-los como resolvidos com <code>git add</code>." Você esqueceu de resolver, ou resolveu e esqueceu o <code>git add</code>. <strong>Como confirmar:</strong> <code>git status</code> ainda mostra <code>ambos modificados</code>. <strong>Como resolver:</strong> edite o arquivo, rode <code>git add bolo.txt</code> e tente de novo.</p>
+</div>
+
+<div class="cenario">
+<strong>Deu <code>git add</code> com as marcas ainda no arquivo</strong>
+<p>O Git não confere o conteúdo: se você der <code>git add</code> num arquivo que ainda tem <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>, ele aceita, e as marcas entram no commit. <strong>Como evitar:</strong> antes do <code>--continue</code>, procure as marcas com <code>git diff --staged</code> ou <code>grep -n '&lt;&lt;&lt;&lt;&lt;&lt;&lt;' bolo.txt</code>. Se já continuou, conserte o arquivo e faça um novo commit (ou desfaça com <code>git rebase --abort</code>, se ainda estiver no meio).</p>
+</div>
+
+<div class="cenario">
+<strong>O editor deu problema no <code>--continue</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git rebase --continue
+A entrada padrão não é um terminal
+error: there was a problem with the editor 'nano'
+Please supply the message using either -m or -F option.
+error: could not commit staged changes.
+</pre>
+<p>"Houve um problema com o editor <code>nano</code>; não foi possível commitar as mudanças preparadas." Aconteceu no laboratório porque o comando rodou sem um terminal de verdade, onde o <code>nano</code> não consegue abrir (o mesmo acontece se o editor configurado não existir, ou se você sair do editor apagando a mensagem). O rebase continua parado, com a sua resolução preparada. <strong>Como resolver:</strong> rode <code>git rebase --continue</code> de novo num terminal normal; se o problema for o editor, configure outro (aula <a href="git-config.html">git config</a>).</p>
+</div>
+
+<div class="cenario">
+<strong><code>fatal: no rebase in progress</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git rebase --continue
+fatal: no rebase in progress
+</pre>
+<p>"Não há nenhum rebase em andamento." O rebase já terminou (ou foi cancelado). Nada a fazer: confira com <code>git status</code> e <code>git log --oneline --graph</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Conflito de novo, no commit seguinte</strong>
+<p>Num branch com vários commits que mexem no mesmo trecho, o rebase pode parar <strong>mais de uma vez</strong>: um conflito por commit. É normal. Resolva, <code>git add</code>, <code>--continue</code>, e repita até aparecer <code>Successfully rebased</code>. Se os conflitos se repetem muito, juntar os commits antes (aula <a href="squash.html">squash</a>) ou usar um merge (aula <a href="rebase-ou-merge.html">Rebase ou Merge?</a>) dá menos trabalho.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git status</code></td><td>Mostra o rebase em andamento, os commits já refeitos e os arquivos em conflito</td></tr>
+<tr><td><code>git add ARQUIVO</code></td><td>Marca o conflito como resolvido</td></tr>
+<tr><td><code>git rebase --continue</code></td><td>Refaz o commit com a resolução e segue para o próximo</td></tr>
+<tr><td><code>git rebase --skip</code></td><td>Descarta o commit que deu conflito e segue</td></tr>
+<tr><td><code>git rebase --abort</code></td><td>Cancela o rebase e volta ao estado de antes</td></tr>
+<tr><td><code>git restore --ours ARQUIVO</code></td><td>No rebase: fica com a versão da base (<code>main</code>)</td></tr>
+<tr><td><code>git restore --theirs ARQUIVO</code></td><td>No rebase: fica com a versão do seu commit</td></tr>
+<tr><td><code>&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD</code> … <code>=======</code> … <code>&gt;&gt;&gt;&gt;&gt;&gt;&gt; hash</code></td><td>Em cima, a base (<code>main</code>); embaixo, o seu commit</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete a sequência</h3>
+<p>Depois de editar o arquivo e tirar as marcas, complete os dois comandos que terminam o rebase:</p>
+<div class="ex-code">git <input data-answer="add" aria-label="subcomando que marca como resolvido"> bolo.txt<br>git rebase <input data-answer="--continue" aria-label="opção para continuar"></div>
+</div>
+
+<div class="exercise">
+<h3>2. Desistir</h3>
+<p>Qual opção do <code>git rebase</code> cancela tudo e volta ao estado de antes?</p>
+<div class="ex-code">git rebase <input data-answer="--abort" aria-label="opção para desistir"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. Num conflito durante o rebase do seu branch sobre o <code>main</code>, o que aparece entre <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD</code> e <code>=======</code>?</p>
+<label><input type="radio" name="q3"> A versão do seu commit</label>
+<label><input type="radio" name="q3"> A versão da base, o <code>main</code> (com os seus commits já refeitos)</label>
+<label><input type="radio" name="q3"> A versão do GitHub</label>
+<label><input type="radio" name="q3"> A versão mais antiga do arquivo</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. O que o <code>git rebase --skip</code> faz?</p>
+<label><input type="radio" name="q4"> Resolve o conflito sozinho, ficando com os dois lados</label>
+<label><input type="radio" name="q4"> Deixa o conflito para resolver depois do rebase</label>
+<label><input type="radio" name="q4"> Cancela o rebase inteiro</label>
+<label><input type="radio" name="q4"> Descarta o commit que deu conflito e segue para o próximo</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. O <code>git rebase --continue</code> respondeu <code>bolo.txt: needs merge</code>. O que faltou?</p>
+<label><input type="radio" name="q5"> Resolver o conflito e/ou rodar <code>git add bolo.txt</code></label>
+<label><input type="radio" name="q5"> Rodar <code>git commit</code></label>
+<label><input type="radio" name="q5"> Rodar <code>git push</code></label>
+<label><input type="radio" name="q5"> Começar o rebase de novo</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O rebase refaz um commit por vez; se um deles conflita, ele <strong>para</strong> com <code>CONFLITO</code> e <code>não foi possível aplicar HASH...</code>.</li>
+  <li>No arquivo, o lado <code>HEAD</code> é a <strong>base</strong> (o <code>main</code>); o lado com o hash é o <strong>seu commit</strong>. O <code>--ours</code>/<code>--theirs</code> seguem essa inversão.</li>
+  <li>Para seguir: edite, tire as marcas, <code>git add</code>, <code>git rebase --continue</code> (o editor abre com a mensagem; salve e feche). Pode haver um conflito por commit.</li>
+  <li><code>git rebase --skip</code> descarta o commit do conflito; <code>git rebase --abort</code> volta tudo para antes.</li>
+  <li>Na dúvida, <code>git status</code>: ele diz em que ponto o rebase está e qual é o próximo passo.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
