@@ -33,7 +33,7 @@
 
 <p>Este projeto junta o que você viu em <a href="branches.html">O que é um Branch</a>, <a href="git-switch.html">git switch</a>, <a href="git-merge.html">git merge</a> e <a href="apagar-branch.html">Renomeando e Apagando Branches</a>. Se algum comando parecer estranho, a aula dele explica com mais calma. Todas as saídas abaixo saíram do <strong>Git 2.53</strong> do Ubuntu, na máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português.</p>
 
-<div class="note"><strong>Português e inglês misturados?</strong> É assim mesmo. A tradução do Git para o português do Brasil que vem no Ubuntu é <strong>parcial</strong>: algumas mensagens saem traduzidas (<code>No ramo main</code>), outras continuam em inglês (<code>Switched to a new branch</code>, <code>nothing to commit</code>). Ao lado de cada mensagem em inglês, você encontra a tradução.</div>
+<div class="note"><strong>Português e inglês misturados?</strong> É assim mesmo. A tradução do Git para o português do Brasil que vem no Ubuntu é <strong>parcial</strong>: algumas mensagens saem traduzidas (<code>No ramo main</code>), outras continuam em inglês (<code>Switched to a new branch</code>, <code>nothing to commit</code>). Ao lado de cada mensagem em inglês, você encontra a tradução. Em outros sistemas (Windows, macOS, outras distribuições), as frases podem sair diferentes ou todas em inglês; o sentido é o mesmo.</div>
 
 <hr>
 
@@ -119,7 +119,7 @@ $ git status
 No ramo contato
 Arquivos não monitorados:
   (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
-	contato.html
+        contato.html
 
 nada adicionado ao envio mas arquivos não registrados estão presentes (use "git add" to registrar)
 $ git add contato.html
@@ -347,7 +347,7 @@ nothing to commit, working tree clean</pre>
 <strong>"Your local changes … would be overwritten by checkout" ao trocar de branch</strong>
 <pre class="term" data-cwd="~/receitas">$ git switch main
 error: Your local changes to the following files would be overwritten by checkout:
-	index.html
+        index.html
 Please commit your changes or stash them before you switch branches.
 Aborting</pre>
 <p><strong>O que aconteceu:</strong> a Ana mudou o <code>index.html</code> no branch <code>contato</code> e não commitou. O <code>index.html</code> do <code>main</code> é diferente; trocar de branch apagaria a mudança dela. O Git recusou ("Aborting" = "desistindo") para proteger o trabalho. A mensagem diz: "as suas mudanças locais nestes arquivos seriam sobrescritas; faça commit ou <em>stash</em> delas antes de trocar de branch".</p>
