@@ -56,6 +56,8 @@ h1 { color: #c0392b; }</pre>
 
 <hr>
 
+<div class="note"><strong>Português e inglês misturados?</strong> A tradução do Git que vem no Ubuntu é parcial: algumas mensagens saem em português, outras em inglês (e algumas em português de Portugal, como "submissões"). As saídas abaixo estão exatamente como apareceram; as mensagens em inglês ganham tradução no texto. Em outros sistemas, as frases podem sair diferentes ou todas em inglês.</div>
+
 <h2>Etapa 1: o site entra no Git</h2>
 <p>Primeiro o <code>git init</code>, e logo depois um <code>git status</code> para ver o que o Git encontrou:</p>
 <pre class="term" data-cwd="~/site">$ git init
@@ -174,13 +176,13 @@ $ git commit -m 'Adiciona a página do pudim'
 <h2>Etapa 4: um erro, desfeito com segurança</h2>
 <p>Num impulso, a Ana trocou o nome do site para "Receitas da Vovó" e commitou. No dia seguinte, desistiu. Como esse commit pode já estar no GitHub (e no computador do Bruno), ela não apaga nada: cria um commit <strong>que desfaz</strong> o outro, com o <a href="git-revert.html">git revert</a>:</p>
 <pre class="term" data-cwd="~/site">$ git log --oneline -1
-98a83bd Muda o título para Receitas da Vovó
+98a83bd (HEAD -&gt; main) Muda o título para Receitas da Vovó
 $ git revert --no-edit HEAD
 [main 80103de] Revert "Muda o título para Receitas da Vovó"
  Date: Thu Oct 15 10:30:00 2026 -0300
  1 file changed, 2 insertions(+), 2 deletions(-)
 $ git log --oneline
-80103de Revert "Muda o título para Receitas da Vovó"     « o commit que desfaz
+80103de (HEAD -&gt; main) Revert "Muda o título para Receitas da Vovó"     « o commit que desfaz
 98a83bd Muda o título para Receitas da Vovó              « o erro continua no histórico
 580b96c Adiciona a página do pudim
 0ebfbdd Muda a cor do título para verde
@@ -247,6 +249,10 @@ nothing to commit, working tree clean</pre>
   <li><code>git push origin v1.0</code>: o <code>git push</code> comum <strong>não</strong> envia tags; é preciso enviá-las pelo nome (ou todas com <code>--tags</code>).</li>
 </ul>
 <p>(As saídas desta etapa e da próxima vieram do laboratório, com um "GitHub de mentira" local. Para o site aparecer na internet, o próximo passo é ativar o <a href="github-pages.html">GitHub Pages</a>.)</p>
+
+<div class="try" data-setup="github novo ana-souza/site-receitas;;mkdir -p site/css site/receitas site/rascunhos;;cd site;;printf '&lt;!doctype html&gt;\n&lt;title&gt;Receitas da Ana&lt;/title&gt;\n&lt;link rel=&quot;stylesheet&quot; href=&quot;css/estilo.css&quot;&gt;\n&lt;h1&gt;Receitas da Ana&lt;/h1&gt;\n&lt;ul&gt;\n  &lt;li&gt;&lt;a href=&quot;receitas/bolo.html&quot;&gt;Bolo de cenoura&lt;/a&gt;&lt;/li&gt;\n&lt;/ul&gt;\n' &gt; index.html;;printf 'body { font-family: sans-serif; }\nh1 { color: #c0392b; }\n' &gt; css/estilo.css;;printf '&lt;!doctype html&gt;\n&lt;title&gt;Bolo de cenoura&lt;/title&gt;\n&lt;h1&gt;Bolo de cenoura&lt;/h1&gt;\n&lt;p&gt;3 cenouras, 2 xícaras de farinha, 3 ovos.&lt;/p&gt;\n' &gt; receitas/bolo.html;;echo 'fazer página de pudim' &gt; rascunhos/ideias.txt;;git init -q;;echo 'rascunhos/' &gt; .gitignore;;git add .;;git commit -q -m 'Versão inicial do site';;sed -i 's/#c0392b/#27ae60/' css/estilo.css;;git commit -q -am 'Muda a cor do título para verde';;printf '&lt;!doctype html&gt;\n&lt;title&gt;Pudim de leite&lt;/title&gt;\n&lt;h1&gt;Pudim de leite&lt;/h1&gt;\n&lt;p&gt;1 lata de leite condensado, 3 ovos.&lt;/p&gt;\n' &gt; receitas/pudim.html;;printf '&lt;!doctype html&gt;\n&lt;title&gt;Receitas da Ana&lt;/title&gt;\n&lt;link rel=&quot;stylesheet&quot; href=&quot;css/estilo.css&quot;&gt;\n&lt;h1&gt;Receitas da Ana&lt;/h1&gt;\n&lt;ul&gt;\n  &lt;li&gt;&lt;a href=&quot;receitas/bolo.html&quot;&gt;Bolo de cenoura&lt;/a&gt;&lt;/li&gt;\n  &lt;li&gt;&lt;a href=&quot;receitas/pudim.html&quot;&gt;Pudim de leite&lt;/a&gt;&lt;/li&gt;\n&lt;/ul&gt;\n' &gt; index.html;;git add index.html receitas/pudim.html;;git commit -q -m 'Adiciona a página do pudim';;sed -i 's/Receitas da Ana/Receitas da Vovó/g' index.html;;git commit -q -am 'Muda o título para Receitas da Vovó';;git revert --no-edit HEAD;;git tag -a v1.0 -m 'Primeira versão no ar'" data-goal="remoto:origin,contem:origin/main:receitas/pudim.html=Pudim,err:[new tag]" data-solucao="git remote add origin https://github.com/ana-souza/site-receitas.git;;git push -u origin main;;git push origin v1.0">
+<p class="try-task"><strong>Missão 6:</strong> o repositório vazio <code>ana-souza/site-receitas</code> já existe no GitHub do terminal. Dê a ele o apelido <code>origin</code>, envie o <code>main</code> (ligando-o ao <code>origin/main</code> com <code>-u</code>) e depois envie a tag <code>v1.0</code>. Confira com <code>git status</code>. (O terminal do guia mostra a versão curta do push, sem as linhas de progresso <code>Enumerating objects…</code>.)</p>
+</div>
 
 <h2>Etapa 7: o Bruno ajuda</h2>
 <p>O Bruno clonou o repositório, acrescentou o açúcar que faltava na receita de bolo e enviou o commit dele ao GitHub. Para receber, a Ana faz <code>git pull</code>:</p>
