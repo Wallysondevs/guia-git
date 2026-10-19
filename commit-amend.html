@@ -56,7 +56,7 @@ $ git commit -m "Adiciona recieta de bolo"
  1 file changed, 1 insertion(+)
  create mode 100644 bolo.txt
 $ git log --oneline
-cfa022b Adiciona recieta de bolo   « o commit novo, com o erro
+cfa022b (HEAD -&gt; main) Adiciona recieta de bolo   « o commit novo, com o erro
 fe996fb Primeiro commit
 </pre>
 
@@ -86,8 +86,8 @@ fe996fb Primeiro commit
 <p>Agora o log:</p>
 
 <pre class="term" data-cwd="~/receitas">$ git log --oneline
-5bc05d8 Adiciona receita de bolo   « mensagem nova, hash novo
-fe996fb Primeiro commit             « este não mudou
+5bc05d8 (HEAD -&gt; main) Adiciona receita de bolo   « mensagem nova, hash novo
+fe996fb Primeiro commit                           « este não mudou
 $ git status
 No ramo main
 nothing to commit, working tree clean
@@ -135,7 +135,7 @@ $ git commit --amend --no-edit
  create mode 100644 calda.txt
  create mode 100644 pudim.txt
 $ git log --oneline
-d5e44e9 Adiciona receita de pudim   « era 118e295
+d5e44e9 (HEAD -&gt; main) Adiciona receita de pudim   « era 118e295
 5bc05d8 Adiciona receita de bolo
 fe996fb Primeiro commit
 </pre>
@@ -148,7 +148,7 @@ fe996fb Primeiro commit
 <p>O resumo agora diz <code>2 files changed</code>: o commit novo traz o pudim <strong>e</strong> a calda. Confira com o <a href="git-show.html">git show</a>:</p>
 
 <pre class="term" data-cwd="~/receitas">$ git show --stat HEAD
-commit d5e44e9e36d79bfb6837c3912115a4c8fbe27bde
+commit d5e44e9e36d79bfb6837c3912115a4c8fbe27bde (HEAD -&gt; main)
 Author: Ana Souza &lt;ana@exemplo.com&gt;
 Date:   Thu Oct 15 10:30:00 2026 -0300
 
@@ -187,7 +187,7 @@ A --- B   &lt;- main            A --- B'  &lt;- main
 <p>O commit <code>B</code> continua guardado na pasta <code>.git</code> por um tempo (semanas), só que nenhum branch aponta mais para ele. Quem lembra dele é o <a href="git-reflog.html">reflog</a>, o diário de onde o HEAD esteve:</p>
 
 <pre class="term" data-cwd="~/receitas">$ git reflog
-d5e44e9 HEAD@{0}: commit (amend): Adiciona receita de pudim
+d5e44e9 (HEAD -&gt; main) HEAD@{0}: commit (amend): Adiciona receita de pudim
 118e295 HEAD@{1}: commit: Adiciona receita de pudim     « o pudim sem a calda
 5bc05d8 HEAD@{2}: commit (amend): Adiciona receita de bolo
 cfa022b HEAD@{3}: commit: Adiciona recieta de bolo      « o "recieta" ainda está aqui
@@ -239,12 +239,12 @@ $ git commit --amend -m "Adiciona receita de brigadeiro"   « ops: era para ser 
  create mode 100644 calda.txt
  create mode 100644 pudim.txt
 $ git log --oneline
-5c490a1 Adiciona receita de brigadeiro   « o pudim "virou" brigadeiro
+5c490a1 (HEAD -&gt; main) Adiciona receita de brigadeiro   « o pudim "virou" brigadeiro
 5bc05d8 Adiciona receita de bolo
 fe996fb Primeiro commit
 $ git reset --soft HEAD@{1}
 $ git log --oneline
-d5e44e9 Adiciona receita de pudim        « o pudim voltou
+d5e44e9 (HEAD -&gt; main) Adiciona receita de pudim        « o pudim voltou
 5bc05d8 Adiciona receita de bolo
 fe996fb Primeiro commit
 $ git status
@@ -258,7 +258,7 @@ $ git commit -m "Adiciona receita de brigadeiro"
  1 file changed, 1 insertion(+)
  create mode 100644 brigadeiro.txt
 $ git log --oneline
-b100c98 Adiciona receita de brigadeiro
+b100c98 (HEAD -&gt; main) Adiciona receita de brigadeiro
 d5e44e9 Adiciona receita de pudim
 5bc05d8 Adiciona receita de bolo
 fe996fb Primeiro commit
