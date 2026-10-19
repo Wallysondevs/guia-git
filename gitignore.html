@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git .gitignore — ignorando arquivos que não devem ir para o repositório | Guia Git</title>
+<meta name="description" content="O .gitignore para quem nunca usou Git: por que ignorar senhas (.env), logs, rascunhos e lixo do sistema, como escrever o arquivo (comentários, *.log, pasta/, /na-raiz, **, exceções com !), git status --ignored, git check-ignore -v, git add -f, o arquivo que já era rastreado (git rm --cached), .git/info/exclude e o .gitignore global, com saídas reais do Git em português.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">.gitignore</span></h1>
+
+<p class="intro">Todo projeto tem arquivos que <strong>não devem</strong> ir para o Git: o arquivo com a senha do banco de dados, os registros (<em>logs</em>) que o programa cria sozinho, os seus rascunhos, o lixo que o sistema operacional espalha pelas pastas. Se nada for feito, eles aparecem em todo <code>git status</code> e um dia alguém dá <code>git add .</code> e manda tudo para o GitHub. O <code>.gitignore</code> é um arquivo de texto com a lista do que o Git deve <strong>fingir que não vê</strong>.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Por que ignorar arquivos, e quais costumam ser ignorados.</li>
+  <li>Como escrever um <code>.gitignore</code>: comentários, nomes, <code>*.log</code>, <code>pasta/</code>, <code>/só-na-raiz</code>, <code>**</code> e exceções com <code>!</code>.</li>
+  <li>Como conferir: <code>git status --ignored</code> e <code>git check-ignore -v</code>.</li>
+  <li>Por que o <code>.gitignore</code> não funciona num arquivo que <strong>já</strong> é rastreado, e como resolver com <code>git rm --cached</code>.</li>
+  <li>Os outros lugares de ignorar: <code>.git/info/exclude</code> e o <code>.gitignore</code> global.</li>
+</ul>
+</div>
+
+<p>Todas as saídas desta aula saíram do Git do Ubuntu 26.04, na máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português. Algumas mensagens do Git ainda não têm tradução e saem em inglês, como você vai ver.</p>
+
+<hr>
+
+<h2>A ideia: a lista do porteiro</h2>
+<p>Pense no Git como o porteiro de um prédio. Todo mundo que aparece na portaria (todo arquivo novo na pasta) é anunciado: "tem um tal de <code>erro.log</code> aqui, deixo subir?". Depois de um tempo, o porteiro anuncia as mesmas visitas indesejadas todos os dias. O <code>.gitignore</code> é a <strong>lista que você deixa com o porteiro</strong>: "esses aqui, nem me avise, e não deixe subir".</p>
+<p>Os candidatos clássicos à lista:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>O quê</th><th>Exemplos</th><th>Por que ignorar</th></tr>
+<tr><td>Senhas e configurações locais</td><td><code>.env</code>, <code>senhas.txt</code>, <code>config.local.php</code></td><td><strong>Segurança.</strong> O que vai para o GitHub pode ser lido por outros (e fica no histórico para sempre: veja <a href="senha-commitada.html">Commitei uma Senha!</a>)</td></tr>
+<tr><td>Arquivos gerados</td><td><code>*.log</code>, <code>build/</code>, <code>dist/</code>, <code>*.o</code>, <code>__pycache__/</code></td><td>O programa cria de novo quando precisa. Guardar só gera ruído e conflitos</td></tr>
+<tr><td>Dependências baixadas</td><td><code>node_modules/</code>, <code>vendor/</code></td><td>São enormes e qualquer um baixa de novo com um comando</td></tr>
+<tr><td>Lixo do sistema e do editor</td><td><code>.DS_Store</code> (macOS), <code>Thumbs.db</code> (Windows), <code>*~</code>, <code>*.swp</code></td><td>Não fazem parte do projeto</td></tr>
+<tr><td>Coisas pessoais</td><td><code>rascunhos/</code>, <code>anotacoes.txt</code></td><td>Só interessam a você</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>1. O problema: um <code>git status</code> poluído</h2>
+<p>A Ana tem o site de receitas com dois arquivos commitados, <code>index.html</code> e <code>estilo.css</code>. Com o tempo, apareceram na pasta: um <code>.env</code> com a senha do banco de dados, dois logs, uma pasta de rascunhos e um <code>.DS_Store</code> (um arquivo que o macOS cria em toda pasta que você abre; ele veio num pen drive):</p>
+
+<pre class="term" data-cwd="~/site">$ git status
+No ramo main
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	.DS_Store
+	.env
+	erro.log
+	rascunhos/
+	servidor.log
+
+nada adicionado ao envio mas arquivos não registrados estão presentes (use "git add" to registrar)
+</pre>
+
+<p>Cinco "visitas" anunciadas, e nenhuma deveria entrar. Pior: um <code>git add .</code> distraído prepararia todas, inclusive a senha.</p>
+
+<hr>
+
+<h2>2. Criando o <code>.gitignore</code></h2>
+<p>O <code>.gitignore</code> é um arquivo de texto comum, com esse nome exato (com o ponto na frente, sem extensão), na <strong>pasta principal</strong> do repositório (a que tem o <code>.git</code>). Crie-o no seu editor (VS Code, gedit, Bloco de Notas…) ou, no terminal, com um <code>printf</code> que escreve uma linha por argumento. O da Ana ficou assim:</p>
+
+<pre class="file" data-file=".gitignore"># Senhas e configurações locais: nunca no Git
+.env
+
+# Registros (logs) gerados pelo programa
+*.log
+
+# Rascunhos pessoais
+rascunhos/
+
+# Lixo do macOS
+.DS_Store
+</pre>
+
+<dl class="anatomy">
+  <dt># Senhas e configurações…</dt><dd>Linha que começa com <code>#</code> é <strong>comentário</strong>: o Git a ignora. Use para explicar o porquê de cada regra. Linhas em branco também são ignoradas e servem para separar grupos.</dd>
+  <dt>.env</dt><dd>Um nome exato: ignora qualquer arquivo (ou pasta) chamado <code>.env</code>, em qualquer pasta do projeto.</dd>
+  <dt>*.log</dt><dd>O <code>*</code> quer dizer "qualquer sequência de caracteres": todo arquivo que termina em <code>.log</code> (<code>erro.log</code>, <code>servidor.log</code>, <code>2026-10-15.log</code>…). É o mesmo curinga do terminal (veja <a href="terminal-basico.html">O Mínimo de Terminal</a>).</dd>
+  <dt>rascunhos/</dt><dd>A barra no <strong>fim</strong> quer dizer "só pastas": ignora a pasta <code>rascunhos</code> e <strong>tudo o que está dentro dela</strong>.</dd>
+  <dt>.DS_Store</dt><dd>Outro nome exato.</dd>
+</dl>
+
+<p>Agora, o mesmo <code>git status</code>:</p>
+
+<pre class="term" data-cwd="~/site">$ git status
+No ramo main
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	.gitignore
+
+nada adicionado ao envio mas arquivos não registrados estão presentes (use "git add" to registrar)
+</pre>
+
+<p>Os cinco sumiram do relatório. Eles <strong>continuam na pasta</strong> (o <code>.gitignore</code> não apaga nada): o Git só parou de anunciá-los. O único arquivo novo que aparece é o próprio <code>.gitignore</code>.</p>
+
+<hr>
+
+<h2>3. O <code>.gitignore</code> também vai no commit</h2>
+<p>O <code>.gitignore</code> é parte do projeto: commitado, ele vale para todo mundo que clonar o repositório (o Bruno, o computador do trabalho, o GitHub). Agora até o <code>git add .</code> ("adicione tudo desta pasta") é seguro:</p>
+
+<pre class="term" data-cwd="~/site">$ git add .
+$ git status --short
+A  .gitignore
+$ git commit -q -m 'Adiciona .gitignore'
+$ git log --oneline
+bc049e8 Adiciona .gitignore
+7d067ed Primeira versão do site
+$ git ls-files
+.gitignore
+estilo.css
+index.html
+</pre>
+
+<p>O <code>git add .</code> preparou só o <code>.gitignore</code> (o <code>A</code> é de <em>added</em>, adicionado). O <code>git ls-files</code> lista os arquivos que o Git rastreia: nem sinal do <code>.env</code> ou dos logs.</p>
+
+<div class="try" data-setup="mkdir site;;cd site;;git init -q;;echo '&lt;h1&gt;Receitas da Ana&lt;/h1&gt;' &gt; index.html;;git add index.html;;git commit -q -m 'Primeira versão do site';;echo 'SENHA_DO_BANCO=abacaxi123' &gt; .env;;echo 'erro ao abrir a foto' &gt; erro.log;;echo 'servidor iniciado' &gt; servidor.log" data-goal="ignorado:.env,ignorado:erro.log,ignorado:servidor.log,rastreado:.gitignore,limpo" data-solucao="echo '.env' &gt; .gitignore;;echo '*.log' &gt;&gt; .gitignore;;git add .gitignore;;git commit -m 'Adiciona .gitignore'">
+<p class="try-task"><strong>Missão:</strong> o <code>git status</code> do site da Ana mostra a senha (<code>.env</code>) e dois logs. Crie um <code>.gitignore</code> que ignore o <code>.env</code> e <strong>todos</strong> os arquivos <code>.log</code> (dica: <code>echo '.env' &gt; .gitignore</code> cria o arquivo com uma linha, e <code>echo '*.log' &gt;&gt; .gitignore</code> acrescenta outra), confira com <code>git status</code> e faça o commit do <code>.gitignore</code>. No fim, o <code>git status</code> deve dizer que não há nada a submeter.</p>
+</div>
+
+<hr>
+
+<h2>4. Conferindo o que está sendo ignorado</h2>
+
+<h3><code>git status --ignored</code></h3>
+<p>Os ignorados somem do <code>git status</code>, mas você pode pedir para vê-los:</p>
+
+<pre class="term" data-cwd="~/site">$ git status --ignored
+No ramo main
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	.gitignore
+
+Arquivos ignorados:
+  (utilize "git add -f &lt;arquivo&gt;..." para incluir o que será submetido)
+	.DS_Store
+	.env
+	erro.log
+	rascunhos/
+	servidor.log
+
+nada adicionado ao envio mas arquivos não registrados estão presentes (use "git add" to registrar)
+</pre>
+
+<p>(Esta saída é de antes do commit do <code>.gitignore</code>, por isso ele ainda aparece como não monitorado.) Aparece uma seção nova, <code>Arquivos ignorados</code>, com a dica <code>git add -f</code>, que você vai ver na seção 7. No formato curto, <code>git status --short --ignored</code>, os ignorados aparecem com <code>!!</code> (e os não monitorados, como sempre, com <code>??</code>).</p>
+
+<h3><code>git check-ignore -v</code>: "por que este arquivo está sendo ignorado?"</h3>
+<p>Num <code>.gitignore</code> comprido, às vezes você não sabe <strong>qual</strong> regra pegou um arquivo. O <code>git check-ignore</code> responde, e o <code>-v</code> (<em>verbose</em>, detalhado) mostra a regra:</p>
+
+<pre class="term" data-cwd="~/site">$ git check-ignore -v erro.log
+.gitignore:5:*.log	erro.log
+$ git check-ignore -v rascunhos/lasanha.txt
+.gitignore:8:rascunhos/	rascunhos/lasanha.txt
+$ git check-ignore -v index.html
+$ echo $?
+1
+</pre>
+
+<dl class="anatomy">
+  <dt>.gitignore</dt><dd>O arquivo onde está a regra.</dd>
+  <dt>:5:</dt><dd>O número da linha nesse arquivo (a linha 5 do <code>.gitignore</code> da Ana é o <code>*.log</code>; os comentários e as linhas em branco contam).</dd>
+  <dt>*.log</dt><dd>A regra (o padrão) que pegou o arquivo.</dd>
+  <dt>erro.log</dt><dd>Depois de uma tabulação, o arquivo que você perguntou.</dd>
+  <dt>(nada) e $? = 1</dt><dd>Para o <code>index.html</code>, que <strong>não</strong> é ignorado, o comando não mostra nada e termina com código <code>1</code> ("não"). Para um arquivo ignorado, o código é <code>0</code> ("sim").</dd>
+</dl>
+
+<hr>
+
+<h2>5. Os padrões, um por um</h2>
+<p>Para ver cada tipo de regra funcionando, a Ana montou uma pasta de testes, <code>padroes</code>, com arquivos vazios espalhados em subpastas, e este <code>.gitignore</code>:</p>
+
+<pre class="term" data-cwd="~/padroes">$ mkdir -p notas fotos/viagem build src/build
+$ touch todo.txt notas/todo.txt fotos/praia.jpg fotos/viagem/serra.jpg fotos/capa.png build/site.html src/build/x.o copia.txt~ backup.bak
+$ cat .gitignore
+/todo.txt
+fotos/*.jpg
+build/
+*~
+*.bak
+$ git status --short --ignored
+?? .gitignore
+?? fotos/
+?? notas/
+!! backup.bak
+!! build/
+!! copia.txt~
+!! fotos/praia.jpg
+!! src/
+!! todo.txt
+$ git check-ignore -v todo.txt notas/todo.txt fotos/praia.jpg fotos/viagem/serra.jpg src/build/x.o copia.txt~
+.gitignore:1:/todo.txt	todo.txt
+.gitignore:2:fotos/*.jpg	fotos/praia.jpg
+.gitignore:3:build/	src/build/x.o
+.gitignore:4:*~	copia.txt~
+</pre>
+
+<p>O <code>check-ignore</code> recebeu 6 arquivos e respondeu só sobre 4: os outros dois (<code>notas/todo.txt</code> e <code>fotos/viagem/serra.jpg</code>) <strong>não</strong> são ignorados. Por quê?</p>
+<ul>
+  <li><code>/todo.txt</code>: a barra no <strong>começo</strong> "prende" a regra na pasta onde está o <code>.gitignore</code>. Pega o <code>todo.txt</code> da raiz, mas não o <code>notas/todo.txt</code>. Sem a barra (<code>todo.txt</code>), pegaria os dois.</li>
+  <li><code>fotos/*.jpg</code>: uma regra com barra <strong>no meio</strong> também é contada a partir da raiz, e o <code>*</code> não atravessa pastas. Pega <code>fotos/praia.jpg</code>, mas não <code>fotos/viagem/serra.jpg</code> (está uma pasta mais funda). Nem a <code>fotos/capa.png</code> (não termina em <code>.jpg</code>).</li>
+  <li><code>build/</code>: só barra no fim, então vale em <strong>qualquer</strong> nível: pegou a <code>build/</code> da raiz e a <code>src/build/</code>. Como a <code>src/</code> só tinha a <code>build/</code> dentro, ela inteira aparece como <code>!! src/</code>.</li>
+  <li><code>*~</code> e <code>*.bak</code>: cópias de segurança que alguns editores criam (<code>copia.txt~</code>) e backups.</li>
+</ul>
+
+<p>Para pegar <code>.jpg</code> em <strong>qualquer</strong> subpasta de <code>fotos</code>, use <code>**</code> ("qualquer número de pastas, inclusive nenhuma"):</p>
+
+<pre class="term" data-cwd="~/padroes">$ printf '%s\n' '/todo.txt' 'fotos/**/*.jpg' 'build/' '*~' '*.bak' &gt; .gitignore
+$ git status --short --ignored
+?? .gitignore
+?? fotos/
+?? notas/
+!! backup.bak
+!! build/
+!! copia.txt~
+!! fotos/praia.jpg
+!! fotos/viagem/
+!! src/
+!! todo.txt
+</pre>
+
+<p>Agora <code>fotos/viagem/</code> também aparece com <code>!!</code>: o <code>serra.jpg</code> foi pego.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Padrão</th><th>Ignora</th><th>Não ignora</th></tr>
+<tr><td><code>segredo.txt</code></td><td><code>segredo.txt</code> em qualquer pasta</td><td><code>segredo.txt.bak</code></td></tr>
+<tr><td><code>*.log</code></td><td><code>erro.log</code>, <code>logs/hoje.log</code></td><td><code>log.txt</code></td></tr>
+<tr><td><code>build/</code></td><td>pastas <code>build</code> em qualquer nível, com tudo dentro</td><td>um <strong>arquivo</strong> chamado <code>build</code></td></tr>
+<tr><td><code>/todo.txt</code></td><td>só o <code>todo.txt</code> da raiz</td><td><code>notas/todo.txt</code></td></tr>
+<tr><td><code>fotos/*.jpg</code></td><td><code>fotos/praia.jpg</code></td><td><code>fotos/viagem/serra.jpg</code></td></tr>
+<tr><td><code>fotos/**/*.jpg</code></td><td><code>fotos/praia.jpg</code>, <code>fotos/viagem/serra.jpg</code></td><td><code>outras/x.jpg</code></td></tr>
+<tr><td><code>!importante.log</code></td><td>(exceção: volta a <strong>não</strong> ignorar) <code>importante.log</code></td><td></td></tr>
+<tr><td><code># texto</code></td><td>nada: é comentário</td><td></td></tr>
+</table>
+</div>
+
+<div class="note">
+<strong>E pastas vazias?</strong>
+<p>O Git não guarda pastas, só arquivos (as pastas vêm "de carona" com os arquivos que estão dentro delas). Uma pasta vazia nunca aparece no <code>git status</code>, com ou sem <code>.gitignore</code>: no lab, a Ana criou uma pasta <code>vazia</code> e o <code>git status --short</code> continuou idêntico. Se você precisa que uma pasta vazia exista no repositório, a convenção é pôr um arquivo vazio dentro dela, normalmente chamado <code>.gitkeep</code>.</p>
+</div>
+
+<hr>
+
+<h2>6. Exceções com <code>!</code></h2>
+<p>A Ana ignora todos os <code>*.log</code>, mas quer guardar um deles, o <code>importante.log</code>. Uma linha que começa com <code>!</code> desfaz o ignorar, e precisa vir <strong>depois</strong> da regra que ela contraria:</p>
+
+<pre class="term" data-cwd="~/site">$ echo '!importante.log' &gt;&gt; .gitignore
+$ echo 'guardar este' &gt; importante.log
+$ git status --short
+ M .gitignore
+?? importante.log
+$ git check-ignore -v importante.log
+.gitignore:12:!importante.log	importante.log
+</pre>
+
+<p>O <code>importante.log</code> aparece como <code>??</code> (novo, não monitorado): o Git voltou a anunciá-lo, e ele pode receber <code>git add</code>. O <code>check-ignore -v</code> mostra a regra que decidiu, com o <code>!</code> na frente: aqui, a decisão foi "<strong>não</strong> ignorar". O <code>M</code> na frente do <code>.gitignore</code> é porque ele mesmo mudou (ganhou uma linha) e precisa de um novo commit.</p>
+
+<div class="warning">
+<strong>A exceção não funciona dentro de uma pasta ignorada</strong>
+<p>Se a regra é <code>rascunhos/</code> (a pasta inteira), um <code>!rascunhos/lasanha.txt</code> não adianta: o Git nem entra numa pasta ignorada para olhar o que tem dentro. Nesse caso, ignore o <strong>conteúdo</strong> em vez da pasta (<code>rascunhos/*</code>) e depois faça a exceção (<code>!rascunhos/lasanha.txt</code>).</p>
+</div>
+
+<div class="try" data-setup="mkdir site;;cd site;;git init -q;;echo 'oi' &gt; index.html;;echo '*.log' &gt; .gitignore;;git add .;;git commit -q -m 'Site e .gitignore';;echo 'erro' &gt; erro.log;;echo 'guardar este' &gt; importante.log" data-goal="ignorado:erro.log,rastreado:importante.log" data-solucao="echo '!importante.log' &gt;&gt; .gitignore;;git add importante.log">
+<p class="try-task"><strong>Missão:</strong> o <code>.gitignore</code> desta pasta ignora todos os <code>*.log</code>. Faça uma exceção para o <code>importante.log</code> (sem deixar de ignorar o <code>erro.log</code>) e prepare-o com <code>git add importante.log</code>. Use <code>git status --ignored</code> para conferir.</p>
+</div>
+
+<hr>
+
+<h2>7. Forçando: <code>git add -f</code></h2>
+<p>O que acontece se a Ana tentar preparar um arquivo ignorado?</p>
+
+<pre class="term" data-cwd="~/site">$ git add .env
+Os caminhos a seguir são ignorados por um dos seus arquivos .gitignore:
+.env
+hint: Use -f if you really want to add them.
+hint: Disable this message with "git config set advice.addIgnoredFile false"
+$ echo $?
+1
+</pre>
+
+<p>O Git <strong>recusa</strong> e explica: "os caminhos a seguir são ignorados por um dos seus arquivos <code>.gitignore</code>". As duas dicas (<code>hint</code>), ainda em inglês, dizem: "use <code>-f</code> se você realmente quer adicioná-los" e "desative esta mensagem com <code>git config set advice.addIgnoredFile false</code>". O código de saída <code>1</code> confirma: nada foi preparado. É uma proteção: o <code>.gitignore</code> segura até um <code>git add</code> com o nome exato.</p>
+
+<p>Se você <strong>tem certeza</strong>, o <code>-f</code> (de <em>force</em>, "forçar") passa por cima da lista:</p>
+
+<pre class="term" data-cwd="~/site">$ git add -f servidor.log
+$ git status --short
+ M .gitignore
+A  servidor.log
+?? importante.log
+</pre>
+
+<p>O <code>servidor.log</code> foi preparado (<code>A</code>), mesmo ignorado. Depois do commit, ele passa a ser <strong>rastreado</strong>, e um arquivo rastreado não é mais afetado pelo <code>.gitignore</code> (próxima seção). Use o <code>-f</code> raramente e nunca com senhas. (A Ana desistiu: tirou o log da área de preparo com <code>git restore --staged servidor.log</code>, da aula <a href="restore-staged.html">Tirando da Área de Preparo</a>.)</p>
+
+<hr>
+
+<h2>8. "Pus no <code>.gitignore</code> e o Git continua vendo!"</h2>
+<p>Esta é a dúvida número um sobre o <code>.gitignore</code>. A Ana tinha um <code>config.txt</code> <strong>já commitado</strong> e depois resolveu ignorá-lo:</p>
+
+<pre class="term" data-cwd="~/site">$ echo 'config.txt' &gt;&gt; .gitignore
+$ echo 'mudei a config' &gt;&gt; config.txt
+$ git status --short
+ M .gitignore
+ M config.txt
+?? importante.log
+$ git check-ignore -v config.txt
+$ echo $?
+1
+</pre>
+
+<p>O <code>config.txt</code> continua aparecendo como modificado (<code>M</code>), e o <code>check-ignore</code> diz que ele <strong>não</strong> é ignorado. A regra é: <strong>o <code>.gitignore</code> só vale para arquivos que o Git ainda não rastreia</strong>. Ele é a lista do porteiro para visitas novas; quem já mora no prédio (já foi commitado) entra e sai sem passar pela lista.</p>
+
+<p>O <code>--no-index</code> faz o <code>check-ignore</code> olhar só as regras, sem considerar se o arquivo é rastreado, e confirma que a regra está certa:</p>
+
+<pre class="term" data-cwd="~/site">$ git check-ignore -v --no-index config.txt
+.gitignore:13:config.txt	config.txt
+</pre>
+
+<p>Para o Git <strong>parar de rastrear</strong> o arquivo, sem apagá-lo da pasta, use <code>git rm --cached</code>:</p>
+
+<pre class="term" data-cwd="~/site">$ git rm --cached config.txt
+rm 'config.txt'
+$ git status --short
+ M .gitignore
+D  config.txt
+?? importante.log
+</pre>
+
+<p>O <code>D</code> (de <em>deleted</em>) na primeira coluna diz que, no próximo commit, o <code>config.txt</code> <strong>sai do repositório</strong>. Mas ele continua na pasta da Ana, e, como está no <code>.gitignore</code>, não aparece mais como <code>??</code>. Falta só o commit (do <code>.gitignore</code> e da remoção). Os detalhes do <code>git rm --cached</code> estão na próxima aula, <a href="git-rm.html">git rm</a>.</p>
+
+<div class="warning">
+<strong>E se o arquivo era uma senha?</strong>
+<p>O <code>git rm --cached</code> tira o arquivo dos <strong>próximos</strong> commits, mas os commits antigos continuam com ele: qualquer um com acesso ao histórico ainda lê a senha. Troque a senha imediatamente e veja <a href="senha-commitada.html">Commitei uma Senha! E Agora?</a>. Por isso o <code>.gitignore</code> deve ser o <strong>primeiro</strong> arquivo de um projeto novo.</p>
+</div>
+
+<hr>
+
+<h2>9. Outros lugares para ignorar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Onde</th><th>Vale para</th><th>Vai no commit?</th><th>Use para</th></tr>
+<tr><td><code>.gitignore</code> na raiz</td><td>o repositório inteiro</td><td>sim</td><td>o que ninguém do projeto deve commitar (logs, <code>.env</code>, <code>build/</code>)</td></tr>
+<tr><td><code>.gitignore</code> numa subpasta</td><td>aquela pasta e as de dentro</td><td>sim</td><td>regras de uma parte do projeto (os caminhos são relativos a ela)</td></tr>
+<tr><td><code>.git/info/exclude</code></td><td>só o seu clone deste repositório</td><td><strong>não</strong></td><td>coisas suas, num projeto dos outros (seus rascunhos)</td></tr>
+<tr><td>arquivo do <code>core.excludesFile</code></td><td>todos os seus repositórios</td><td><strong>não</strong></td><td>lixo do seu sistema e do seu editor (<code>.DS_Store</code>, <code>*.swp</code>)</td></tr>
+</table>
+</div>
+
+<p>O <code>.git/info/exclude</code> já vem criado pelo <code>git init</code>, só com comentários em inglês:</p>
+<pre class="term" data-cwd="~/site">$ cat .git/info/exclude
+# git ls-files --others --exclude-from=.git/info/exclude
+# Lines that start with '#' are comments.
+# For a project mostly in C, the following would be a good set of
+# exclude patterns (uncomment them if you want to use them):
+# *.[oa]
+# *~
+</pre>
+<p>Basta acrescentar as suas regras no fim, no mesmo formato do <code>.gitignore</code>.</p>
+
+<p>Para um <code>.gitignore</code> que vale em <strong>todos</strong> os seus projetos, crie um arquivo (o nome é livre; por exemplo, <code>~/.gitignore_global</code>) e diga ao Git onde ele está, uma vez só:</p>
+<pre class="term">$ git config --global core.excludesFile ~/.gitignore_global
+</pre>
+<p>(O comando não mostra nada quando dá certo.) A configuração em si está na aula <a href="git-config.html">git config</a>.</p>
+
+<hr>
+
+<h2 id="formas">Formas diferentes, e qual usar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Você quer…</th><th>Use</th></tr>
+<tr><td>Que <strong>ninguém</strong> do projeto commite certos arquivos</td><td><code>.gitignore</code> na raiz, commitado</td></tr>
+<tr><td>Ignorar algo só no <strong>seu</strong> computador, num projeto</td><td><code>.git/info/exclude</code></td></tr>
+<tr><td>Ignorar lixo do seu sistema em <strong>todos</strong> os projetos</td><td><code>core.excludesFile</code></td></tr>
+<tr><td>Parar de rastrear um arquivo já commitado</td><td><code>.gitignore</code> + <code>git rm --cached arquivo</code> + commit</td></tr>
+<tr><td>Commitar um arquivo ignorado, uma vez</td><td><code>git add -f arquivo</code></td></tr>
+<tr><td>Saber por que um arquivo está (ou não) sendo ignorado</td><td><code>git check-ignore -v arquivo</code></td></tr>
+<tr><td>Não começar do zero</td><td>Modelos prontos por linguagem: veja <a href="ref-gitignore.html">Modelos de .gitignore</a> (o GitHub também oferece um modelo ao criar o repositório; aula <a href="github-repositorio.html">Criando um Repositório no GitHub</a>)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>git add</code> recusa: "Os caminhos a seguir são ignorados…"</strong>
+<pre class="term" data-cwd="~/site">$ git add .env
+Os caminhos a seguir são ignorados por um dos seus arquivos .gitignore:
+.env
+hint: Use -f if you really want to add them.
+hint: Disable this message with "git config set advice.addIgnoredFile false"
+</pre>
+<p><strong>O que aconteceu:</strong> o arquivo está na lista. <strong>Como confirmar:</strong> <code>git check-ignore -v .env</code> mostra a regra e a linha. <strong>Como resolver:</strong> se ele não deveria ser ignorado, apague ou corrija a regra; se deveria (e é uma senha), comemore: o <code>.gitignore</code> acabou de salvar você. Só use <code>git add -f</code> se tiver certeza.</p>
+</div>
+
+<div class="cenario">
+<strong>O arquivo está no <code>.gitignore</code> e continua aparecendo como modificado</strong>
+<p><strong>O que aconteceu:</strong> ele já era rastreado (seção 8). <strong>Como confirmar:</strong> <code>git ls-files</code> lista o arquivo; <code>git check-ignore -v arquivo</code> não mostra nada, e <code>git check-ignore -v --no-index arquivo</code> mostra a regra. <strong>Como resolver:</strong> <code>git rm --cached arquivo</code> e commit.</p>
+</div>
+
+<div class="cenario">
+<strong>A regra "não pega" arquivos de subpastas</strong>
+<p><strong>O que aconteceu:</strong> a regra tem uma barra no começo ou no meio (<code>/todo.txt</code>, <code>fotos/*.jpg</code>), então vale só a partir da pasta do <code>.gitignore</code>, e o <code>*</code> não entra em subpastas (seção 5). <strong>Como confirmar:</strong> <code>git check-ignore -v caminho/do/arquivo</code> não responde nada. <strong>Como resolver:</strong> tire a barra do começo, ou use <code>**</code> (<code>fotos/**/*.jpg</code>).</p>
+</div>
+
+<div class="cenario">
+<strong>O <code>.gitignore</code> não faz efeito nenhum</strong>
+<p>Confira o <strong>nome</strong> do arquivo com <code>ls -a</code>: tem de ser exatamente <code>.gitignore</code>. Erros comuns: <code>gitignore</code> sem o ponto, <code>.gitignore.txt</code> (o Bloco de Notas do Windows acrescenta o <code>.txt</code> sozinho; na janela "Salvar como", escolha "Todos os arquivos"), <code>.gitingore</code> (letras trocadas) ou o arquivo salvo fora da pasta do projeto.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando / regra</th><th>O que faz</th></tr>
+<tr><td><code># comentário</code></td><td>Linha ignorada (explique as suas regras)</td></tr>
+<tr><td><code>nome</code></td><td>Ignora arquivos e pastas com esse nome, em qualquer nível</td></tr>
+<tr><td><code>*.ext</code></td><td>Ignora tudo que termina em <code>.ext</code></td></tr>
+<tr><td><code>pasta/</code></td><td>Ignora pastas com esse nome e tudo dentro delas</td></tr>
+<tr><td><code>/nome</code></td><td>Só na pasta do <code>.gitignore</code> (a raiz)</td></tr>
+<tr><td><code>a/**/b</code></td><td><code>**</code> = qualquer número de pastas</td></tr>
+<tr><td><code>!nome</code></td><td>Exceção: volta a não ignorar (depois da regra que ela contraria)</td></tr>
+<tr><td><code>git status --ignored</code></td><td>Mostra também os ignorados (<code>!!</code> no <code>--short</code>)</td></tr>
+<tr><td><code>git check-ignore -v arquivo</code></td><td>Mostra qual regra (arquivo:linha:padrão) ignora o arquivo</td></tr>
+<tr><td><code>git add -f arquivo</code></td><td>Prepara mesmo ignorado</td></tr>
+<tr><td><code>git rm --cached arquivo</code></td><td>Para de rastrear, sem apagar da pasta</td></tr>
+<tr><td><code>.git/info/exclude</code></td><td>Regras só suas, neste repositório (não vão no commit)</td></tr>
+<tr><td><code>git config --global core.excludesFile ~/.gitignore_global</code></td><td>Regras só suas, em todos os repositórios</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Escreva a regra</h3>
+<p>Complete as linhas do <code>.gitignore</code>:</p>
+<div class="ex-code">Todos os arquivos terminados em .tmp: <input data-answer="*.tmp" aria-label="regra para .tmp"><br>A pasta node_modules inteira: <input data-answer="node_modules/|node_modules" aria-label="regra para node_modules"><br>Exceção para manter o leiame.tmp: <input data-answer="!leiame.tmp" aria-label="exceção"></div>
+</div>
+
+<div class="exercise">
+<h3>2. Qual comando?</h3>
+<p>Complete o comando que mostra qual regra está ignorando o <code>erro.log</code>:</p>
+<div class="ex-code">git <input data-answer="check-ignore" aria-label="subcomando"> -v erro.log</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. O <code>senhas.txt</code> foi commitado ontem. Hoje a Ana pôs <code>senhas.txt</code> no <code>.gitignore</code>. O que acontece?</p>
+<label><input type="radio" name="q3"> O Git apaga o arquivo do histórico</label>
+<label><input type="radio" name="q3"> O Git passa a ignorar o arquivo imediatamente</label>
+<label><input type="radio" name="q3"> Nada muda: o arquivo já é rastreado; é preciso <code>git rm --cached senhas.txt</code> (e trocar a senha, que continua no histórico)</label>
+<label><input type="radio" name="q3"> O Git apaga o arquivo da pasta</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. Com a regra <code>/todo.txt</code>, qual destes é ignorado?</p>
+<label><input type="radio" name="q4"> <code>notas/todo.txt</code></label>
+<label><input type="radio" name="q4"> <code>todo.txt</code> (na raiz do repositório)</label>
+<label><input type="radio" name="q4"> Os dois</label>
+<label><input type="radio" name="q4"> Nenhum: a barra no começo é erro</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">5. O <code>.gitignore</code> deve ser commitado?</p>
+<label><input type="radio" name="q5"> Não, ele é pessoal</label>
+<label><input type="radio" name="q5"> Não, o Git ignora o próprio <code>.gitignore</code></label>
+<label><input type="radio" name="q5"> Só se o repositório for público</label>
+<label><input type="radio" name="q5"> Sim: assim as regras valem para todo mundo que clonar o projeto</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O <code>.gitignore</code> (na raiz, com esse nome exato) lista o que o Git deve fingir que não vê: senhas, arquivos gerados, dependências, lixo do sistema, rascunhos.</li>
+  <li>Regras: <code>#</code> comentário, <code>nome</code>, <code>*.ext</code>, <code>pasta/</code>, <code>/só-na-raiz</code>, <code>**</code> para qualquer profundidade, <code>!exceção</code>.</li>
+  <li>Commite o <code>.gitignore</code>: as regras passam a valer para todo o projeto.</li>
+  <li><code>git status --ignored</code> mostra os ignorados; <code>git check-ignore -v</code> mostra qual regra ignorou cada um.</li>
+  <li>O <code>.gitignore</code> não vale para arquivos já rastreados: use <code>git rm --cached</code> (e, se era senha, troque a senha).</li>
+  <li><code>git add -f</code> força um arquivo ignorado; <code>.git/info/exclude</code> e <code>core.excludesFile</code> guardam regras só suas.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
