@@ -57,11 +57,11 @@ No ramo receita-pudim
 Changes not staged for commit:
   (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
   (use "git restore &lt;file&gt;..." to discard changes in working directory)
-	modified:   pudim.md
+        modified:   pudim.md
 
 Arquivos não monitorados:
   (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
-	notas.txt
+        notas.txt
 
 nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
 </pre>
@@ -89,16 +89,8 @@ HEAD is now at ec8392a Adiciona receita de bolo
 /home/ana/receitas         1934126 [receita-pudim]       « a principal
 /home/ana/receitas-corrige ec8392a [corrige-link]        « a nova
 $ ls ..
-Documentos
-Downloads
-Imagens
-Modelos
-Música
-Público
-Vídeos
-receitas
-receitas-corrige
-Área de trabalho
+ Documentos   Imagens   Música    Vídeos     receitas-corrige
+ Downloads    Modelos   Público   receitas  'Área de trabalho'
 </pre>
 
 <hr>
@@ -107,9 +99,7 @@ receitas-corrige
 <p>Basta entrar nela. Para o Git, ela é uma pasta de repositório como qualquer outra:</p>
 <pre class="term" data-cwd="~/receitas">$ cd ../receitas-corrige
 $ ls
-README.md
-bolo.md
-index.md                                   « sem pudim.md nem notas.txt: aqui é a main
+README.md  bolo.md  index.md               « sem pudim.md nem notas.txt: aqui é a main
 $ git status
 No ramo corrige-link
 nothing to commit, working tree clean      « "nada a commitar, pasta limpa"
@@ -128,10 +118,10 @@ $ git status --short
  M pudim.md                                « tudo como a Ana deixou
 ?? notas.txt
 $ git log --oneline --graph --all
-* b64663e Corrige link do bolo             « o commit feito na outra pasta
-| * 1934126 Começa a receita de pudim
+* b64663e (corrige-link) Corrige link do bolo             « o commit feito na outra pasta
+| * 1934126 (HEAD -&gt; receita-pudim) Começa a receita de pudim
 |/
-* ec8392a Adiciona receita de bolo
+* ec8392a (main) Adiciona receita de bolo
 * a56584f Cria o site de receitas
 </pre>
 <p>Agora o <code>corrige-link</code> segue o caminho normal: <code>git push -u origin corrige-link</code> e um <a href="pull-request.html">pull request</a>, como no <a href="github-flow.html">GitHub Flow</a>. Tudo isso pode ser feito de qualquer uma das duas pastas.</p>

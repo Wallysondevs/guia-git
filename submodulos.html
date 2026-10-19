@@ -53,6 +53,11 @@
 <p>O repositório <code>estilos</code> já está no GitHub da Ana. Na pasta do site de receitas:</p>
 <pre class="term" data-cwd="~/receitas">$ git submodule add https://github.com/ana-souza/estilos.git estilos
 Cloning into '/home/ana/receitas/estilos'...
+remote: Enumerating objects: 4, done.
+remote: Counting objects: 100% (4/4), done.
+remote: Compressing objects: 100% (2/2), done.
+remote: Total 4 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+Receiving objects: 100% (4/4), done.
 </pre>
 <dl class="anatomy">
   <dt>git submodule add</dt><dd>"Acrescente um submódulo."</dd>
@@ -67,16 +72,15 @@ Your branch is up to date with 'origin/main'.
 
 Mudanças a serem submetidas:
   (use "git restore --staged &lt;file&gt;..." to unstage)
-	new file:   .gitmodules                  « arquivo novo: a lista de submódulos
-	new file:   estilos                      « a pasta aparece como UM item, não como arquivos
+        new file:   .gitmodules                  « arquivo novo: a lista de submódulos
+        new file:   estilos                      « a pasta aparece como UM item, não como arquivos
 
 $ cat .gitmodules
 [submodule "estilos"]
-	path = estilos
-	url = https://github.com/ana-souza/estilos.git
+        path = estilos
+        url = https://github.com/ana-souza/estilos.git
 $ ls estilos
-README.md
-estilo.css
+README.md  estilo.css
 </pre>
 <p>O <code>git submodule add</code> já deixou duas coisas na área de preparo (<em>Mudanças a serem submetidas</em>):</p>
 <ul>
@@ -104,6 +108,12 @@ index 0000000..05a34b8
 $ git submodule status
  05a34b807cfbac6a88c8e4e8d986086f3bc0f4ef estilos (heads/main)
 $ git push
+Enumerating objects: 4, done.
+Counting objects: 100% (4/4), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (3/3), done.
+Writing objects: 100% (3/3), 440 bytes | 440.00 KiB/s, done.
+Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
 To https://github.com/ana-souza/receitas.git
    2cbd07a..b5287c9  main -&gt; main
 </pre>
@@ -125,6 +135,11 @@ To https://github.com/ana-souza/receitas.git
 <p>Aqui está a pegadinha mais famosa dos submódulos. Um <code>git clone</code> comum traz o superprojeto, mas deixa a pasta do submódulo <strong>vazia</strong>:</p>
 <pre class="term">$ git clone https://github.com/ana-souza/receitas.git copia
 Cloning into 'copia'...
+remote: Enumerating objects: 7, done.
+remote: Counting objects: 100% (7/7), done.
+remote: Compressing objects: 100% (6/6), done.
+remote: Total 7 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+Receiving objects: 100% (7/7), done.
 $ cd copia
 $ ls estilos
 $ git submodule status
@@ -136,8 +151,7 @@ Submodule 'estilos' (https://github.com/ana-souza/estilos.git) registered for pa
 Cloning into '/home/ana/copia/estilos'...
 Submodule path 'estilos': checked out '05a34b807cfbac6a88c8e4e8d986086f3bc0f4ef'
 $ ls estilos
-README.md
-estilo.css
+README.md  estilo.css
 $ git submodule status
  05a34b807cfbac6a88c8e4e8d986086f3bc0f4ef estilos (heads/main)
 </pre>
@@ -150,8 +164,18 @@ $ git submodule status
 <p>Ou, já no clone, tudo de uma vez:</p>
 <pre class="term">$ git clone --recurse-submodules https://github.com/ana-souza/receitas.git copia2
 Cloning into 'copia2'...
+remote: Enumerating objects: 7, done.
+remote: Counting objects: 100% (7/7), done.
+remote: Compressing objects: 100% (6/6), done.
+remote: Total 7 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+Receiving objects: 100% (7/7), done.
 Submodule 'estilos' (https://github.com/ana-souza/estilos.git) registered for path 'estilos'
 Cloning into '/home/ana/copia2/estilos'...
+remote: Enumerating objects: 4, done.
+remote: Counting objects: 100% (4/4), done.
+remote: Compressing objects: 100% (2/2), done.
+remote: Total 4 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+Receiving objects: 100% (4/4), done.
 Submodule path 'estilos': checked out '05a34b807cfbac6a88c8e4e8d986086f3bc0f4ef'
 </pre>
 <p>O <code>--recurse-submodules</code> ("recursivamente, com os submódulos") clona o superprojeto e, em seguida, faz o <code>submodule update --init</code> sozinho.</p>
@@ -176,6 +200,11 @@ nothing to commit, working tree clean
 <h2>3. Atualizar o submódulo</h2>
 <p>O Bruno melhorou o repositório <code>estilos</code>: os títulos agora são vermelho-escuros. O site de receitas <strong>não</strong> muda sozinho: ele continua apontando para <code>05a34b8</code>, a "edição de março". Trocar de edição é uma decisão, e vira um commit.</p>
 <pre class="term" data-cwd="~/receitas">$ git submodule update --remote
+remote: Enumerating objects: 5, done.
+remote: Counting objects: 100% (5/5), done.
+remote: Compressing objects: 100% (3/3), done.
+remote: Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (3/3), 333 bytes | 333.00 KiB/s, done.
 From https://github.com/ana-souza/estilos
    05a34b8..f9b6a7d  main       -&gt; origin/main
 Submodule path 'estilos': checked out 'f9b6a7d1394ce388dd9c4b0f8cd62ffbe4fda17a'
@@ -186,7 +215,7 @@ Your branch is up to date with 'origin/main'.
 Changes not staged for commit:
   (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
   (use "git restore &lt;file&gt;..." to discard changes in working directory)
-	modified:   estilos (novas submissões)
+        modified:   estilos (novas submissões)
 
 nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
 $ git diff
@@ -209,6 +238,12 @@ $ git commit -m "Atualiza os estilos"
 [main 6864716] Atualiza os estilos
  1 file changed, 1 insertion(+), 1 deletion(-)
 $ git push
+Enumerating objects: 3, done.
+Counting objects: 100% (3/3), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (2/2), done.
+Writing objects: 100% (2/2), 252 bytes | 252.00 KiB/s, done.
+Total 2 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)
 To https://github.com/ana-souza/receitas.git
    b5287c9..6864716  main -&gt; main
 </pre>
@@ -216,6 +251,11 @@ To https://github.com/ana-souza/receitas.git
 <h3>Do outro lado: trazendo a atualização</h3>
 <p>Na pasta <code>copia</code>, um <code>git pull</code> traz o ponteiro novo, mas <strong>não</strong> muda a pasta do submódulo:</p>
 <pre class="term" data-cwd="~/copia">$ git pull
+remote: Enumerating objects: 3, done.
+remote: Counting objects: 100% (3/3), done.
+remote: Compressing objects: 100% (2/2), done.
+remote: Total 2 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (2/2), 232 bytes | 232.00 KiB/s, done.
 From https://github.com/ana-souza/receitas
    b5287c9..6864716  main       -&gt; origin/main
 Fetching submodule estilos
@@ -232,7 +272,7 @@ Your branch is up to date with 'origin/main'.
 Changes not staged for commit:
   (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
   (use "git restore &lt;file&gt;..." to discard changes in working directory)
-	modified:   estilos (novas submissões)
+        modified:   estilos (novas submissões)
 
 nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
 </pre>
@@ -254,6 +294,11 @@ h1 { color: darkred; }                       « a mudança do Bruno chegou
 <p>Com a configuração <code>submodule.recurse</code> ligada, o <code>git pull</code> (e o <code>git switch</code>, entre outros) faz o <code>submodule update</code> sozinho. Em outra cópia, a <code>copia2</code>:</p>
 <pre class="term" data-cwd="~/copia2">$ git config submodule.recurse true
 $ git pull
+remote: Enumerating objects: 3, done.
+remote: Counting objects: 100% (3/3), done.
+remote: Compressing objects: 100% (2/2), done.
+remote: Total 2 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (2/2), 232 bytes | 232.00 KiB/s, done.
 From https://github.com/ana-souza/receitas
    b5287c9..6864716  main       -&gt; origin/main
 Fetching submodule estilos
@@ -280,13 +325,12 @@ Your branch is up to date with 'origin/main'.
 
 Mudanças a serem submetidas:
   (use "git restore --staged &lt;file&gt;..." to unstage)
-	modified:   .gitmodules                « a entrada do estilos saiu do .gitmodules
-	deleted:    estilos
+        modified:   .gitmodules                « a entrada do estilos saiu do .gitmodules
+        deleted:    estilos
 
 $ cat .gitmodules
 $ ls
-README.md
-index.html
+README.md  index.html
 </pre>
 <p>O <code>git rm</code> (veja <a href="git-rm.html">git rm</a>) apagou a pasta e já tirou o submódulo do <code>.gitmodules</code>, que ficou vazio. Falta só o commit (<code>git commit -m "Remove o submódulo estilos"</code>). Uma cópia do repositório do submódulo continua guardada dentro de <code>.git/modules/estilos</code>, para o caso de você voltar a um commit antigo que ainda o usa.</p>
 

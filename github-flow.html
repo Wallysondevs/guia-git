@@ -80,6 +80,11 @@ corrige-titulo:       E───────┘
 Already on 'main'
 Your branch is up to date with 'origin/main'.
 $ git pull
+remote: Enumerating objects: 6, done.
+remote: Counting objects: 100% (6/6), done.
+remote: Compressing objects: 100% (3/3), done.
+remote: Total 4 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (4/4), 434 bytes | 434.00 KiB/s, done.
 From https://github.com/ana-souza/receitas
    671b2ef..c451956  main       -&gt; origin/main
 Updating 671b2ef..c451956
@@ -94,6 +99,7 @@ Fast-forward
 <dl class="anatomy">
   <dt>Already on 'main'</dt><dd>"Já está na <code>main</code>": ela já estava lá, nada mudou.</dd>
   <dt>Your branch is up to date with 'origin/main'.</dt><dd>"O seu branch está em dia com a <code>origin/main</code>". Cuidado: isso compara com o que o seu Git <strong>sabia</strong> do GitHub da última vez, não com o GitHub de agora. Por isso vem o <code>git pull</code>.</dd>
+  <dt>remote: … / Unpacking objects: 100% …</dt><dd>O progresso do download: o GitHub (<code>remote:</code>) conta e empacota os objetos novos, e o seu Git os desempacota. Os números e a velocidade mudam a cada vez; não precisa decorar nada disso (veja <a href="git-fetch.html">git fetch</a>).</dd>
   <dt>671b2ef..c451956  main -&gt; origin/main</dt><dd>O <code>git pull</code> buscou novidades: a <code>main</code> do GitHub andou de <code>671b2ef</code> para <code>c451956</code>. Foi o Bruno, que tinha mesclado a receita de brigadeiro.</dd>
   <dt>Fast-forward</dt><dd>A <code>main</code> da Ana só precisou "andar para a frente" até o commit novo (veja <a href="fast-forward.html">Merge Fast-forward</a>).</dd>
   <dt>create mode 100644 brigadeiro.md</dt><dd>Chegou um arquivo novo, o da receita do Bruno.</dd>
@@ -101,7 +107,7 @@ Fast-forward
 
 <div class="note">
 <strong>Mensagens em inglês no meio das em português?</strong>
-<p>É assim mesmo no Git do Ubuntu da Ana (Git 2.53): algumas mensagens ainda não têm tradução para o português e saem em inglês, como <code>Already on 'main'</code>. Esta aula mostra as mensagens exatamente como o Git mostrou e traduz cada uma.</p>
+<p>É assim mesmo no Git do Ubuntu da Ana (Git 2.53): a tradução do Git no Ubuntu é parcial, e algumas mensagens saem em inglês, como <code>Already on 'main'</code> (em outros sistemas, como Windows e macOS, as frases podem ser diferentes ou estar todas em inglês). Esta aula mostra as mensagens exatamente como o Git mostrou e traduz cada uma.</p>
 </div>
 
 <hr>
@@ -156,6 +162,12 @@ $ git log --oneline --graph --all --decorate
 <h2>Passo 3: envie o branch para o GitHub</h2>
 
 <pre class="term" data-cwd="~/receitas">$ git push -u origin receita-pudim
+Enumerating objects: 8, done.
+Counting objects: 100% (8/8), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (6/6), done.
+Writing objects: 100% (6/6), 681 bytes | 681.00 KiB/s, done.
+Total 6 (delta 2), reused 0 (delta 0), pack-reused 0 (from 0)
 remote:
 remote: Create a pull request for 'receita-pudim' on GitHub by visiting:
 remote:      https://github.com/ana-souza/receitas/pull/new/receita-pudim
@@ -179,6 +191,7 @@ nothing to commit, working tree clean
 
 <p>Linha por linha:</p>
 <dl class="anatomy">
+  <dt>Enumerating objects … Total 6 …</dt><dd>O progresso do envio: o Git conta, comprime e escreve os "objetos" (os commits e os arquivos) que o GitHub ainda não tem. Os números mudam de caso para caso (veja <a href="git-push.html">git push</a>).</dd>
   <dt>remote: Create a pull request for 'receita-pudim' on GitHub by visiting:</dt><dd>As linhas que começam com <code>remote:</code> não são do seu Git: são o <strong>GitHub</strong> falando (por isso vêm em inglês, qualquer que seja a língua do seu sistema). Ele diz: "crie um pull request para <code>receita-pudim</code> no GitHub visitando:" e dá o endereço. É o atalho para o Passo 4.</dd>
   <dt>* [new branch] receita-pudim -&gt; receita-pudim</dt><dd>"Branch novo": o GitHub não tinha um <code>receita-pudim</code>, e agora tem.</dd>
   <dt>branch 'receita-pudim' set up to track 'origin/receita-pudim'.</dt><dd>"O branch passou a acompanhar a <code>origin/receita-pudim</code>": é o efeito do <code>-u</code>.</dd>
@@ -208,6 +221,12 @@ $ git commit -am "Adiciona tempo de forno do pudim"
 [receita-pudim 0def83b] Adiciona tempo de forno do pudim
  1 file changed, 1 insertion(+)
 $ git push
+Enumerating objects: 5, done.
+Counting objects: 100% (5/5), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (3/3), done.
+Writing objects: 100% (3/3), 368 bytes | 368.00 KiB/s, done.
+Total 3 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)
 To https://github.com/ana-souza/receitas.git
    8ef4f17..0def83b  receita-pudim -&gt; receita-pudim    « o branch no GitHub andou: o pull request já mostra o commit novo
 </pre>
@@ -240,6 +259,10 @@ To https://github.com/ana-souza/receitas.git
 Switched to branch 'main'
 Your branch is up to date with 'origin/main'.
 $ git pull
+remote: Enumerating objects: 1, done.
+remote: Counting objects: 100% (1/1), done.
+remote: Total 1 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (1/1), 235 bytes | 235.00 KiB/s, done.
 From https://github.com/ana-souza/receitas
    c451956..a8d3cfd  main       -&gt; origin/main
 Updating c451956..a8d3cfd
@@ -263,7 +286,7 @@ $ git branch -a
   remotes/origin/HEAD -&gt; origin/main
   remotes/origin/main
 $ git log --oneline --graph
-*   a8d3cfd Merge pull request #1 from ana-souza/receita-pudim
+*   a8d3cfd (HEAD -&gt; main, origin/main, origin/HEAD) Merge pull request #1 from ana-souza/receita-pudim
 |\
 | * 0def83b Adiciona tempo de forno do pudim
 | * 8ef4f17 Adiciona pudim ao índice

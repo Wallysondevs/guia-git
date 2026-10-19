@@ -66,13 +66,13 @@ bom                                              ruim
 <pre class="term" data-cwd="~/receitas">$ sh formas.sh 2
 Para 2 formas: 5 ovos                    « errado: 2 formas × 3 ovos = 6
 $ git log --oneline
-a06fdb5 Adiciona índice das receitas
+a06fdb5 (HEAD -&gt; main) Adiciona índice das receitas
 809abb2 Adiciona receita de mousse
 05b0fcf Melhora a descrição do README
 95263d8 Adiciona receita de quindim
 57a80f9 Guarda os ovos por forma numa variável
 9abbd4a Adiciona receita de brigadeiro
-79398d7 Adiciona receita de pudim         « aqui está a tag v1.0, que funcionava
+79398d7 (tag: v1.0) Adiciona receita de pudim        « a versão 1.0, que funcionava
 69e4c4f Adiciona calculadora de formas
 c8ee073 Adiciona receita de bolo de cenoura
 a56584f Cria o site de receitas
@@ -304,7 +304,7 @@ $ sh formas.sh 2
 Para 2 formas: 5 ovos
 $ git bisect bad
 05b0fcf7c89b8d4938c1f186c63d8bbd631a2ebb is the first bad commit
-commit 05b0fcf7c89b8d4938c1f186c63d8bbd631a2ebb
+commit 05b0fcf7c89b8d4938c1f186c63d8bbd631a2ebb (HEAD)
 Author: Ana Souza &lt;ana@exemplo.com&gt;
 Date:   Thu Oct 15 10:30:00 2026 -0300
 
@@ -313,7 +313,7 @@ Date:   Thu Oct 15 10:30:00 2026 -0300
  README.md | 2 ++
  1 file changed, 2 insertions(+)
 </pre>
-<p><strong>O que aconteceu:</strong> o Git confia nas respostas. Um <code>good</code> errado descarta justamente a metade onde estava o culpado. <strong>Como desconfiar:</strong> o "culpado" só mexeu no <code>README.md</code>, que nada tem a ver com a conta. <strong>Como confirmar:</strong> o <code>git bisect log</code> mostra cada resposta com o commit. <strong>Como resolver:</strong> <code>git bisect reset</code> e comece de novo, com mais atenção, ou use o <code>git bisect run</code>, que não se distrai.</p>
+<p>(O <code>(HEAD)</code> ao lado do hash só diz que esse commit é o que está na pasta agora.) <strong>O que aconteceu:</strong> o Git confia nas respostas. Um <code>good</code> errado descarta justamente a metade onde estava o culpado. <strong>Como desconfiar:</strong> o "culpado" só mexeu no <code>README.md</code>, que nada tem a ver com a conta. <strong>Como confirmar:</strong> o <code>git bisect log</code> mostra cada resposta com o commit. <strong>Como resolver:</strong> <code>git bisect reset</code> e comece de novo, com mais atenção, ou use o <code>git bisect run</code>, que não se distrai.</p>
 </div>
 
 <div class="cenario">

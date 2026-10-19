@@ -229,11 +229,11 @@ Deleted branch hotfix/1.0.1 (was 951613d).
 </ul>
 <p>Para ver só a "linha principal" de cada branch, use <code>--first-parent</code> ("só o primeiro pai"): o Git segue cada branch sem entrar nos galhos que foram mesclados nele.</p>
 <pre class="term" data-cwd="~/receitas">$ git log --oneline --first-parent main
-e8e767a Merge branch 'hotfix/1.0.1'            « versão 1.0.1
-13fdc37 Merge branch 'release/1.0'             « versão 1.0
+e8e767a (tag: v1.0.1, main) Merge branch 'hotfix/1.0.1'      « versão 1.0.1
+13fdc37 (tag: v1.0) Merge branch 'release/1.0'             « versão 1.0
 072d2e8 Primeira versão do site
 $ git log --oneline --first-parent develop
-da8ec74 Merge branch 'hotfix/1.0.1' into develop
+da8ec74 (HEAD -&gt; develop) Merge branch 'hotfix/1.0.1' into develop
 3790835 Adiciona receita de brigadeiro
 2bc7651 Merge branch 'release/1.0' into develop
 c35d8d5 Merge branch 'feature/pudim' into develop
@@ -312,8 +312,8 @@ merge: hotfix/1.0.2 - not something we can merge
 </pre>
 <p>"<code>hotfix/1.0.2</code> não é algo que dê para mesclar": o branch não existe mais. (O <code>-d</code> deixou apagar porque o trabalho estava mesclado na <code>main</code>, que era onde ela estava.) <strong>Como confirmar</strong> o que a <code>main</code> tem e a <code>develop</code> não tem: <code>git log develop..main</code> ("o que está na <code>main</code> e não está na <code>develop</code>"):</p>
 <pre class="term" data-cwd="~/receitas">$ git log --oneline develop..main
-6ae843b Merge branch 'hotfix/1.0.2'
-e8e767a Merge branch 'hotfix/1.0.1'
+6ae843b (main) Merge branch 'hotfix/1.0.2'
+e8e767a (tag: v1.0.1) Merge branch 'hotfix/1.0.1'
 6637138 Corrige versão                   « a correção que a develop não tem
 </pre>
 <p><strong>Como resolver:</strong> mescle a própria <code>main</code> na <code>develop</code>. Isso leva tudo o que foi lançado, inclusive o hotfix esquecido:</p>

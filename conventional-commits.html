@@ -123,7 +123,7 @@ $ git commit -am "docs: explica como contribuir no README"
  1 file changed, 1 insertion(+)
  create mode 100644 busca.txt
 $ git log -1
-commit d0e7d7ce7be446feaf08233756cd5fa4230de6d0
+commit d0e7d7ce7be446feaf08233756cd5fa4230de6d0 (HEAD -&gt; main)
 Author: Ana Souza &lt;ana@exemplo.com&gt;
 Date:   Thu Oct 15 10:30:00 2026 -0300
 
@@ -161,7 +161,7 @@ bash:  : unrecognized history modifier
 <h2>4. Filtrando o histórico pelo tipo</h2>
 <p>Com o formato, o <code>git log</code> vira um índice. O histórico da Ana:</p>
 <pre class="term" data-cwd="~/receitas">$ git log --oneline
-d0e7d7c feat(busca)!: busca receitas pelo nome do ingrediente
+d0e7d7c (HEAD -&gt; main) feat(busca)!: busca receitas pelo nome do ingrediente
 a8e5d96 docs: explica como contribuir no README
 14b8e2b fix(index): corrige link do bolo
 45d0c75 feat: adiciona receita de pudim
@@ -169,12 +169,12 @@ a8e5d96 docs: explica como contribuir no README
 </pre>
 <p>A opção <code>--grep</code> mostra só os commits cuja mensagem casa com um padrão (veja <a href="log-filtros.html">git log: Filtros e Formatos</a>). O <code>^</code> quer dizer "no começo da linha":</p>
 <pre class="term" data-cwd="~/receitas">$ git log --oneline --grep="^feat"
-d0e7d7c feat(busca)!: busca receitas pelo nome do ingrediente
+d0e7d7c (HEAD -&gt; main) feat(busca)!: busca receitas pelo nome do ingrediente
 45d0c75 feat: adiciona receita de pudim
 $ git log --oneline --grep="^fix"
 14b8e2b fix(index): corrige link do bolo
 $ git log --oneline --grep="BREAKING CHANGE"
-d0e7d7c feat(busca)!: busca receitas pelo nome do ingrediente     « achou pelo rodapé, que não aparece no --oneline
+d0e7d7c (HEAD -&gt; main) feat(busca)!: busca receitas pelo nome do ingrediente     « achou pelo rodapé, que não aparece no --oneline
 </pre>
 <p>Em segundos, a Ana sabe o que entrou de novo (<code>feat</code>), o que foi corrigido (<code>fix</code>) e o que pode quebrar para quem usa o site. Com mensagens como "arrumei umas coisas", isso seria impossível.</p>
 
@@ -212,7 +212,7 @@ d0e7d7c feat(busca)!: busca receitas pelo nome do ingrediente     « achou pelo 
  Date: Thu Oct 15 10:30:00 2026 -0300
  1 file changed, 1 insertion(+)
 $ git log --oneline -2
-0234c44 fix(pudim): acrescenta o leite condensado
+0234c44 (HEAD -&gt; main) fix(pudim): acrescenta o leite condensado
 d0e7d7c feat(busca)!: busca receitas pelo nome do ingrediente
 </pre>
 <p>O commit ganhou um hash novo (<code>0234c44</code> no lugar de <code>fe76230</code>): o <code>--amend</code> troca o commit. Por isso, se ele já foi enviado, deixe como está (veja <a href="regra-de-ouro.html">A Regra de Ouro</a>).</p>
