@@ -56,18 +56,18 @@
 <p>O repositório <code>receitas</code> começou com dois commits no <code>main</code>. A partir deles, a Ana criou o branch <code>novo-layout</code> e fez três commits nele. Depois voltou ao <code>main</code> e acrescentou a receita de pudim. Ela está no <code>main</code>; o <code>git log</code> sem nada mostra o histórico do branch atual, e com o nome de um branch mostra o histórico <strong>daquele</strong> branch:</p>
 
 <pre class="term" data-cwd="~/receitas">$ git log --oneline
-74a4b0b Adiciona a receita de pudim
+74a4b0b (HEAD -&gt; main) Adiciona a receita de pudim
 e0ec859 Adiciona a receita de bolo
 700bbd5 Cria o README
 $ git log --oneline novo-layout
-ac783ac Deixa os títulos roxos
+ac783ac (novo-layout) Deixa os títulos roxos
 d07edbe Corrige o acento de açúcar           « este é o commit que a Ana quer
 7664ece Começa o novo layout
 e0ec859 Adiciona a receita de bolo
 700bbd5 Cria o README
 $ git log --oneline --graph --all
-* 74a4b0b Adiciona a receita de pudim
-| * ac783ac Deixa os títulos roxos
+* 74a4b0b (HEAD -&gt; main) Adiciona a receita de pudim
+| * ac783ac (novo-layout) Deixa os títulos roxos
 | * d07edbe Corrige o acento de açúcar
 | * 7664ece Começa o novo layout
 |/
@@ -75,7 +75,7 @@ $ git log --oneline --graph --all
 * 700bbd5 Cria o README
 </pre>
 
-<p>O <code>--graph --all</code> desenha todos os branches juntos (veja <a href="log-graph.html">Vendo os Galhos</a>). Desenhando com letras, que são só apelidos para os commits:</p>
+<p>Os nomes entre parênteses mostram onde cada branch aponta: <code>HEAD -&gt; main</code> quer dizer "você está no <code>main</code>, e ele está aqui"; <code>novo-layout</code> marca a ponta do outro branch. O <code>--graph --all</code> desenha todos os branches juntos (veja <a href="log-graph.html">Vendo os Galhos</a>). Desenhando com letras, que são só apelidos para os commits:</p>
 <pre>
           C---D---E   novo-layout
          /
@@ -122,9 +122,9 @@ $ git cherry-pick d07edbe
 No ramo main
 nothing to commit, working tree clean
 $ git log --oneline --graph --all
-* 92c2d52 Corrige o acento de açúcar          « a cópia, no main
+* 92c2d52 (HEAD -&gt; main) Corrige o acento de açúcar   « a cópia, no main
 * 74a4b0b Adiciona a receita de pudim
-| * ac783ac Deixa os títulos roxos
+| * ac783ac (novo-layout) Deixa os títulos roxos
 | * d07edbe Corrige o acento de açúcar        « o original continua aqui
 | * 7664ece Começa o novo layout
 |/
@@ -136,9 +136,7 @@ Bolo de cenoura
 - 4 ovos
 - 2 xícaras de açúcar                          « corrigido
 $ ls
-README.md
-bolo.txt
-pudim.txt                                      « nada de estilo.css
+README.md  bolo.txt  pudim.txt                   « nada de estilo.css
 </pre>
 <p>O <code>git status</code> diz "nada a commitar, pasta de trabalho limpa" (<em>nothing to commit, working tree clean</em>): o cherry-pick já fez o commit sozinho, não sobrou nada para você fazer.</p>
 
@@ -173,7 +171,7 @@ CommitDate: Thu Oct 15 10:30:00 2026 -0300
 
     Corrige o acento de açúcar
 $ git log -1 --format=fuller HEAD
-commit 92c2d525f4e6f947e211abbc95655605a94f0624
+commit 92c2d525f4e6f947e211abbc95655605a94f0624 (HEAD -&gt; main)
 Author:     Ana Souza &lt;ana@exemplo.com&gt;
 AuthorDate: Thu Oct 15 10:30:00 2026 -0300
 Commit:     Ana Souza &lt;ana@exemplo.com&gt;
@@ -200,7 +198,7 @@ $ git cherry-pick -x d07edbe
  Date: Thu Oct 15 10:30:00 2026 -0300
  1 file changed, 1 insertion(+), 1 deletion(-)
 $ git log -1
-commit 105eea3748859636df346d08d8485b664affd935
+commit 105eea3748859636df346d08d8485b664affd935 (HEAD -&gt; main)
 Author: Ana Souza &lt;ana@exemplo.com&gt;
 Date:   Thu Oct 15 10:30:00 2026 -0300
 
@@ -227,7 +225,7 @@ $ git cherry-pick 7664ece ac783ac
  Date: Thu Oct 15 10:30:00 2026 -0300
  1 file changed, 1 insertion(+)
 $ git log --oneline
-d95fb33 Deixa os títulos roxos
+d95fb33 (HEAD -&gt; main) Deixa os títulos roxos
 121406f Começa o novo layout
 74a4b0b Adiciona a receita de pudim
 e0ec859 Adiciona a receita de bolo
@@ -252,7 +250,7 @@ $ git cherry-pick 7664ece^..ac783ac
  Date: Thu Oct 15 10:30:00 2026 -0300
  1 file changed, 1 insertion(+)
 $ git log --oneline
-f45de4c Deixa os títulos roxos
+f45de4c (HEAD -&gt; main) Deixa os títulos roxos
 a751422 Corrige o acento de açúcar
 121406f Começa o novo layout
 74a4b0b Adiciona a receita de pudim
@@ -385,7 +383,7 @@ $ git cherry-pick --continue --no-edit
  Date: Thu Oct 15 10:30:00 2026 -0300
  1 file changed, 1 insertion(+), 1 deletion(-)
 $ git log --oneline
-b58ddf9 Corrige o acento de açúcar
+b58ddf9 (HEAD -&gt; main) Corrige o acento de açúcar
 662fdfb Especifica o açúcar refinado
 74a4b0b Adiciona a receita de pudim
 e0ec859 Adiciona a receita de bolo
@@ -428,7 +426,7 @@ $ git status
 No ramo main
 nothing to commit, working tree clean
 $ git log --oneline
-662fdfb Especifica o açúcar refinado
+662fdfb (HEAD -&gt; main) Especifica o açúcar refinado
 74a4b0b Adiciona a receita de pudim
 e0ec859 Adiciona a receita de bolo
 700bbd5 Cria o README
@@ -462,7 +460,7 @@ You are currently cherry-picking commit d07edbe.
 nothing to commit, working tree clean
 $ git cherry-pick --skip
 $ git log --oneline
-92c2d52 Corrige o acento de açúcar
+92c2d52 (HEAD -&gt; main) Corrige o acento de açúcar
 74a4b0b Adiciona a receita de pudim
 e0ec859 Adiciona a receita de bolo
 700bbd5 Cria o README
@@ -533,9 +531,9 @@ fatal: cherry-pick failed
 <div class="cenario">
 <strong>Tentou copiar um commit de merge</strong>
 <pre class="term" data-cwd="~/receitas">$ git log --oneline --graph main
-*   bcbdba7 Merge branch 'pudim-de-chocolate'
+*   bcbdba7 (HEAD -&gt; main) Merge branch 'pudim-de-chocolate'
 |\
-| * e3da56a Adiciona o pudim de chocolate
+| * e3da56a (pudim-de-chocolate) Adiciona o pudim de chocolate
 |/
 * 74a4b0b Adiciona a receita de pudim
 * e0ec859 Adiciona a receita de bolo
