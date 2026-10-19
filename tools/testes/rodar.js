@@ -26,8 +26,8 @@
 var fs = require("fs"), path = require("path"), cp = require("child_process"), crypto = require("crypto");
 var sim = require(path.join(__dirname, "..", "sim.js"));
 var DIR = __dirname, CACHE = path.join(DIR, ".cache-lab.json");
-var LAB = path.join(process.env.HOME || "/home/wallyson", "guia-bash-lab", "lab");
-var LAB_GIT = path.join(process.env.HOME || "/home/wallyson", "guia-git-lab", "lab"); // casos 2*-git*.casos: o Git real do lab do Guia Git
+var LAB = path.join(process.env.HOME || require("os").homedir(), "guia-bash-lab", "lab");
+var LAB_GIT = path.join(process.env.HOME || require("os").homedir(), "guia-git-lab", "lab"); // casos 2*-git*.casos: o Git real do lab do Guia Git
 function ehGit(c) { return /^2\d-git/.test(c.arq); }
 
 function lerCasos(filtro) {

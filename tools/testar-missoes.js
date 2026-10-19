@@ -26,8 +26,8 @@ var fs = require("fs"), path = require("path"), cp = require("child_process"), c
 var RAIZ = path.join(__dirname, "..");
 var BashSim = require(path.join(RAIZ, "assets", "bashsim.js"));
 var sim = require(path.join(__dirname, "sim.js"));
-var LAB = path.join(process.env.HOME || "/home/wallyson", "guia-git-lab", "lab");
-var GITHUB = path.join(process.env.HOME || "/home/wallyson", "guia-git-lab", "github");
+var LAB = path.join(process.env.HOME || require("os").homedir(), "guia-git-lab", "lab");
+var GITHUB = path.join(process.env.HOME || require("os").homedir(), "guia-git-lab", "github");
 var CACHE_NATIVO = path.join(__dirname, ".cache-nativo.json");
 // um nome de lab por processo: vários autores podem rodar o --nativo ao mesmo tempo
 var NOME_NATIVO = "testes-nativo-" + process.pid;
