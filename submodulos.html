@@ -109,8 +109,14 @@ To https://github.com/ana-souza/receitas.git
 </pre>
 <p>O <code>git submodule status</code> lista cada submódulo: o commit em uso, a pasta e, entre parênteses, um nome para aquele commit (aqui, o branch <code>main</code> do <code>estilos</code>). No GitHub (ilustrativo), a pasta <code>estilos</code> aparece com um ícone diferente e o nome seguido de <code>@</code> e do começo do hash, e funciona como um link para o repositório <code>estilos</code> naquele commit.</p>
 
-<div class="try" data-setup="git config --global protocol.file.allow always;;mkdir estilos;;cd estilos;;git init -q;;echo 'body { font-family: sans-serif; }' &gt; estilo.css;;git add estilo.css;;git commit -q -m 'Cria o estilo base';;git init -q --bare ../estilos.git;;git push -q ../estilos.git main;;cd ..;;rm -rf estilos;;mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o site de receitas'" data-goal="rastreado:.gitmodules,contains:receitas/.gitmodules=estilos,file:receitas/estilos/estilo.css,commits:2,limpo" data-solucao="git submodule add ../estilos.git estilos;;git commit -m 'Adiciona os estilos como submódulo'">
-<p class="try-task"><strong>Missão:</strong> você está no repositório <code>receitas</code>. Ao lado dele há um repositório <code>../estilos.git</code> (o papel do GitHub, nesta missão). Acrescente-o como submódulo na pasta <code>estilos</code> (<code>git submodule add ../estilos.git estilos</code>), olhe o <code>git status</code> e o <code>cat .gitmodules</code>, e faça o commit. (A missão já liberou o uso de pastas locais como submódulo, que o Git bloqueia por padrão: veja <a href="#errado">Quando dá errado</a>.)</p>
+<div class="note">
+<strong>Pratique no seu computador</strong>
+<p>O terminal simulado do guia não tem o <code>git submodule</code>, então esta prática é no seu terminal de verdade, com dois repositórios seus no GitHub (por exemplo, um de testes e o do seu site):</p>
+<ol class="passo">
+  <li>No repositório principal, rode <code>git submodule add https://github.com/SEU-USUARIO/OUTRO-REPO.git pasta</code>.</li>
+  <li>Olhe o <code>git status</code>, o <code>cat .gitmodules</code> e o <code>git diff --cached pasta</code> (procure a linha <code>Subproject commit</code>).</li>
+  <li>Faça o commit e rode <code>git submodule status</code>.</li>
+</ol>
 </div>
 
 <hr>
@@ -160,8 +166,9 @@ nothing to commit, working tree clean
 <p>Depois de um <code>submodule update</code>, o submódulo não está em branch nenhum: ele está <strong>no commit exato</strong> do ponteiro (veja <a href="head-destacado.html">HEAD Destacado</a>). Para só <strong>usar</strong> o submódulo, isso é perfeito. Para <strong>mexer</strong> nele, entre na pasta e faça <code>git switch main</code> antes de editar; um commit feito em HEAD destacado fica solto e é fácil de perder.</p>
 </div>
 
-<div class="try" data-setup="git config --global protocol.file.allow always;;mkdir estilos;;cd estilos;;git init -q;;echo 'body { font-family: sans-serif; }' &gt; estilo.css;;git add estilo.css;;git commit -q -m 'Cria o estilo base';;git init -q --bare ../estilos.git;;git push -q ../estilos.git main;;cd ..;;rm -rf estilos;;mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o site de receitas';;git submodule add -q ../estilos.git estilos;;git commit -q -m 'Adiciona os estilos como submódulo';;cd ..;;git clone -q receitas copia;;cd copia" data-goal="file:copia/estilos/estilo.css,ran:submodule update" data-solucao="git submodule update --init">
-<p class="try-task"><strong>Missão:</strong> você acabou de clonar o site de receitas na pasta <code>copia</code> com um <code>git clone</code> comum, e a pasta <code>estilos</code> está vazia (confira com <code>ls estilos</code> e <code>git submodule status</code>). Baixe o submódulo.</p>
+<div class="note">
+<strong>Pratique no seu computador</strong>
+<p>Depois de enviar o commit do submódulo (<code>git push</code>), clone o repositório principal numa pasta nova <strong>sem</strong> <code>--recurse-submodules</code>, confira que a pasta do submódulo está vazia (<code>ls pasta</code> e o <code>-</code> no <code>git submodule status</code>) e baixe-o com <code>git submodule update --init</code>.</p>
 </div>
 
 <hr>
