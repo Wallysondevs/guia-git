@@ -87,6 +87,8 @@ Valem todas as metas do Guia Bash (`dir: file: absent: contains: cwd: ran: out: 
 | `contem:REF=TEXTO` | o arquivo, na versão do commit REF (`HEAD:receita.txt`, `main:README.md`), contém o texto |
 | `stash:N` | há N itens no stash |
 
+**ATENÇÃO — caminhos das metas de arquivo (`file:`, `absent:`, `dir:`, `contains:`, `exec:`) são a partir de `~` (a pasta da Ana), NÃO da pasta atual:** depois de `cd receitas` no setup, escreva `contains:receitas/bolo.txt=…`. Um `absent:bolo.txt` (sem `receitas/`) é sempre verdade e deixa a missão passar sem o leitor fazer nada. As metas do Git (`preparado:`, `rastreado:`, `contem:` etc.) usam o repositório da pasta atual.
+
 Use `\,` para uma vírgula dentro de uma meta. O agente do simulador pode acrescentar metas — **a lista oficial e o que cada uma faz exatamente fica na §4**.
 
 ### Outros blocos
