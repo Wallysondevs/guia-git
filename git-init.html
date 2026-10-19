@@ -44,8 +44,7 @@
 <pre class="term">$ mkdir receitas
 $ cd receitas
 $ ls -a
-.
-..</pre>
+.  ..</pre>
 
 <p>Agora, o <code>git init</code>. Ele age na <strong>pasta atual</strong>, por isso é importante estar dentro da pasta certa:</p>
 
@@ -63,17 +62,9 @@ Repositório vazio Git inicializado em  /home/ana/receitas/.git/</pre>
 <p>O <code>ls</code> comum não mostra a pasta nova, porque o nome começa com ponto. Com <code>-a</code> ela aparece:</p>
 
 <pre class="term" data-cwd="~/receitas">$ ls -a
-.
-..
-.git                               « nova: é aqui que o Git guarda tudo
+.  ..  .git                         « nova: é aqui que o Git guarda tudo
 $ ls .git
-HEAD
-config
-description
-hooks
-info
-objects
-refs</pre>
+HEAD  config  description  hooks  info  objects  refs</pre>
 
 <p>Você não precisa entender esses arquivos agora (eles aparecem em <a href="como-git-guarda.html">Como o Git Guarda as Coisas</a>). Por enquanto, guarde duas regras:</p>
 <ul>
@@ -186,9 +177,7 @@ nada para enviar (crie/copie arquivos e use "git add" para registrar)</pre>
 <pre class="term">$ git init loja
 Repositório vazio Git inicializado em  /home/ana/loja/.git/
 $ ls loja -a
-.
-..
-.git</pre>
+.  ..  .git</pre>
 
 <h3>Escolher o nome do ramo só desta vez: <code>-b</code></h3>
 <p>A opção <code>-b</code> (de <em>branch</em>; a forma longa é <code>--initial-branch</code>) escolhe o nome do ramo inicial deste repositório, sem mexer na configuração:</p>
