@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Issues — a lista de tarefas e de bugs do repositório no GitHub | Guia Git</title>
+<meta name="description" content="Issues do GitHub para iniciantes: o que são, como abrir uma boa issue (título, descrição, passos para reproduzir), rótulos, responsáveis, marcos, menções, o número #, e como fechar uma issue sozinha com Closes #N no pull request ou na mensagem do commit, com saídas reais do Git.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Issues</span></h1>
+
+<p class="intro">Um leitor do site de receitas da Ana achou um erro: o link da receita de bolo não abre. Ele poderia mandar um e-mail, que ia se perder na caixa de entrada. No GitHub, o lugar certo para isso é uma <strong>issue</strong> (em inglês, "questão" ou "assunto"; a documentação em português do GitHub chama de "problema"). Issue é um cartão de tarefa ligado ao repositório: um bug para consertar, uma ideia nova, uma dúvida. Cada uma tem número, conversa, responsável e, no fim, é fechada quando o trabalho termina.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é uma issue e para que ela serve (bugs, ideias, tarefas, dúvidas).</li>
+  <li>Como abrir uma issue que alguém consegue resolver: título, descrição, passos para reproduzir.</li>
+  <li>Rótulos (<em>labels</em>), responsáveis (<em>assignees</em>), marcos (<em>milestones</em>) e menções com <code>@</code> e <code>#</code>.</li>
+  <li>Como fechar uma issue <strong>automaticamente</strong> escrevendo <code>Closes #N</code> no pull request ou na mensagem do commit.</li>
+</ul>
+</div>
+
+<div class="note">
+<strong>Esta aula é do site do GitHub</strong>
+<p>Issues não fazem parte do Git: elas moram no site do GitHub (o GitLab e outros sites têm coisa parecida). Por isso, as telas e botões descritos aqui são <strong>ilustrativos</strong>, baseados na documentação oficial (<a href="https://docs.github.com/pt/issues">docs.github.com/pt/issues</a>). O site do GitHub é em inglês; quando a documentação em português traduz um nome, ele aparece entre parênteses. Os comandos <code>git</code> desta aula rodaram de verdade no Git do Ubuntu da Ana (usuária <code>ana</code>, computador <code>notebook</code>).</p>
+</div>
+
+<hr>
+
+<h2>A ideia: o quadro de avisos da cozinha</h2>
+<p>Na cozinha do restaurante há um quadro com bilhetes: "o forno 2 está esquentando demais", "testar receita de pudim sem lactose", "acabou a farinha". Cada bilhete diz <strong>o que</strong> é, alguém escreve embaixo <strong>quem</strong> vai cuidar, e quando está resolvido o bilhete sai do quadro. As issues são esse quadro, só que:</p>
+<ul>
+  <li>cada bilhete ganha um <strong>número</strong> (<code>#1</code>, <code>#2</code>, <code>#3</code>…) para ser citado em qualquer lugar;</li>
+  <li>embaixo de cada bilhete há uma <strong>conversa</strong> (comentários) que fica guardada;</li>
+  <li>o bilhete pode ser <strong>ligado ao código</strong>: o commit ou o pull request que resolveu o problema.</li>
+</ul>
+
+<hr>
+
+<h2>1. Onde ficam as issues</h2>
+<p>Na página de qualquer repositório do GitHub há uma aba <strong>Issues</strong>, ao lado de <strong>Code</strong> e <strong>Pull requests</strong>. Ela mostra a lista de issues abertas (<em>Open</em>) e fechadas (<em>Closed</em>), com filtros por rótulo, responsável e autor. Em repositórios públicos, qualquer pessoa com conta no GitHub pode abrir uma issue; quem mantém o projeto decide o que fazer com ela. (O dono do repositório pode desligar a aba nas configurações.)</p>
+
+<hr>
+
+<h2>2. Abrindo uma issue (ilustrativo)</h2>
+<ol class="passo">
+  <li>No repositório, clique na aba <strong>Issues</strong>.</li>
+  <li>Clique em <strong>New issue</strong> ("Novo problema"). Se o repositório tiver modelos de issue, o GitHub mostra a lista deles; escolha um, ou a opção de issue em branco.</li>
+  <li>Preencha o <strong>título</strong> e a <strong>descrição</strong>. A descrição aceita <a href="readme.html">Markdown</a>: listas, <code>`código`</code>, imagens arrastadas para a caixa.</li>
+  <li>Se você mantém o projeto, escolha também responsáveis, rótulos e marco (seção 4).</li>
+  <li>Clique no botão de criar ("Enviar novo problema", na documentação em português).</li>
+</ol>
+<p>A issue ganha o próximo número livre do repositório. <strong>Issues e pull requests dividem a mesma numeração</strong>: se o último pull request foi o <code>#7</code>, a próxima issue é a <code>#8</code>.</p>
+
+<hr>
+
+<h2>3. Uma boa issue</h2>
+<p>Compare as duas issues que o site da Ana recebeu:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Ruim</th><th>Boa</th></tr>
+<tr><td><strong>Título:</strong> não funciona<br><strong>Descrição:</strong> o site está quebrado, arrumem!!</td><td><strong>Título:</strong> Link "Bolo de cenoura" na página inicial dá erro 404<br><strong>Descrição:</strong> veja abaixo</td></tr>
+</table>
+</div>
+<pre class="file" data-file="descrição da issue (Markdown)">## O que acontece
+Na página inicial, clicar em "Bolo de cenoura" abre uma página de erro 404.
+
+## Como reproduzir
+1. Abra https://ana-souza.github.io/receitas/
+2. Clique em "Bolo de cenoura", na lista de bolos
+
+## O que eu esperava
+Abrir a receita do bolo de cenoura.
+
+## Onde
+Firefox 140, no Ubuntu. No celular acontece o mesmo.
+</pre>
+<p>A boa issue diz <strong>o que</strong> acontece, <strong>como</strong> fazer acontecer de novo (os "passos para reproduzir") e <strong>o que se esperava</strong>. Com isso, quem for consertar não precisa adivinhar nada. Antes de abrir, procure na lista (inclusive nas fechadas) se alguém já não abriu a mesma: issue repetida ganha o rótulo <code>duplicate</code> e é fechada.</p>
+
+<div class="tip">
+<strong>Uma issue, um assunto</strong>
+<p>Como uma aula deste guia: se você achou dois erros diferentes, abra duas issues. Assim cada uma pode ser fechada quando o seu conserto entrar, por pessoas diferentes, em dias diferentes.</p>
+</div>
+
+<hr>
+
+<h2>4. Organizando: rótulos, responsáveis e marcos</h2>
+<dl class="anatomy">
+  <dt>Labels (rótulos)</dt><dd>Etiquetas coloridas para classificar. Todo repositório novo já vem com dez: <code>bug</code>, <code>documentation</code>, <code>duplicate</code>, <code>enhancement</code> (pedido de funcionalidade nova), <code>good first issue</code> (boa para quem está começando no projeto), <code>help wanted</code>, <code>invalid</code>, <code>question</code>, <code>wontfix</code> (não vai ser feito) e <code>accessibility</code>. Dá para criar os seus (<code>receita</code>, <code>layout</code>…).</dd>
+  <dt>Assignees (responsáveis)</dt><dd>Quem vai cuidar da issue. Evita que duas pessoas consertem a mesma coisa sem saber.</dd>
+  <dt>Milestone (marco)</dt><dd>Agrupa issues numa meta, como "Versão 1.0" ou "Lançamento de dezembro", e mostra quanto dela já foi fechado.</dd>
+  <dt>@nome</dt><dd>Em qualquer comentário, <code>@bruno-lima</code> menciona e avisa a pessoa.</dd>
+  <dt>#número</dt><dd>Escrever <code>#12</code> num comentário vira um link para a issue (ou pull request) 12 do mesmo repositório. Para outro repositório: <code>dono/repositorio#12</code>.</dd>
+  <dt>- [ ] tarefa</dt><dd>Uma lista de tarefas em Markdown na descrição vira caixinhas de marcar, e a lista mostra o progresso.</dd>
+</dl>
+
+<hr>
+
+<h2>5. Fechando a issue sozinha com <code>Closes #N</code></h2>
+<p>O jeito mais elegante de fechar uma issue é <strong>ligá-la ao conserto</strong>. Se a descrição de um pull request disser <code>Closes #12</code>, a issue 12 é fechada sozinha no momento em que o pull request é mesclado no branch padrão (a <code>main</code>). As palavras que funcionam são:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Palavras-chave</th><th>Exemplo</th></tr>
+<tr><td><code>close</code>, <code>closes</code>, <code>closed</code></td><td><code>Closes #12</code></td></tr>
+<tr><td><code>fix</code>, <code>fixes</code>, <code>fixed</code></td><td><code>Fixes #12</code></td></tr>
+<tr><td><code>resolve</code>, <code>resolves</code>, <code>resolved</code></td><td><code>Resolves #12</code></td></tr>
+<tr><td>Issue de outro repositório</td><td><code>Fixes ana-souza/receitas#12</code></td></tr>
+</table>
+</div>
+<p>Elas podem estar em maiúsculas ou minúsculas e ser seguidas de dois-pontos (<code>Closes: #12</code>). Em português não funciona: "Fecha #12" vira só um link, sem fechar nada.</p>
+
+<h3>Na mensagem do commit</h3>
+<p>A mesma palavra-chave funciona na <strong>mensagem do commit</strong>: quando o commit chega ao branch padrão no GitHub, a issue é fechada. O costume é deixar o título do commit para dizer o que mudou e pôr o <code>Closes</code> numa linha do corpo da mensagem. Um jeito de fazer isso na linha de comando é usar <code>-m</code> duas vezes: o primeiro vira o título, o segundo vira um parágrafo do corpo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git add index.html
+$ git commit -m "Corrige link do bolo de cenoura" -m "Closes #12"
+[main dfa1484] Corrige link do bolo de cenoura
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+$ git log -1
+commit dfa1484bd25c156903b4954b398b582e80878e1f
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Corrige link do bolo de cenoura           « o título
+    
+    Closes #12                                « o corpo: o GitHub lê esta linha
+$ git log --oneline
+dfa1484 Corrige link do bolo de cenoura       « no resumo, só o título aparece
+e29acb6 Primeira versão do site
+</pre>
+
+<dl class="anatomy">
+  <dt>-m "Corrige link do bolo de cenoura"</dt><dd>O título do commit (a primeira linha), o que aparece no <code>git log --oneline</code>.</dd>
+  <dt>-m "Closes #12"</dt><dd>Um segundo parágrafo, separado do título por uma linha em branco. É aqui que o GitHub procura a palavra-chave.</dd>
+</dl>
+
+<p>O <code>git log -1</code> (só o último commit) mostra a mensagem inteira: o título, uma linha em branco que o próprio Git pôs entre os dois <code>-m</code>, e o corpo com <code>Closes #12</code>. Para o Git, <code>Closes #12</code> é um texto como outro qualquer: quem entende a palavra-chave é o <strong>GitHub</strong>, quando o commit chegar lá com o <code>git push</code> e entrar na <code>main</code>. Se você prefere escrever mensagens longas no editor, rode só <code>git commit</code> (sem <code>-m</code>): a primeira linha é o título, deixe uma linha em branco e escreva o corpo embaixo (veja <a href="mensagens-commit.html">Boas Mensagens de Commit</a>).</p>
+
+<div class="warning">
+<strong>Só no branch padrão</strong>
+<p>A issue só fecha sozinha quando o pull request (ou o commit) entra no <strong>branch padrão</strong> do repositório. Um pull request para a <code>develop</code> (no <a href="fluxos.html">Git Flow</a>) com <code>Closes #12</code> não fecha nada: as palavras-chave são ignoradas.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '- [Pudim](pudim.htm)' &gt; index.md;;git add index.md;;git commit -q -m 'Primeira versão do site';;echo '- [Pudim](pudim.md)' &gt; index.md;;git add index.md" data-goal="commits:2,limpo,msg:Corrige link do pudim,msg:Closes #3" data-solucao="git commit -m 'Corrige link do pudim' -m 'Closes #3';;git log -1">
+<p class="try-task"><strong>Missão:</strong> o arquivo <code>index.md</code> do repositório <code>receitas</code> já foi corrigido e está na área de preparo. Faça o commit com o título <code>Corrige link do pudim</code> e, no corpo, a linha <code>Closes #3</code>, para a issue 3 fechar sozinha quando o commit chegar à <code>main</code> do GitHub. Confira com <code>git log -1</code>.</p>
+</div>
+
+<h3>Fechando à mão</h3>
+<p>Também dá para fechar uma issue pelo botão <strong>Close issue</strong> ("Fechar problema") no fim da página dela (ilustrativo). Uma setinha ao lado do botão deixa escolher o motivo do fechamento, por exemplo, se foi resolvida ou se não vai ser feita. Uma issue fechada não some: ela vai para a lista <em>Closed</em> e pode ser reaberta.</p>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de abrir uma issue</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Forma</th><th>Como</th><th>Quando usar</th></tr>
+<tr><td>Site, aba Issues</td><td><strong>New issue</strong></td><td>O jeito comum.</td></tr>
+<tr><td>A partir de uma linha de código</td><td>No arquivo, selecione as linhas e use o menu de opções da linha para referenciar numa nova issue</td><td>Quando o problema está num trecho específico.</td></tr>
+<tr><td>A partir de um comentário</td><td>Menu de três pontos do comentário</td><td>Uma conversa num pull request virou tarefa para depois.</td></tr>
+<tr><td>GitHub CLI</td><td><code>gh issue create --title "…" --body "…"</code> (veja <a href="github-cli.html">GitHub CLI</a>)</td><td>Sem sair do terminal.</td></tr>
+<tr><td>Link pronto</td><td><code>…/issues/new?title=…&amp;labels=bug</code></td><td>Num botão "Relatar erro" do seu site, já com o título e o rótulo preenchidos.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Escrevi <code>Closes #12</code> e a issue não fechou</strong>
+<p><strong>O que aconteceu:</strong> quase sempre, o pull request foi mesclado num branch que <strong>não é o padrão</strong> (por exemplo, a <code>develop</code>), ou a palavra estava em português ("Fecha #12"), ou faltou o <code>#</code>. <strong>Como confirmar:</strong> na página do pull request, a issue ligada aparece na barra lateral, em <em>Development</em> (ilustrativo); se ela não está lá, o GitHub não reconheceu a ligação. <strong>Como resolver:</strong> feche a issue à mão, com um comentário citando o pull request (<code>Resolvido em #15</code>), ou ligue os dois pela barra lateral.</p>
+</div>
+
+<div class="cenario">
+<strong>Fechei a issue errada</strong>
+<p>Abra a issue fechada (lista <em>Closed</em>) e use o botão de reabrir no fim da página. Nada se perde: os comentários continuam lá.</p>
+</div>
+
+<div class="cenario">
+<strong>Não vejo a aba Issues</strong>
+<p>O dono do repositório desligou as issues nas configurações (alguns projetos usam outro sistema). Procure no README onde o projeto recebe relatos de erros.</p>
+</div>
+
+<div class="cenario">
+<strong>Coloquei uma senha numa issue</strong>
+<p>Em repositório público, tudo o que está numa issue fica visível para o mundo e pode ser copiado em segundos. Apague o trecho, mas <strong>considere a senha vazada</strong> e troque-a imediatamente (veja <a href="senha-commitada.html">Commitei uma Senha!</a>).</p>
+</div>
+
+<hr>
+
+<h2>Referência</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escreva</th><th>Efeito</th></tr>
+<tr><td><code>#12</code></td><td>Link para a issue ou o pull request 12 do mesmo repositório</td></tr>
+<tr><td><code>dono/repo#12</code></td><td>Link para a issue 12 de outro repositório</td></tr>
+<tr><td><code>@usuario</code></td><td>Menciona e avisa a pessoa</td></tr>
+<tr><td><code>Closes #12</code> / <code>Fixes #12</code> / <code>Resolves #12</code></td><td>Fecha a issue 12 quando o pull request (ou o commit) entra no branch padrão</td></tr>
+<tr><td><code>- [ ] tarefa</code></td><td>Caixinha de marcar na descrição</td></tr>
+<tr><td><code>git commit -m "Título" -m "Closes #12"</code></td><td>Commit com a palavra-chave no corpo da mensagem</td></tr>
+<tr><td><code>gh issue create</code></td><td>Abre uma issue pelo terminal (GitHub CLI)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Feche a issue 7 sozinha</h3>
+<p>Complete a descrição do pull request para fechar a issue 7 no merge:</p>
+<div class="ex-code"><input data-answer="Closes" aria-label="palavra-chave"> #<input data-answer="7" aria-label="número da issue"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. O último pull request do repositório foi o #9. Que número terá a próxima issue?</p>
+<label><input type="radio" name="q2"> #1, porque issues têm numeração própria</label>
+<label><input type="radio" name="q2"> #10, porque issues e pull requests dividem a mesma numeração</label>
+<label><input type="radio" name="q2"> #9</label>
+<label><input type="radio" name="q2"> Não tem número: issues têm só título</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">3. Qual destas descrições de pull request <strong>não</strong> fecha a issue 5 no merge na <code>main</code>?</p>
+<label><input type="radio" name="q3"> <code>Fixes #5</code></label>
+<label><input type="radio" name="q3"> <code>closes #5</code></label>
+<label><input type="radio" name="q3"> <code>Resolves: #5</code></label>
+<label><input type="radio" name="q3"> <code>Fecha #5</code></label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. O que mais ajuda quem vai consertar um bug relatado numa issue?</p>
+<label><input type="radio" name="q4"> Um título em maiúsculas</label>
+<label><input type="radio" name="q4"> Mencionar todos os mantenedores com <code>@</code></label>
+<label><input type="radio" name="q4"> Os passos para reproduzir, o que aconteceu e o que se esperava</label>
+<label><input type="radio" name="q4"> Abrir a mesma issue duas vezes</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Issue é um cartão de tarefa do repositório no GitHub: bug, ideia, tarefa ou dúvida, com número, conversa e responsável. Não faz parte do Git.</li>
+  <li>Boa issue: título específico, o que acontece, passos para reproduzir, o que se esperava. Um assunto por issue; procure duplicadas antes.</li>
+  <li>Rótulos classificam, responsáveis dizem quem cuida, marcos agrupam numa meta; <code>@nome</code> avisa uma pessoa e <code>#12</code> vira link.</li>
+  <li><code>Closes</code>/<code>Fixes</code>/<code>Resolves #12</code> no pull request ou na mensagem do commit fecha a issue quando o trabalho entra no branch padrão.</li>
+  <li>Issues e pull requests dividem a numeração do repositório.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
