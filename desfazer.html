@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git: desfazendo coisas — o mapa de qual comando usar | Guia Git</title>
+<meta name="description" content="O mapa para desfazer qualquer coisa no Git, para quem nunca usou Git: as três perguntas (já commitei? já enviei? quero manter as mudanças?), uma tabela situação → comando → aula (git restore, restore --staged, git clean, commit --amend, git revert, git reset, reflog, merge --abort, stash), o grau de perigo de cada um e as dicas reais do git status em português.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Desfazendo: <span class="hl">o Mapa</span></h1>
+
+<p class="intro">O maior medo de quem começa no Git é "estraguei tudo". A boa notícia: quase tudo no Git pode ser desfeito. A má notícia: existem <strong>vários</strong> comandos de desfazer, cada um para uma situação, e usar o errado pode piorar as coisas. Esta página é o <strong>mapa</strong>: você diz o que quer desfazer, ele diz qual comando usar e em qual aula aprender. As aulas seguintes deste grupo ensinam cada comando em detalhe.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>As <strong>três perguntas</strong> que decidem qual comando usar.</li>
+  <li>Onde a mudança está (pasta, área de preparo, commit, GitHub) e como desfazer em cada lugar.</li>
+  <li>Uma tabela "o que você quer desfazer → qual comando", com links para as aulas.</li>
+  <li>Quais comandos são seguros e quais <strong>jogam trabalho fora</strong> sem volta.</li>
+  <li>A ler as dicas de desfazer que o próprio <code>git status</code> mostra.</li>
+</ul>
+</div>
+
+<p>As saídas desta página saíram do Git do Ubuntu 26.04 (<code>git version 2.53.0</code>), na máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português.</p>
+
+<hr>
+
+<h2>A ideia: onde está a mudança?</h2>
+<p>Pense numa carta. Enquanto ela está no <strong>rascunho</strong>, você apaga e reescreve à vontade. Depois de passada a limpo e <strong>posta no envelope</strong>, ainda dá para abrir e trocar. Depois de <strong>colocada na caixa do correio</strong>, você já não pega de volta: o que dá para fazer é mandar uma segunda carta, "desconsidere a anterior".</p>
+<p>No Git, uma mudança passa pelos mesmos lugares, e o jeito de desfazer depende de onde ela está:</p>
+
+<pre>  sua pasta            área de preparo         histórico (commits)        GitHub
+ (o rascunho)          (o envelope)            (a carta enviada a você)   (o correio)
+ ┌──────────┐ git add  ┌──────────┐ git commit ┌──────────┐  git push   ┌──────────┐
+ │ mudanças │ ───────► │ mudanças │ ─────────► │  commit  │ ──────────► │  commit  │
+ └──────────┘          └──────────┘            └──────────┘             └──────────┘
+   desfazer:             desfazer:               desfazer:                desfazer:
+   git restore           git restore --staged    commit --amend           git revert
+   git clean (novos)                             git reset                (um commit novo
+                                                 git revert                que desfaz)</pre>
+
+<p>Quanto mais à direita, mais cuidado: o que já foi enviado para o GitHub pode já estar no computador de outras pessoas.</p>
+
+<hr>
+
+<h2>As três perguntas</h2>
+<ol class="passo">
+  <li><strong>A mudança já foi commitada?</strong> Rode <code>git status</code>. Se o arquivo aparece lá, a mudança <strong>ainda não</strong> foi commitada (está na pasta ou na área de preparo). Se o <code>git status</code> está limpo, ela está num commit: veja o <code>git log --oneline</code>.</li>
+  <li><strong>Se foi commitada: o commit já foi enviado (<code>git push</code>)?</strong> Se não, você pode reescrever o histórico local (<code>--amend</code>, <code>reset</code>). Se sim, desfaça com um commit novo (<code>revert</code>) e não reescreva o que é público (veja <a href="regra-de-ouro.html">A Regra de Ouro</a>).</li>
+  <li><strong>Você quer manter as mudanças ou jogá-las fora?</strong> Muitos comandos têm uma versão que só "tira do lugar" (as mudanças continuam na pasta) e outra que <strong>apaga</strong>. Na dúvida, prefira a que mantém.</li>
+</ol>
+
+<hr>
+
+<h2>O <code>git status</code> já diz como desfazer</h2>
+<p>Antes de procurar na internet, leia o <code>git status</code>: ele mostra, entre parênteses, o comando de desfazer de cada situação. A Ana preparou uma mudança no bolo, mudou o pudim sem preparar e criou uma lasanha nova:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	modified:   bolo.txt
+
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   pudim.txt
+
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	lasanha.txt
+
+</pre>
+
+<dl class="anatomy">
+  <dt>(use "git restore --staged &lt;file&gt;..." to unstage)</dt><dd>Na seção do que está <strong>preparado</strong>: "use <code>git restore --staged</code> para tirar da área de preparo" (<em>unstage</em> = "despreparar"). As mudanças voltam a ser só da pasta; nada se perde. Aula <a href="restore-staged.html">Tirando da Área de Preparo</a>.</dd>
+  <dt>(use "git restore &lt;file&gt;..." to discard changes in working directory)</dt><dd>Na seção do que <strong>não</strong> está preparado: "use <code>git restore</code> para <strong>descartar</strong> as mudanças na pasta de trabalho". O arquivo volta a ser como no último commit, e as mudanças se perdem. Aula <a href="git-restore.html">git restore</a>.</dd>
+  <dt>Arquivos não monitorados</dt><dd>Aqui o Git não sugere desfazer: arquivos novos ele não conhece. Para apagá-los, o <code>rm</code> comum ou o <a href="git-clean.html">git clean</a>.</dd>
+</dl>
+
+<p>Seguindo as dicas:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git restore pudim.txt
+$ git restore --staged bolo.txt
+$ git status --short
+ M bolo.txt
+?? lasanha.txt
+</pre>
+
+<p>O pudim voltou ao último commit (sumiu da lista); a mudança do bolo saiu da área de preparo, mas continua na pasta (<code> M</code>, na segunda coluna: modificado e não preparado); a lasanha continua como estava.</p>
+
+<div class="note">
+<strong>Em tutoriais antigos</strong>
+<p>O <code>git restore</code> existe desde o Git 2.23 (de 2019). Antes, as dicas do <code>git status</code> eram <code>git checkout -- &lt;file&gt;</code> (no lugar de <code>git restore</code>) e <code>git reset HEAD &lt;file&gt;</code> (no lugar de <code>git restore --staged</code>). Esses comandos ainda funcionam, e você vai encontrá-los em respostas antigas na internet; as aulas <a href="git-restore.html">git restore</a> e <a href="restore-staged.html">Tirando da Área de Preparo</a> mostram os dois jeitos.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;printf 'Bolo de cenoura\n4 ovos\n' &gt; bolo.txt;;printf 'Pudim de leite\n3 ovos\n' &gt; pudim.txt;;git add .;;git commit -q -m 'Receitas iniciais';;echo '2 xícaras de farinha' &gt;&gt; bolo.txt;;git add bolo.txt;;echo 'calda estragada' &gt;&gt; pudim.txt" data-goal="naopreparado:bolo.txt,contains:~/receitas/bolo.txt=farinha,ran:restore +pudim" data-solucao="git restore pudim.txt;;git restore --staged bolo.txt">
+<p class="try-task"><strong>Missão:</strong> rode <code>git status</code> e siga as dicas dele: <strong>descarte</strong> a mudança do <code>pudim.txt</code> (a "calda estragada") e <strong>tire da área de preparo</strong> a mudança do <code>bolo.txt</code>, sem perdê-la (a farinha deve continuar no arquivo).</p>
+</div>
+
+<hr>
+
+<h2>O mapa: o que você quer desfazer → qual comando</h2>
+
+<h3>Mudanças que ainda não foram commitadas</h3>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Você quer…</th><th>Comando</th><th>Perigo</th><th>Aula</th></tr>
+<tr><td>Jogar fora as mudanças de um arquivo e voltar ao último commit</td><td><code>git restore arquivo</code></td><td>⚠ as mudanças se perdem</td><td><a href="git-restore.html">git restore</a></td></tr>
+<tr><td>Recuperar um arquivo que você apagou (e ainda não commitou a remoção)</td><td><code>git restore arquivo</code></td><td>seguro</td><td><a href="git-restore.html">git restore</a></td></tr>
+<tr><td>Tirar um arquivo da área de preparo, mantendo as mudanças</td><td><code>git restore --staged arquivo</code></td><td>seguro</td><td><a href="restore-staged.html">Tirando da Área de Preparo</a></td></tr>
+<tr><td>Tirar da área de preparo <strong>e</strong> jogar as mudanças fora</td><td><code>git restore --staged --worktree arquivo</code></td><td>⚠ as mudanças se perdem</td><td><a href="git-restore.html">git restore</a></td></tr>
+<tr><td>Desfazer um <code>git rm</code> ou <code>git mv</code></td><td><code>git restore --staged --worktree arquivo</code> / <code>git mv novo velho</code></td><td>seguro</td><td><a href="git-rm.html">git rm</a>, <a href="git-mv.html">git mv</a></td></tr>
+<tr><td>Apagar arquivos novos, que o Git não rastreia</td><td><code>git clean -n</code> (ensaio) e <code>git clean -f</code></td><td>⚠ apaga de verdade</td><td><a href="git-clean.html">git clean</a></td></tr>
+<tr><td>Pegar um arquivo como ele era num commit antigo</td><td><code>git restore --source=COMMIT arquivo</code></td><td>⚠ substitui o arquivo da pasta</td><td><a href="git-restore.html">git restore</a></td></tr>
+<tr><td>Não desfazer, só <strong>guardar</strong> as mudanças para depois</td><td><code>git stash</code></td><td>seguro</td><td><a href="git-stash.html">git stash</a></td></tr>
+<tr><td>Desistir de um merge com conflito</td><td><code>git merge --abort</code></td><td>seguro</td><td><a href="abortar-merge.html">Desistindo de um Merge</a></td></tr>
+</table>
+</div>
+
+<h3>Commits que ainda não foram enviados (sem <code>git push</code>)</h3>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Você quer…</th><th>Comando</th><th>Perigo</th><th>Aula</th></tr>
+<tr><td>Corrigir a mensagem do último commit</td><td><code>git commit --amend -m "nova mensagem"</code></td><td>reescreve o último commit</td><td><a href="commit-amend.html">--amend</a></td></tr>
+<tr><td>Pôr no último commit um arquivo que ficou de fora</td><td><code>git add arquivo</code> + <code>git commit --amend --no-edit</code></td><td>reescreve o último commit</td><td><a href="commit-amend.html">--amend</a></td></tr>
+<tr><td>Desfazer o último commit, mas manter as mudanças (para refazer melhor)</td><td><code>git reset --soft HEAD~1</code> (ficam preparadas) ou <code>git reset HEAD~1</code> (ficam só na pasta)</td><td>reescreve o histórico</td><td><a href="git-reset.html">git reset</a>, <a href="reset-modos.html">os modos</a></td></tr>
+<tr><td>Apagar o último commit <strong>e</strong> as mudanças dele</td><td><code>git reset --hard HEAD~1</code></td><td>⚠⚠ apaga também o que não foi commitado</td><td><a href="reset-modos.html">reset --soft, --mixed e --hard</a></td></tr>
+<tr><td>Juntar vários commits pequenos num só</td><td><code>git rebase -i</code> (squash)</td><td>reescreve o histórico</td><td><a href="squash.html">Juntando Commits</a></td></tr>
+</table>
+</div>
+
+<h3>Commits que já foram enviados (depois do <code>git push</code>)</h3>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Você quer…</th><th>Comando</th><th>Perigo</th><th>Aula</th></tr>
+<tr><td>Desfazer o que um commit fez, sem apagar nada do histórico</td><td><code>git revert COMMIT</code> (cria um commit novo, "ao contrário")</td><td>seguro</td><td><a href="git-revert.html">git revert</a></td></tr>
+<tr><td>Commitou uma senha</td><td>Troque a senha <strong>primeiro</strong>; depois, limpe o histórico</td><td>urgente</td><td><a href="senha-commitada.html">Commitei uma Senha!</a></td></tr>
+<tr><td>Reescrever o que já foi enviado (só se você trabalha sozinho no branch)</td><td><code>git push --force-with-lease</code>, depois de <code>--amend</code>/<code>reset</code></td><td>⚠ atrapalha quem já baixou</td><td><a href="push-force.html">push --force-with-lease</a></td></tr>
+</table>
+</div>
+
+<h3>Socorro: desfiz demais</h3>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Você quer…</th><th>Comando</th><th>Aula</th></tr>
+<tr><td>Recuperar commits "perdidos" depois de um <code>reset --hard</code>, <code>--amend</code> ou rebase</td><td><code>git reflog</code> (o diário do HEAD) e <code>git reset --hard</code>/<code>git branch</code> no commit certo</td><td><a href="git-reflog.html">git reflog</a>, <a href="recuperar-commit.html">Recuperando Commits Perdidos</a>, <a href="projeto-desastre.html">Projeto: Salvando o Dia</a></td></tr>
+<tr><td>Recuperar um branch apagado</td><td><code>git reflog</code> + <code>git branch nome COMMIT</code></td><td><a href="recuperar-commit.html">Recuperando Commits Perdidos</a></td></tr>
+</table>
+</div>
+
+<div class="warning">
+<strong>O que o Git <strong>não</strong> consegue desfazer</strong>
+<p>O Git guarda o que foi <strong>commitado</strong> (e, por um tempo, até commits "apagados", pelo reflog). O que <strong>nunca</strong> foi commitado nem preparado não tem cópia em lugar nenhum. Por isso os comandos marcados com ⚠ (<code>git restore</code> sem <code>--staged</code>, <code>git clean -f</code>, <code>git reset --hard</code>) são os perigosos: eles jogam fora trabalho que o Git nunca guardou. Na dúvida, faça um commit (ou um <a href="git-stash.html">git stash</a>) antes: um commit a mais é fácil de desfazer; trabalho perdido, não.</p>
+</div>
+
+<hr>
+
+<h2>O fluxograma</h2>
+<pre>Quero desfazer uma mudança.
+│
+├─ Aparece no git status? (ainda não commitei)
+│   ├─ Está em "Mudanças a serem submetidas" (preparada)
+│   │     ├─ quero manter a mudança ........ git restore --staged arquivo
+│   │     └─ quero jogar fora .............. git restore --staged --worktree arquivo
+│   ├─ Está em "Changes not staged" (só na pasta)
+│   │     └─ quero jogar fora .............. git restore arquivo
+│   └─ Está em "Arquivos não monitorados" (novo)
+│         └─ quero apagar .................. git clean -n, depois git clean -f
+│
+└─ Não aparece: já está num commit
+    ├─ Ainda não dei git push
+    │     ├─ é o último commit e só quero corrigir ... git commit --amend
+    │     └─ quero tirar o(s) commit(s) .............. git reset (--soft / --mixed / --hard)
+    └─ Já dei git push ................................ git revert COMMIT</pre>
+
+<hr>
+
+<h2 id="formas">O mesmo desfazer, de formas diferentes</h2>
+<p>Muitas situações têm um comando novo e um antigo. As aulas usam os novos, mas você vai encontrar os antigos:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Comando novo (Git 2.23+)</th><th>Comando antigo, equivalente</th></tr>
+<tr><td>Descartar mudanças de um arquivo</td><td><code>git restore arquivo</code></td><td><code>git checkout -- arquivo</code></td></tr>
+<tr><td>Tirar da área de preparo</td><td><code>git restore --staged arquivo</code></td><td><code>git reset arquivo</code> ou <code>git reset HEAD arquivo</code></td></tr>
+<tr><td>Pegar um arquivo de um commit antigo</td><td><code>git restore --source=COMMIT arquivo</code></td><td><code>git checkout COMMIT -- arquivo</code> (que também prepara o arquivo)</td></tr>
+</table>
+</div>
+<p>O <code>git checkout</code> antigo fazia coisas demais (trocar de branch, descartar mudanças, pegar arquivos antigos), e um pequeno erro de digitação trocava uma coisa pela outra. Por isso o Git dividiu o trabalho entre <code>git switch</code> (branches; aula <a href="git-switch.html">git switch</a>) e <code>git restore</code> (arquivos). Mais em <a href="git-checkout.html">git checkout: o Comando Antigo</a>.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>"Rodei um comando de desfazer e piorou"</strong>
+<p><strong>Pare</strong> e não rode mais nada às pressas. Rode <code>git status</code> e <code>git log --oneline</code> para ver onde você está. Se o problema é um commit que sumiu, o <a href="git-reflog.html">git reflog</a> quase sempre o encontra. Se o problema é uma mudança que nunca foi commitada e foi descartada com <code>git restore</code>, <code>git reset --hard</code> ou <code>git clean -f</code>, o Git não tem cópia: procure no histórico do seu editor (o VS Code guarda um "Histórico Local" dos arquivos; ilustrativo) ou numa cópia de segurança.</p>
+</div>
+
+<div class="cenario">
+<strong>"Não sei se já dei push"</strong>
+<p>Rode <code>git status</code>: num branch ligado ao GitHub, ele diz se o seu branch está à frente do remoto, isto é, se há commits que ainda não foram enviados. Veja <a href="upstream.html">Branch de Rastreamento</a>. Na dúvida, trate como enviado e use <code>git revert</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Onde está o que você quer desfazer</th><th>Comando principal</th></tr>
+<tr><td>Na pasta, num arquivo rastreado</td><td><code>git restore arquivo</code></td></tr>
+<tr><td>Na área de preparo</td><td><code>git restore --staged arquivo</code></td></tr>
+<tr><td>Na pasta, arquivo novo</td><td><code>git clean -f</code> (antes, <code>-n</code>)</td></tr>
+<tr><td>No último commit, não enviado</td><td><code>git commit --amend</code> ou <code>git reset HEAD~1</code></td></tr>
+<tr><td>Em commits já enviados</td><td><code>git revert COMMIT</code></td></tr>
+<tr><td>"Perdi um commit"</td><td><code>git reflog</code></td></tr>
+</table>
+</div>
+<p>A versão para consulta rápida deste mapa está em <a href="ref-desfazer.html">Como Desfazer Qualquer Coisa</a>.</p>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Qual comando?</h3>
+<p>Complete:</p>
+<div class="ex-code">Tirar o <code>senhas.txt</code> da área de preparo, sem perder nada: git restore <input data-answer="--staged|-S" aria-label="opção"> senhas.txt<br>Desfazer um commit que já está no GitHub: git <input data-answer="revert" aria-label="subcomando"> COMMIT</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">2. A Ana mudou o <code>bolo.txt</code>, <strong>não</strong> deu <code>git add</code>, e quer jogar a mudança fora. Qual comando?</p>
+<label><input type="radio" name="q2"> <code>git revert bolo.txt</code></label>
+<label><input type="radio" name="q2"> <code>git restore --staged bolo.txt</code></label>
+<label><input type="radio" name="q2"> <code>git restore bolo.txt</code></label>
+<label><input type="radio" name="q2"> <code>git commit --amend</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">3. O último commit tem um erro e já foi enviado ao GitHub, onde o Bruno já o baixou. O que fazer?</p>
+<label><input type="radio" name="q3"> <code>git revert</code>: cria um commit novo que desfaz o erro, sem reescrever o histórico</label>
+<label><input type="radio" name="q3"> <code>git reset --hard HEAD~1</code> e <code>git push --force</code></label>
+<label><input type="radio" name="q3"> <code>git commit --amend</code> e <code>git push</code></label>
+<label><input type="radio" name="q3"> Apagar o repositório e criar outro</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. Qual destes comandos pode fazer você perder trabalho que <strong>nunca</strong> foi commitado?</p>
+<label><input type="radio" name="q4"> <code>git restore --staged arquivo</code></label>
+<label><input type="radio" name="q4"> <code>git revert COMMIT</code></label>
+<label><input type="radio" name="q4"> <code>git stash</code></label>
+<label><input type="radio" name="q4"> <code>git reset --hard</code></label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">5. Onde o Git mostra, sem você pedir, o comando para tirar um arquivo da área de preparo?</p>
+<label><input type="radio" name="q5"> No <code>git log</code></label>
+<label><input type="radio" name="q5"> No <code>git status</code>, entre parênteses</label>
+<label><input type="radio" name="q5"> No <code>git diff</code></label>
+<label><input type="radio" name="q5"> Em lugar nenhum</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Antes de desfazer, responda: já commitei? Já enviei? Quero manter as mudanças?</li>
+  <li>Não commitado: <code>git restore</code> (descarta), <code>git restore --staged</code> (só tira da área de preparo), <code>git clean</code> (arquivos novos).</li>
+  <li>Commitado e não enviado: <code>git commit --amend</code> ou <code>git reset</code>.</li>
+  <li>Já enviado: <code>git revert</code>.</li>
+  <li>Desfez demais? <code>git reflog</code>. O que nunca foi commitado, porém, não tem volta: na dúvida, commite ou faça <code>git stash</code> antes.</li>
+  <li>O <code>git status</code> mostra as dicas de desfazer: leia-o sempre.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
