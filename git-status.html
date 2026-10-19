@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git status — lendo a situação do repositório linha por linha | Guia Git</title>
+<meta name="description" content="O git status para quem nunca usou Git: cada linha e cada dica explicadas em todos os estados (repositório sem commits, arquivo novo, modificado, preparado, preparado e modificado ao mesmo tempo, apagado, limpo), o formato curto git status -s (??, A, M, MM), o -b, e os erros reais, com as saídas do Git em português.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">status</span></h1>
+
+<p class="intro">Se você só puder decorar um comando do Git, decore este. O <code>git status</code> ("situação") responde à pergunta que você vai fazer o dia inteiro: <strong>"como estão as coisas agora?"</strong>. Ele diz em que ramo você está, quais arquivos são novos, quais mudaram, quais já estão preparados para o próximo commit e, o melhor de tudo, <strong>sugere o próximo comando</strong> nas linhas entre parênteses. Ele nunca muda nada: só olha e conta. Por isso, na dúvida, rode <code>git status</code>.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A ler o <code>git status</code> em <strong>todos</strong> os estados: repositório sem commits, arquivo novo, arquivo modificado, arquivo preparado, o mesmo arquivo preparado e modificado ao mesmo tempo, arquivo apagado e a pasta limpa.</li>
+  <li>O que quer dizer cada linha e cada <strong>dica</strong> entre parênteses (<code>(use "git add &lt;arquivo&gt;..." …)</code>).</li>
+  <li>Os três "estados" de um arquivo: não rastreado, modificado e preparado.</li>
+  <li>O formato curto, <code>git status -s</code>, com as letras <code>??</code>, <code>A</code>, <code>M</code> e <code>D</code>.</li>
+  <li>Os erros: <code>not a git repository</code> e o arquivo que "não aparece".</li>
+</ul>
+</div>
+
+<p>Todas as saídas desta aula são <strong>reais</strong>, do Git da máquina da Ana (Ubuntu 26.04, em português). Com o sistema em inglês, o Git mostra as mesmas linhas em inglês; a aula mostra a frase original quando ela aparece muito em tutoriais.</p>
+
+<hr>
+
+<h2>A ideia: o painel do carro</h2>
+<p>Antes de sair com o carro, você olha o painel: tem combustível? alguma luz acesa? a porta está aberta? O painel não dirige o carro; ele só mostra a situação, e às vezes diz o que fazer ("abasteça", "feche a porta"). O <code>git status</code> é o painel do Git. Ele olha os três lugares que você conheceu em <a href="primeiro-commit.html">Seu Primeiro Commit</a>:</p>
+
+<pre>pasta de trabalho  ──git add──▶  área de preparo  ──git commit──▶  histórico
+   (você edita)                  (a mesa da foto)                  (o álbum)
+</pre>
+
+<p>e compara uns com os outros:</p>
+<ul>
+  <li>o que está na <strong>pasta</strong> e o Git nunca viu → arquivo <strong>não rastreado</strong>;</li>
+  <li>o que está na <strong>pasta</strong> e é diferente do que está na área de preparo → mudança <strong>não preparada</strong>;</li>
+  <li>o que está na <strong>área de preparo</strong> e é diferente do último commit → mudança <strong>preparada</strong> (vai entrar no próximo commit).</li>
+</ul>
+<p>Cada um desses grupos vira um bloco na saída do <code>git status</code>. Vamos ver todos, na ordem em que aparecem na vida de um projeto.</p>
+
+<hr>
+
+<h2>Anatomia</h2>
+<dl class="anatomy">
+  <dt>git</dt><dd>O programa Git.</dd>
+  <dt>status</dt><dd>O subcomando: "mostre a situação". Funciona em qualquer pasta dentro do repositório (na pasta principal ou numa subpasta).</dd>
+  <dt>-s / --short (opcional)</dt><dd>Formato curto, uma linha por arquivo (seção <a href="#curto">O formato curto</a>).</dd>
+  <dt>-b / --branch (opcional)</dt><dd>No formato curto, mostra também a linha do ramo.</dd>
+  <dt>caminho (opcional)</dt><dd>Mostra só a situação daquele arquivo ou pasta: <code>git status receitas/</code>.</dd>
+</dl>
+
+<hr>
+
+<h2>Estado 1: repositório novo, sem nenhum commit</h2>
+<p>A Ana acabou de criar a pasta <code>receitas</code> e rodou <code>git init</code> (aula <a href="git-init.html">git init</a>). A pasta está vazia:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main                                       « 1. em que ramo você está
+
+No commits yet                                     « 2. o histórico está vazio
+
+nada para enviar (crie/copie arquivos e use "git add" para registrar)   « 3. resumo + dica
+</pre>
+
+<dl class="anatomy">
+  <dt>No ramo main</dt><dd>"No ramo <code>main</code>". Todo <code>git status</code> começa dizendo em que <strong>ramo</strong> (<em>branch</em>) você está. Por enquanto só existe o <code>main</code> ("principal"); os ramos têm um capítulo próprio (<a href="branches.html">O que é um Branch</a>). Em inglês: <code>On branch main</code>.</dd>
+  <dt>No commits yet</dt><dd>"Nenhum commit ainda". Esta linha só aparece enquanto o repositório não tem nenhum commit.</dd>
+  <dt>nada para enviar (crie/copie arquivos e use "git add" para registrar)</dt><dd>O resumo: não há nada para commitar (a tradução do Git chama o commit de "envio" ou "submissão"). A dica: crie ou copie arquivos e use <code>git add</code> para o Git passar a rastreá-los.</dd>
+</dl>
+
+<div class="note">
+<strong>Por que o painel mistura português e inglês?</strong>
+<p>A tradução brasileira do Git 2.53 (o do Ubuntu 26.04) está <strong>incompleta</strong>. Algumas frases saem em português, outras em inglês, e às vezes as duas coisas na mesma linha (<code>use "git add" to registrar</code>). É assim mesmo no seu terminal. Nesta aula, toda frase em inglês ganha tradução. Saber as frases em inglês também ajuda a pesquisar e a ler tutoriais, que quase sempre mostram o Git em inglês.</p>
+</div>
+
+<hr>
+
+<h2>Estado 2: um arquivo novo (não rastreado)</h2>
+<p>A Ana cria o <code>README.md</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo '# Receitas da Ana' &gt; README.md
+$ git status
+No ramo main
+
+No commits yet
+
+Arquivos não monitorados:                                                   « o título do bloco
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)        « a dica
+	README.md                                                                   « os arquivos
+
+nada adicionado ao envio mas arquivos não registrados estão presentes (use "git add" to registrar)
+</pre>
+
+<dl class="anatomy">
+  <dt>Arquivos não monitorados:</dt><dd>"Arquivos não monitorados" = <strong>não rastreados</strong> (em inglês, <code>Untracked files:</code>). São arquivos que estão na pasta, mas que o Git nunca guardou. Ele só avisa que eles existem.</dd>
+  <dt>(utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)</dt><dd>A dica: "use <code>git add</code> e o nome do arquivo para incluí-lo no que vai ser commitado". Nas dicas, <code>&lt;arquivo&gt;</code> é um espaço para você pôr o nome (sem os sinais <code>&lt; &gt;</code>), e os <code>...</code> querem dizer "um ou mais".</dd>
+  <dt>README.md</dt><dd>A lista de arquivos do bloco, cada um numa linha, recuada com uma tabulação. No terminal de verdade, os nomes deste bloco aparecem em <strong>vermelho</strong> (as cores ajudam a ver rápido: vermelho = ainda não vai entrar no commit).</dd>
+  <dt>nada adicionado ao envio mas arquivos não registrados estão presentes (use "git add" to registrar)</dt><dd>A linha final resume: "nada foi adicionado ao commit, mas há arquivos não rastreados; use <code>git add</code> para rastreá-los". Se você rodar <code>git commit</code> agora, nada acontece.</dd>
+</dl>
+
+<div class="tip">
+<strong>Rastreado ou não rastreado?</strong>
+<p>Um arquivo <strong>rastreado</strong> (<em>tracked</em>) é um arquivo que o Git conhece: ele está no último commit ou na área de preparo. Só dos rastreados o Git guarda versões. Todo arquivo novo começa <strong>não rastreado</strong> (<em>untracked</em>), e só passa a ser rastreado com um <code>git add</code>.</p>
+</div>
+
+<hr>
+
+<h2>Estado 3: o arquivo preparado, antes do primeiro commit</h2>
+
+<pre class="term" data-cwd="~/receitas">$ git add README.md
+$ git status
+No ramo main
+
+No commits yet
+
+Mudanças a serem submetidas:                                    « vai entrar no próximo commit
+  (utilize "git rm --cached &lt;arquivo&gt;..." para não apresentar)    « como desfazer o add
+	new file:   README.md                                         « arquivo novo
+
+</pre>
+
+<dl class="anatomy">
+  <dt>Mudanças a serem submetidas:</dt><dd>"Mudanças que vão ser commitadas" (em inglês, <code>Changes to be committed:</code>): é a <strong>área de preparo</strong>. Tudo o que está neste bloco entra no próximo <code>git commit</code>. No terminal, estes nomes aparecem em <strong>verde</strong>.</dd>
+  <dt>(utilize "git rm --cached &lt;arquivo&gt;..." para não apresentar)</dt><dd>A dica de como <strong>voltar atrás</strong>: <code>git rm --cached README.md</code> tira o arquivo da área de preparo e o devolve a "não rastreado" (o arquivo continua na pasta; o <code>--cached</code> quer dizer "só na área de preparo"). "Para não apresentar" é a tradução, meio torta, de "para tirar da área de preparo". Esta dica só aparece <strong>antes do primeiro commit</strong>; depois dele, a dica vira <code>git restore --staged</code> (Estado 6).</dd>
+  <dt>new file:   README.md</dt><dd>A etiqueta diz <strong>que tipo</strong> de mudança é: <code>new file</code> = "arquivo novo". As outras etiquetas que você vai ver: <code>modified</code> (modificado), <code>deleted</code> (apagado), <code>renamed</code> (renomeado).</dd>
+  <dt>(a linha vazia no fim)</dt><dd>Quando há algo preparado, o Git não mostra linha de resumo: o bloco verde já diz que o próximo commit tem conteúdo.</dd>
+</dl>
+
+<hr>
+
+<h2>Estado 4: tudo limpo</h2>
+<p>A Ana faz o primeiro commit e pergunta de novo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git commit -m "Adiciona o README"
+[main (root-commit) d84dc97] Adiciona o README
+ 1 file changed, 1 insertion(+)
+ create mode 100644 README.md
+$ git status
+No ramo main
+nothing to commit, working tree clean
+</pre>
+
+<dl class="anatomy">
+  <dt>No ramo main</dt><dd>O ramo, como sempre. A linha <code>No commits yet</code> sumiu: agora existe um commit.</dd>
+  <dt>nothing to commit, working tree clean</dt><dd>"Nada a commitar, pasta de trabalho limpa" (<em>working tree</em> = "árvore de trabalho", a pasta de trabalho). Nenhum arquivo novo, nenhum modificado, nada preparado.</dd>
+</dl>
+
+<p>"Limpo" é o estado de descanso: tudo o que está na pasta é igual ao último commit. É uma boa hora para trocar de ramo, mandar para o GitHub ou desligar o computador tranquilo.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md" data-goal="commits:1,limpo,ran:status" data-solucao="git status;;git add README.md;;git status;;git commit -m 'Adiciona o README';;git status">
+<p class="try-task"><strong>Missão:</strong> o repositório <code>receitas</code> tem um <code>README.md</code> não rastreado. Rode <code>git status</code> <strong>antes e depois</strong> de cada passo (<code>git add README.md</code>, depois <code>git commit -m "Adiciona o README"</code>) e veja o painel mudar, até ele dizer que está tudo limpo.</p>
+</div>
+
+<hr>
+
+<h2>Estado 5: um arquivo rastreado foi modificado</h2>
+<p>A Ana já tem dois commits (o README e o <code>bolo.txt</code>). Ela acrescenta uma linha na receita de bolo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ cat bolo.txt
+Bolo de cenoura
+3 cenouras
+$ echo '2 xícaras de açúcar' &gt;&gt; bolo.txt
+$ git status
+No ramo main
+Changes not staged for commit:                                            « rastreado, mudou, não preparado
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)     « dica para avançar
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)  « dica para desfazer
+	modified:   bolo.txt
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+</pre>
+
+<dl class="anatomy">
+  <dt>Changes not staged for commit:</dt><dd>"Mudanças não preparadas para o commit". O arquivo é <strong>rastreado</strong> (está no último commit), foi modificado na pasta, e a modificação ainda <strong>não</strong> foi para a área de preparo. Se você commitar agora, ela não entra. Os nomes saem em vermelho.</dd>
+  <dt>(utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)</dt><dd>Dica para <strong>avançar</strong>: <code>git add bolo.txt</code> atualiza a área de preparo com a versão nova.</dd>
+  <dt>(use "git restore &lt;file&gt;..." to discard changes in working directory)</dt><dd>Dica para <strong>desfazer</strong>: "use <code>git restore</code> para descartar as mudanças na pasta de trabalho". Isso volta o arquivo ao que estava no último commit e <strong>apaga a sua edição</strong> para sempre (aula <a href="git-restore.html">git restore</a>). Use só quando quiser jogar a mudança fora.</dd>
+  <dt>modified:   bolo.txt</dt><dd>"Modificado": o arquivo existe no último commit e mudou desde então.</dd>
+  <dt>nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")</dt><dd>"Nenhuma mudança foi adicionada ao commit": prepare com <code>git add</code>, ou use <code>git commit -a</code>, que prepara e commita todos os rastreados de uma vez (aula <a href="git-commit.html">git commit</a>).</dd>
+</dl>
+
+<hr>
+
+<h2>Estado 6: a modificação preparada</h2>
+
+<pre class="term" data-cwd="~/receitas">$ git add bolo.txt
+$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)       « como tirar da área de preparo
+	modified:   bolo.txt
+
+</pre>
+
+<dl class="anatomy">
+  <dt>Mudanças a serem submetidas:</dt><dd>O bloco verde: a modificação do <code>bolo.txt</code> vai entrar no próximo commit.</dd>
+  <dt>(use "git restore --staged &lt;file&gt;..." to unstage)</dt><dd>"Use <code>git restore --staged</code> para tirar da área de preparo" (<em>unstage</em>). Ele desfaz só o <code>git add</code>: a sua edição continua no arquivo, e ele volta para o bloco "não preparadas" (aula <a href="restore-staged.html">Tirando da Área de Preparo</a>). Em tutoriais antigos, essa dica aparece como <code>git reset HEAD &lt;file&gt;</code>: é o comando antigo para a mesma coisa.</dd>
+  <dt>modified:   bolo.txt</dt><dd>A etiqueta agora é <code>modified</code>, e não <code>new file</code>, porque o <code>bolo.txt</code> já existia no último commit.</dd>
+</dl>
+
+<p>Repare na diferença com o Estado 3: lá, o arquivo era <code>novo arquivo</code> e a dica falava em <code>git rm --cached</code>; aqui, depois do primeiro commit, ele é <code>modificado</code> e a dica é <code>git restore --staged</code>. É o Git sugerindo o comando certo para cada situação.</p>
+
+<hr>
+
+<h2 id="dois">Estado 7: o mesmo arquivo preparado <strong>e</strong> modificado</h2>
+<p>Este é o estado que mais confunde quem está começando. A Ana preparou o <code>bolo.txt</code> (Estado 6) e, antes de commitar, lembrou de mais uma coisa e editou o arquivo de novo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo '3 ovos' &gt;&gt; bolo.txt
+$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	modified:   bolo.txt                                            « a versão com o açúcar
+
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   bolo.txt                                            « os ovos, ainda não preparados
+
+</pre>
+
+<p>O <code>bolo.txt</code> aparece <strong>duas vezes</strong>, e isso não é erro. A explicação:</p>
+<dl class="anatomy">
+  <dt>em "Mudanças a serem submetidas"</dt><dd>A versão que está na área de preparo, a do momento do <code>git add</code>: com o açúcar, <strong>sem</strong> os ovos. É ela que entra no próximo commit.</dd>
+  <dt>em "Changes not staged for commit"</dt><dd>A diferença entre a pasta e a área de preparo: a linha dos ovos, escrita <strong>depois</strong> do <code>git add</code>.</dd>
+</dl>
+<p>Agora existem três versões do <code>bolo.txt</code> ao mesmo tempo:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Lugar</th><th>Conteúdo do <code>bolo.txt</code></th></tr>
+<tr><td>Último commit</td><td>Bolo de cenoura / 3 cenouras</td></tr>
+<tr><td>Área de preparo</td><td>Bolo de cenoura / 3 cenouras / 2 xícaras de açúcar</td></tr>
+<tr><td>Pasta de trabalho</td><td>Bolo de cenoura / 3 cenouras / 2 xícaras de açúcar / 3 ovos</td></tr>
+</table>
+</div>
+
+<p>O <code>git add</code> tira uma "cópia" do arquivo <strong>no momento em que você roda o comando</strong>. O que você muda depois não entra sozinho. Se ela commitar agora, o commit leva só a versão preparada; a linha nova fica para trás. Para levar as duas mudanças, prepare de novo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git add bolo.txt
+$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	modified:   bolo.txt
+
+</pre>
+
+<p>A aula <a href="area-de-preparo.html">A Área de Preparo</a> mostra esse caso com o <code>git diff</code>, que mostra exatamente qual linha está em qual lugar.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;printf 'Bolo de cenoura\n3 cenouras\n' &gt; bolo.txt;;git add .;;git commit -q -m 'Primeira versão';;echo '2 xícaras de açúcar' &gt;&gt; bolo.txt;;git add bolo.txt;;echo '3 ovos' &gt;&gt; bolo.txt" data-goal="commits:2,limpo,contem:HEAD:bolo.txt=3 ovos" data-solucao="git status;;git add bolo.txt;;git commit -m 'Completa os ingredientes do bolo'">
+<p class="try-task"><strong>Missão:</strong> rode <code>git status</code>: o <code>bolo.txt</code> está preparado <strong>e</strong> modificado ao mesmo tempo. Faça um commit que leve <strong>as duas</strong> mudanças (o açúcar e os ovos). Dica: o que o <code>git status</code> sugere para a parte não preparada?</p>
+</div>
+
+<hr>
+
+<h2>Estado 8: dois arquivos, três situações</h2>
+<p>Na vida real, o painel mistura tudo. A Ana preparou o <code>bolo.txt</code>, mexeu no <code>README.md</code> sem preparar e criou o <code>pudim.txt</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'Pudim de leite' &gt; pudim.txt
+$ echo 'Site com as receitas da família.' &gt;&gt; README.md
+$ echo '1 xícara de óleo' &gt;&gt; bolo.txt
+$ git add bolo.txt
+$ git status
+No ramo main
+Mudanças a serem submetidas:                                      « 1º: preparado (verde)
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	modified:   bolo.txt
+
+Changes not staged for commit:                                    « 2º: rastreado, não preparado (vermelho)
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   README.md
+
+Arquivos não monitorados:                                         « 3º: não rastreado (vermelho)
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	pudim.txt
+
+</pre>
+
+<p>Os blocos aparecem sempre <strong>nesta ordem</strong>: primeiro o que vai entrar no próximo commit, depois o que mudou e não vai entrar, por último o que o Git nem conhece. Se ela rodar <code>git commit</code> agora, só o <code>bolo.txt</code> entra.</p>
+
+<hr>
+
+<h2>Estado 9: um arquivo apagado</h2>
+<p>A Ana apagou o <code>pudim.txt</code> (que já estava num commit) com o <code>rm</code> do terminal:</p>
+
+<pre class="term" data-cwd="~/receitas">$ rm pudim.txt
+$ git status
+No ramo main
+Changes not staged for commit:
+  (utilize "git add/rm &lt;arquivo&gt;..." para atualizar o que será submetido)    « add/rm: os dois servem
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	deleted:    pudim.txt                                                      « apagado
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+$ git add pudim.txt
+$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	deleted:    pudim.txt
+
+</pre>
+
+<p>Apagar também é uma mudança. A etiqueta é <code>deleted</code> ("apagado"), e a dica mudou para <code>git add/rm</code>: tanto <code>git add pudim.txt</code> quanto <code>git rm pudim.txt</code> preparam o apagamento (sim, dá para fazer <code>git add</code> de um arquivo que não existe mais: você está preparando a "falta" dele). E o <code>git restore pudim.txt</code> traz o arquivo de volta, do último commit: o <code>rm</code> do terminal não é o fim do mundo num arquivo que já estava num commit. Depois do <code>git add</code>, o apagamento vai para o bloco verde e entra no próximo commit. O jeito de apagar avisando o Git ao mesmo tempo é o <code>git rm</code> (aula <a href="git-rm.html">Apagando Arquivos</a>).</p>
+
+<hr>
+
+<h2>Estado 10: o ramo e o GitHub</h2>
+<p>Quando o repositório está ligado a um repositório remoto (o GitHub, por exemplo; veja <a href="remotos.html">O que é um Repositório Remoto</a>), o <code>git status</code> ganha uma linha que compara o seu ramo com o de lá:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main
+Your branch is up to date with 'origin/main'.          « igual ao GitHub
+
+nothing to commit, working tree clean
+</pre>
+
+<p>A Ana fez um commit novo e ainda não o enviou:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main
+Seu ramo está à frente de 'origin/main' por 1 submissão.      « você tem 1 commit que o GitHub não tem
+  (use "git push" to publish your local commits)
+
+nothing to commit, working tree clean
+</pre>
+
+<p>E, outro dia, o colega Bruno enviou um commit e a Ana baixou a novidade com <code>git fetch</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main
+Seu ramo está atrás de 'origin/main' em 1 submissão, e pode ser avançado.    « o GitHub tem 1 commit que você não tem
+  (use "git pull" to update your local branch)
+
+nothing to commit, working tree clean
+</pre>
+
+<p>Por fim, os dois fizeram commits ao mesmo tempo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main
+O seu branch e 'origin/main' divergiram-se,
+e cada um tem 1 e 1 submissões, respectivamente.
+  (use "git pull" if you want to integrate the remote branch with yours)
+
+nothing to commit, working tree clean
+</pre>
+
+<dl class="anatomy">
+  <dt>'origin/main'</dt><dd>A última notícia que o seu Git tem do ramo <code>main</code> do GitHub (<code>origin</code> é o apelido do repositório remoto).</dd>
+  <dt>Your branch is up to date with 'origin/main'.</dt><dd>"O seu ramo está em dia com o <code>origin/main</code>": o mesmo histórico dos dois lados.</dd>
+  <dt>à frente … por 1 submissão / (use "git push" to publish your local commits)</dt><dd>Você tem 1 commit que o GitHub ainda não tem. Dica: "use <code>git push</code> para publicar os seus commits" (aula <a href="git-push.html">git push</a>).</dd>
+  <dt>atrás … em 1 submissão, e pode ser avançado / (use "git pull" to update your local branch)</dt><dd>O GitHub tem 1 commit que você não tem, e o seu ramo pode simplesmente "andar para a frente" até ele. Dica: "use <code>git pull</code> para atualizar o seu ramo" (aula <a href="git-pull.html">git pull</a>).</dd>
+  <dt>divergiram-se, e cada um tem 1 e 1 submissões</dt><dd>Cada lado tem 1 commit que o outro não tem. Dica: "use <code>git pull</code> se quiser juntar o ramo remoto ao seu".</dd>
+</dl>
+
+<p>Atenção: o <code>git status</code> <strong>não</strong> pergunta nada ao GitHub. Ele compara com a última vez que o seu Git conversou com o GitHub (num <code>push</code>, <code>fetch</code> ou <code>pull</code>). "Up to date" pode ser notícia velha: rode <code>git fetch</code> antes, se quiser a situação de agora. Isso aparece em detalhe em <a href="upstream.html">Branch de Rastreamento</a>. em detalhe em <a href="upstream.html">Branch de Rastreamento</a>.</p>
+
+<hr>
+
+<h2 id="curto">O formato curto: <code>git status -s</code></h2>
+<p>Quando você já entende o painel, as frases longas cansam. O <code>-s</code> (de <em>short</em>, "curto") mostra uma linha por arquivo, com um código de duas letras na frente. Na situação do Estado 8:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status -s
+ M README.md       « 2ª coluna: modificado, não preparado
+M  bolo.txt        « 1ª coluna: modificado e preparado
+?? pudim.txt       « novo, não rastreado
+</pre>
+
+<p>A Ana prepara o <code>pudim.txt</code> e, logo depois, acrescenta uma linha nele:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git add pudim.txt
+$ echo 'Leite condensado' &gt;&gt; pudim.txt
+$ git status -s
+ M README.md
+M  bolo.txt
+AM pudim.txt       « novo e preparado (A), e modificado depois (M)
+</pre>
+
+<p>As duas colunas do código são os dois "lugares" do painel:</p>
+<ul>
+  <li>a <strong>1ª coluna</strong> compara a área de preparo com o último commit: é o que <strong>vai</strong> entrar no próximo commit;</li>
+  <li>a <strong>2ª coluna</strong> compara a pasta com a área de preparo: é o que mudou e <strong>ainda não</strong> foi preparado.</li>
+</ul>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Código</th><th>Quer dizer</th><th>Bloco no <code>git status</code> normal</th></tr>
+<tr><td><code>??</code></td><td>Novo, não rastreado</td><td>Arquivos não monitorados</td></tr>
+<tr><td><code>A&nbsp;</code></td><td>Novo, preparado (<em>Added</em>)</td><td>Mudanças a serem submetidas: <code>new file</code></td></tr>
+<tr><td><code>M&nbsp;</code></td><td>Modificado, preparado</td><td>Mudanças a serem submetidas: <code>modified</code></td></tr>
+<tr><td><code>&nbsp;M</code></td><td>Modificado, não preparado</td><td>Changes not staged: <code>modified</code></td></tr>
+<tr><td><code>MM</code></td><td>Modificado, preparado, e modificado de novo</td><td>Nos dois blocos (Estado 7)</td></tr>
+<tr><td><code>AM</code></td><td>Novo, preparado, e modificado depois</td><td>Nos dois blocos</td></tr>
+<tr><td><code>D&nbsp;</code></td><td>Apagado, preparado (<em>Deleted</em>)</td><td>Mudanças a serem submetidas: <code>deleted</code></td></tr>
+<tr><td><code>&nbsp;D</code></td><td>Apagado, não preparado</td><td>Changes not staged: <code>deleted</code></td></tr>
+</table>
+</div>
+
+<p>Saídas reais dos dois últimos casos, no Estado 9:</p>
+
+<pre class="term" data-cwd="~/receitas">$ rm pudim.txt
+$ git status -s
+ D pudim.txt
+$ git add pudim.txt
+$ git status -s
+D  pudim.txt
+</pre>
+
+<p>Existem outras letras, para situações que você vai ver mais adiante: <code>R</code> (renomeado, em <a href="git-mv.html">git mv</a>) e <code>U</code> (conflito, em <a href="conflitos.html">Conflitos de Merge</a>). Quando a pasta está limpa, o <code>git status -s</code> não mostra <strong>nada</strong>.</p>
+
+<p>Com <code>-sb</code> (curto + ramo), aparece também a linha do ramo, começando com <code>##</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status -sb
+## main
+ M README.md
+M  bolo.txt
+AM pudim.txt
+</pre>
+
+<p>Num repositório ligado ao GitHub, essa linha também mostra a comparação do Estado 10, bem resumida:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status -sb
+## main...origin/main [à frente 1]
+</pre>
+
+<p>Os outros casos saem como <code>## main...origin/main</code> (em dia), <code>[atrás 1]</code> e <code>[à frente 1, atrás 1]</code>.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;echo 'Bolo de cenoura' &gt; bolo.txt;;git add .;;git commit -q -m 'Primeira versão';;echo 'Com cobertura' &gt;&gt; bolo.txt;;echo 'Pudim de leite' &gt; pudim.txt" data-goal="preparado:pudim.txt,naopreparado:bolo.txt,ran:status +(-s|--short)" data-solucao="git status -s;;git add pudim.txt;;git status -s">
+<p class="try-task"><strong>Missão:</strong> rode <code>git status -s</code> e descubra qual arquivo é novo (<code>??</code>) e qual foi modificado (<code> M</code>). Prepare <strong>só o arquivo novo</strong> e rode <code>git status -s</code> de novo: o <code>??</code> deve virar <code>A</code>.</p>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de ver a situação</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>Quando usar</th></tr>
+<tr><td><code>git status</code></td><td>Sempre que estiver em dúvida, e quando está aprendendo: as dicas ensinam.</td></tr>
+<tr><td><code>git status -s</code></td><td>Para uma olhada rápida, quando você já sabe ler as letras.</td></tr>
+<tr><td><code>git status -sb</code></td><td>Olhada rápida + o ramo atual e se está à frente ou atrás do GitHub.</td></tr>
+<tr><td><code>git status pasta/</code></td><td>Só a situação de uma pasta ou arquivo.</td></tr>
+<tr><td><code>git diff</code> e <code>git diff --staged</code></td><td>Quando você quer ver <strong>o que</strong> mudou dentro dos arquivos, linha por linha, e não só quais arquivos (aulas <a href="git-diff.html">git diff</a> e <a href="git-diff-staged.html">git diff --staged</a>).</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>"not a git repository"</strong>
+<pre class="term" data-cwd="~/receitas">$ cd ~
+$ git status
+fatal: not a git repository (or any of the parent directories): .git
+</pre>
+<p>"Fatal: não é um repositório Git (nem nenhuma das pastas acima)". O Git procura a pasta escondida <code>.git</code> na pasta atual e nas de cima, e não achou. A Ana estava na pasta pessoal; o repositório é a <code>receitas</code>. <strong>Como resolver:</strong> <code>cd receitas</code> (confira onde está com <code>pwd</code>). Se a pasta do projeto nunca recebeu <code>git init</code>, veja <a href="git-init.html">git init</a>.</p>
+</div>
+
+<div class="cenario">
+<strong>Uma pasta vazia não aparece</strong>
+<pre class="term" data-cwd="~/receitas">$ mkdir fotos
+$ git status
+No ramo main
+nothing to commit, working tree clean
+</pre>
+<p>O Git guarda <strong>arquivos</strong>, não pastas: uma pasta vazia não existe para ele. Assim que ela ganha um arquivo, aparece, mas como a pasta inteira, com uma <code>/</code> no fim:</p>
+<pre class="term" data-cwd="~/receitas">$ touch fotos/bolo.jpg
+$ git status
+No ramo main
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	fotos/
+
+nada adicionado ao envio mas arquivos não registrados estão presentes (use "git add" to registrar)
+</pre>
+<p>Quando a pasta inteira é nova, o Git resume: mostra só <code>fotos/</code>, não cada arquivo dentro dela. Para ver os arquivos um por um, use <code>-u</code> (de <em>untracked</em>):</p>
+<pre class="term" data-cwd="~/receitas">$ git status -u
+No ramo main
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	fotos/bolo.jpg
+
+nada adicionado ao envio mas arquivos não registrados estão presentes (use "git add" to registrar)
+</pre>
+</div>
+
+<div class="cenario">
+<strong>Mudei o arquivo e o commit não levou a mudança</strong>
+<p>É o Estado 7: o arquivo foi preparado e editado de novo antes do commit. O commit leva a versão que estava na área de preparo, e o <code>git status</code> depois do commit ainda mostra o arquivo em <code>Mudanças não preparadas</code>. <strong>Como resolver:</strong> <code>git add arquivo</code> e outro commit (ou, se o commit foi o último e ainda não foi para o GitHub, corrigi-lo com <a href="commit-amend.html">--amend</a>).</p>
+</div>
+
+<div class="cenario">
+<strong>Uma lista enorme de arquivos não rastreados</strong>
+<p>Se o painel mostra dezenas de arquivos que você nunca quer commitar (programas compilados, a pasta <code>node_modules</code>, arquivos temporários do editor), não use <code>git add .</code>: ensine o Git a ignorá-los com o <code>.gitignore</code> (aula <a href="gitignore.html">Ignorando Arquivos</a>). Arquivos ignorados somem do <code>git status</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Bloco ou linha do <code>git status</code></th><th>Quer dizer</th><th>Próximo passo comum</th></tr>
+<tr><td><code>No ramo main</code></td><td>Você está no ramo <code>main</code></td><td>—</td></tr>
+<tr><td><code>No commits yet</code></td><td>O repositório ainda não tem commits</td><td>Criar arquivos, <code>git add</code>, <code>git commit</code></td></tr>
+<tr><td><code>Mudanças a serem submetidas:</code> (<em>Changes to be committed</em>)</td><td>Preparado: entra no próximo commit</td><td><code>git commit</code>; desfazer: <code>git restore --staged</code> (ou <code>git rm --cached</code> antes do 1º commit)</td></tr>
+<tr><td><code>Changes not staged for commit:</code></td><td>Rastreado, mudou, não preparado</td><td><code>git add</code>; jogar fora: <code>git restore</code></td></tr>
+<tr><td><code>Arquivos não monitorados:</code> (<em>Untracked files</em>)</td><td>Novo, o Git não rastreia</td><td><code>git add</code>, ou ignorar com <code>.gitignore</code></td></tr>
+<tr><td><code>new file</code> / <code>modified</code> / <code>deleted</code></td><td>Novo / modificado / apagado</td><td>—</td></tr>
+<tr><td><code>nothing to commit, working tree clean</code></td><td>Tudo igual ao último commit</td><td>Continuar trabalhando, <code>git push</code></td></tr>
+<tr><td><code>Your branch is up to date with 'origin/main'.</code></td><td>Igual ao GitHub (na última conversa com ele)</td><td>—</td></tr>
+<tr><td><code>Seu ramo está à frente de 'origin/main'</code></td><td>Você tem commits que o GitHub não tem</td><td><code>git push</code></td></tr>
+<tr><td><code>Seu ramo está atrás de 'origin/main'</code></td><td>O GitHub tem commits que você não tem</td><td><code>git pull</code></td></tr>
+<tr><td><code>divergiram-se</code></td><td>Os dois lados têm commits novos</td><td><code>git pull</code> (e talvez resolver conflitos)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">1. Em qual bloco do <code>git status</code> aparece um arquivo que você acabou de criar e nunca rodou <code>git add</code>?</p>
+<label><input type="radio" name="q1"> Mudanças a serem submetidas</label>
+<label><input type="radio" name="q1"> Arquivos não monitorados</label>
+<label><input type="radio" name="q1"> Changes not staged for commit</label>
+<label><input type="radio" name="q1"> Ele não aparece</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">2. O <code>bolo.txt</code> aparece em <strong>dois</strong> blocos ao mesmo tempo: "a serem submetidas" e "não preparadas". O que aconteceu?</p>
+<label><input type="radio" name="q2"> O arquivo está corrompido</label>
+<label><input type="radio" name="q2"> Existem dois arquivos com o mesmo nome</label>
+<label><input type="radio" name="q2"> Ele foi preparado com <code>git add</code> e depois editado de novo</label>
+<label><input type="radio" name="q2"> O Git deu erro e é preciso rodar <code>git init</code> de novo</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">3. No <code>git status -s</code>, o que quer dizer <code>??</code> na frente de um arquivo?</p>
+<label><input type="radio" name="q3"> O Git não sabe se o arquivo existe</label>
+<label><input type="radio" name="q3"> O arquivo tem um conflito</label>
+<label><input type="radio" name="q3"> O arquivo foi apagado</label>
+<label><input type="radio" name="q3"> O arquivo é novo, não rastreado</label>
+</div>
+
+<div class="exercise">
+<h3>4. Leia o código curto</h3>
+<p>Complete com a letra que o <code>git status -s</code> mostra na <strong>1ª coluna</strong> para:</p>
+<div class="ex-code">um arquivo novo, já preparado: <input data-answer="A" aria-label="letra do arquivo novo preparado"><br>um arquivo modificado e preparado: <input data-answer="M" aria-label="letra do modificado preparado"><br>um arquivo apagado e preparado: <input data-answer="D" aria-label="letra do apagado preparado"></div>
+</div>
+
+<div class="exercise">
+<h3>5. Siga a dica</h3>
+<p>O <code>git status</code> mostrou <code>Arquivos não monitorados:</code> com o <code>pudim.txt</code>. Qual comando ele sugere para incluir o arquivo no próximo commit?</p>
+<div class="ex-code">git <input data-answer="add" aria-label="subcomando"> pudim.txt</div>
+</div>
+
+<h3>Missão final: arrume o painel</h3>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;echo 'Bolo de cenoura' &gt; bolo.txt;;git add .;;git commit -q -m 'Primeira versão';;echo 'Com cobertura de chocolate' &gt;&gt; bolo.txt;;echo 'Pudim de leite' &gt; pudim.txt;;echo 'rascunho' &gt; notas.tmp" data-goal="commits:2,rastreado:pudim.txt,contem:HEAD:bolo.txt=chocolate,naopreparado:README.md" data-solucao="echo 'Site de receitas' &gt;&gt; README.md;;git add bolo.txt pudim.txt;;git commit -m 'Adiciona o pudim e a cobertura do bolo'">
+<p class="try-task"><strong>Missão:</strong> rode <code>git status</code> e leia o painel. Faça <strong>um</strong> commit que leve a mudança do <code>bolo.txt</code> e o arquivo novo <code>pudim.txt</code>, mas <strong>não</strong> o <code>notas.tmp</code>. Depois, acrescente uma linha no <code>README.md</code> (por exemplo, <code>echo 'Site de receitas' &gt;&gt; README.md</code>) e <strong>não</strong> prepare: o painel deve terminar com o README em "não preparadas" e o <code>notas.tmp</code> em "não monitorados".</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O <code>git status</code> mostra a situação e nunca muda nada. Rode antes e depois de cada <code>add</code> e de cada <code>commit</code>.</li>
+  <li>Os blocos, sempre nesta ordem: <strong>Mudanças a serem submetidas</strong> (vai entrar no próximo commit), <strong>Changes not staged for commit</strong> (rastreado, mudou, não vai entrar) e <strong>Arquivos não monitorados</strong> (o Git não conhece).</li>
+  <li>As linhas entre parênteses são dicas: elas dizem o comando para avançar (<code>git add</code>, <code>git commit</code>) e para voltar atrás (<code>git restore</code>, <code>git restore --staged</code>, <code>git rm --cached</code>).</li>
+  <li>Um arquivo pode estar preparado <strong>e</strong> modificado: o <code>git add</code> guarda a versão daquele momento.</li>
+  <li><code>nothing to commit, working tree clean</code> quer dizer que a pasta é igual ao último commit.</li>
+  <li><code>git status -s</code>: <code>??</code> novo, <code>A</code> novo preparado, <code>M</code> modificado, <code>D</code> apagado; 1ª coluna = preparado, 2ª coluna = não preparado.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
