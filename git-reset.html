@@ -53,7 +53,7 @@ Depois:  A --- B --- C         &lt;- main
 <p>O repositório <code>receitas</code> da Ana tem quatro commits:</p>
 
 <pre class="term" data-cwd="~/receitas">$ git log --oneline
-a122cf9 Adiciona receita de brigadeiro   « o HEAD está aqui
+a122cf9 (HEAD -&gt; main) Adiciona receita de brigadeiro   « o HEAD está aqui
 91591a1 Adiciona receita de pudim
 62fc1c8 Adiciona receita de bolo
 fe996fb Primeiro commit
@@ -72,7 +72,7 @@ fe996fb Primeiro commit
 <p>A resposta do Git: <strong>nenhuma</strong>. Como quase todo comando de terminal, o <code>git reset</code> fica quieto quando dá certo. (Quando algum arquivo que o Git já conhecia fica com mudanças fora da área de preparo, ele lista esses arquivos debaixo de <code>Unstaged changes after reset:</code>; você vai ver isso na seção 4. Aqui, o único arquivo do commit desfeito era novo, então não havia o que listar.) Para ver o que aconteceu, pergunte ao <code>git log</code> e ao <code>git status</code>:</p>
 
 <pre class="term" data-cwd="~/receitas">$ git log --oneline
-91591a1 Adiciona receita de pudim   « o HEAD agora está aqui
+91591a1 (HEAD -&gt; main) Adiciona receita de pudim   « o HEAD agora está aqui
 62fc1c8 Adiciona receita de bolo
 fe996fb Primeiro commit
 $ git status
@@ -89,7 +89,7 @@ nada adicionado ao envio mas arquivos não registrados estão presentes (use "gi
 <pre class="term" data-cwd="~/receitas">$ git add brigadeiro.txt
 $ git commit -q -m "Adiciona receita de brigadeiro"
 $ git log --oneline
-a122cf9 Adiciona receita de brigadeiro
+a122cf9 (HEAD -&gt; main) Adiciona receita de brigadeiro
 91591a1 Adiciona receita de pudim
 62fc1c8 Adiciona receita de bolo
 fe996fb Primeiro commit
@@ -108,7 +108,7 @@ fe996fb Primeiro commit
 
 <pre class="term" data-cwd="~/receitas">$ git reset HEAD~2
 $ git log --oneline
-62fc1c8 Adiciona receita de bolo
+62fc1c8 (HEAD -&gt; main) Adiciona receita de bolo
 fe996fb Primeiro commit
 $ git status
 No ramo main
@@ -132,7 +132,7 @@ nada adicionado ao envio mas arquivos não registrados estão presentes (use "gi
 
 <pre class="term" data-cwd="~/receitas">$ git reset ORIG_HEAD
 $ git log --oneline
-a122cf9 Adiciona receita de brigadeiro
+a122cf9 (HEAD -&gt; main) Adiciona receita de brigadeiro
 91591a1 Adiciona receita de pudim
 62fc1c8 Adiciona receita de bolo
 fe996fb Primeiro commit
