@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git GitHub Flow — um branch por tarefa, pull request e main sempre pronta | Guia Git</title>
+<meta name="description" content="O GitHub Flow para quem está começando: main sempre funcionando, um branch curto para cada tarefa, commits, push, pull request, revisão, merge e apagar o branch, com todos os comandos e saídas reais do Git em português e o que fazer quando algo dá errado.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">O GitHub Flow</span></h1>
+
+<p class="intro">Você já sabe criar branches, enviar com <code>git push</code> e abrir um <a href="pull-request.html">pull request</a>. Falta juntar tudo numa <strong>rotina</strong>: em que ordem fazer as coisas, todo dia, para que duas ou dez pessoas mexam no mesmo projeto sem pisar no pé uma da outra. O jeito mais simples e mais usado no GitHub tem nome: <strong>GitHub Flow</strong> ("o fluxo do GitHub"). Ele cabe em uma frase: <em>a <code>main</code> está sempre funcionando, e toda mudança nasce num branch e entra por um pull request</em>.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A regra de ouro do GitHub Flow: a <code>main</code> está sempre pronta para ir ao ar.</li>
+  <li>Os seis passos: criar o branch, fazer commits, enviar, abrir o pull request, revisar e mesclar, apagar o branch.</li>
+  <li>Os comandos de cada passo, com as saídas reais do Git, e o que acontece no site do GitHub.</li>
+  <li>Como deixar o seu computador em dia depois do merge (<code>git pull</code>, <code>git branch -d</code>, <code>git fetch --prune</code>).</li>
+  <li>Os tropeços mais comuns: commitar direto na <code>main</code>, branch que vive demais, push rejeitado.</li>
+</ul>
+</div>
+
+<p>Os comandos desta aula rodaram no Git do Ubuntu da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com as mensagens em português. O GitHub da aula é um "GitHub de mentira" do laboratório: o Git conversa com ele do mesmo jeito que conversaria com o de verdade. O que acontece <strong>no site</strong> do GitHub (botões, telas) está marcado como <strong>ilustrativo</strong> e segue a documentação oficial (<a href="https://docs.github.com/pt/get-started/using-github/github-flow">docs.github.com/pt</a>).</p>
+
+<hr>
+
+<h2>A ideia: a cozinha do restaurante</h2>
+<p>Num restaurante, o <strong>balcão</strong> é onde ficam os pratos prontos para ir à mesa. Ninguém monta um prato novo em cima do balcão: cada cozinheiro prepara o seu prato na <strong>própria bancada</strong>. Quando termina, o chefe <strong>prova</strong>; se estiver bom, o prato vai para o balcão. Se não estiver, volta para a bancada para um ajuste.</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Na cozinha</th><th>No GitHub Flow</th></tr>
+<tr><td>O balcão, só com pratos prontos</td><td>O branch <code>main</code>, sempre funcionando</td></tr>
+<tr><td>A bancada de cada cozinheiro</td><td>Um branch para cada tarefa (<code>receita-pudim</code>, <code>corrige-titulo</code>)</td></tr>
+<tr><td>"Chefe, prova aqui?"</td><td>O <a href="pull-request.html">pull request</a> (o pedido para juntar o branch na <code>main</code>)</td></tr>
+<tr><td>O chefe prova e comenta</td><td>A <a href="revisao-codigo.html">revisão de código</a></td></tr>
+<tr><td>O prato vai para o balcão</td><td>O merge do pull request na <code>main</code></td></tr>
+<tr><td>A bancada é limpa para o próximo prato</td><td>O branch é apagado</td></tr>
+</table>
+</div>
+<p>Repare no que <strong>não</strong> existe aqui: não há um balcão "de quase pronto", nem uma bancada que dura meses. O GitHub Flow tem <strong>um</strong> branch permanente (a <code>main</code>) e muitos branches curtos, que vivem horas ou poucos dias. Fluxos com mais branches fixos (como o Git Flow) estão na próxima aula, <a href="fluxos.html">Git Flow e Outros Fluxos</a>.</p>
+
+<pre>
+main:     A───B───────────M───────N        « só entra coisa revisada (M e N são merges)
+               \         /       /
+receita-pudim:  C───D───┘       /          « o branch vive o tempo da tarefa
+                     \         /
+corrige-titulo:       E───────┘
+</pre>
+
+<hr>
+
+<h2>Os seis passos, de uma vez</h2>
+<ol class="passo">
+  <li><strong>Crie um branch</strong> a partir da <code>main</code> atualizada, com um nome curto que diga a tarefa.</li>
+  <li><strong>Faça commits</strong> pequenos nesse branch.</li>
+  <li><strong>Envie</strong> o branch para o GitHub (<code>git push</code>), quantas vezes quiser.</li>
+  <li><strong>Abra um pull request</strong> para pedir revisão.</li>
+  <li><strong>Revise, ajuste e mescle</strong>: os ajustes são novos commits no mesmo branch; aprovado, o pull request é mesclado na <code>main</code>.</li>
+  <li><strong>Apague o branch</strong> e deixe o seu computador em dia.</li>
+</ol>
+<p>A partir daqui, a Ana vai fazer um ciclo inteiro: ela vai acrescentar a receita de pudim no site de receitas que mantém com o Bruno.</p>
+
+<hr>
+
+<h2>Passo 0: comece da <code>main</code> atualizada</h2>
+<p>Antes de criar o branch, a Ana vai para a <code>main</code> e busca o que os outros já mesclaram. Assim a bancada dela nasce do balcão <strong>de hoje</strong>, e não do de ontem.</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch main
+Already on 'main'
+Your branch is up to date with 'origin/main'.
+$ git pull
+From https://github.com/ana-souza/receitas
+   671b2ef..c451956  main       -&gt; origin/main
+Updating 671b2ef..c451956
+Fast-forward
+ brigadeiro.md | 3 +++
+ index.md      | 2 ++
+ 2 files changed, 5 insertions(+)
+ create mode 100644 brigadeiro.md
+</pre>
+
+<p>Linha por linha:</p>
+<dl class="anatomy">
+  <dt>Already on 'main'</dt><dd>"Já está na <code>main</code>": ela já estava lá, nada mudou.</dd>
+  <dt>Your branch is up to date with 'origin/main'.</dt><dd>"O seu branch está em dia com a <code>origin/main</code>". Cuidado: isso compara com o que o seu Git <strong>sabia</strong> do GitHub da última vez, não com o GitHub de agora. Por isso vem o <code>git pull</code>.</dd>
+  <dt>671b2ef..c451956  main -&gt; origin/main</dt><dd>O <code>git pull</code> buscou novidades: a <code>main</code> do GitHub andou de <code>671b2ef</code> para <code>c451956</code>. Foi o Bruno, que tinha mesclado a receita de brigadeiro.</dd>
+  <dt>Fast-forward</dt><dd>A <code>main</code> da Ana só precisou "andar para a frente" até o commit novo (veja <a href="fast-forward.html">Merge Fast-forward</a>).</dd>
+  <dt>create mode 100644 brigadeiro.md</dt><dd>Chegou um arquivo novo, o da receita do Bruno.</dd>
+</dl>
+
+<div class="note">
+<strong>Mensagens em inglês no meio das em português?</strong>
+<p>É assim mesmo no Git do Ubuntu da Ana (Git 2.53): algumas mensagens ainda não têm tradução para o português e saem em inglês, como <code>Already on 'main'</code>. Esta aula mostra as mensagens exatamente como o Git mostrou e traduz cada uma.</p>
+</div>
+
+<hr>
+
+<h2>Passo 1: crie um branch para a tarefa</h2>
+
+<pre class="term" data-cwd="~/receitas">$ git switch -c receita-pudim
+Switched to a new branch 'receita-pudim'           « "trocou para um branch novo"
+$ git status
+No ramo receita-pudim
+nothing to commit, working tree clean              « "nada a commitar, pasta limpa"
+</pre>
+<p>O branch novo nasceu exatamente onde a <code>main</code> estava (no commit <code>c451956</code>), por isso ainda não há nada de diferente nele.</p>
+
+<dl class="anatomy">
+  <dt>git switch</dt><dd>Troca de branch (veja <a href="git-switch.html">git switch</a>).</dd>
+  <dt>-c</dt><dd>De <em>create</em>, "criar": cria o branch e já entra nele.</dd>
+  <dt>receita-pudim</dt><dd>O nome do branch. No GitHub Flow, o nome conta a tarefa: quem olhar a lista de branches no GitHub sabe o que está sendo feito sem abrir nada.</dd>
+</dl>
+
+<div class="tip">
+<strong>Nomes de branch que ajudam</strong>
+<p>Curtos, em minúsculas, com hífen no lugar de espaço: <code>receita-pudim</code>, <code>corrige-link-contato</code>, <code>atualiza-readme</code>. Muitas equipes põem um prefixo com o tipo da tarefa: <code>feature/receita-pudim</code>, <code>fix/link-contato</code> (a barra é permitida em nomes de branch). Evite nomes como <code>teste</code>, <code>ana</code> ou <code>branch2</code>: daqui a uma semana nem você vai saber o que tinha neles.</p>
+</div>
+
+<hr>
+
+<h2>Passo 2: faça commits pequenos</h2>
+<p>A Ana cria a receita e faz o primeiro commit. Depois, lembra de pôr o link no índice e faz um segundo commit. Cada commit é uma mudança completa e pequena, com uma mensagem clara (veja <a href="mensagens-commit.html">Boas Mensagens de Commit</a>):</p>
+
+<pre class="term" data-cwd="~/receitas">$ printf '# Pudim de leite\n\n- 1 lata de leite condensado\n- 2 medidas de leite\n- 3 ovos\n' &gt; pudim.md
+$ git add pudim.md
+$ git commit -m "Adiciona receita de pudim"
+[receita-pudim b093628] Adiciona receita de pudim          « o commit foi para o branch receita-pudim
+ 1 file changed, 5 insertions(+)
+ create mode 100644 pudim.md
+$ printf -- '- [Pudim de leite](pudim.md)\n' &gt;&gt; index.md
+$ git commit -am "Adiciona pudim ao índice"
+[receita-pudim 8ef4f17] Adiciona pudim ao índice
+ 1 file changed, 1 insertion(+)
+$ git log --oneline --graph --all --decorate
+* 8ef4f17 (HEAD -&gt; receita-pudim) Adiciona pudim ao índice
+* b093628 Adiciona receita de pudim
+* c451956 (origin/main, origin/HEAD, main) Adiciona receita de brigadeiro
+* 671b2ef Primeira versão do site
+</pre>
+
+<p>O <code>printf</code> só cria o arquivo pelo terminal; você pode usar o seu editor de texto. O <code>-am</code> do segundo commit junta o <code>git add</code> dos arquivos já rastreados com o <code>-m</code> (veja <a href="git-commit.html">git commit</a>). No desenho do histórico, o branch <code>receita-pudim</code> (onde está o <code>HEAD</code>) está <strong>2 commits à frente</strong> da <code>main</code>, que ficou parada em <code>c451956</code>, junto com a <code>origin/main</code>. Nada disso chegou ao GitHub ainda: está só no computador da Ana.</p>
+
+<hr>
+
+<h2>Passo 3: envie o branch para o GitHub</h2>
+
+<pre class="term" data-cwd="~/receitas">$ git push -u origin receita-pudim
+remote:
+remote: Create a pull request for 'receita-pudim' on GitHub by visiting:
+remote:      https://github.com/ana-souza/receitas/pull/new/receita-pudim
+remote:
+To https://github.com/ana-souza/receitas.git
+ * [new branch]      receita-pudim -&gt; receita-pudim
+branch 'receita-pudim' set up to track 'origin/receita-pudim'.
+$ git status
+No ramo receita-pudim
+Your branch is up to date with 'origin/receita-pudim'.
+
+nothing to commit, working tree clean
+</pre>
+
+<dl class="anatomy">
+  <dt>git push</dt><dd>Envia commits para o remoto (veja <a href="git-push.html">git push</a>).</dd>
+  <dt>-u</dt><dd>De <em>set-upstream</em>: liga o branch local ao branch do mesmo nome no GitHub. Só precisa na primeira vez; depois, um <code>git push</code> sozinho basta (veja <a href="upstream.html">Branch de Rastreamento</a>).</dd>
+  <dt>origin</dt><dd>O nome do remoto (o GitHub).</dd>
+  <dt>receita-pudim</dt><dd>O branch a enviar. Repare: a Ana <strong>não</strong> enviou para a <code>main</code>. A <code>main</code> do GitHub continua igual.</dd>
+</dl>
+
+<p>Linha por linha:</p>
+<dl class="anatomy">
+  <dt>remote: Create a pull request for 'receita-pudim' on GitHub by visiting:</dt><dd>As linhas que começam com <code>remote:</code> não são do seu Git: são o <strong>GitHub</strong> falando (por isso vêm em inglês, qualquer que seja a língua do seu sistema). Ele diz: "crie um pull request para <code>receita-pudim</code> no GitHub visitando:" e dá o endereço. É o atalho para o Passo 4.</dd>
+  <dt>* [new branch] receita-pudim -&gt; receita-pudim</dt><dd>"Branch novo": o GitHub não tinha um <code>receita-pudim</code>, e agora tem.</dd>
+  <dt>branch 'receita-pudim' set up to track 'origin/receita-pudim'.</dt><dd>"O branch passou a acompanhar a <code>origin/receita-pudim</code>": é o efeito do <code>-u</code>.</dd>
+  <dt>Your branch is up to date with 'origin/receita-pudim'.</dt><dd>No <code>git status</code>: o branch local e o do GitHub estão iguais.</dd>
+</dl>
+
+<p>Enviar cedo é uma boa prática: o trabalho fica guardado fora do seu computador, e quem quiser pode dar uma olhada. Enquanto o pull request não for mesclado, você pode continuar fazendo commits e <code>git push</code> no mesmo branch quantas vezes quiser.</p>
+
+<hr>
+
+<h2>Passo 4: abra o pull request (no site, ilustrativo)</h2>
+<p>O pull request é feito no site do GitHub (ou com o <a href="github-cli.html">GitHub CLI</a>). O passo a passo completo está na aula <a href="pull-request.html">Pull Request</a>; em resumo:</p>
+<ol class="passo">
+  <li>Abra o endereço que o <code>git push</code> mostrou (<code>…/pull/new/receita-pudim</code>). Ou, na página do repositório, use o aviso sobre o branch que acabou de receber push, com o botão <strong>Compare &amp; pull request</strong>; ou ainda a aba <strong>Pull requests</strong> → <strong>New pull request</strong>, escolhendo <code>base: main</code> ← <code>compare: receita-pudim</code>.</li>
+  <li>Escreva um título e uma descrição: <strong>o que</strong> mudou e <strong>por quê</strong>. Se o pull request resolve uma <a href="issues.html">issue</a>, escreva <code>Closes #12</code> (ou <code>Fixes #12</code>) na descrição: ao mesclar, a issue é fechada sozinha.</li>
+  <li>Peça a revisão do Bruno (campo <strong>Reviewers</strong>) e clique em <strong>Create pull request</strong>. Se ainda não está pronto para revisão, dá para criar como rascunho (<em>draft</em>).</li>
+</ol>
+<p>O site do GitHub é em inglês; a documentação em português traduz os nomes (por exemplo, "solicitação de pull" para <em>pull request</em>).</p>
+
+<hr>
+
+<h2>Passo 5: revise, ajuste e mescle</h2>
+<p>O Bruno leu o pull request e comentou: <em>"Faltou o tempo de forno."</em> No GitHub Flow, a resposta a um comentário é <strong>um novo commit no mesmo branch</strong>. Não é preciso abrir outro pull request: ele se atualiza sozinho com o push.</p>
+
+<pre class="term" data-cwd="~/receitas">$ printf -- '- Forno a 180 °C por 50 minutos, em banho-maria\n' &gt;&gt; pudim.md
+$ git commit -am "Adiciona tempo de forno do pudim"
+[receita-pudim 0def83b] Adiciona tempo de forno do pudim
+ 1 file changed, 1 insertion(+)
+$ git push
+To https://github.com/ana-souza/receitas.git
+   8ef4f17..0def83b  receita-pudim -&gt; receita-pudim    « o branch no GitHub andou: o pull request já mostra o commit novo
+</pre>
+<p>Desta vez bastou <code>git push</code>, sem <code>-u</code> nem nomes: o branch já estava ligado ao do GitHub desde o Passo 3.</p>
+
+<p>Aprovado, o pull request é mesclado na <code>main</code> pelo botão <strong>Merge pull request</strong> e depois <strong>Confirm merge</strong> (ilustrativo; a documentação em português chama de "Mesclar pull request" e "Confirmar mesclagem"). Por baixo, o GitHub faz um merge que <strong>sempre</strong> cria um commit de merge (como um <code>git merge --no-ff</code>), com a mensagem <code>Merge pull request #1 from ana-souza/receita-pudim</code>. Há também as opções <strong>Squash and merge</strong> (junta tudo num commit só, veja <a href="squash.html">squash</a>) e <strong>Rebase and merge</strong>; o dono do repositório escolhe quais ficam disponíveis.</p>
+<p>No laboratório, o Bruno fez o papel do botão: mesclou o branch com <code>--no-ff</code> e essa mensagem e enviou a <code>main</code>. Depois do merge, o histórico do GitHub ficou assim:</p>
+<pre>
+*   a8d3cfd (HEAD -&gt; main) Merge pull request #1 from ana-souza/receita-pudim     « o commit de merge
+|\
+| * 0def83b Adiciona tempo de forno do pudim                             « os 3 commits do branch
+| * 8ef4f17 Adiciona pudim ao índice
+| * b093628 Adiciona receita de pudim
+|/
+* c451956 Adiciona receita de brigadeiro
+* 671b2ef Primeira versão do site
+</pre>
+
+<div class="warning">
+<strong>A <code>main</code> tem de continuar funcionando</strong>
+<p>O merge é o momento em que o prato chega ao balcão. Por isso o pull request é revisado <strong>antes</strong>, e muitas equipes rodam testes automáticos nele (veja <a href="github-actions.html">GitHub Actions</a>). Em muitas empresas, o que entra na <code>main</code> vai ao ar logo depois, às vezes automaticamente.</p>
+</div>
+
+<hr>
+
+<h2>Passo 6: apague o branch e atualize o seu computador</h2>
+<p>Depois do merge, o GitHub oferece o botão <strong>Delete branch</strong> no próprio pull request (ilustrativo). O branch some do GitHub, mas nada se perde: os commits já estão na <code>main</code>, e o pull request guarda a conversa. No computador da Ana, porém, ainda existem a <code>main</code> desatualizada e o branch <code>receita-pudim</code> local. Ela arruma tudo assim:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch main
+Switched to branch 'main'
+Your branch is up to date with 'origin/main'.
+$ git pull
+From https://github.com/ana-souza/receitas
+   c451956..a8d3cfd  main       -&gt; origin/main
+Updating c451956..a8d3cfd
+Fast-forward
+ index.md | 1 +
+ pudim.md | 6 ++++++
+ 2 files changed, 7 insertions(+)
+ create mode 100644 pudim.md
+$ git branch -d receita-pudim
+Deleted branch receita-pudim (was 0def83b).
+$ git branch -a
+* main
+  remotes/origin/HEAD -&gt; origin/main
+  remotes/origin/main
+  remotes/origin/receita-pudim                    « o GitHub já apagou, mas o Git da Ana ainda não sabe
+$ git fetch --prune
+From https://github.com/ana-souza/receitas
+ - [deleted]         (none)     -&gt; origin/receita-pudim
+$ git branch -a
+* main
+  remotes/origin/HEAD -&gt; origin/main
+  remotes/origin/main
+$ git log --oneline --graph
+*   a8d3cfd Merge pull request #1 from ana-souza/receita-pudim
+|\
+| * 0def83b Adiciona tempo de forno do pudim
+| * 8ef4f17 Adiciona pudim ao índice
+| * b093628 Adiciona receita de pudim
+|/
+* c451956 Adiciona receita de brigadeiro
+* 671b2ef Primeira versão do site
+</pre>
+
+<dl class="anatomy">
+  <dt>git switch main</dt><dd>Volta para a <code>main</code>. O <code>up to date</code> ainda é o "em dia" da última vez que o Git conversou com o GitHub.</dd>
+  <dt>git pull</dt><dd>Traz o commit de merge <code>a8d3cfd</code>: a <code>main</code> da Ana agora tem o pudim. Repare no <code>create mode 100644 pudim.md</code>: na <code>main</code>, o arquivo é novo.</dd>
+  <dt>git branch -d receita-pudim</dt><dd>Apaga o branch local. O <code>-d</code> só apaga se o trabalho já estiver mesclado; como o merge chegou com o <code>pull</code>, o Git apagou sem reclamar: <code>Deleted branch receita-pudim (was 0def83b)</code> ("branch apagado; ele apontava para <code>0def83b</code>").</dd>
+  <dt>remotes/origin/receita-pudim</dt><dd>O <code>git branch -a</code> (de <em>all</em>, "todos") mostra também os branches remotos que o Git da Ana conhece. O <code>origin/receita-pudim</code> ainda aparece porque o Git não fica sabendo sozinho que o branch foi apagado no GitHub.</dd>
+  <dt>git fetch --prune</dt><dd>"Buscar e podar": busca as novidades e apaga as cópias de branches que não existem mais no GitHub. A linha <code>- [deleted] (none) -&gt; origin/receita-pudim</code> diz que a cópia foi apagada.</dd>
+</dl>
+
+<p>Pronto: um ciclo completo. Para a próxima tarefa, a Ana começa de novo do Passo 0.</p>
+
+<div class="try" data-setup="git init -q --bare servidor.git;;mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas' &gt; README.md;;git add README.md;;git commit -q -m 'Primeira versão';;git remote add origin ../servidor.git;;git push -q -u origin main" data-goal="head:receita-bolo,rastreado:bolo.md,commits:2,limpo,ran:push.*receita-bolo" data-solucao="git switch -c receita-bolo;;echo 'Bolo de laranja' &gt; bolo.md;;git add bolo.md;;git commit -m 'Adiciona receita de bolo';;git push -u origin receita-bolo">
+<p class="try-task"><strong>Missão:</strong> você está no repositório <code>receitas</code>, na <code>main</code>. Siga o GitHub Flow até o push: crie o branch <code>receita-bolo</code>, crie o arquivo <code>bolo.md</code> com qualquer texto, faça o commit e envie o branch para o <code>origin</code> com <code>git push -u origin receita-bolo</code>. A <code>main</code> não pode ganhar commits.</p>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Passo</th><th>Na linha de comando</th><th>Outras formas</th></tr>
+<tr><td>Criar o branch</td><td><code>git switch -c nome</code></td><td><code>git checkout -b nome</code> (comando antigo); criar no site do GitHub e depois <code>git fetch</code> + <code>git switch nome</code></td></tr>
+<tr><td>Enviar</td><td><code>git push -u origin nome</code></td><td>Botão de sincronizar no VS Code (veja <a href="interfaces-graficas.html">Git no VS Code</a>)</td></tr>
+<tr><td>Abrir o pull request</td><td><code>gh pr create</code> (veja <a href="github-cli.html">GitHub CLI</a>)</td><td>No site: <strong>Compare &amp; pull request</strong></td></tr>
+<tr><td>Mesclar</td><td><code>gh pr merge</code></td><td>No site: <strong>Merge pull request</strong>, <strong>Squash and merge</strong> ou <strong>Rebase and merge</strong></td></tr>
+<tr><td>Apagar o branch remoto</td><td><code>git push origin --delete nome</code></td><td>No site: <strong>Delete branch</strong></td></tr>
+<tr><td>Limpar o computador</td><td><code>git switch main</code>, <code>git pull</code>, <code>git branch -d nome</code>, <code>git fetch --prune</code></td><td><code>git config --global fetch.prune true</code> faz o <code>--prune</code> em todo fetch</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Fiz o commit direto na <code>main</code></strong>
+<p>A Ana esqueceu o Passo 1 e commitou a receita de mousse direto na <code>main</code>. Ainda bem que ela olhou o <code>git status</code> antes de enviar:</p>
+<pre class="term" data-cwd="~/receitas">$ git commit -m "Adiciona receita de mousse"
+[main 3f3c516] Adiciona receita de mousse
+ 1 file changed, 1 insertion(+)
+ create mode 100644 mousse.md
+$ git status
+No ramo main
+Seu ramo está à frente de 'origin/main' por 1 submissão.
+  (use "git push" to publish your local commits)
+
+nothing to commit, working tree clean
+</pre>
+<p><strong>O que aconteceu:</strong> o <code>[main 3f3c516]</code> mostra que o commit foi para a <code>main</code>, e o <code>git status</code> diz "o seu ramo está à frente da <code>origin/main</code> por 1 submissão" (<em>submissão</em> é como a tradução do Git chama o commit). <strong>Como resolver, se ainda não enviou:</strong> crie o branch onde você está (ele leva o commit junto), devolva a <code>main</code> ao que está no GitHub e vá para o branch:</p>
+<pre class="term" data-cwd="~/receitas">$ git branch receita-mousse
+$ git reset --hard origin/main
+HEAD is now at a8d3cfd Merge pull request #1 from ana-souza/receita-pudim
+$ git switch receita-mousse
+Switched to branch 'receita-mousse'
+$ git log --oneline --graph --all --decorate -3
+* 3f3c516 (HEAD -&gt; receita-mousse) Adiciona receita de mousse
+*   a8d3cfd (origin/main, origin/HEAD, main) Merge pull request #1 from ana-souza/receita-pudim
+|\
+</pre>
+<p>O commit <code>3f3c516</code> agora está só no branch <code>receita-mousse</code>, e a <code>main</code> voltou a ser igual à <code>origin/main</code>. O <code>git reset --hard</code> joga fora o que não foi commitado, por isso use-o só com o <code>git status</code> limpo (veja <a href="reset-modos.html">reset --soft, --mixed e --hard</a>). <strong>Se você já enviou</strong> a <code>main</code>, não reescreva: use <a href="git-revert.html">git revert</a> e combine com a equipe. Para isso nunca acontecer, o GitHub permite <strong>proteger</strong> a <code>main</code> (regras de proteção de branch) e exigir pull request.</p>
+</div>
+
+<div class="cenario">
+<strong><code>git push</code> sem o <code>-u</code> no branch novo</strong>
+<pre class="term" data-cwd="~/receitas">$ git push
+fatal: The current branch receita-mousse has no upstream branch.
+To push the current branch and set the remote as upstream, use
+
+    git push --set-upstream origin receita-mousse
+
+To have this happen automatically for branches without a tracking
+upstream, see 'push.autoSetupRemote' in 'git help config'.
+</pre>
+<p>"O branch atual <code>receita-mousse</code> não tem branch de rastreamento (<em>upstream</em>). Para enviar o branch atual e ligar o remoto a ele, use <code>git push --set-upstream origin receita-mousse</code>." O <code>--set-upstream</code> é o nome comprido do <code>-u</code>. <strong>Como resolver:</strong> rode o comando que ele sugere, ou <code>git push -u origin receita-mousse</code>. A última frase sugere a configuração <code>push.autoSetupRemote</code>, que faz isso sozinha no primeiro push de cada branch (veja <a href="upstream.html">Branch de Rastreamento</a>).</p>
+</div>
+
+<div class="cenario">
+<strong><code>git branch -d</code> não quer apagar</strong>
+<pre class="term" data-cwd="~/receitas">$ git branch -d receita-quindim
+error: the branch 'receita-quindim' is not fully merged
+hint: If you are sure you want to delete it, run 'git branch -D receita-quindim'
+hint: Disable this message with "git config set advice.forceDeleteBranch false"
+</pre>
+<p>"O branch não foi totalmente mesclado." <strong>O que aconteceu:</strong> o branch tem commits que não estão na <code>main</code> do seu computador. Duas causas comuns: você esqueceu o <code>git pull</code> depois do merge no GitHub, ou o pull request foi mesclado com <strong>Squash and merge</strong> (o GitHub criou um commit <strong>novo</strong> na <code>main</code>, e os commits do branch, do ponto de vista do Git, nunca entraram). <strong>Como resolver:</strong> faça o <code>git pull</code> na <code>main</code> e tente de novo. Se o pull request foi mesmo mesclado (confira no GitHub), use o <code>-D</code> que a dica sugere. Se ele não foi mesclado, pare: o <code>-D</code> apagaria trabalho que só existe ali.</p>
+</div>
+
+<div class="cenario">
+<strong>O branch ficou semanas aberto e agora tem conflito</strong>
+<p>Enquanto o branch esperava, a <code>main</code> andou, e o pull request passou a mostrar que há conflitos. <strong>Como resolver:</strong> traga a <code>main</code> para dentro do branch (<code>git switch main</code>, <code>git pull</code>, <code>git switch receita-pudim</code>, <code>git merge main</code>), resolva os conflitos (veja <a href="resolver-conflitos.html">Resolvendo Conflitos</a>) e dê <code>git push</code>. <strong>Para evitar:</strong> branches curtos, pull requests pequenos e revisão rápida. É a ideia central do GitHub Flow.</p>
+</div>
+
+<hr>
+
+<h2>Referência</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Momento</th><th>Comando</th></tr>
+<tr><td>Atualizar a <code>main</code> antes de começar</td><td><code>git switch main</code> e <code>git pull</code></td></tr>
+<tr><td>Criar o branch da tarefa</td><td><code>git switch -c nome-da-tarefa</code></td></tr>
+<tr><td>Registrar o trabalho</td><td><code>git add …</code> e <code>git commit -m "…"</code></td></tr>
+<tr><td>Primeiro envio do branch</td><td><code>git push -u origin nome-da-tarefa</code></td></tr>
+<tr><td>Envios seguintes</td><td><code>git push</code></td></tr>
+<tr><td>Trazer a <code>main</code> nova para o branch (se ela andou)</td><td><code>git switch nome-da-tarefa</code> e <code>git merge main</code> (depois de atualizar a <code>main</code>)</td></tr>
+<tr><td>Depois do merge no GitHub</td><td><code>git switch main</code>, <code>git pull</code>, <code>git branch -d nome-da-tarefa</code></td></tr>
+<tr><td>Esquecer branches remotos apagados</td><td><code>git fetch --prune</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o começo do ciclo</h3>
+<p>Complete os comandos para atualizar a <code>main</code> e criar o branch <code>corrige-titulo</code>:</p>
+<div class="ex-code">git <input data-answer="switch" aria-label="subcomando para trocar de branch"> main<br>git <input data-answer="pull" aria-label="subcomando para trazer as novidades"><br>git switch <input data-answer="-c" aria-label="opção para criar"> corrige-titulo</div>
+</div>
+
+<div class="exercise">
+<h3>2. Primeiro envio</h3>
+<p>Qual opção do <code>git push</code> liga o branch local ao remoto, para que os próximos envios sejam só <code>git push</code>?</p>
+<div class="ex-code">git push <input data-answer="-u" aria-label="opção"> origin corrige-titulo</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. No GitHub Flow, quantos branches <strong>permanentes</strong> existem?</p>
+<label><input type="radio" name="q3"> Nenhum</label>
+<label><input type="radio" name="q3"> Um: a <code>main</code></label>
+<label><input type="radio" name="q3"> Dois: <code>main</code> e <code>develop</code></label>
+<label><input type="radio" name="q3"> Um por pessoa da equipe</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. O revisor pediu uma mudança no seu pull request. O que você faz?</p>
+<label><input type="radio" name="q4"> Fecha o pull request e abre outro</label>
+<label><input type="radio" name="q4"> Faz o commit da mudança direto na <code>main</code></label>
+<label><input type="radio" name="q4"> Faz um novo commit no mesmo branch e dá <code>git push</code>: o pull request se atualiza sozinho</label>
+<label><input type="radio" name="q4"> Apaga o branch</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. O pull request foi mesclado e o branch apagado no GitHub. Mesmo assim, <code>git branch -a</code> ainda mostra <code>remotes/origin/receita-pudim</code>. Por quê?</p>
+<label><input type="radio" name="q5"> Porque o seu Git ainda não sabe que ele foi apagado; um <code>git fetch --prune</code> resolve</label>
+<label><input type="radio" name="q5"> Porque o merge deu errado</label>
+<label><input type="radio" name="q5"> Porque branches remotos nunca podem ser apagados</label>
+<label><input type="radio" name="q5"> Porque faltou o <code>git push -u</code></label>
+</div>
+
+<h3>Missão final: o ciclo inteiro no computador</h3>
+
+<div class="try" data-setup="git init -q --bare servidor.git;;mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas' &gt; README.md;;git add README.md;;git commit -q -m 'Primeira versão';;git remote add origin ../servidor.git;;git push -q -u origin main;;git switch -q -c receita-pudim;;echo '# Pudim' &gt; pudim.md;;git add pudim.md;;git commit -q -m 'Adiciona receita de pudim';;git push -q -u origin receita-pudim;;cd ..;;git clone -q servidor.git site-github;;cd site-github;;git merge -q --no-ff origin/receita-pudim -m 'Merge pull request #1 from ana-souza/receita-pudim';;git push -q origin main;;cd ../receitas" data-goal="head:main,semBranch:receita-pudim,commits:3,msg:Merge pull request #1" data-solucao="git switch main;;git pull;;git branch -d receita-pudim">
+<p class="try-task"><strong>Missão:</strong> o seu pull request <code>receita-pudim</code> já foi mesclado no GitHub (o setup fez isso por você). Deixe o computador em dia: volte para a <code>main</code>, traga o merge com <code>git pull</code> e apague o branch local <code>receita-pudim</code>.</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>No GitHub Flow, a <code>main</code> está sempre funcionando; toda mudança nasce num branch curto e entra por um pull request.</li>
+  <li>O ciclo: <code>git switch main</code> + <code>git pull</code> → <code>git switch -c tarefa</code> → commits → <code>git push -u origin tarefa</code> → pull request → revisão (ajustes são novos commits no mesmo branch) → merge → apagar o branch.</li>
+  <li>Depois do merge: <code>git switch main</code>, <code>git pull</code>, <code>git branch -d tarefa</code> e, de vez em quando, <code>git fetch --prune</code>.</li>
+  <li>Um branch por tarefa, e branches que vivem pouco: quanto mais tempo longe da <code>main</code>, maiores os conflitos.</li>
+  <li>Nunca commite direto na <code>main</code> compartilhada; se acontecer, crie o branch a partir dali e volte a <code>main</code> com cuidado (veja <a href="#errado">Quando dá errado</a>).</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
