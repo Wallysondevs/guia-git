@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Revisão de Código — revisando um pull request | Guia Git</title>
+<meta name="description" content="Revisão de código (code review) para quem está começando: o que o revisor procura, como comentar, sugerir e aprovar um pull request no site do GitHub (ilustrativo, conforme docs.github.com), como revisar no próprio computador com git fetch, git log main..branch e git diff main...branch, como o autor responde à revisão e como escrever comentários gentis e úteis.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Revisão de Código</span></h1>
+
+<p class="intro">Antes de um <a href="pull-request.html">pull request</a> entrar no projeto, alguém <strong>lê</strong> as mudanças: procura erros, pergunta o que não entendeu, sugere melhorias e, no fim, aprova ou pede ajustes. Isso é a <strong>revisão de código</strong> (em inglês, <em>code review</em>). Ela pega erros que o autor não viu, espalha o conhecimento pela equipe e ensina dos dois lados. Esta aula mostra a revisão no site do GitHub e no seu computador, com o Git.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que um revisor procura num pull request.</li>
+  <li>Como comentar uma linha, sugerir uma mudança e enviar a revisão no site (aprovar, comentar ou pedir mudanças).</li>
+  <li>Como revisar no seu computador: <code>git fetch</code>, <code>git log main..branch</code> e <code>git diff main...branch</code>.</li>
+  <li>Como o autor responde: mais commits no mesmo branch.</li>
+  <li>Como escrever comentários que ajudam, e não magoam.</li>
+</ul>
+</div>
+
+<div class="warning">
+<strong>O que é real e o que é ilustrativo nesta aula</strong>
+<p>Os passos <strong>no site do GitHub</strong> são <strong>ilustrativos</strong>, descritos conforme a documentação oficial, em <a href="https://docs.github.com/pt/pull-requests/collaborating-with-pull-requests/reviewing-changes-in-pull-requests/reviewing-proposed-changes-in-a-pull-request">docs.github.com</a>; o site é em inglês, e os nomes aparecem como estão nele, com a tradução ao lado. <strong>Os comandos</strong> rodaram de verdade no Git do Ubuntu, com o "GitHub de mentira" do laboratório do guia: o Bruno (<code>bruno@notebook</code>) revisa o branch <code>receita-sexta</code> do fork da Ana (<code>ana-souza/cardapio</code>).</p>
+</div>
+
+<hr>
+
+<h2>A ideia: a redação com a caneta verde</h2>
+<p>Na escola, a professora devolve a redação com anotações na margem: "essa frase está confusa", "<em>excessão</em> é com <em>ç</em>", "ótimo exemplo!". A redação não é jogada fora: a aluna corrige e entrega de novo. Algumas observações são <strong>obrigatórias</strong> (o erro de ortografia), outras são <strong>sugestões</strong> ("talvez um exemplo a mais aqui"), e algumas são só <strong>elogios</strong>.</p>
+<p>A revisão de código é igual, com duas diferenças: qualquer pessoa da equipe pode ser "a professora", e quem revisa também aprende com o código dos outros. O objetivo não é achar culpados; é deixar o projeto melhor.</p>
+
+<h3>O que o revisor procura</h3>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Pergunta</th><th>Exemplo no cardápio</th></tr>
+<tr><td>Faz o que a descrição promete?</td><td>A descrição diz "adiciona a sexta"; o PR também mexe no sábado. Era para isso?</td></tr>
+<tr><td>Tem erro?</td><td>"calabreza" está escrito errado</td></tr>
+<tr><td>Segue o padrão do projeto?</td><td>Os outros dias são "Dia: prato"; o novo segue o mesmo formato?</td></tr>
+<tr><td>Dá para entender?</td><td>Nomes de arquivos, mensagens de commit, comentários</td></tr>
+<tr><td>Está pequeno o suficiente?</td><td>Um PR com um assunto se revisa em minutos; um com dez assuntos, ninguém revisa direito</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>1. Revisando no site (ilustrativo)</h2>
+<p>Segundo a documentação do GitHub, o Bruno abre o pull request da Ana e:</p>
+<ol class="passo">
+  <li>Vai para a aba <strong>Files changed</strong> ("Arquivos alterados"): as diferenças de cada arquivo, com as linhas removidas e as acrescentadas, como no <a href="git-diff.html">git diff</a>.</li>
+  <li>Para comentar uma linha, passa o mouse sobre o número da linha e clica no <strong>ícone de comentário azul</strong> que aparece. (Para várias linhas, arrasta sobre os números, ou clica na primeira e, segurando <kbd>Shift</kbd>, na última.)</li>
+  <li>Escreve o comentário e clica em <strong>Start a review</strong> ("Iniciar uma revisão"). Os próximos comentários vão com <strong>Add review comment</strong> ("Adicionar comentário à revisão"). Os comentários ficam <strong>pendentes</strong>: só o Bruno os vê até enviar a revisão.</li>
+  <li>Para propor um texto exato, usa o ícone <strong>Suggestion</strong> ("Sugestão") e edita o trecho dentro do bloco de sugestão (exemplo logo abaixo).</li>
+  <li>Depois de ler um arquivo inteiro, marca <strong>Viewed</strong> ("Visualizado") no cabeçalho dele, e o arquivo é recolhido. Se o arquivo mudar depois, a marca sai sozinha.</li>
+  <li>No fim, clica em <strong>Review changes</strong> ("Revisar alterações"), escreve um resumo e escolhe uma das três opções. Depois, <strong>Submit review</strong> ("Enviar revisão").</li>
+</ol>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Opção</th><th>Quer dizer</th><th>Quando usar</th></tr>
+<tr><td><strong>Comment</strong> ("Comentar")</td><td>Só comentários, sem decisão</td><td>Dúvidas, ou uma revisão parcial</td></tr>
+<tr><td><strong>Approve</strong> ("Aprovar")</td><td>"Pode juntar"</td><td>Está bom (talvez com detalhes opcionais)</td></tr>
+<tr><td><strong>Request changes</strong> ("Solicitar alterações")</td><td>"Precisa mudar antes de juntar"</td><td>Há um erro ou algo que não pode entrar assim</td></tr>
+</table>
+</div>
+
+<h3>A sugestão de mudança</h3>
+<p>Ao clicar no ícone de sugestão numa linha, o campo do comentário ganha um bloco com o texto atual da linha, para o revisor editar. O comentário do Bruno ficou assim (é texto em Markdown, como no <a href="readme.html">README</a>):</p>
+<pre class="file" data-file="comentário do Bruno na linha 4 (exemplo)">Calabresa é com s.
+
+```suggestion
+Sexta: pizza de calabresa
+```
+</pre>
+<p>Na página, o bloco aparece como a troca da linha antiga pela nova. A Ana, como autora, pode aceitar direto no site: segundo a <a href="https://docs.github.com/pt/pull-requests/collaborating-with-pull-requests/reviewing-changes-in-pull-requests/incorporating-feedback-in-your-pull-request">documentação</a>, o botão <strong>Commit suggestion</strong> ("Fazer commit da sugestão") cria um commit com aquela troca no branch dela; com várias sugestões, <strong>Add suggestion to batch</strong> ("Adicionar sugestão ao lote") junta todas e <strong>Commit suggestions</strong> faz um commit só. Depois disso, ela precisa dar <code>git pull</code> no branch, porque o commit foi feito lá no GitHub.</p>
+
+<hr>
+
+<h2>2. Revisando no seu computador</h2>
+<p>O site basta para mudanças pequenas. Para uma revisão mais cuidadosa (rodar o projeto, abrir os arquivos no editor, testar), o revisor traz o branch para o computador. O branch está no fork da Ana, então o Bruno acrescenta o fork como um remoto (o nome <code>ana</code> é escolha dele; veja <a href="git-remote.html">git remote</a>) e busca:</p>
+
+<pre class="term" data-user="bruno" data-cwd="~/cardapio">$ git remote add ana https://github.com/ana-souza/cardapio.git
+$ git fetch ana
+remote: Enumerating objects: 8, done.
+remote: Counting objects: 100% (8/8), done.
+remote: Compressing objects: 100% (6/6), done.
+remote: Total 6 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (6/6), 621 bytes | 621.00 KiB/s, done.
+From https://github.com/ana-souza/cardapio
+ * [new branch]      main          -&gt; ana/main
+ * [new branch]      receita-sexta -&gt; ana/receita-sexta
+</pre>
+<p>Agora ele tem <code>ana/receita-sexta</code>, uma cópia somente leitura do branch dela. Primeiro, <strong>quais commits</strong> o PR traz:</p>
+
+<pre class="term" data-user="bruno" data-cwd="~/cardapio">$ git log --oneline main..ana/receita-sexta
+2234ff5 (ana/receita-sexta) Adiciona o sábado
+25de730 Adiciona a sexta-feira
+</pre>
+<p><code>main..ana/receita-sexta</code> (dois pontos) quer dizer "os commits que estão em <code>ana/receita-sexta</code> e <strong>não</strong> estão no <code>main</code>": exatamente o que o pull request acrescenta (veja <a href="log-filtros.html">git log: Filtros</a>). Dois commits: a sexta e… um sábado que a descrição não mencionava. Ponto para perguntar.</p>
+
+<p>Depois, <strong>o que mudou</strong> nos arquivos:</p>
+<pre class="term" data-user="bruno" data-cwd="~/cardapio">$ git diff --stat main...ana/receita-sexta
+ cardapio.txt | 2 ++
+ 1 file changed, 2 insertions(+)
+$ git diff main...ana/receita-sexta
+diff --git a/cardapio.txt b/cardapio.txt
+index b0d372d..596ac1f 100644
+--- a/cardapio.txt
++++ b/cardapio.txt
+@@ -1,3 +1,5 @@
+ Segunda: arroz, feijão e frango
+ Terça: macarrão ao sugo
+ Quarta: feijoada
++Sexta: pizza de calabreza                « o erro de grafia
++Sábado: churrasco                        « não estava na descrição
+</pre>
+
+<dl class="anatomy">
+  <dt>git diff --stat</dt><dd>O resumo: quais arquivos mudaram e quantas linhas. Bom para ter a noção do tamanho antes de ler.</dd>
+  <dt>main...ana/receita-sexta (três pontos)</dt><dd>No <code>git diff</code>, três pontos querem dizer "o que o branch mudou <strong>desde que se separou</strong> do <code>main</code>". É o mesmo que a aba <strong>Files changed</strong> mostra. Com dois pontos, o <code>diff</code> compararia as duas pontas, e as mudanças que entraram no <code>main</code> depois apareceriam ao contrário, como se o PR as desfizesse.</dd>
+  <dt>+Sexta… / +Sábado…</dt><dd>As linhas acrescentadas (veja <a href="git-diff.html">git diff</a>).</dd>
+</dl>
+
+<p>Para ver o projeto inteiro como ficaria, o Bruno troca para o branch. Como só o remoto <code>ana</code> tem um <code>receita-sexta</code>, o <code>git switch</code> cria o branch local já ligado a ele:</p>
+<pre class="term" data-user="bruno" data-cwd="~/cardapio">$ git switch receita-sexta
+branch 'receita-sexta' set up to track 'ana/receita-sexta'.
+Switched to a new branch 'receita-sexta'
+$ cat cardapio.txt
+Segunda: arroz, feijão e frango
+Terça: macarrão ao sugo
+Quarta: feijoada
+Sexta: pizza de calabreza
+Sábado: churrasco
+$ git switch main
+Switched to branch 'main'
+Your branch is up to date with 'origin/main'.
+</pre>
+<p>Ele lê, testa o que for preciso e volta ao <code>main</code>. Os comentários, ele escreve no site (seção 1): "calabresa é com s" (com a sugestão) e "o sábado não estava na descrição; é de propósito?". Como há um erro, ele envia a revisão com <strong>Request changes</strong>.</p>
+
+<div class="tip">
+<strong>Com o GitHub CLI</strong>
+<p>Quem usa o <a href="github-cli.html">GitHub CLI</a> traz o branch de um pull request com um comando só, pelo número do PR: <code>gh pr checkout 1</code> (ilustrativo; o <code>gh</code> não roda no laboratório do guia).</p>
+</div>
+
+<hr>
+
+<h2>3. Respondendo à revisão (o lado do autor)</h2>
+<p>A Ana lê os comentários. O sábado era de propósito: ela responde explicando e acrescenta isso à descrição do PR. A grafia, ela corrige no <strong>mesmo branch</strong> e envia:</p>
+
+<pre class="term" data-cwd="~/cardapio">$ sed -i 's/calabreza/calabresa/' cardapio.txt
+$ git diff
+diff --git a/cardapio.txt b/cardapio.txt
+index 596ac1f..ced87c6 100644
+--- a/cardapio.txt
++++ b/cardapio.txt
+@@ -1,5 +1,5 @@
+ Segunda: arroz, feijão e frango
+ Terça: macarrão ao sugo
+ Quarta: feijoada
+-Sexta: pizza de calabreza
++Sexta: pizza de calabresa
+ Sábado: churrasco
+$ git commit -am 'Corrige a grafia de calabresa'
+[receita-sexta bb9048e] Corrige a grafia de calabresa
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+$ git push
+Enumerating objects: 5, done.
+Counting objects: 100% (5/5), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (3/3), done.
+Writing objects: 100% (3/3), 336 bytes | 336.00 KiB/s, done.
+Total 3 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/cardapio.git
+   2234ff5..bb9048e  receita-sexta -&gt; receita-sexta
+</pre>
+
+<p>No site, ela responde a cada comentário (e pode marcar a conversa como resolvida) e pede uma nova revisão ao Bruno (segundo a documentação, pelo ícone de sincronizar ao lado do nome do revisor, na barra lateral da aba <strong>Conversation</strong>). O Bruno atualiza a cópia dele do branch e confere só o que mudou:</p>
+
+<pre class="term" data-user="bruno" data-cwd="~/cardapio">$ git switch receita-sexta
+Switched to branch 'receita-sexta'
+Your branch is up to date with 'ana/receita-sexta'.
+$ git pull
+remote: Enumerating objects: 5, done.
+remote: Counting objects: 100% (5/5), done.
+remote: Compressing objects: 100% (3/3), done.
+remote: Total 3 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (3/3), 316 bytes | 316.00 KiB/s, done.
+From https://github.com/ana-souza/cardapio
+   2234ff5..bb9048e  receita-sexta -&gt; ana/receita-sexta
+Updating 2234ff5..bb9048e
+Fast-forward
+ cardapio.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+$ git log --oneline main..receita-sexta
+bb9048e (HEAD -&gt; receita-sexta, ana/receita-sexta) Corrige a grafia de calabresa
+2234ff5 Adiciona o sábado
+25de730 Adiciona a sexta-feira
+</pre>
+<p>O commit novo, <code>bb9048e</code>, é a correção. Satisfeito, o Bruno envia a nova revisão com <strong>Approve</strong> e faz o merge (veja <a href="pull-request.html">Pull Request</a>).</p>
+
+<div class="try" data-setup="mkdir cardapio;;cd cardapio;;git init -q;;echo 'Quarta: feijoada' &gt; cardapio.txt;;git add cardapio.txt;;git commit -q -m 'Cria o cardápio';;git switch -q -c receita-sexta;;echo 'Sexta: pizza de calabreza' &gt;&gt; cardapio.txt;;git commit -q -am 'Adiciona a sexta-feira'" data-goal="head:receita-sexta,commits:3,contem:HEAD:cardapio.txt=calabresa,msg:calabresa,limpo" data-solucao="git diff main...receita-sexta;;sed -i 's/calabreza/calabresa/' cardapio.txt;;git commit -am 'Corrige a grafia de calabresa'">
+<p class="try-task"><strong>Missão:</strong> você é a Ana, no branch <code>receita-sexta</code>. O revisor comentou: "<em>calabreza</em> se escreve <em>calabresa</em>". Veja o que o seu branch mudou com <code>git diff main...receita-sexta</code>, corrija a palavra (dica: <code>sed -i 's/calabreza/calabresa/' cardapio.txt</code>) e faça um commit <strong>novo</strong> com uma mensagem que fale em "calabresa", no mesmo branch.</p>
+</div>
+
+<hr>
+
+<h2>4. Comentários que ajudam</h2>
+<p>Revisão é conversa entre pessoas. O mesmo problema pode ser apontado de um jeito que ensina ou de um jeito que magoa:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Em vez de…</th><th>Prefira…</th><th>Por quê</th></tr>
+<tr><td>"Isso está errado."</td><td>"Calabresa é com s. Deixei uma sugestão."</td><td>Diz o quê, e já oferece a solução</td></tr>
+<tr><td>"Por que você fez isso???"</td><td>"Não entendi por que o sábado entrou aqui. É de propósito?"</td><td>Pergunta de verdade, sem acusar</td></tr>
+<tr><td>"Eu faria diferente."</td><td>"Opcional: dá para pôr os dias em ordem alfabética? Não bloqueia."</td><td>Separa o obrigatório do gosto pessoal</td></tr>
+<tr><td>(silêncio sobre o que está bom)</td><td>"Gostei da opção vegetariana!"</td><td>Elogio também é revisão</td></tr>
+</table>
+</div>
+<p>Comente <strong>o código</strong>, não a pessoa. E, do lado do autor: não leve para o lado pessoal, agradeça, e responda a cada comentário (concordando, explicando ou perguntando).</p>
+
+<h3>Para facilitar a vida de quem revisa</h3>
+<ul>
+  <li><strong>PRs pequenos</strong>, com um assunto só (um branch por assunto).</li>
+  <li><strong>Commits com boas mensagens</strong> (veja <a href="mensagens-commit.html">Boas Mensagens de Commit</a>): o revisor lê o <code>git log</code> como um roteiro.</li>
+  <li><strong>Descrição</strong> que diga o que muda, por que, e como conferir.</li>
+  <li><strong>Revise você primeiro</strong>: antes de abrir o PR, rode o mesmo <code>git diff main...SEU-BRANCH</code> e leia como se fosse de outra pessoa. Muitos erros aparecem aí.</li>
+</ul>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer a mesma coisa</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Quero…</th><th>No site (ilustrativo)</th><th>No terminal</th></tr>
+<tr><td>Ver os commits do PR</td><td>Aba <strong>Commits</strong></td><td><code>git log --oneline main..REMOTO/BRANCH</code></td></tr>
+<tr><td>Ver as mudanças</td><td>Aba <strong>Files changed</strong></td><td><code>git diff main...REMOTO/BRANCH</code></td></tr>
+<tr><td>Ter o código para rodar</td><td>—</td><td><code>git fetch REMOTO</code> + <code>git switch BRANCH</code> (ou <code>gh pr checkout N</code>)</td></tr>
+<tr><td>Comentar e decidir</td><td>Comentários nas linhas + <strong>Review changes</strong> → <strong>Comment</strong>/<strong>Approve</strong>/<strong>Request changes</strong></td><td>—</td></tr>
+<tr><td>Aplicar uma sugestão (autor)</td><td><strong>Commit suggestion</strong></td><td>Editar, <code>git commit</code>, <code>git push</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>O <code>git diff main..branch</code> mostra mudanças que o PR não fez</strong>
+<p><strong>O que aconteceu:</strong> com <strong>dois</strong> pontos, o <code>git diff</code> compara as duas pontas. Se o <code>main</code> recebeu commits depois que o branch foi criado, essas mudanças aparecem invertidas (como linhas removidas), como se o PR as desfizesse. <strong>Como resolver:</strong> use <strong>três</strong> pontos, <code>git diff main...branch</code>, que compara com o ponto em que o branch se separou. (No <code>git log</code> é o contrário: os dois pontos são os que você quer na revisão.)</p>
+</div>
+
+<div class="cenario">
+<strong>"Eu já tinha aplicado a sugestão no site, e agora o meu push foi recusado"</strong>
+<p><strong>O que aconteceu:</strong> o <strong>Commit suggestion</strong> criou um commit no seu branch, lá no GitHub. O seu branch local não tem esse commit, e o push é recusado com <code>! [rejected] … (fetch first)</code> (veja <a href="push-rejeitado.html">Push Rejeitado</a>). <strong>Como resolver:</strong> <code>git pull</code> no branch (para os seus commits locais, <code>git pull --rebase</code> deixa o histórico em linha reta) e depois <code>git push</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>O PR ficou parado, sem revisão</strong>
+<p>Não é erro do Git, mas acontece muito. <strong>Como resolver:</strong> confira se o PR não está como rascunho (<em>draft</em>), peça a revisão a alguém específico pelo site e, se o PR for grande, considere dividi-lo em dois. Uma mensagem educada na conversa ("quando der, pode dar uma olhada?") também ajuda.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>Para quê, na revisão</th></tr>
+<tr><td><code>git remote add NOME URL-DO-FORK</code></td><td>Ligar o fork de quem abriu o PR</td></tr>
+<tr><td><code>git fetch NOME</code></td><td>Baixar os branches do fork (<code>NOME/branch</code>)</td></tr>
+<tr><td><code>git log --oneline main..NOME/BRANCH</code></td><td>Commits que o PR acrescenta</td></tr>
+<tr><td><code>git diff --stat main...NOME/BRANCH</code></td><td>Resumo das mudanças</td></tr>
+<tr><td><code>git diff main...NOME/BRANCH</code></td><td>As mudanças, linha por linha (como <strong>Files changed</strong>)</td></tr>
+<tr><td><code>git switch BRANCH</code></td><td>Ter o código do PR na pasta (rastreando <code>NOME/BRANCH</code>)</td></tr>
+<tr><td><code>git pull</code></td><td>Trazer os commits novos que o autor enviou depois da revisão</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Os commits do PR</h3>
+<p>Complete para listar os commits que o branch <code>ana/receita-sexta</code> tem e o <code>main</code> não tem:</p>
+<div class="ex-code">git log --oneline main<input data-answer=".." aria-label="pontos">ana/receita-sexta</div>
+</div>
+
+<div class="exercise">
+<h3>2. As mudanças do PR</h3>
+<p>Complete para ver o que o branch mudou desde que se separou do <code>main</code>:</p>
+<div class="ex-code">git diff main<input data-answer="..." aria-label="pontos">ana/receita-sexta</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. Na revisão, há um erro que precisa ser corrigido antes do merge. Qual opção o revisor escolhe ao enviar?</p>
+<label><input type="radio" name="q3"> Approve</label>
+<label><input type="radio" name="q3"> Comment</label>
+<label><input type="radio" name="q3"> Request changes</label>
+<label><input type="radio" name="q3"> Nenhuma: ele fecha o PR</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. Os comentários de uma revisão iniciada com <strong>Start a review</strong> ficam visíveis para o autor…</p>
+<label><input type="radio" name="q4"> na hora, um por um</label>
+<label><input type="radio" name="q4"> só quando o revisor envia a revisão (<strong>Submit review</strong>)</label>
+<label><input type="radio" name="q4"> nunca</label>
+<label><input type="radio" name="q4"> só depois do merge</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. Qual destes comentários é o mais útil?</p>
+<label><input type="radio" name="q5"> "Calabresa é com s; deixei uma sugestão com a linha corrigida."</label>
+<label><input type="radio" name="q5"> "Errado."</label>
+<label><input type="radio" name="q5"> "Você não sabe escrever?"</label>
+<label><input type="radio" name="q5"> "Refaz tudo."</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">6. Pediram uma mudança no seu PR. O que você faz no terminal?</p>
+<label><input type="radio" name="q6"> Um branch novo e um PR novo</label>
+<label><input type="radio" name="q6"> Commita no <code>main</code></label>
+<label><input type="radio" name="q6"> Nada: o revisor muda sozinho</label>
+<label><input type="radio" name="q6"> Corrige, commita no mesmo branch e dá <code>git push</code></label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Revisão de código é outra pessoa ler as suas mudanças antes de elas entrarem no projeto, para achar erros, tirar dúvidas e melhorar o código.</li>
+  <li>No site: aba <strong>Files changed</strong>, comentários nas linhas (<strong>Start a review</strong>), sugestões, e no fim <strong>Review changes</strong> → <strong>Comment</strong>, <strong>Approve</strong> ou <strong>Request changes</strong> → <strong>Submit review</strong>.</li>
+  <li>No computador: <code>git fetch</code> do fork, <code>git log --oneline main..BRANCH</code> (os commits) e <code>git diff main...BRANCH</code> (as mudanças, com três pontos).</li>
+  <li>O autor responde com commits novos no mesmo branch e <code>git push</code>; o PR se atualiza.</li>
+  <li>Comente o código, não a pessoa: diga o quê, por quê, e ofereça um caminho.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
