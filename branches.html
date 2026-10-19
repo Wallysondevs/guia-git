@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Branches — o que é um branch (ramo) | Guia Git</title>
+<meta name="description" content="O que é um branch no Git para quem nunca usou: uma etiqueta móvel que aponta para um commit, o branch main, o HEAD que diz em qual branch você está, por que criar um branch é instantâneo, como cada commit empurra a etiqueta para frente e como dois ramos se separam. Com o git log --graph real e diagramas antes e depois.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Branches</span></h1>
+
+<p class="intro">Até aqui, todos os seus commits ficaram numa fila só, um atrás do outro. Mas e se a Ana quiser testar uma ideia nova no site de receitas (uma seção de sobremesas, por exemplo) <strong>sem bagunçar</strong> a versão que já funciona? Para isso existem os <strong>branches</strong> (em inglês, "galhos" ou "ramos"). Um branch é uma <strong>linha de trabalho separada</strong>: você faz commits nele à vontade e a linha principal fica intacta. Esta aula explica a ideia e o que o Git faz por baixo; as próximas mostram cada comando em detalhe.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é um branch: uma <strong>etiqueta</strong> com nome, que aponta para um commit.</li>
+  <li>O que é o <code>main</code>, e por que ele é só um branch como outro qualquer.</li>
+  <li>Como o <strong>HEAD</strong> diz em qual branch você está, e como cada commit novo empurra a etiqueta para frente.</li>
+  <li>Por que criar um branch é instantâneo (o Git só grava um arquivinho com um hash).</li>
+  <li>Como ler o desenho dos ramos no <code>git log --oneline --graph --all</code>.</li>
+</ul>
+</div>
+
+<p>Todas as saídas desta aula vieram do Git real do Ubuntu 26.04, na máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português. Com o sistema em inglês, as mensagens saem em inglês (por exemplo, <code>No ramo main</code> vira <code>On branch main</code>).</p>
+
+<hr>
+
+<h2>A ideia: o caderno de receitas e o caderno de rascunho</h2>
+<p>A Ana tem um caderno de receitas passado a limpo, que a família toda consulta. Ela quer inventar uma seção de sobremesas, mas ainda não sabe se vai dar certo. Ela tem duas opções:</p>
+<ol class="passo">
+  <li><strong>Escrever direto no caderno bom.</strong> Se a ideia não prestar, vai ter de rasurar páginas, e enquanto isso o caderno fica pela metade.</li>
+  <li><strong>Tirar uma cópia do caderno e rabiscar na cópia.</strong> Se der certo, ela passa as páginas novas para o caderno bom. Se não der, joga a cópia fora. O caderno bom nunca ficou bagunçado.</li>
+</ol>
+<p>Um branch é a opção 2, com uma vantagem enorme: o Git <strong>não copia nada</strong>. Ele só põe uma <strong>etiqueta</strong> nova na última página, dizendo "a partir daqui, este é o caderno de sobremesas". Por isso criar um branch leva uma fração de segundo, mesmo num projeto gigante.</p>
+
+<div class="tip">
+<strong>Palavras desta aula</strong>
+<p><em>branch</em> = "ramo" ou "galho" (no português do Git, as mensagens dizem <strong>ramo</strong>: <code>No ramo main</code>). <em>main</em> = "principal", o nome do branch que o <code>git init</code> cria. <em>HEAD</em> = "cabeça", o marcador de "onde você está agora" (veja <a href="head.html">O que é HEAD</a>).</p>
+</div>
+
+<hr>
+
+<h2>1. O repositório da Ana, antes de qualquer branch</h2>
+<p>A Ana criou a pasta <code>receitas</code> e fez três commits, um por arquivo (você aprendeu a fazer isso em <a href="primeiro-commit.html">Seu Primeiro Commit</a>):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --graph --all
+* 0244251 (HEAD -&gt; main) Adiciona receita de pão de queijo   « o mais novo, em cima
+* 7225e04 Adiciona receita de bolo
+* 700bbd5 Cria o README                                          « o primeiro commit
+$ git branch
+* main                                                           « o único branch, e o atual (*)
+$ git status
+No ramo main
+nothing to commit, working tree clean
+</pre>
+
+<p>O pedaço <code>(HEAD -&gt; main)</code> do <code>git log</code> é a parte importante desta aula. Ele diz: "o branch <code>main</code> aponta para este commit, e o <code>HEAD</code> aponta para o <code>main</code>". (O <code>nothing to commit, working tree clean</code> é "nada a commitar, pasta limpa": algumas mensagens do Git continuam em inglês mesmo com o sistema em português, porque a tradução do Git para o português ainda não cobre todas.)</p>
+
+<p>Mesmo sem ter criado nenhum branch, ela <strong>já está num</strong>: o <code>main</code>. O <code>git init</code> cria esse branch sozinho, e todo commit que você fez até hoje entrou nele. O desenho do histórico, com o commit mais antigo à esquerda:</p>
+
+<pre>A---B---C   ← main ← HEAD
+
+A = 700bbd5  Cria o README
+B = 7225e04  Adiciona receita de bolo
+C = 0244251  Adiciona receita de pão de queijo
+</pre>
+
+<p>Cada letra é um commit, e as linhas <code>---</code> ligam um commit ao anterior (o "pai" dele). A etiqueta <code>main</code> está grudada no commit mais novo, e o <code>HEAD</code> aponta para o <code>main</code>: quer dizer "você está no branch main".</p>
+
+<h3>Por dentro: um branch é um arquivo com um hash</h3>
+<p>Dá para ver com os próprios olhos o que é um branch. Ele mora dentro da pasta escondida <code>.git</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ cat .git/HEAD
+ref: refs/heads/main
+$ cat .git/refs/heads/main
+0244251e6b6cd5cbf4b8c82f8ba2557b6cf3878b
+</pre>
+
+<dl class="anatomy">
+  <dt>cat .git/HEAD → ref: refs/heads/main</dt><dd>O arquivo <code>HEAD</code> não guarda um commit, guarda o <strong>nome de um branch</strong>: "estou em <code>refs/heads/main</code>". É assim que o Git sabe em qual ramo você está.</dd>
+  <dt>cat .git/refs/heads/main</dt><dd>O branch <code>main</code> é um arquivinho de texto com <strong>uma linha só</strong>: o hash completo do último commit do ramo (os 7 primeiros caracteres são os que o <code>git log --oneline</code> mostra; veja <a href="hash.html">O Hash do Commit</a>).</dd>
+</dl>
+
+<p>É só isso. Um branch não é uma pasta, nem uma cópia dos arquivos: é <strong>um nome que aponta para um commit</strong>. Os commits em si continuam guardados uma vez só, e cada um sabe quem é o seu pai. Seguindo os pais a partir da etiqueta, o Git reconstrói a história do ramo inteiro.</p>
+
+<div class="warning">
+<strong>Só olhe, não mexa</strong>
+<p>Abrimos os arquivos da pasta <code>.git</code> com <code>cat</code> para você ver como é simples. Nunca edite esses arquivos à mão: use sempre os comandos do Git, que conferem tudo antes de mudar.</p>
+</div>
+
+<hr>
+
+<h2>2. Criando um branch: uma etiqueta nova no mesmo lugar</h2>
+<p>A Ana cria o branch <code>sobremesas</code> com <code>git branch sobremesas</code> (o comando tem aula própria: <a href="git-branch.html">git branch</a>):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git branch sobremesas
+$ git branch
+* main                « o * continua aqui
+  sobremesas          « o branch novo
+$ git log --oneline --graph --all
+* 0244251 (HEAD -&gt; main, sobremesas) Adiciona receita de pão de queijo
+* 7225e04 Adiciona receita de bolo
+* 700bbd5 Cria o README
+$ cat .git/refs/heads/sobremesas
+0244251e6b6cd5cbf4b8c82f8ba2557b6cf3878b
+$ ls .git/refs/heads/
+main  sobremesas
+</pre>
+
+<p>Repare em três coisas:</p>
+<ul>
+  <li>O <code>git branch sobremesas</code> não mostrou nada: no Git, silêncio quer dizer "deu certo".</li>
+  <li>Na lista, o <code>*</code> continua no <code>main</code>. <strong>Criar</strong> um branch não <strong>muda</strong> você para ele.</li>
+  <li>No <code>git log</code>, o commit <code>0244251</code> agora tem duas etiquetas: <code>(HEAD -&gt; main, sobremesas)</code>.</li>
+  <li>O arquivo <code>.git/refs/heads/sobremesas</code> tem <strong>o mesmo hash</strong> do <code>main</code>: as duas etiquetas apontam para o mesmo commit. Criar o branch custou um arquivinho de 41 bytes (40 caracteres do hash e uma quebra de linha), nada de cópia.</li>
+</ul>
+
+<p>Antes e depois:</p>
+<pre>Antes:   A---B---C   ← main ← HEAD
+
+Depois:  A---B---C   ← main ← HEAD
+                     ← sobremesas
+</pre>
+
+<hr>
+
+<h2>3. Mudando de branch: o HEAD troca de etiqueta</h2>
+<p>Para trabalhar no ramo novo, a Ana <strong>muda</strong> para ele com <code>git switch</code> (aula: <a href="git-switch.html">Trocando de Branch</a>):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch sobremesas
+Switched to branch 'sobremesas'          « "mudado para o ramo 'sobremesas'"
+$ cat .git/HEAD
+ref: refs/heads/sobremesas               « o HEAD agora aponta para o branch novo
+$ git status
+No ramo sobremesas
+nothing to commit, working tree clean
+</pre>
+
+<p>A frase <code>Switched to branch 'sobremesas'</code> ("mudado para o ramo 'sobremesas'"; essa mensagem ainda não tem tradução e sai em inglês) confirma a troca. O arquivo <code>HEAD</code> agora diz <code>refs/heads/sobremesas</code>, e o <code>git status</code> também: <code>No ramo sobremesas</code>. Nenhum arquivo da pasta mudou, porque os dois ramos apontam para o mesmo commit. Só o HEAD trocou de etiqueta:</p>
+
+<pre>Antes:   A---B---C   ← main ← HEAD
+                     ← sobremesas
+
+Depois:  A---B---C   ← main
+                     ← sobremesas ← HEAD
+</pre>
+
+<hr>
+
+<h2>4. O commit empurra a etiqueta do branch atual</h2>
+<p>Agora a Ana faz um commit no ramo <code>sobremesas</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'Pudim de leite' &gt; pudim.txt
+$ git add pudim.txt
+$ git commit -m 'Adiciona receita de pudim'
+[sobremesas d6f2336] Adiciona receita de pudim     « entrou no ramo sobremesas
+ 1 file changed, 1 insertion(+)
+ create mode 100644 pudim.txt
+$ git log --oneline --graph --all
+* d6f2336 (HEAD -&gt; sobremesas) Adiciona receita de pudim
+* 0244251 (main) Adiciona receita de pão de queijo   « o main ficou aqui
+* 7225e04 Adiciona receita de bolo
+* 700bbd5 Cria o README
+</pre>
+
+<p>A primeira linha da resposta do <code>git commit</code> começa com <code>[sobremesas …]</code>: o Git avisa <strong>em qual ramo</strong> o commit entrou. E no desenho do <code>git log</code>, o <code>sobremesas</code> andou para o commit novo, enquanto o <code>main</code> ficou para trás:</p>
+
+<pre>Antes:   A---B---C   ← main
+                     ← sobremesas ← HEAD
+
+Depois:  A---B---C   ← main
+                  \
+                   D   ← sobremesas ← HEAD     (D = d6f2336, o pudim)
+</pre>
+<p>(O <code>git log --graph</code> ainda desenha tudo numa linha reta, porque por enquanto a história é uma fila só: o <code>D</code> vem depois do <code>C</code>. A diferença é só onde as etiquetas estão.)</p>
+
+<p>Esta é a regra de ouro dos branches: <strong>um commit novo sempre entra no branch em que o HEAD está, e só a etiqueta desse branch anda</strong>. As outras etiquetas ficam paradas onde estavam.</p>
+
+<hr>
+
+<h2>5. Voltando para o main: os arquivos mudam</h2>
+<p>A Ana volta para o <code>main</code> e lista a pasta:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch main
+Switched to branch 'main'
+$ ls
+README.md  bolo.txt  pao.txt                 « cadê o pudim.txt?
+$ git log --oneline --graph --all
+* d6f2336 (sobremesas) Adiciona receita de pudim
+* 0244251 (HEAD -&gt; main) Adiciona receita de pão de queijo
+* 7225e04 Adiciona receita de bolo
+* 700bbd5 Cria o README
+$ git log --oneline
+0244251 (HEAD -&gt; main) Adiciona receita de pão de queijo
+7225e04 Adiciona receita de bolo
+700bbd5 Cria o README
+$ git log --oneline sobremesas
+d6f2336 (sobremesas) Adiciona receita de pudim
+0244251 (HEAD -&gt; main) Adiciona receita de pão de queijo
+7225e04 Adiciona receita de bolo
+700bbd5 Cria o README
+</pre>
+
+<pre>A---B---C   ← main ← HEAD
+         \
+          D   ← sobremesas
+</pre>
+
+<p>O <code>pudim.txt</code> <strong>sumiu</strong> da pasta! Calma: ele não foi apagado. Ao trocar de branch, o Git deixa a pasta exatamente como ela está no commit para onde o ramo novo aponta, e no commit <code>C</code> o pudim ainda não existia. Quando a Ana voltar para <code>sobremesas</code>, o arquivo reaparece.</p>
+
+<p>Note também que o <code>git log --oneline</code> sem <code>--all</code> mostra só a história do ramo atual. Para ver a de outro ramo, dê o nome dele no fim.</p>
+
+<hr>
+
+<h2>6. Os ramos se separam</h2>
+<p>Ainda no <code>main</code>, a Ana adiciona a receita de feijoada:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'Feijoada' &gt; feijoada.txt
+$ git add feijoada.txt &amp;&amp; git commit -q -m 'Adiciona receita de feijoada'
+$ git log --oneline --graph --all
+* 1077f55 (HEAD -&gt; main) Adiciona receita de feijoada
+| * d6f2336 (sobremesas) Adiciona receita de pudim
+|/
+* 0244251 Adiciona receita de pão de queijo           « onde os ramos se separam
+* 7225e04 Adiciona receita de bolo
+* 700bbd5 Cria o README
+</pre>
+
+<p>Agora o desenho tem <strong>dois galhos</strong> de verdade: cada ramo tem um commit que o outro não tem. No <code>git log --graph</code>, cada <code>*</code> é um commit, e as barras <code>|</code> e <code>/</code> são as linhas da história. Leia de baixo para cima: <code>A</code>, <code>B</code> e <code>C</code> são comuns; a partir de <code>C</code>, a linha da esquerda é o <code>main</code> (com a feijoada) e a da direita é o <code>sobremesas</code> (com o pudim). O <code>|/</code> é o ponto onde o galho da direita "brota" do tronco.</p>
+
+<pre>Antes:   A---B---C   ← main ← HEAD
+                  \
+                   D   ← sobremesas
+
+Depois:  A---B---C---E   ← main ← HEAD     (E = 1077f55, a feijoada)
+                  \
+                   D   ← sobremesas
+</pre>
+
+<p>O commit <code>C</code>, onde os ramos se separaram, é o <strong>ancestral comum</strong> dos dois. Para juntar o trabalho dos dois ramos de novo, existe o <a href="git-merge.html">git merge</a>, assunto do próximo grupo de aulas.</p>
+
+<hr>
+
+<h2>7. Para que servem os branches no dia a dia</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Como os branches ajudam</th></tr>
+<tr><td>Testar uma ideia que talvez não dê certo</td><td>Faça num branch. Se não prestar, apague o branch (<a href="apagar-branch.html">Renomeando e Apagando Branches</a>); o <code>main</code> nem ficou sabendo.</td></tr>
+<tr><td>Uma funcionalidade nova que vai levar dias</td><td>Trabalhe num branch próprio; o <code>main</code> continua sempre funcionando.</td></tr>
+<tr><td>Um defeito urgente no meio de outra tarefa</td><td>Volte para o <code>main</code>, crie um branch para o conserto, resolva e volte para a tarefa: nada se mistura.</td></tr>
+<tr><td>Trabalhar em dupla com o Bruno</td><td>Cada um no seu branch; depois os dois juntam o trabalho com merge ou pull request (<a href="pull-request.html">Pull Request</a>).</td></tr>
+</table>
+</div>
+
+<div class="note">
+<strong>O <code>main</code> não tem nada de especial</strong>
+<p>Para o Git, <code>main</code> é só o nome do primeiro branch, igual a qualquer outro. É uma <strong>combinação</strong> entre as pessoas que ele guarde a versão boa, a que "vai para o ar". Em projetos antigos, o primeiro branch se chama <code>master</code>; o lab da Ana usa <code>init.defaultBranch=main</code> (veja <a href="git-init.html">Criando um Repositório</a>).</p>
+</div>
+
+<hr>
+
+<h2>Experimente</h2>
+<p>O terminal abaixo já está dentro da pasta <code>receitas</code>, com os três commits da Ana no <code>main</code>. Use <code>git log --oneline --graph --all</code> e <code>git branch</code> antes e depois de cada passo, para ver as etiquetas andando.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;echo 'Pão de queijo' &gt; pao.txt;;git add pao.txt;;git commit -q -m 'Adiciona receita de pão de queijo'" data-goal="branch:sobremesas,head:sobremesas,commits:4,limpo,contem:sobremesas:pudim.txt=Pudim" data-solucao="git branch sobremesas;;git switch sobremesas;;echo 'Pudim de leite' &gt; pudim.txt;;git add pudim.txt;;git commit -m 'Adiciona receita de pudim'">
+<p class="try-task"><strong>Missão:</strong> refaça a seção 4 da aula. Crie o branch <code>sobremesas</code>, mude para ele, crie o arquivo <code>pudim.txt</code> com o texto <code>Pudim de leite</code> e faça um commit com ele. No fim, rode <code>git log --oneline --graph --all</code> e confira que o <code>main</code> ficou para trás.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;echo 'Pão de queijo' &gt; pao.txt;;git add pao.txt;;git commit -q -m 'Adiciona receita de pão de queijo';;git branch sobremesas;;git switch -q sobremesas;;echo 'Pudim de leite' &gt; pudim.txt;;git add pudim.txt;;git commit -q -m 'Adiciona receita de pudim'" data-goal="head:main,commits:4,absent:pudim.txt,contem:main:feijoada.txt=Feijoada" data-solucao="git switch main;;echo 'Feijoada' &gt; feijoada.txt;;git add feijoada.txt;;git commit -m 'Adiciona receita de feijoada'">
+<p class="try-task"><strong>Missão:</strong> agora a Ana está no ramo <code>sobremesas</code>, que já tem o pudim. Volte para o <code>main</code> (repare que o <code>pudim.txt</code> some do <code>ls</code>), crie <code>feijoada.txt</code> com o texto <code>Feijoada</code> e faça um commit. Depois, veja os dois galhos com <code>git log --oneline --graph --all</code>.</p>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Criei o branch, mas o commit foi parar no <code>main</code></strong>
+<p>O erro de iniciante mais comum com branches: criar com <code>git branch</code> e esquecer de mudar para ele.</p>
+<pre class="term" data-cwd="~/receitas">$ git branch sobremesas
+$ echo 'Pudim de leite' &gt; pudim.txt
+$ git add pudim.txt
+$ git commit -m 'Adiciona receita de pudim'
+[main d6f2336] Adiciona receita de pudim         « main, e não sobremesas!
+ 1 file changed, 1 insertion(+)
+ create mode 100644 pudim.txt
+$ git log --oneline --graph --all
+* d6f2336 (HEAD -&gt; main) Adiciona receita de pudim
+* 0244251 (sobremesas) Adiciona receita de pão de queijo
+* 7225e04 Adiciona receita de bolo
+* 700bbd5 Cria o README
+</pre>
+<p><strong>O que aconteceu:</strong> o <code>git branch sobremesas</code> criou a etiqueta, mas o HEAD continuou no <code>main</code>, e o commit entrou nele. <strong>Como perceber:</strong> o começo da resposta do commit (<code>[main …]</code>) e a primeira linha do <code>git status</code> (<code>No ramo main</code>) dizem onde você está. <strong>Como resolver</strong> (o commit não se perde): leve a etiqueta <code>sobremesas</code> até o commit novo, mude para ela e devolva o <code>main</code> um commit para trás. O <code>-f</code> (de <em>force</em>, "forçar") do <code>git branch</code> move uma etiqueta que já existe; ele não funciona no branch atual, por isso a troca vem no meio:</p>
+<pre class="term" data-cwd="~/receitas">$ git branch -f sobremesas
+$ git switch sobremesas
+Switched to branch 'sobremesas'
+$ git branch -f main main~1
+$ git log --oneline --graph --all
+* d6f2336 (HEAD -&gt; sobremesas) Adiciona receita de pudim
+* 0244251 (main) Adiciona receita de pão de queijo
+* 7225e04 Adiciona receita de bolo
+* 700bbd5 Cria o README
+</pre>
+<p>(<code>main~1</code> = "um commit antes do <code>main</code>".) Para não cair nisso, crie e mude de uma vez com <code>git switch -c sobremesas</code> (aula <a href="git-switch.html">git switch</a>).</p>
+</div>
+
+<div class="cenario">
+<strong>"Troquei de branch e meu arquivo sumiu!"</strong>
+<p>Como na seção 5: o <code>pudim.txt</code> não aparece no <code>ls</code> depois do <code>git switch main</code>. <strong>O que aconteceu:</strong> o arquivo só existe nos commits do outro ramo. <strong>Como confirmar:</strong> <code>git log --oneline --graph --all</code> mostra o commit do pudim no <code>sobremesas</code>, e <code>git log --oneline sobremesas</code> também. <strong>Como resolver:</strong> nada a resolver; <code>git switch sobremesas</code> traz o arquivo de volta. Só perde de verdade o que <strong>nunca foi commitado</strong> e você mesmo descartou; o Git se recusa a trocar de branch quando isso poderia apagar uma mudança sua (veja <a href="git-switch.html">git switch</a>).</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Conceito</th><th>O que é</th></tr>
+<tr><td>Branch (ramo)</td><td>Um nome que aponta para um commit; anda sozinho a cada commit novo feito nele</td></tr>
+<tr><td><code>main</code></td><td>O branch que o <code>git init</code> cria; por combinação, guarda a versão boa</td></tr>
+<tr><td>HEAD</td><td>Aponta para o branch atual (<code>.git/HEAD</code> diz <code>ref: refs/heads/NOME</code>)</td></tr>
+<tr><td><code>.git/refs/heads/NOME</code></td><td>O arquivo do branch: uma linha com o hash do último commit do ramo</td></tr>
+<tr><td>Ancestral comum</td><td>O último commit que dois ramos têm em comum, onde eles se separaram</td></tr>
+</table>
+</div>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th><th>Aula</th></tr>
+<tr><td><code>git branch</code></td><td>Lista os branches; o <code>*</code> marca o atual</td><td><a href="git-branch.html">git branch</a></td></tr>
+<tr><td><code>git branch NOME</code></td><td>Cria um branch no commit atual (sem mudar para ele)</td><td><a href="git-branch.html">git branch</a></td></tr>
+<tr><td><code>git switch NOME</code></td><td>Muda para o branch</td><td><a href="git-switch.html">git switch</a></td></tr>
+<tr><td><code>git switch -c NOME</code></td><td>Cria e já muda</td><td><a href="git-switch.html">git switch</a></td></tr>
+<tr><td><code>git log --oneline --graph --all</code></td><td>Desenha todos os ramos</td><td><a href="log-graph.html">log --graph</a></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">1. O que é um branch, por dentro do Git?</p>
+<label><input type="radio" name="q1"> Uma cópia completa da pasta do projeto</label>
+<label><input type="radio" name="q1"> Um nome que aponta para um commit (um arquivinho com um hash)</label>
+<label><input type="radio" name="q1"> Uma pasta escondida com os arquivos alterados</label>
+<label><input type="radio" name="q1"> Um commit especial</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">2. A Ana está no <code>main</code> e roda <code>git branch teste</code>. Em qual branch ela está agora?</p>
+<label><input type="radio" name="q2"> <code>teste</code>, porque o branch novo vira o atual</label>
+<label><input type="radio" name="q2"> Em nenhum</label>
+<label><input type="radio" name="q2"> Continua no <code>main</code>: criar um branch não muda o HEAD</label>
+<label><input type="radio" name="q2"> Nos dois ao mesmo tempo</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">3. Os branches <code>main</code> e <code>sobremesas</code> apontam para o commit <code>C</code>. A Ana está no <code>sobremesas</code> e faz um commit <code>D</code>. E agora?</p>
+<label><input type="radio" name="q3"> <code>sobremesas</code> aponta para <code>D</code>; <code>main</code> continua em <code>C</code></label>
+<label><input type="radio" name="q3"> Os dois passam a apontar para <code>D</code></label>
+<label><input type="radio" name="q3"> <code>main</code> aponta para <code>D</code>; <code>sobremesas</code> continua em <code>C</code></label>
+<label><input type="radio" name="q3"> O Git recusa o commit, porque <code>C</code> tem duas etiquetas</label>
+</div>
+
+<div class="exercise">
+<h3>4. Complete</h3>
+<p>Complete as frases:</p>
+<div class="ex-code">O arquivo <code>.git/HEAD</code> do branch main contém: ref: refs/heads/<input data-answer="main" aria-label="nome do branch"><br>Para ver todos os ramos desenhados: git log --oneline --graph --<input data-answer="all" aria-label="opção"></div>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">5. A Ana troca do branch <code>sobremesas</code> para o <code>main</code>, e o arquivo <code>pudim.txt</code> some da pasta. O que aconteceu?</p>
+<label><input type="radio" name="q5"> O Git apagou o pudim para sempre</label>
+<label><input type="radio" name="q5"> Foi um erro: os arquivos não deviam mudar</label>
+<label><input type="radio" name="q5"> O pudim foi para a lixeira</label>
+<label><input type="radio" name="q5"> O pudim só existe nos commits do <code>sobremesas</code>; voltando para lá, ele reaparece</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Um <strong>branch</strong> (ramo) é uma linha de trabalho separada. Por dentro, é só um <strong>nome que aponta para um commit</strong>: o arquivo <code>.git/refs/heads/NOME</code>, com um hash.</li>
+  <li>O <code>git init</code> cria o branch <code>main</code>; você já trabalhava nele sem saber.</li>
+  <li>O <strong>HEAD</strong> aponta para o branch atual. <code>git branch NOME</code> cria uma etiqueta nova, mas o HEAD continua onde estava; <code>git switch NOME</code> muda o HEAD.</li>
+  <li>Cada commit novo entra no branch do HEAD, e só a etiqueta dele anda.</li>
+  <li>Trocar de branch troca os arquivos da pasta para a versão daquele ramo; nada é perdido.</li>
+  <li>Quando os dois ramos ganham commits diferentes, a história se divide a partir do <strong>ancestral comum</strong>. O <code>git log --oneline --graph --all</code> desenha isso.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
