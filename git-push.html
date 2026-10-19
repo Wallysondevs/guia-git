@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git push — enviando seus commits para o remoto | Guia Git</title>
+<meta name="description" content="O git push para quem nunca usou Git: enviar commits para o GitHub, o primeiro push com -u, o que significa cada linha da saída (Enumerating objects, To, * [new branch], main -&gt; main), Everything up-to-date, enviar um branch novo e uma tag, e os erros reais: sem upstream, src refspec, origin não é um repositório e push rejeitado.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">push</span></h1>
+
+<p class="intro">Até aqui, todos os commits da Ana moram <strong>só no notebook dela</strong>. Se o notebook cair no chão, o histórico vai junto; e o Bruno, que trabalha com ela no site de receitas, não vê nada. O <code>git push</code> (em inglês, "empurrar") é o comando que <strong>envia</strong> os seus commits para o repositório remoto, por exemplo no GitHub, onde ficam guardados e onde os colegas podem buscá-los.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que o <code>git push</code> envia (e o que ele <strong>não</strong> envia).</li>
+  <li>Como fazer o primeiro push com <code>-u</code> e por que, depois dele, basta digitar <code>git push</code>.</li>
+  <li>O que quer dizer cada linha da saída: <code>Enumerating objects</code>, <code>To</code>, <code>* [new branch]</code>, <code>main -&gt; main</code>.</li>
+  <li>Como enviar um branch novo e uma tag.</li>
+  <li>Os erros mais comuns do push e como sair de cada um.</li>
+</ul>
+</div>
+
+<hr>
+
+<h2>A ideia antes do comando</h2>
+<p>Pense num álbum de fotos da família guardado na casa da avó. Você tira fotos no celular (os <strong>commits</strong>, feitos no seu computador) e, de vez em quando, leva as novas para colar no álbum (o <strong>remoto</strong>). Levar as fotos é o <code>push</code>. Três detalhes dessa comparação valem para o Git:</p>
+<ul>
+  <li>Você só leva <strong>fotos já reveladas</strong>: o push envia <strong>commits</strong>. Arquivo modificado e não commitado, ou só preparado com <code>git add</code>, fica no seu computador.</li>
+  <li>Você não leva o álbum inteiro de novo: o Git envia <strong>só o que o remoto ainda não tem</strong>.</li>
+  <li>Se alguém colou fotos novas no álbum depois da sua última visita, você precisa vê-las antes de colar as suas (é o <a href="push-rejeitado.html">push rejeitado</a>).</li>
+</ul>
+
+<pre>Notebook da Ana                    GitHub (origin)
+A---B---C---D   main     push →    A---B   main
+                                   (recebe C e D)</pre>
+
+<p>Nesta aula, a Ana já tem o repositório <code>receitas</code> no notebook e um remoto chamado <code>origin</code> (veja <a href="git-remote.html">git remote</a> e <a href="git-clone.html">git clone</a>). O "GitHub" dos exemplos é um servidor de treino do laboratório do guia: as mensagens do Git são as mesmas de um push para o GitHub de verdade.</p>
+
+<hr>
+
+<h2>A forma completa: <code>git push origin main</code></h2>
+
+<dl class="anatomy">
+  <dt>git</dt><dd>O programa Git.</dd>
+  <dt>push</dt><dd>O subcomando: "envie meus commits".</dd>
+  <dt>origin</dt><dd><strong>Para onde</strong>: o nome do remoto. <code>origin</code> é o nome que o <code>git clone</code> dá (e o que todo tutorial usa no <code>git remote add</code>).</dd>
+  <dt>main</dt><dd><strong>O quê</strong>: o branch que vai ser enviado. O Git envia os commits do seu <code>main</code> para o <code>main</code> de lá.</dd>
+</dl>
+
+<h3>O primeiro push, com <code>-u</code></h3>
+<p>A Ana criou o repositório no notebook, fez dois commits e cadastrou o remoto. Antes de enviar, ela confere o que tem:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+4f68d0e (HEAD -&gt; main) Adiciona receita de bolo        « dois commits, só no notebook
+0e8cf93 Adiciona README
+$ git remote -v
+origin  https://github.com/ana-souza/receitas.git (fetch)     « o remoto já está cadastrado
+origin  https://github.com/ana-souza/receitas.git (push)
+$ git status
+No ramo main
+nothing to commit, working tree clean                  « nenhuma palavra sobre o remoto (ainda)</pre>
+
+<p>O repositório no GitHub foi criado vazio (veja <a href="github-repositorio.html">Criando um Repositório no GitHub</a>). Agora, o envio:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git push -u origin main
+Enumerating objects: 6, done.
+Counting objects: 100% (6/6), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (3/3), done.
+Writing objects: 100% (6/6), 504 bytes | 504.00 KiB/s, done.
+Total 6 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/receitas.git                 « para onde foi
+ * [new branch]      main -&gt; main                            « o branch main foi criado lá
+branch 'main' set up to track 'origin/main'.                  « efeito do -u
+$ git status
+No ramo main
+Your branch is up to date with 'origin/main'.                 « linha nova!
+
+nothing to commit, working tree clean</pre>
+
+<div class="note">
+<strong>Por que tanta coisa em inglês?</strong> O Git do Ubuntu sai em português quando o sistema está em português, mas a tradução brasileira do Git <strong>não está completa</strong>: muitas mensagens, sobretudo as do <code>push</code>, continuam em inglês. É exatamente isso que você vai ver no seu terminal, e o guia mostra as mensagens como elas saem. Com o sistema em inglês, tudo sai em inglês (por exemplo, <code>No ramo main</code> vira <code>On branch main</code>).
+</div>
+
+<h3>A saída, linha por linha</h3>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Linha</th><th>O que quer dizer</th></tr>
+<tr><td><code>Enumerating objects: 6, done.</code></td><td>"Contando os objetos": o Git listou o que precisa ir. Dois commits viram 6 objetos (cada commit, cada pasta e cada arquivo é um objeto; veja <a href="como-git-guarda.html">Como o Git Guarda as Coisas</a>).</td></tr>
+<tr><td><code>Counting objects</code>, <code>Delta compression</code>, <code>Compressing objects</code></td><td>Preparação do pacote: o Git compacta os objetos para gastar menos internet. "using up to 8 threads" = usou até 8 núcleos do processador (o número muda de computador para computador).</td></tr>
+<tr><td><code>Writing objects: 100% (6/6), 504 bytes</code></td><td>O envio de verdade: 6 objetos, 504 bytes ao todo. Num projeto grande, você vê a porcentagem subindo.</td></tr>
+<tr><td><code>Total 6 (delta 0), reused 0 …</code></td><td>Estatística do pacote. Pode ignorar.</td></tr>
+<tr><td><code>To https://github.com/ana-souza/receitas.git</code></td><td><strong>Para onde</strong> foi ("To" = "para").</td></tr>
+<tr><td><code> * [new branch]      main -&gt; main</code></td><td>O asterisco e o <code>[new branch]</code> dizem que o branch <strong>não existia</strong> lá e foi criado. <code>main -&gt; main</code> = "o meu <code>main</code> foi para o <code>main</code> de lá".</td></tr>
+<tr><td><code>branch 'main' set up to track 'origin/main'.</code></td><td>"O branch main agora acompanha o origin/main": é o <code>-u</code> trabalhando.</td></tr>
+</table>
+</div>
+
+<p>E o <code>git status</code> ganhou uma linha: <code>Your branch is up to date with 'origin/main'</code>, "seu branch está em dia com o <code>origin/main</code>". O <code>origin/main</code> é a <strong>lembrança</strong> que o seu Git guarda de como estava o <code>main</code> do GitHub na última conversa entre os dois.</p>
+
+<div class="tip">
+<strong>Para que serve o <code>-u</code>?</strong> O <code>-u</code> (forma longa: <code>--set-upstream</code>) liga o seu <code>main</code> ao <code>main</code> do <code>origin</code>. O Git anota que eles são um par. É ele que permite, daqui para a frente, digitar só <code>git push</code> e <code>git pull</code>, sem dizer para onde, e faz o <code>git status</code> contar quantos commits você está à frente ou atrás. O assunto tem aula própria: <a href="upstream.html">Branch de Rastreamento (upstream)</a>.
+</div>
+
+<h3>Os próximos pushes: só <code>git push</code></h3>
+<p>A Ana escreve uma receita nova e faz o commit. O <code>git status</code> avisa que ela tem algo que o remoto ainda não tem:</p>
+
+<pre class="term" data-cwd="~/receitas">$ printf 'Pudim\n- 1 lata de leite condensado\n' &gt; pudim.txt
+$ git add pudim.txt
+$ git commit -m 'Adiciona receita de pudim'
+[main b830dc1] Adiciona receita de pudim
+ 1 file changed, 2 insertions(+)
+ create mode 100644 pudim.txt
+$ git status
+No ramo main
+Seu ramo está à frente de 'origin/main' por 1 submissão.      « 1 commit que o GitHub não tem
+  (use "git push" to publish your local commits)              « a dica: use git push
+
+nothing to commit, working tree clean</pre>
+
+<p>"Submissão" é a palavra que a tradução do Git usa para <strong>commit</strong>. A dica em inglês diz: "use <code>git push</code> para publicar seus commits locais". Como o <code>main</code> já está ligado ao <code>origin/main</code>, não precisa dizer para onde:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git push
+Enumerating objects: 4, done.
+Counting objects: 100% (4/4), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (2/2), done.
+Writing objects: 100% (3/3), 346 bytes | 346.00 KiB/s, done.
+Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/receitas.git
+   4f68d0e..b830dc1  main -&gt; main                « o main de lá andou de 4f68d0e para b830dc1
+$ git status
+No ramo main
+Your branch is up to date with 'origin/main'.          « em dia de novo
+
+nothing to commit, working tree clean</pre>
+
+<p>Repare na diferença: desta vez não há <code>* [new branch]</code>, porque o branch já existia lá. No lugar, aparece <code>4f68d0e..b830dc1</code>: "o <code>main</code> do GitHub estava no commit <code>4f68d0e</code> e agora está no <code>b830dc1</code>". Só foram 3 objetos (o commit novo, a pasta e o <code>pudim.txt</code>): o Git não reenviou o que o GitHub já tinha.</p>
+
+<h3>Push sem nada novo: <code>Everything up-to-date</code></h3>
+<pre class="term" data-cwd="~/receitas">$ git push
+Everything up-to-date                                  « "tudo em dia": nada para enviar</pre>
+<p>Não é erro: o Git só avisa que o GitHub já tem todos os seus commits.</p>
+
+<hr>
+
+<h2>Antes e depois: o que o push muda (e o que não muda)</h2>
+<p>A pegadinha mais comum de quem começa: mudar um arquivo, dar <code>git push</code> e achar que mandou. Veja a Ana acrescentando um ingrediente ao bolo <strong>sem commitar</strong>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo '- 2 xícaras de farinha' &gt;&gt; bolo.txt
+$ git push
+Everything up-to-date                                  « nada foi enviado!
+$ git status
+No ramo main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+        modified:   bolo.txt                          « a mudança continua só aqui
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")</pre>
+
+<p>O push enviou... nada. A farinha não é um commit: está só na pasta de trabalho. Para ela ir, é o caminho de sempre: <code>git add</code>, <code>git commit</code> e <strong>depois</strong> <code>git push</code>.</p>
+
+<p>E o histórico mostra até onde o GitHub tem os commits:</p>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+b830dc1 (HEAD -&gt; main, origin/main) Adiciona receita de pudim      « main e origin/main no mesmo lugar
+4f68d0e Adiciona receita de bolo
+0e8cf93 Adiciona README</pre>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th></th><th>Antes do push</th><th>Depois do push</th></tr>
+<tr><td>Commits no notebook</td><td>A, B, C</td><td>A, B, C (nada muda)</td></tr>
+<tr><td>Commits no GitHub</td><td>A, B</td><td>A, B, C</td></tr>
+<tr><td><code>origin/main</code> (a lembrança)</td><td>Em B</td><td>Em C, junto com <code>main</code></td></tr>
+<tr><td><code>git status</code></td><td><code>à frente de 'origin/main' por 1</code></td><td><code>up to date with 'origin/main'</code></td></tr>
+<tr><td>Arquivos modificados sem commit</td><td>Na pasta</td><td>Continuam só na pasta</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Experimente</h2>
+<p>No terminal abaixo, o repositório <code>receitas</code> já tem o remoto <code>origin</code> configurado e o <code>main</code> ligado a ele. A Ana tem um commit que o remoto ainda não recebeu.</p>
+
+<div class="try" data-setup="git init -q --bare ~/servidor/receitas.git;;mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -qm 'Adiciona README';;git remote add origin ~/servidor/receitas.git;;git push -q -u origin main;;printf 'Pudim\n' &gt; pudim.txt;;git add pudim.txt;;git commit -qm 'Adiciona receita de pudim'" data-goal="contem:origin/main:pudim.txt=Pudim,ran:git push" data-solucao="git push">
+<p class="try-task"><strong>Missão:</strong> confira com <code>git status</code> que a Ana está 1 commit à frente do <code>origin/main</code> e envie esse commit para o remoto. Depois, rode <code>git status</code> de novo e <code>git log --oneline</code> para ver o <code>origin/main</code> no mesmo lugar do <code>main</code>.</p>
+</div>
+
+<div class="try" data-setup="git init -q --bare ~/servidor/receitas.git;;mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -qm 'Adiciona README';;git remote add origin ~/servidor/receitas.git;;git push -q -u origin main;;echo '- 2 xícaras de farinha' &gt; bolo.txt" data-goal="contem:origin/main:bolo.txt=farinha" data-solucao="git add bolo.txt;;git commit -m 'Adiciona receita de bolo';;git push">
+<p class="try-task"><strong>Missão:</strong> a Ana criou o <code>bolo.txt</code>, mas ele ainda não está em commit nenhum. Faça o arquivo chegar ao remoto. (Dica: um <code>git push</code> sozinho responde <code>Everything up-to-date</code>. Por quê?)</p>
+</div>
+
+<hr>
+
+<h2>Enviando um branch novo</h2>
+<p>O push envia <strong>um branch por vez</strong>, e cada branch novo precisa do seu primeiro push com <code>-u</code>. A Ana cria o branch <code>salgados</code> para testar receitas novas sem mexer no <code>main</code> (veja <a href="git-switch.html">git switch</a>) e tenta enviar:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch -c salgados
+Switched to a new branch 'salgados'
+$ printf 'Coxinha\n- 500 g de frango\n' &gt; coxinha.txt
+$ git add coxinha.txt
+$ git commit -qm 'Adiciona receita de coxinha'
+$ git push
+fatal: The current branch salgados has no upstream branch.          « o branch não tem par lá
+To push the current branch and set the remote as upstream, use
+
+    git push --set-upstream origin salgados                         « o comando pronto
+
+To have this happen automatically for branches without a tracking
+upstream, see 'push.autoSetupRemote' in 'git help config'.
+</pre>
+
+<p>Traduzindo: "o branch atual, <code>salgados</code>, não tem branch upstream (um par no remoto). Para enviar o branch atual e definir o remoto como upstream, use <code>git push --set-upstream origin salgados</code>". O Git até escreveu o comando. <code>--set-upstream</code> é a forma longa do <code>-u</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git push -u origin salgados
+Enumerating objects: 4, done.
+Counting objects: 100% (4/4), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (2/2), done.
+Writing objects: 100% (3/3), 370 bytes | 370.00 KiB/s, done.
+Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+remote:                                                               « linhas "remote:" = recado do servidor
+remote: Create a pull request for 'salgados' on GitHub by visiting:
+remote:      https://github.com/ana-souza/receitas/pull/new/salgados
+remote:
+To https://github.com/ana-souza/receitas.git
+ * [new branch]      salgados -&gt; salgados
+branch 'salgados' set up to track 'origin/salgados'.
+$ git branch -vv
+  main     b830dc1 [origin/main] Adiciona receita de pudim
+* salgados 47962c1 [origin/salgados] Adiciona receita de coxinha     « cada branch com o seu par</pre>
+
+<p>As linhas que começam com <code>remote:</code> não são do seu Git: são um <strong>recado do servidor</strong>. Aqui o GitHub oferece um link para abrir um <a href="pull-request.html">pull request</a> com o branch novo. O <code>git branch -vv</code> mostra, entre colchetes, o par de cada branch.</p>
+
+<h2>Enviando tags</h2>
+<p>As <a href="git-tag.html">tags</a> (etiquetas de versão) <strong>não vão</strong> com o <code>git push</code> normal: é preciso pedir. A Ana marca a versão 1.0 do site e envia a tag pelo nome:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch -q main
+$ git tag v1.0
+$ git push origin v1.0
+Total 0 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)     « 0 objetos: o commit já estava lá
+To https://github.com/ana-souza/receitas.git
+ * [new tag]         v1.0 -&gt; v1.0                                  « a tag foi criada lá
+$ git push --tags
+Everything up-to-date                                              « nenhuma tag nova para enviar</pre>
+
+<p><code>git push --tags</code> envia <strong>todas</strong> as tags que o remoto ainda não tem. É prático, mas manda junto qualquer tag de teste esquecida; por isso, prefira enviar pelo nome.</p>
+
+<hr>
+
+<h2>Formas diferentes de fazer</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Forma</th><th>O que envia</th><th>Quando usar</th></tr>
+<tr><td><code>git push</code></td><td>O branch atual, para o par configurado (upstream)</td><td>No dia a dia, depois do primeiro push com <code>-u</code></td></tr>
+<tr><td><code>git push origin main</code></td><td>O <code>main</code>, para o <code>main</code> do <code>origin</code></td><td>Quando você quer deixar claro de onde e para onde, ou não está no <code>main</code></td></tr>
+<tr><td><code>git push -u origin main</code></td><td>O mesmo, e liga os dois branches</td><td>O <strong>primeiro</strong> push de cada branch</td></tr>
+<tr><td><code>git push -u origin HEAD</code></td><td>O branch em que você está, com o mesmo nome lá</td><td>Para não ter de digitar nomes longos de branch</td></tr>
+<tr><td><code>git push origin v1.0</code></td><td>Só a tag <code>v1.0</code></td><td>Para publicar uma versão</td></tr>
+<tr><td><code>git push --tags</code></td><td>Todas as tags que o remoto ainda não tem</td><td>Com cuidado: envia até tags de teste</td></tr>
+</table>
+</div>
+
+<h3>Nunca mais o "no upstream branch": <code>push.autoSetupRemote</code> <span class="versao">git 2.37+</span></h3>
+<p>A própria mensagem de erro sugeriu: com a configuração <code>push.autoSetupRemote</code> ligada, o primeiro <code>git push</code> de um branch novo já faz o papel do <code>-u</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git config --global push.autoSetupRemote true
+$ git switch -c doces
+Switched to a new branch 'doces'
+$ printf 'Brigadeiro\n' &gt; brigadeiro.txt
+$ git add brigadeiro.txt
+$ git commit -qm 'Adiciona brigadeiro'
+$ git push                                                    « sem -u, sem origin, sem nome
+Enumerating objects: 4, done.
+Counting objects: 100% (4/4), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (2/2), done.
+Writing objects: 100% (3/3), 352 bytes | 352.00 KiB/s, done.
+Total 3 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+remote:
+remote: Create a pull request for 'doces' on GitHub by visiting:
+remote:      https://github.com/ana-souza/receitas/pull/new/doces
+remote:
+To https://github.com/ana-souza/receitas.git
+ * [new branch]      doces -&gt; doces
+branch 'doces' set up to track 'origin/doces'.                « configurou sozinho</pre>
+
+<p>Vale a pena para quem cria muitos branches. Mas aprenda o <code>-u</code> mesmo assim: você vai encontrá-lo em todo tutorial e em computadores sem essa configuração.</p>
+
+<hr>
+
+<h2>Quando dá errado</h2>
+<div class="cenario">
+<strong>"The current branch … has no upstream branch"</strong>
+<p><strong>O que aconteceu:</strong> é o primeiro push deste branch, e ele não tem par no remoto. O Git não sabe para onde mandar.</p>
+<p><strong>Como resolver:</strong> rode o comando que a mensagem sugere: <code>git push -u origin NOME-DO-BRANCH</code> (ou <code>git push --set-upstream origin NOME-DO-BRANCH</code>). Exemplo completo em "Enviando um branch novo", acima.</p>
+</div>
+
+<div class="cenario">
+<strong>"src refspec main does not match any"</strong>
+<pre class="term" data-cwd="~">$ git init -q lojinha &amp;&amp; cd lojinha
+$ git remote add origin https://github.com/ana-souza/lojinha.git
+$ git push -u origin main
+error: src refspec main does not match any
+error: failed to push some refs to 'https://github.com/ana-souza/lojinha.git'</pre>
+<p><strong>O que aconteceu:</strong> "a origem <code>main</code> não corresponde a nada": no seu repositório não existe nenhum branch chamado <code>main</code>. Duas causas: (1) o repositório <strong>ainda não tem commit</strong> (o <code>main</code> só passa a existir no primeiro commit), como acima; (2) você digitou o nome errado, como em <code>git push origin mian</code>, ou o seu branch se chama <code>master</code>.</p>
+<pre class="term" data-cwd="~/receitas">$ git push origin mian
+error: src refspec mian does not match any
+error: failed to push some refs to 'https://github.com/ana-souza/receitas.git'</pre>
+<p><strong>Como confirmar:</strong> <code>git log --oneline</code> (tem commit?) e <code>git branch</code> (qual é o nome do branch?).</p>
+<p><strong>Como resolver:</strong> faça o primeiro commit, ou use o nome que aparece no <code>git branch</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>"'orign' does not appear to be a git repository"</strong>
+<pre class="term" data-cwd="~/receitas">$ git push orign main
+fatal: 'orign' does not appear to be a git repository
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.</pre>
+<p><strong>O que aconteceu:</strong> "<code>orign</code> não parece ser um repositório git": não há remoto com esse nome (aqui, um erro de digitação de <code>origin</code>). A segunda parte, "não foi possível ler do repositório remoto; confira se você tem permissão e se o repositório existe", é genérica e aparece em vários erros.</p>
+<p><strong>Como confirmar:</strong> <code>git remote -v</code> lista os nomes que existem. Se não listar nada, o repositório ainda não tem remoto: cadastre com <code>git remote add origin URL</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>"Repository not found"</strong>
+<pre class="term" data-cwd="~/receitas">$ git push https://github.com/ana-souza/receita.git main
+remote: Repository not found.
+fatal: repository 'https://github.com/ana-souza/receita.git/' not found</pre>
+<p><strong>O que aconteceu:</strong> o endereço está errado (aqui, <code>receita</code> sem o "s"), o repositório não foi criado no GitHub, ou é privado e você não tem acesso a ele.</p>
+<p><strong>Como resolver:</strong> confira o endereço na página do repositório e corrija o remoto com <code>git remote set-url origin URL-CERTA</code> (veja <a href="git-remote.html">git remote</a>).</p>
+</div>
+
+<div class="cenario">
+<strong>"! [rejected] … (fetch first)"</strong>
+<pre class="term" data-cwd="~/receitas">$ git push
+To https://github.com/ana-souza/receitas.git
+ ! [rejected]        main -&gt; main (fetch first)
+error: failed to push some refs to 'https://github.com/ana-souza/receitas.git'
+hint: Updates were rejected because the remote contains work that you do not
+hint: have locally. This is usually caused by another repository pushing to
+hint: the same ref. If you want to integrate the remote changes, use
+hint: 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.</pre>
+<p><strong>O que aconteceu:</strong> o Bruno enviou um commit para o <code>main</code> depois da última vez que a Ana conversou com o GitHub. O remoto tem trabalho que ela não tem, e o Git se recusa a apagá-lo.</p>
+<p><strong>Como resolver:</strong> <code>git pull</code> (traz e junta o trabalho do Bruno) e depois <code>git push</code> de novo. <strong>Não</strong> use <code>git push --force</code>: ele apagaria o commit do Bruno. O passo a passo completo está em <a href="push-rejeitado.html">Push Rejeitado: o que Fazer</a>.</p>
+</div>
+
+<div class="cenario">
+<strong>O terminal pede usuário e senha, e a senha não funciona</strong>
+<p><strong>O que aconteceu:</strong> no GitHub de verdade, o push precisa provar quem você é, e a senha da conta não é aceita pelo terminal. (Ilustrativo: o servidor de treino do guia não pede senha.)</p>
+<p><strong>Como resolver:</strong> configure uma <a href="ssh.html">chave SSH</a> ou um <a href="https-token.html">token de acesso</a>.</p>
+</div>
+
+<hr>
+
+<h2>Referência</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git push</code></td><td>Envia o branch atual para o upstream</td></tr>
+<tr><td><code>git push REMOTO BRANCH</code></td><td>Envia o branch para o remoto (ex.: <code>git push origin main</code>)</td></tr>
+<tr><td><code>git push -u REMOTO BRANCH</code></td><td>Envia e configura o upstream (<code>--set-upstream</code>)</td></tr>
+<tr><td><code>git push REMOTO TAG</code></td><td>Envia uma tag</td></tr>
+<tr><td><code>git push --tags</code></td><td>Envia todas as tags</td></tr>
+<tr><td><code>git push --dry-run</code></td><td>Mostra o que seria enviado, sem enviar (<code>-n</code>)</td></tr>
+<tr><td><code>git push REMOTO --delete BRANCH</code></td><td>Apaga o branch <strong>no remoto</strong></td></tr>
+<tr><td><code>git push --force-with-lease</code></td><td>Sobrescreve o remoto com segurança (veja <a href="push-force.html">push --force-with-lease</a>)</td></tr>
+<tr><td><code>git status</code></td><td>Mostra se você está à frente do remoto ("à frente de 'origin/main' por N commits")</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+<div class="exercise">
+<h3>1. O primeiro push</h3>
+<p>Complete o comando que envia o branch <code>main</code> para o remoto <code>origin</code> pela primeira vez, já ligando os dois:</p>
+<div class="ex-code">git push <input data-answer="-u" aria-label="opção"> origin main</div>
+</div>
+
+<div class="exercise">
+<h3>2. Branch novo</h3>
+<p>A Ana está no branch <code>sobremesas</code>, que nunca foi enviado. Complete:</p>
+<div class="ex-code">git push -u origin <input data-answer="sobremesas" aria-label="branch"></div>
+</div>
+
+<div class="exercise">
+<h3>3. Só uma tag</h3>
+<p>Complete para enviar só a tag <code>v2.0</code>:</p>
+<div class="ex-code">git push origin <input data-answer="v2.0" aria-label="tag"></div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. A Ana editou o <code>bolo.txt</code>, não fez commit e rodou <code>git push</code>. O que aparece?</p>
+<label><input type="radio" name="q4"> O arquivo é enviado para o GitHub.</label>
+<label><input type="radio" name="q4"> <code>fatal: not a git repository</code></label>
+<label><input type="radio" name="q4"> <code>Everything up-to-date</code>, e nada é enviado.</label>
+<label><input type="radio" name="q4"> O Git faz o commit sozinho e envia.</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">5. Na saída de um push, o que quer dizer <code>4f68d0e..b830dc1  main -&gt; main</code>?</p>
+<label><input type="radio" name="q5"> Que o branch <code>main</code> foi criado no remoto.</label>
+<label><input type="radio" name="q5"> Que o <code>main</code> do remoto andou do commit <code>4f68d0e</code> para o <code>b830dc1</code>.</label>
+<label><input type="radio" name="q5"> Que houve um conflito entre os dois commits.</label>
+<label><input type="radio" name="q5"> Que o push foi rejeitado.</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">6. O push da Ana foi rejeitado com <code>(fetch first)</code> porque o Bruno enviou um commit antes. O que ela deve fazer?</p>
+<label><input type="radio" name="q6"> <code>git push --force</code></label>
+<label><input type="radio" name="q6"> Apagar a pasta e clonar de novo.</label>
+<label><input type="radio" name="q6"> <code>git push -u origin main</code></label>
+<label><input type="radio" name="q6"> <code>git pull</code> e depois <code>git push</code>.</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git push</code> envia <strong>commits</strong> para o remoto; mudanças não commitadas ficam no seu computador.</li>
+  <li>O primeiro push de cada branch: <code>git push -u origin NOME</code>. Depois, basta <code>git push</code>.</li>
+  <li>Na saída, <code>To</code> diz para onde foi, <code>* [new branch]</code> que o branch foi criado lá e <code>a1b2c3d..e4f5g6h  main -&gt; main</code> de qual commit a qual o branch remoto andou.</li>
+  <li><code>Everything up-to-date</code> = não havia nada novo para enviar (você esqueceu o commit?).</li>
+  <li>Push rejeitado não é o fim do mundo: traga o trabalho dos outros com <code>git pull</code> e envie de novo. Nunca use <code>--force</code> num branch compartilhado.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
