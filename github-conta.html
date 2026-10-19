@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git GitHub: criando a conta — cadastro, e-mail e segurança | Guia Git</title>
+<meta name="description" content="Como criar a conta no GitHub passo a passo para quem nunca usou: github.com/signup, escolher o nome de usuário, verificar o e-mail, o plano gratuito, a autenticação de dois fatores (2FA), deixar o e-mail privado e ligar a conta ao git config do seu computador.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">GitHub: Criando a Conta</span></h1>
+
+<p class="intro">O Git funciona sozinho, no seu computador, sem conta nenhuma. Mas para guardar uma cópia dos seus projetos na internet, mostrar seu trabalho e trabalhar com outras pessoas, você precisa de um <strong>serviço de hospedagem</strong> de repositórios. O mais usado do mundo é o <strong>GitHub</strong>. Nesta aula, a Ana cria a conta dela, <code>ana-souza</code>, e deixa tudo pronto para o primeiro repositório.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é a conta do GitHub e o que você ganha com ela (e o que o Git já fazia sem ela).</li>
+  <li>Como criar a conta em <code>github.com/signup</code> e verificar o e-mail.</li>
+  <li>Como escolher um bom nome de usuário.</li>
+  <li>Por que ativar a <strong>autenticação de dois fatores</strong> (2FA) e manter o e-mail privado.</li>
+  <li>Como a conta se liga ao nome e e-mail que você configurou no Git.</li>
+</ul>
+</div>
+
+<div class="warning">
+<strong>Esta aula é ilustrativa.</strong> O site do GitHub não roda no laboratório do guia. Os passos abaixo seguem a documentação oficial em português (<a href="https://docs.github.com/pt/get-started/start-your-journey/creating-an-account-on-github">Criar uma conta no GitHub</a>). O GitHub muda a aparência das telas com frequência: se algo estiver diferente, siga as instruções que aparecem na tela.
+</div>
+
+<hr>
+
+<h2>A ideia antes do cadastro</h2>
+<p>Pense no Git como uma <strong>máquina fotográfica</strong> e no GitHub como um <strong>serviço de álbuns na nuvem</strong>. A máquina tira fotos sem precisar de internet nem de cadastro. O serviço de nuvem guarda uma cópia, deixa você compartilhar com quem quiser e permite que outras pessoas colaborem no mesmo álbum. Para usar o serviço, você precisa de uma conta.</p>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Sem conta (só o Git)</th><th>Com a conta no GitHub</th></tr>
+<tr><td>Commits, branches, histórico: tudo funciona</td><td>Tudo isso continua igual, no seu computador</td></tr>
+<tr><td>O histórico mora só no seu computador</td><td>Uma cópia fica no GitHub (backup)</td></tr>
+<tr><td>Para colaborar, só com pastas compartilhadas</td><td>Colegas buscam e enviam commits (<code>git pull</code>, <code>git push</code>)</td></tr>
+<tr><td>—</td><td>Página do projeto, <a href="readme.html">README</a> exibido, <a href="issues.html">issues</a>, <a href="pull-request.html">pull requests</a>, <a href="github-pages.html">site grátis</a></td></tr>
+</table>
+</div>
+
+<p>O GitHub é o mais popular, mas não é o único: GitLab, Bitbucket e Codeberg fazem coisas parecidas. Os comandos do Git são os mesmos em todos. A diferença entre o Git e o GitHub está explicada em <a href="git-e-github.html">Git × GitHub</a>.</p>
+
+<hr>
+
+<h2>Antes de começar: o nome de usuário</h2>
+<p>O nome de usuário (<em>username</em>) aparece no endereço de todos os seus projetos. O da Ana será <code>ana-souza</code>, então o projeto de receitas vai morar em:</p>
+<pre>https://github.com/ana-souza/receitas</pre>
+<p>Dicas para escolher:</p>
+<ul>
+  <li><strong>Curto e profissional.</strong> Você vai colocá-lo no currículo. <code>ana-souza</code> é melhor que <code>aninha_gamer_2009</code>.</li>
+  <li><strong>Sem acentos e sem espaços.</strong> Use letras, números e hífen.</li>
+  <li><strong>Pense no longo prazo.</strong> Dá para trocar depois, mas os endereços antigos dos seus projetos mudam junto.</li>
+</ul>
+
+<hr>
+
+<h2>Criando a conta, passo a passo</h2>
+<ol class="passo">
+  <li><strong>Abra a página de inscrição:</strong> <code>https://github.com/signup</code>. Se preferir, a documentação diz que dá para entrar com uma conta do Google ou da Apple (o botão é <strong>Continue with Google</strong>); aqui a Ana vai pelo caminho tradicional, com e-mail.</li>
+  <li><strong>Preencha os dados</strong> que o formulário pedir: o e-mail, uma senha e o nome de usuário. Use uma senha <strong>que você não usa em nenhum outro site</strong>, de preferência guardada num gerenciador de senhas.</li>
+  <li><strong>Prove que é uma pessoa,</strong> se o site pedir um teste de verificação.</li>
+  <li><strong>Verifique o e-mail.</strong> O GitHub manda uma mensagem para o endereço que você informou. Siga as instruções dela. Isso é obrigatório: segundo a documentação, sem o e-mail verificado você não consegue fazer tarefas básicas, como <strong>criar um repositório</strong>.</li>
+  <li><strong>Escolha o plano.</strong> Para estudar e para projetos pessoais, o plano gratuito basta, com repositórios públicos e privados. Detalhes em <a href="https://docs.github.com/pt/get-started/learning-about-github/githubs-plans">Planos do GitHub</a>.</li>
+</ol>
+
+<p>Pronto: a conta existe. No canto superior direito de qualquer página aparece a sua <strong>imagem de perfil</strong>. Clicando nela, você chega ao seu perfil e às <strong>Configurações</strong>, que vamos usar já já.</p>
+
+<hr>
+
+<h2>Proteja a conta: autenticação de dois fatores (2FA)</h2>
+<p>A senha é <strong>uma</strong> prova de que você é você. A autenticação de dois fatores (<em>two-factor authentication</em>, 2FA) pede uma <strong>segunda</strong> prova, que só você tem: normalmente um código de 6 dígitos que muda a cada 30 segundos, gerado por um aplicativo no celular. Assim, mesmo que alguém descubra a sua senha, não entra.</p>
+<p>O que a documentação do GitHub diz (<a href="https://docs.github.com/pt/authentication/securing-your-account-with-two-factor-authentication-2fa/about-mandatory-two-factor-authentication">Sobre a autenticação obrigatória de dois fatores</a>):</p>
+<ul>
+  <li>Para muitas contas que <strong>contribuem com código</strong> (publicam releases, apps, pacotes, administram projetos importantes), o 2FA é <strong>obrigatório</strong>: o GitHub avisa por e-mail e dá 45 dias para ativar. Depois do prazo (mais 7 dias de tolerância), a conta fica bloqueada até o 2FA ser ativado.</li>
+  <li>O método recomendado como principal é um <strong>aplicativo autenticador</strong> (TOTP). Chave de acesso (<em>passkey</em>), chave de segurança e o app GitHub Mobile servem como reserva. SMS é aceito em muitos países, mas é menos seguro.</li>
+  <li>Verificação por e-mail <strong>não</strong> conta como 2FA.</li>
+</ul>
+<div class="tip">
+<strong>Ative mesmo que não seja obrigatório para você.</strong> E guarde os <strong>códigos de recuperação</strong> que o GitHub mostra ao ativar: se você perder o celular, são eles que devolvem o acesso à conta.
+</div>
+
+<hr>
+
+<h2>Seu e-mail nos commits</h2>
+<p>Lembra do <a href="git-config.html">git config</a>? Todo commit leva um nome e um e-mail. O GitHub usa o <strong>e-mail</strong> do commit para saber que ele é seu e mostrar a sua foto ao lado dele. Por isso, o e-mail configurado no Git deve ser um dos e-mails cadastrados na sua conta.</p>
+
+<p>No notebook, a Ana confere o que o Git dela está usando (o terminal é real; a conta do GitHub é que fica no site):</p>
+<pre class="term">$ git config --global user.name
+Ana Souza                                « o nome que vai em cada commit
+$ git config --global user.email
+ana@exemplo.com                          « este e-mail precisa estar cadastrado na conta</pre>
+<p>Ela cadastrou a conta com <code>ana@exemplo.com</code>, o mesmo do Git: o GitHub vai reconhecer os commits dela. Se você usou um e-mail diferente na conta, há duas saídas: cadastrar o e-mail do Git na conta (em <strong>Configurações</strong> &gt; <strong>Emails</strong>) ou trocar o do Git com <code>git config --global user.email "outro@email"</code>. A troca vale para os commits <strong>novos</strong>; os antigos continuam com o e-mail antigo.</p>
+
+<h3>E se eu não quiser meu e-mail público?</h3>
+<p>Os commits enviados ao GitHub ficam públicos nos repositórios públicos, <strong>com o e-mail dentro</strong>. Se você não quer o seu endereço pessoal exposto, a documentação (<a href="https://docs.github.com/pt/account-and-profile/setting-up-and-managing-your-personal-account-on-github/managing-email-preferences/setting-your-commit-email-address">Configurar o endereço de e-mail de commit</a>) ensina:</p>
+<ol class="passo">
+  <li>Em <strong>Configurações</strong> &gt; <strong>Emails</strong>, marque <strong>Manter meus endereços de email privados</strong>.</li>
+  <li>A própria página mostra um endereço especial do tipo <code>noreply</code>, criado pelo GitHub só para você.</li>
+  <li>Use esse endereço no Git: <code>git config --global user.email "ENDEREÇO-NOREPLY-QUE-APARECEU"</code>.</li>
+</ol>
+<p>Os commits passam a ser seus para o GitHub, sem mostrar o seu e-mail de verdade.</p>
+
+<hr>
+
+<h2>Formas diferentes de criar a conta</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Forma</th><th>Como</th><th>Observação</th></tr>
+<tr><td>E-mail e senha</td><td><code>github.com/signup</code>, preencher o formulário</td><td>A forma tradicional; funciona para todo mundo</td></tr>
+<tr><td>Conta do Google</td><td>Botão <strong>Continue with Google</strong> na inscrição</td><td>Não precisa criar outra senha</td></tr>
+<tr><td>Conta da Apple</td><td>Entrar com a Apple na inscrição</td><td>A documentação avisa: cria uma conta nova, mesmo com o e-mail oculto</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Quando dá errado</h2>
+
+<div class="cenario">
+<strong>"O nome de usuário já existe"</strong>
+<p><strong>O que aconteceu:</strong> outra pessoa já usa esse nome. Nomes de usuário são únicos no GitHub inteiro.</p>
+<p><strong>Como resolver:</strong> tente variações: <code>ana-souza-dev</code>, <code>anasouza</code>, <code>ana-c-souza</code>. O formulário avisa na hora se o nome está livre.</p>
+</div>
+
+<div class="cenario">
+<strong>Não consigo criar repositório: falta verificar o e-mail</strong>
+<p><strong>O que aconteceu:</strong> a mensagem de verificação não foi aberta, ou foi para a caixa de spam.</p>
+<p><strong>Como resolver:</strong> procure no spam e nas abas "Promoções"/"Atualizações". Se não achar, peça para reenviar nas <strong>Configurações</strong> &gt; <strong>Emails</strong>. A documentação tem um guia próprio: "Resolver problemas na verificação de e-mail".</p>
+</div>
+
+<div class="cenario">
+<strong>Meus commits aparecem no GitHub sem a minha foto</strong>
+<p><strong>O que aconteceu:</strong> o e-mail dos commits (o do <code>git config user.email</code>) não está cadastrado na sua conta. O GitHub não sabe que eles são seus.</p>
+<p><strong>Como confirmar:</strong> rode <code>git log -1 --format='%an &lt;%ae&gt;'</code> e compare o e-mail com a lista em <strong>Configurações</strong> &gt; <strong>Emails</strong>.</p>
+<p><strong>Como resolver:</strong> cadastre esse e-mail na conta, ou troque o do Git com <code>git config --global user.email</code> para os próximos commits.</p>
+</div>
+
+<div class="cenario">
+<strong>"A senha não funciona no terminal"</strong>
+<p><strong>O que aconteceu:</strong> o GitHub <strong>não aceita a senha da conta</strong> no <code>git push</code> pelo terminal. Ela só serve para entrar no site.</p>
+<p><strong>Como resolver:</strong> use uma <a href="ssh.html">chave SSH</a> ou um <a href="https-token.html">token de acesso</a>.</p>
+</div>
+
+<hr>
+
+<h2>Referência</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>O quê</th><th>Onde</th></tr>
+<tr><td>Criar a conta</td><td><code>https://github.com/signup</code></td></tr>
+<tr><td>Seu perfil</td><td><code>https://github.com/SEU-USUARIO</code></td></tr>
+<tr><td>Configurações</td><td>Imagem de perfil (canto superior direito) &gt; <strong>Configurações</strong></td></tr>
+<tr><td>E-mails e privacidade</td><td><strong>Configurações</strong> &gt; <strong>Emails</strong></td></tr>
+<tr><td>Nome e e-mail no Git</td><td><code>git config --global user.name "…"</code> e <code>git config --global user.email "…"</code></td></tr>
+<tr><td>Documentação oficial em português</td><td><code>https://docs.github.com/pt</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. O endereço do projeto</h3>
+<p>O usuário do Bruno no GitHub é <code>bruno-lima</code> e o repositório dele se chama <code>lojinha</code>. Complete o endereço:</p>
+<div class="ex-code">https://github.com/<input data-answer="bruno-lima/lojinha" aria-label="usuário/repositório"></div>
+</div>
+
+<div class="exercise">
+<h3>2. O e-mail do Git</h3>
+<p>Complete o comando para ver qual e-mail o seu Git está colocando nos commits:</p>
+<div class="ex-code">git config <input data-answer="user.email" aria-label="chave"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. A Ana ainda não criou a conta no GitHub. O que ela <strong>consegue</strong> fazer no notebook?</p>
+<label><input type="radio" name="q3"> Nada: o Git só funciona com conta.</label>
+<label><input type="radio" name="q3"> Criar repositórios, fazer commits e branches: o Git funciona sem conta.</label>
+<label><input type="radio" name="q3"> Só <code>git init</code>; commits precisam de conta.</label>
+<label><input type="radio" name="q3"> Fazer <code>git push</code> para o GitHub.</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. Para que serve a autenticação de dois fatores?</p>
+<label><input type="radio" name="q4"> Para fazer o <code>git push</code> ficar mais rápido.</label>
+<label><input type="radio" name="q4"> Para verificar o e-mail.</label>
+<label><input type="radio" name="q4"> Para pedir uma segunda prova além da senha, como um código do celular.</label>
+<label><input type="radio" name="q4"> Para deixar o e-mail privado.</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. Os commits da Ana aparecem no GitHub sem a foto dela. Qual é a causa mais provável?</p>
+<label><input type="radio" name="q5"> O e-mail do <code>git config</code> não está cadastrado na conta dela.</label>
+<label><input type="radio" name="q5"> Ela não ativou o 2FA.</label>
+<label><input type="radio" name="q5"> O repositório é privado.</label>
+<label><input type="radio" name="q5"> Ela usou <code>git push</code> em vez de <code>git commit</code>.</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O Git funciona sem conta; o GitHub é um serviço que guarda e compartilha repositórios, e para ele você precisa de uma conta.</li>
+  <li>A conta se cria em <code>github.com/signup</code>; verificar o e-mail é obrigatório para criar repositórios.</li>
+  <li>Escolha um nome de usuário curto e profissional: ele vai para o endereço de todos os seus projetos.</li>
+  <li>Ative o 2FA e guarde os códigos de recuperação.</li>
+  <li>O e-mail do <code>git config</code> deve estar cadastrado na conta (ou use o endereço <code>noreply</code> para mantê-lo privado).</li>
+  <li>Para enviar commits pelo terminal, a senha não serve: use <a href="ssh.html">SSH</a> ou <a href="https-token.html">token</a>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
