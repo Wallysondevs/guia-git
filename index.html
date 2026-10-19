@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tutorial Git — aprenda Git e GitHub do zero, como numa escola | Guia Git</title>
+<meta name="description" content="Curso de Git e GitHub do zero ao avançado, em português, para quem nunca usou Git: commit, status, diff, branches, merge, conflitos, remotos, push, pull, pull request, rebase e muito mais, com um terminal com Git simulado na própria página, missões, projetos e exercícios. Saídas conferidas no Git real.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="hero">
+<h1>Tutorial Git</h1>
+<p>Aprenda <strong>Git</strong> e <strong>GitHub</strong> do zero, como numa escola: cada comando é explicado pedaço por pedaço, você vê a resposta real do Git e pratica num terminal aqui mesmo na página, com um Git de verdade imitado dentro do navegador. Você não precisa instalar nada para começar, e não tem como estragar nada.</p>
+<a class="btn btn-lg" href="introducao.html">Comece pelo Nível 1 &#10095;</a>
+</div>
+
+<div class="pager"></div>
+
+<h2>Experimente agora</h2>
+<p>A caixa abaixo é o terminal <strong>Experimente</strong> do guia. A pasta <code>receitas</code> já é um repositório Git e já tem um arquivo, o <code>README.md</code>, que ainda não foi guardado em nenhuma versão. Clique na janela escura, digite os comandos da missão, um de cada vez, e tecle <kbd>Enter</kbd> depois de cada um.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo &quot;# Receitas da Ana&quot; &gt; README.md" data-goal="commits:1,limpo,msg:Cria o README" data-solucao="git status;;git add README.md;;git commit -m &quot;Cria o README&quot;;;git log --oneline">
+<p class="try-task"><strong>Missão:</strong> guarde a primeira versão do <code>README.md</code>. Digite <code>git status</code> (o painel do Git), depois <code>git add README.md</code> (separa o arquivo para a próxima versão), depois <code>git commit -m "Cria o README"</code> (tira a "fotografia") e, por fim, <code>git log --oneline</code> para ver a sua versão no histórico.</p>
+</div>
+
+<p>O que aconteceu: você fez o seu primeiro <strong>commit</strong>, uma fotografia do projeto naquele momento, com uma etiqueta (a mensagem "Cria o README") e um código único (o <a href="hash.html">hash</a>, <code>700bbd5</code>). A partir de agora, o Git lembra exatamente como o <code>README.md</code> estava, para sempre. Se amanhã a Ana estragar o arquivo, ela volta a esta versão com um comando. É isso que este guia ensina.</p>
+
+<p>Se você digitou <code>git comit</code>, com um <strong>m</strong> só, o Git respondeu <code>git: 'comit' não é um comando git.</code> e sugeriu o comando parecido, <code>commit</code>. Se esqueceu o <code>git add</code>, o <code>git commit</code> avisou que não havia nada preparado. O Git não adivinha, mas explica: errar e ler o que ele responde é metade do aprendizado. Todas as aulas mostram os erros mais comuns, com a mensagem real e o jeito de sair da situação.</p>
+
+<hr>
+
+<h2>O que é este guia</h2>
+<p>Quem já salvou <code>trabalho_final.docx</code>, <code>trabalho_final_2.docx</code> e <code>trabalho_final_agora_vai.docx</code> conhece o problema que o Git resolve. O <strong>Git</strong> é um <strong>controle de versão</strong>: ele guarda o histórico de um projeto (cada mudança, quem fez, quando e por quê), deixa você voltar no tempo e permite que várias pessoas trabalhem nos mesmos arquivos sem uma apagar o trabalho da outra. O <strong>GitHub</strong> é um site que guarda repositórios Git na internet, para você ter uma cópia segura e trabalhar em equipe. A aula <a href="git-e-github.html">Git × GitHub</a> explica a diferença.</p>
+
+<p>Quem aprende Git consegue:</p>
+<ul>
+  <li>guardar versões de qualquer projeto de texto: um site, um programa, um TCC, as receitas da família;</li>
+  <li>desfazer erros sem medo: descartar uma mudança, voltar um arquivo ao que era ontem, recuperar um commit "perdido";</li>
+  <li>testar ideias em <strong>branches</strong> (ramos) separados e juntá-las depois com um <strong>merge</strong>, resolvendo os conflitos;</li>
+  <li>publicar o projeto no GitHub e trabalhar em dupla ou em equipe, com <code>push</code>, <code>pull</code> e <strong>pull requests</strong>;</li>
+  <li>entender o que acontece por dentro, para nunca mais copiar um comando da internet sem saber o que ele faz.</li>
+</ul>
+
+<p>O guia é para quem <strong>nunca usou Git</strong> e mal usou o terminal. Ele começa do zero absoluto (o que é uma versão? o que é um repositório?) e vai até rebase interativo, recuperação de desastres e o trabalho em equipe no GitHub. Cada aula ensina <strong>um assunto só</strong>, com calma.</p>
+
+<hr>
+
+<h2>Como as aulas funcionam</h2>
+<p>Nenhum comando aparece "seco". Toda aula segue o mesmo caminho:</p>
+<ol class="passo">
+  <li><strong>A ideia primeiro.</strong> Antes do comando, você entende o problema que ele resolve, com uma comparação do dia a dia: uma caixa de fotos com etiquetas, um caderno de rascunho e um caderno passado a limpo.</li>
+  <li><strong>Anatomia.</strong> Cada parte de um comando é separada e explicada.</li>
+  <li><strong>A saída real.</strong> Depois de cada exemplo, o que o Git respondeu de verdade, explicado linha por linha. O <code>git status</code> aparece o tempo todo: ele é o melhor professor do Git.</li>
+  <li><strong>Antes e depois.</strong> O que mudou na pasta, na área de preparo e no histórico, com o desenho do histórico quando ajuda.</li>
+  <li><strong>Experimente.</strong> Missões no terminal da página, com o repositório já preparado, que conferem sozinhas se você acertou.</li>
+  <li><strong>Quando dá errado.</strong> A mensagem real do Git (<code>fatal: not a git repository</code>, um conflito, um <code>push</code> recusado), o que aconteceu e como sair da situação.</li>
+  <li><strong>Exercícios e resumo.</strong> Perguntas com correção na hora e uma lista curta do que levar da aula.</li>
+</ol>
+
+<h3>Exemplo: a anatomia de um comando</h3>
+<pre class="term" data-cwd="~/receitas">$ git commit -m "Cria o README"</pre>
+<dl class="anatomy">
+  <dt>git</dt><dd>O programa Git. Todo comando do Git começa assim.</dd>
+  <dt>commit</dt><dd>O <strong>subcomando</strong>: o que você quer que o Git faça. <code>commit</code> = "registre uma versão" (aula <a href="git-commit.html">git commit</a>).</dd>
+  <dt>-m</dt><dd>Uma <strong>opção</strong>: "a mensagem vem logo a seguir". Sem ela, o Git abre um editor de texto para você escrever a mensagem.</dd>
+  <dt>"Cria o README"</dt><dd>A mensagem do commit, entre aspas porque tem espaços. Ela conta o que mudou, no imperativo (aula <a href="mensagens-commit.html">Boas Mensagens de Commit</a>).</dd>
+</dl>
+
+<h3>Exemplo: a saída explicada</h3>
+<p>As aulas mostram o terminal da máquina das aulas: um computador chamado <code>notebook</code>, da usuária <code>ana</code>. Depois do <code>git add</code>, o <code>git status</code> mostra:</p>
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main                                   « você está no ramo (branch) main
+
+No commits yet                                 « o repositório ainda não tem nenhuma versão
+
+Mudanças a serem submetidas:                   « o que vai entrar no próximo commit
+  (utilize "git rm --cached &lt;arquivo&gt;..." para não apresentar)
+	new file:   README.md                      « um arquivo novo, já preparado
+</pre>
+<p>Repare na mistura de português e inglês: o Git do Ubuntu é traduzido só em parte, e o guia mostra as mensagens <strong>exatamente</strong> como elas aparecem. A aula <a href="git-status.html">git status</a> explica cada linha, nas duas línguas.</p>
+
+<hr>
+
+<h2>Escolha sua trilha</h2>
+<p>O guia tem três níveis, uma seção de projetos e uma de referência. Os níveis foram pensados para serem feitos em ordem: cada aula usa o que as anteriores ensinaram.</p>
+<div class="trilhas">
+  <div class="trilha n1">
+    <h3>Nível 1 · Iniciante</h3>
+    <p>Git do zero.</p>
+    <ul>
+      <li><a href="introducao.html">Começando</a>: o que é Git, controle de versão, Git × GitHub, instalar, o terminal do guia, o mínimo de terminal e a configuração</li>
+      <li><a href="git-init.html">O primeiro repositório</a>: <code>init</code>, <code>status</code>, <code>add</code>, <code>commit</code>, <code>log</code>, <code>show</code>, <code>diff</code>, <code>.gitignore</code>, <code>rm</code> e <code>mv</code></li>
+      <li><a href="desfazer.html">Desfazendo coisas</a>: <code>restore</code>, <code>--amend</code>, <code>revert</code>, <code>reset</code> e <code>clean</code></li>
+      <li><a href="como-git-guarda.html">Por dentro do Git</a>: como ele guarda as coisas, o hash e o <code>HEAD</code></li>
+    </ul>
+    <a class="btn" href="introducao.html">Começar &#10095;</a>
+  </div>
+  <div class="trilha n2">
+    <h3>Nível 2 · Intermediário</h3>
+    <p>Branches, remotos e o GitHub.</p>
+    <ul>
+      <li><a href="branches.html">Branches</a>: <code>branch</code>, <code>switch</code>, <code>checkout</code> e o HEAD destacado</li>
+      <li><a href="git-merge.html">Juntando trabalho</a>: <code>merge</code>, fast-forward, três vias e <a href="conflitos.html">conflitos</a></li>
+      <li><a href="git-stash.html">Guardando para depois</a> e <a href="log-filtros.html">investigando o histórico</a>: <code>stash</code>, <code>tag</code>, <code>blame</code>, <code>reflog</code></li>
+      <li><a href="remotos.html">Repositórios remotos</a>: <code>clone</code>, <code>remote</code>, <code>push</code>, <code>fetch</code>, <code>pull</code> e o <code>push</code> recusado</li>
+      <li><a href="github-conta.html">GitHub</a>: conta, repositório, SSH e token, README e GitHub Pages</li>
+    </ul>
+    <a class="btn" href="branches.html">Começar &#10095;</a>
+  </div>
+  <div class="trilha n3">
+    <h3>Nível 3 · Avançado</h3>
+    <p>Reescrever o histórico, equipes e ferramentas.</p>
+    <ul>
+      <li><a href="git-rebase.html">Reescrevendo o histórico</a>: <code>rebase</code>, rebase interativo, squash, <code>cherry-pick</code> e o <code>push --force</code> com segurança</li>
+      <li><a href="fork.html">Trabalhando em equipe</a>: fork, pull request, revisão de código, GitHub Flow e issues</li>
+      <li><a href="git-bisect.html">Ferramentas</a>: <code>bisect</code>, worktree, submódulos, hooks, apelidos, LFS, GitHub CLI e Actions</li>
+      <li><a href="recuperar-commit.html">Socorro e boas práticas</a>: recuperar um commit, uma senha commitada por engano e os hábitos que evitam problemas</li>
+    </ul>
+    <a class="btn" href="git-rebase.html">Começar &#10095;</a>
+  </div>
+  <div class="trilha proj">
+    <h3>Projetos</h3>
+    <p>Situações reais, passo a passo, com a Ana e o Bruno.</p>
+    <ul>
+      <li><a href="projeto-primeiro-repo.html">O primeiro repositório</a> e <a href="projeto-site.html">o site de receitas no GitHub</a></li>
+      <li><a href="projeto-funcionalidade.html">Uma funcionalidade num branch</a> e <a href="projeto-conflito.html">resolvendo um conflito</a></li>
+      <li><a href="projeto-dupla.html">Trabalhando em dupla</a> e <a href="projeto-versao.html">lançando uma versão</a></li>
+      <li><a href="projeto-desastre.html">Recuperando um desastre</a> e <a href="projeto-portfolio.html">o portfólio</a></li>
+    </ul>
+    <a class="btn" href="projeto-primeiro-repo.html">Ver projetos &#10095;</a>
+  </div>
+  <div class="trilha ref">
+    <h3>Referência</h3>
+    <p>Consulta rápida para quando você já sabe o que procura.</p>
+    <ul>
+      <li><a href="ref-comandos.html">Comandos</a>, <a href="ref-config.html">configurações</a> e <a href="ref-log.html">opções do log</a></li>
+      <li><a href="ref-desfazer.html">Como desfazer cada coisa</a> e <a href="ref-gitignore.html">modelos de .gitignore</a></li>
+      <li><a href="ref-erros.html">Mensagens de erro comuns</a>, traduzidas, e o <a href="ref-glossario.html">glossário</a></li>
+      <li><a href="ref-resumo.html">O resumo de tudo</a> numa página</li>
+    </ul>
+    <a class="btn" href="ref-comandos.html">Consultar &#10095;</a>
+  </div>
+</div>
+
+<hr>
+
+<h2>Como estudar</h2>
+<p>Git se aprende usando, como quem aprende a dirigir dirigindo. Para cada aula, siga estes quatro passos:</p>
+<ol class="passo">
+  <li><strong>Leia com calma.</strong> Leia a ideia, a anatomia e a saída. Não pule a parte "Quando dá errado": quem entende a mensagem do Git sai de qualquer enrascada.</li>
+  <li><strong>Rode <code>git status</code> o tempo todo.</strong> Antes e depois de cada comando. Ele diz onde você está e, muitas vezes, qual é o próximo passo.</li>
+  <li><strong>Faça as missões.</strong> As caixas com <strong>Missão</strong> conferem sozinhas se você acertou. Tente de verdade antes de abrir a solução; se abrir, digite a solução você mesmo em vez de só olhar.</li>
+  <li><strong>Repita no seu computador.</strong> Quando chegar à aula <a href="instalar.html">Instalar o Git</a>, instale-o e refaça os exemplos num projeto seu. O GitHub de verdade (criar a conta, o token, o pull request no site) só existe lá.</li>
+</ol>
+
+<div class="tip">
+<strong>A regra de ouro</strong>
+<p>Commits pequenos, com mensagens claras, e <code>git status</code> antes de tudo. Comece pela aula <a href="introducao.html">O que é Git</a> e, antes de ir longe, dê uma olhada em <a href="simulador.html">O Terminal do Guia</a>.</p>
+</div>
+
+<hr>
+
+<h2>Como ler este guia</h2>
+<div class="table-wrap">
+<table class="ref">
+<thead><tr><th>Elemento</th><th>O que significa</th></tr></thead>
+<tbody>
+<tr><td><code>ana@notebook:~/receitas$</code></td><td>O prompt do terminal: usuária <code>ana</code>, no computador <code>notebook</code>, na pasta <code>receitas</code> dentro da pasta pessoal (<code>~</code>). O que vem depois é o comando digitado.</td></tr>
+<tr><td>Linhas sem prompt</td><td>A resposta do Git (ou do terminal).</td></tr>
+<tr><td><code>«</code> anotação</td><td>Uma explicação do guia sobre aquela linha. Não aparece no terminal real.</td></tr>
+<tr><td>Caixa <strong>Experimente</strong></td><td>O terminal do guia, com um repositório já preparado pela aula. As com <strong>Missão</strong> conferem a sua resposta; <strong>Reiniciar</strong> volta tudo ao começo.</td></tr>
+<tr><td>Caixa <strong>Quando dá errado</strong></td><td>Um erro de verdade, com a mensagem real do Git, o que aconteceu e como resolver.</td></tr>
+<tr><td><code>A---B---C</code></td><td>O desenho de um histórico: cada letra é um commit, do mais antigo (à esquerda) para o mais novo.</td></tr>
+<tr><td><span class="versao">git 2.23+</span></td><td>Um comando que só existe a partir daquela versão do Git (<code>git switch</code> e <code>git restore</code> são do 2.23, de 2019).</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="note">
+<strong>Versão de referência: Git 2.53</strong>
+<p>As saídas foram colhidas no <strong>Git 2.53.0</strong> de um Ubuntu 26.04 em português do Brasil, na máquina da Ana: nome <code>Ana Souza</code>, e-mail <code>ana@exemplo.com</code>, branch inicial <code>main</code> e o relógio parado em 15/10/2026, 10:30. Por isso os hashes dos commits do texto são os mesmos que você vê no terminal do guia. No seu computador, com outro nome e outra hora, os hashes serão outros, e as mensagens podem estar em inglês ou com outra tradução: compare a forma da resposta, não os códigos. O site do GitHub muda de tempos em tempos; as aulas de GitHub seguem a documentação oficial (docs.github.com/pt) e avisam quando uma tela é só ilustrativa.</p>
+</div>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
