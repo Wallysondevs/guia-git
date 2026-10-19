@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Projeto: Resolvendo um Conflito — a receita de bolo com dois tempos de forno | Guia Git</title>
+<meta name="description" content="Projeto passo a passo: dois branches mudam a mesma linha da receita de bolo da Ana e o git merge para com CONFLITO. Ler o git status, entender os marcadores <<<<<<< ======= >>>>>>>, desistir com git merge --abort, resolver na mão, git add e git commit, ficar com um dos lados (--ours/--theirs), com as saídas reais do Git 2.53 em português e missões no terminal do guia.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Projeto: Resolvendo um Conflito de Verdade</span></h1>
+
+<p class="intro">A Ana testou a receita de bolo de cenoura e descobriu que 40 minutos de forno é demais: anotou 35 minutos num branch chamado <code>forno</code>. Ao mesmo tempo, no <code>main</code>, ela trocou a temperatura de 180 para 170 graus, por causa do forno novo. As duas mudanças mexeram <strong>na mesma linha</strong> da receita. Quando ela tenta juntar os branches, o Git para e diz: <strong>CONFLITO</strong>. Parece assustador, mas é só o Git pedindo: "eu não sei qual das duas você quer; decida você". Neste projeto você vai ver o conflito acontecer, ler cada mensagem e resolver, primeiro acompanhando a Ana e depois sozinho no terminal do guia.</p>
+
+<div class="note">
+<strong>Você vai aprender (na prática)</strong>
+<ul>
+  <li>Por que um conflito acontece, e por que ele é normal (e não um erro seu).</li>
+  <li>Ler o <code>git status</code> durante um conflito: "Caminhos não mesclados" e "ambos modificados".</li>
+  <li>Entender os marcadores <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>, <code>=======</code> e <code>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code> dentro do arquivo.</li>
+  <li>Desistir com segurança com <code>git merge --abort</code>.</li>
+  <li>Resolver: editar o arquivo, <code>git add</code> e <code>git commit</code>; ou ficar inteiro com um dos lados.</li>
+</ul>
+</div>
+
+<p>Este projeto põe em prática <a href="conflitos.html">Conflitos de Merge</a>, <a href="resolver-conflitos.html">Resolvendo Conflitos</a> e <a href="abortar-merge.html">Desistindo de um Merge</a>. Todas as saídas saíram do <strong>Git 2.53</strong> do Ubuntu, na máquina da Ana, com o sistema em português.</p>
+
+<hr>
+
+<h2>A ideia: dois bilhetes na mesma linha do caderno</h2>
+<p>Imagine que a Ana e a mãe dela têm cópias do mesmo caderno de receitas. A Ana risca "40 minutos" e escreve "35 minutos". A mãe, na cópia dela, risca "180 graus" e escreve "170 graus". Quando elas forem passar tudo a limpo num caderno só, a linha do forno tem <strong>duas versões diferentes</strong>. Ninguém consegue adivinhar sozinho qual vale: talvez a certa seja uma, talvez a outra, talvez uma mistura das duas ("170 graus por 35 minutos"). Alguém precisa sentar e decidir.</p>
+<p>O Git é igual. Se dois branches mudam <strong>linhas diferentes</strong> (ou arquivos diferentes), ele junta sozinho. Se mudam <strong>a mesma linha</strong> de jeitos diferentes, ele para o merge no meio, marca o trecho em disputa dentro do arquivo e espera você decidir. Isso é o <strong>conflito</strong>.</p>
+
+<hr>
+
+<h2>O ponto de partida</h2>
+<p>A pasta <code>~/receitas</code> tem a receita <code>bolo.txt</code> e a página <code>index.html</code>. A partir do primeiro commit, a história se dividiu em dois branches:</p>
+<ul>
+  <li><code>forno</code>: dois commits. Um troca "40 minutos" por "35 minutos"; o outro acrescenta uma linha no <code>index.html</code>.</li>
+  <li><code>main</code>: um commit, que troca "180 graus" por "170 graus".</li>
+</ul>
+<p>Antes de juntar, a Ana olha os galhos e compara a receita nos dois branches:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --graph --all
+* b93c237 (forno) Avisa que as receitas foram testadas
+* 299e5ec Diminui o tempo de forno para 35 minutos
+| * fd61241 (HEAD -&gt; main) Baixa o forno para 170 graus
+|/
+* e89b8c5 Cria a receita de bolo e a página inicial
+$ git diff main forno -- bolo.txt
+diff --git a/bolo.txt b/bolo.txt
+index 6455273..c30a7f9 100644
+--- a/bolo.txt
++++ b/bolo.txt
+@@ -1,3 +1,3 @@
+ Bolo de cenoura
+-Forno: 170 graus por 40 minutos      « como está no main
++Forno: 180 graus por 35 minutos      « como está no forno
+ Cobertura: chocolate</pre>
+
+<ul>
+  <li>O <code>--graph</code> mostra os dois galhos saindo do commit inicial.</li>
+  <li><code>git diff main forno -- bolo.txt</code> compara a receita <strong>no <code>main</code></strong> com a receita <strong>no <code>forno</code></strong>. A linha com <code>-</code> é a do <code>main</code>; a com <code>+</code>, a do <code>forno</code>. A mesma linha, duas versões: já dá para prever o conflito.</li>
+</ul>
+
+<hr>
+
+<h2>Etapa 1: o merge e o conflito</h2>
+<p>Como no <a href="projeto-funcionalidade.html">projeto anterior</a>, a Ana vai para o branch que recebe (ela já está no <code>main</code>) e pede o merge:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git merge forno
+Mesclagem automática de bolo.txt
+CONFLITO (conteúdo): conflito de mesclagem em bolo.txt
+Automatic merge failed; fix conflicts and then commit the result.</pre>
+
+<p>Linha por linha:</p>
+<ul>
+  <li><code>Mesclagem automática de bolo.txt</code>: o Git tentou juntar as duas versões do arquivo sozinho.</li>
+  <li><code>CONFLITO (conteúdo): …</code>: não conseguiu. "Conteúdo" quer dizer que o problema está <strong>dentro</strong> do arquivo (há outros tipos, como um lado apagar o arquivo e o outro mudar).</li>
+  <li><code>Automatic merge failed; fix conflicts and then commit the result.</code>: "o merge automático falhou; corrija os conflitos e depois faça o commit do resultado". O merge <strong>parou</strong> no meio: ele está "em andamento", esperando você.</li>
+  <li>Repare que o <code>index.html</code> nem aparece: a mudança dele estava só de um lado, e o Git a juntou sem perguntar nada.</li>
+</ul>
+
+<h3>O <code>git status</code> durante o conflito</h3>
+
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main
+Você tem caminhos não mesclados.
+  (fixar conflitos e executar "git commit")
+  (use "git merge --abort" to abort the merge)
+
+Mudanças a serem submetidas:
+        modified:   index.html      « este o Git juntou sozinho
+
+Caminhos não mesclados:
+  (usar "git add &lt;arquivo&gt;..." para marcar resolução)
+        ambos modificados:   bolo.txt      « este você resolve
+</pre>
+
+<ul>
+  <li><code>Você tem caminhos não mesclados.</code>: há arquivos que o Git não conseguiu juntar.</li>
+  <li>As dicas entre parênteses são o roteiro: <strong>corrija os conflitos e rode <code>git commit</code></strong>, ou use <code>git merge --abort</code> para desistir.</li>
+  <li><code>Mudanças a serem submetidas</code>: ("mudanças a serem commitadas"): o que o Git já juntou sozinho (o <code>index.html</code>) está pronto, na área de preparo.</li>
+  <li><code>Caminhos não mesclados</code> + <code>ambos modificados: bolo.txt</code>: os dois branches mudaram esse arquivo, e é ele que você precisa resolver. A dica diz como avisar que resolveu: <code>git add</code>.</li>
+</ul>
+
+<h3>Os marcadores dentro do arquivo</h3>
+<p>O Git escreveu <strong>as duas versões</strong> dentro do próprio <code>bolo.txt</code>, separadas por marcadores:</p>
+
+<pre class="term" data-cwd="~/receitas">$ cat bolo.txt
+Bolo de cenoura
+&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD      « começa a versão do main (o branch atual)
+Forno: 170 graus por 40 minutos
+=======      « a divisa
+Forno: 180 graus por 35 minutos
+&gt;&gt;&gt;&gt;&gt;&gt;&gt; forno      « termina a versão do forno
+Cobertura: chocolate</pre>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Marcador</th><th>Significa</th></tr>
+<tr><td><code>&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD</code></td><td>Começo do trecho em disputa. Daqui até o <code>=======</code> está a versão do <strong>branch atual</strong> (o <code>HEAD</code>, aqui o <code>main</code>): "170 graus por 40 minutos".</td></tr>
+<tr><td><code>=======</code></td><td>A divisa entre as duas versões.</td></tr>
+<tr><td><code>&gt;&gt;&gt;&gt;&gt;&gt;&gt; forno</code></td><td>Fim do trecho. Entre o <code>=======</code> e aqui está a versão do <strong>branch que está chegando</strong> (<code>forno</code>): "180 graus por 35 minutos".</td></tr>
+</table>
+</div>
+<p>As linhas fora dos marcadores ("Bolo de cenoura", "Cobertura: chocolate") não estavam em disputa e ficaram como são.</p>
+
+<hr>
+
+<h2>Etapa 2: "socorro, quero voltar!" (<code>git merge --abort</code>)</h2>
+<p>Na primeira vez, a Ana se assusta e tenta fugir para outro branch. O Git não deixa: com um merge pela metade, trocar de branch misturaria tudo. A saída segura é desistir do merge:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch forno
+fatal: cannot switch branch while merging
+Consider "git merge --quit" or "git worktree add".
+$ git merge --abort
+$ git status
+No ramo main
+nothing to commit, working tree clean      « de volta a antes do merge
+$ git log --oneline --graph --all
+* b93c237 (forno) Avisa que as receitas foram testadas
+* 299e5ec Diminui o tempo de forno para 35 minutos
+| * fd61241 (HEAD -&gt; main) Baixa o forno para 170 graus
+|/
+* e89b8c5 Cria a receita de bolo e a página inicial</pre>
+
+<ul>
+  <li>O <code>git switch</code> recusou: primeiro é preciso resolver (ou desistir de) o merge em andamento.</li>
+  <li><code>git merge --abort</code> desfaz o merge e deixa tudo <strong>exatamente</strong> como estava antes do <code>git merge forno</code>: o <code>git status</code> volta a dizer <code>nothing to commit, working tree clean</code>, e o histórico é o mesmo. Nada do <code>forno</code> se perdeu: o branch continua lá.</li>
+</ul>
+
+<div class="tip"><strong>Abortar não é fracasso.</strong> Se o conflito é grande e você não está com tempo (ou não sabe qual versão é a certa), aborte, converse com quem fez a outra mudança e tente de novo depois. O <code>--abort</code> só funciona enquanto o merge está em andamento, isto é, antes do commit final.</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;printf 'Bolo de cenoura\nForno: 180 graus por 40 minutos\nCobertura: chocolate\n' &gt; bolo.txt;;printf '&lt;h1&gt;Receitas da Ana&lt;/h1&gt;\n&lt;p&gt;Bolo de cenoura&lt;/p&gt;\n' &gt; index.html;;git add .;;git commit -q -m 'Cria a receita de bolo e a página inicial';;git switch -q -c forno;;printf 'Bolo de cenoura\nForno: 180 graus por 35 minutos\nCobertura: chocolate\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Diminui o tempo de forno para 35 minutos';;echo '&lt;p&gt;Testado em outubro&lt;/p&gt;' &gt;&gt; index.html;;git add index.html;;git commit -q -m 'Avisa que as receitas foram testadas';;git switch -q main;;printf 'Bolo de cenoura\nForno: 170 graus por 40 minutos\nCobertura: chocolate\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Baixa o forno para 170 graus';;git merge forno" data-goal="semconflito,limpo,head:main,commits:2" data-solucao="git merge --abort">
+<p class="try-task"><strong>Missão 1:</strong> o terminal já está no meio do merge com conflito. Rode <code>git status</code> e <code>cat bolo.txt</code> para ver o estado, e então desista do merge com segurança. No fim, o <code>git status</code> tem de dizer <code>nothing to commit</code>.</p>
+</div>
+
+<hr>
+
+<h2>Etapa 3: resolver de verdade</h2>
+<p>Com calma, a Ana pensa: o forno novo pede 170 graus, e no teste o bolo ficou pronto em 35 minutos. A versão certa é <strong>a mistura</strong>: "170 graus por 35 minutos". Ela pede o merge de novo e, antes de mexer, olha o <code>git diff</code>, que durante um conflito mostra os dois lados:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git merge forno
+Mesclagem automática de bolo.txt
+CONFLITO (conteúdo): conflito de mesclagem em bolo.txt
+Automatic merge failed; fix conflicts and then commit the result.
+$ git diff
+diff --cc bolo.txt
+index 6455273,c30a7f9..0000000
+--- a/bolo.txt
++++ b/bolo.txt
+@@@ -1,3 -1,3 +1,7 @@@
+  Bolo de cenoura
+++&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+ +Forno: 170 graus por 40 minutos
+++=======
++ Forno: 180 graus por 35 minutos
+++&gt;&gt;&gt;&gt;&gt;&gt;&gt; forno
+  Cobertura: chocolate</pre>
+
+<p>No <code>git diff</code> de um conflito, há <strong>duas</strong> colunas de sinais no começo de cada linha: a primeira compara com o <code>main</code>, a segunda com o <code>forno</code>. Não precisa decorar: o importante é ver os marcadores e as duas versões.</p>
+
+<p>A Ana tenta, por pressa, commitar sem resolver. O Git barra:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git commit -m 'Junta o forno'
+U       bolo.txt
+error: Committing is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm &lt;file&gt;'
+hint: as appropriate to mark resolution and make a commit.
+fatal: Exiting because of an unresolved conflict.</pre>
+
+<p>Agora, a resolução. Num editor de texto (nano, VS Code…), ela apaga os três marcadores e as duas versões e escreve a linha que vale. Aqui, para mostrar o resultado exato, o arquivo é reescrito com <code>printf</code>; no dia a dia, você edita no editor:</p>
+
+<pre class="term" data-cwd="~/receitas">$ printf 'Bolo de cenoura\nForno: 170 graus por 35 minutos\nCobertura: chocolate\n' &gt; bolo.txt
+$ cat bolo.txt
+Bolo de cenoura
+Forno: 170 graus por 35 minutos      « a versão escolhida, sem marcadores
+Cobertura: chocolate
+$ git status
+No ramo main
+Você tem caminhos não mesclados.
+  (fixar conflitos e executar "git commit")
+  (use "git merge --abort" to abort the merge)
+
+Mudanças a serem submetidas:
+        modified:   index.html
+
+Caminhos não mesclados:
+  (usar "git add &lt;arquivo&gt;..." para marcar resolução)
+        ambos modificados:   bolo.txt      « ainda! falta avisar
+</pre>
+
+<ul>
+  <li>O <code>cat</code> mostra o arquivo limpo, <strong>sem nenhum marcador</strong>. Confira sempre: um <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code> esquecido vai parar no commit.</li>
+  <li>O <code>git status</code> ainda diz "ambos modificados": o Git não lê o seu arquivo para saber se você terminou. <strong>Você avisa</strong> com <code>git add</code>.</li>
+</ul>
+
+<pre class="term" data-cwd="~/receitas">$ git add bolo.txt
+$ git status
+No ramo main
+Todos os conflitos foram corrigidos mas você continua mesclando.
+  (use  "git commit" para concluir a mesclagem)
+
+Mudanças a serem submetidas:
+        modified:   bolo.txt
+        modified:   index.html
+
+$ git commit --no-edit
+[main 4177566] Merge branch 'forno'</pre>
+
+<ul>
+  <li>Depois do <code>git add</code>, o status diz <code>Todos os conflitos foram corrigidos mas você continua mesclando.</code> e pede o <code>git commit</code> para concluir.</li>
+  <li><code>git commit --no-edit</code> conclui o merge com a mensagem pronta (<code>Merge branch 'forno'</code>). Sem o <code>--no-edit</code>, o Git abre o editor com essa mensagem para você confirmar ou acrescentar uma explicação (por exemplo, "Resolve o conflito do forno: 170 graus por 35 minutos").</li>
+</ul>
+
+<p>O resultado: o commit de merge fecha o galho, e a receita tem as duas mudanças. O <code>git show --stat</code> mostra os dois pais do commit de merge (<code>Merge: fd61241 b93c237</code>) e um detalhe: como a mensagem pronta foi aceita sem editar, ficaram nela as linhas <code># Conflicts:</code>, que registram quais arquivos tiveram conflito. Quando você edita a mensagem no editor, as linhas que começam com <code>#</code> são descartadas; com o <code>--no-edit</code>, elas ficam.</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --graph
+*   4177566 (HEAD -&gt; main) Merge branch 'forno'
+|\
+| * b93c237 (forno) Avisa que as receitas foram testadas
+| * 299e5ec Diminui o tempo de forno para 35 minutos
+* | fd61241 Baixa o forno para 170 graus
+|/
+* e89b8c5 Cria a receita de bolo e a página inicial
+$ cat bolo.txt
+Bolo de cenoura
+Forno: 170 graus por 35 minutos
+Cobertura: chocolate
+$ git show --stat HEAD
+commit 41775668e0ad828d7e15e1862a122451b23669f2 (HEAD -&gt; main)
+Merge: fd61241 b93c237      « dois pais: um de cada branch
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Merge branch 'forno'
+
+    # Conflicts:      « o Git anotou que houve conflito
+    #       bolo.txt
+
+ bolo.txt   | 2 +-
+ index.html | 1 +
+ 2 files changed, 2 insertions(+), 1 deletion(-)</pre>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;printf 'Bolo de cenoura\nForno: 180 graus por 40 minutos\nCobertura: chocolate\n' &gt; bolo.txt;;printf '&lt;h1&gt;Receitas da Ana&lt;/h1&gt;\n&lt;p&gt;Bolo de cenoura&lt;/p&gt;\n' &gt; index.html;;git add .;;git commit -q -m 'Cria a receita de bolo e a página inicial';;git switch -q -c forno;;printf 'Bolo de cenoura\nForno: 180 graus por 35 minutos\nCobertura: chocolate\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Diminui o tempo de forno para 35 minutos';;echo '&lt;p&gt;Testado em outubro&lt;/p&gt;' &gt;&gt; index.html;;git add index.html;;git commit -q -m 'Avisa que as receitas foram testadas';;git switch -q main;;printf 'Bolo de cenoura\nForno: 170 graus por 40 minutos\nCobertura: chocolate\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Baixa o forno para 170 graus';;git merge forno" data-goal="semconflito,limpo,head:main,commits:5,contem:HEAD:bolo.txt=170 graus por 35 minutos" data-solucao="printf 'Bolo de cenoura\nForno: 170 graus por 35 minutos\nCobertura: chocolate\n' &gt; bolo.txt;;git add bolo.txt;;git commit --no-edit">
+<p class="try-task"><strong>Missão 2:</strong> o merge do <code>forno</code> parou com conflito no <code>bolo.txt</code>. Resolva com a versão "170 graus por 35 minutos": reescreva o arquivo sem os marcadores (por exemplo, <code>printf 'Bolo de cenoura\nForno: 170 graus por 35 minutos\nCobertura: chocolate\n' &gt; bolo.txt</code>), avise o Git com <code>git add</code> e conclua o merge com <code>git commit --no-edit</code>. Confira com <code>git log --oneline --graph</code>.</p>
+</div>
+
+<hr>
+
+<h2>Formas diferentes de resolver</h2>
+<p>Nem sempre a resposta é uma mistura. Às vezes você quer <strong>uma das versões inteira</strong>. O Git chama a versão do branch atual de <em>ours</em> ("a nossa") e a do branch que está chegando de <em>theirs</em> ("a deles"):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git merge forno
+Mesclagem automática de bolo.txt
+CONFLITO (conteúdo): conflito de mesclagem em bolo.txt
+Automatic merge failed; fix conflicts and then commit the result.
+$ git diff --check
+bolo.txt:2: leftover conflict marker      « "marcador de conflito esquecido"
+bolo.txt:4: leftover conflict marker
+bolo.txt:6: leftover conflict marker
+$ git checkout --theirs bolo.txt
+Updated 1 path from the index      « "1 caminho atualizado a partir do índice"
+$ cat bolo.txt
+Bolo de cenoura
+Forno: 180 graus por 35 minutos      « a versão do forno
+Cobertura: chocolate
+$ git checkout --ours bolo.txt
+Updated 1 path from the index
+$ cat bolo.txt
+Bolo de cenoura
+Forno: 170 graus por 40 minutos      « a versão do main
+Cobertura: chocolate
+$ git checkout --merge bolo.txt
+Recreated 1 merge conflict      « "1 conflito recriado"
+$ cat bolo.txt
+Bolo de cenoura
+&lt;&lt;&lt;&lt;&lt;&lt;&lt; ours
+Forno: 170 graus por 40 minutos
+=======
+Forno: 180 graus por 35 minutos
+&gt;&gt;&gt;&gt;&gt;&gt;&gt; theirs
+Cobertura: chocolate</pre>
+
+<ul>
+  <li><code>git checkout --theirs bolo.txt</code> pôs no arquivo a versão do <code>forno</code> ("180 graus por 35 minutos").</li>
+  <li><code>git checkout --ours bolo.txt</code> pôs a versão do <code>main</code> ("170 graus por 40 minutos").</li>
+  <li><code>git checkout --merge bolo.txt</code> traz de volta os marcadores, para você recomeçar a resolução.</li>
+  <li><code>git diff --check</code> procura marcadores de conflito esquecidos (e espaços sobrando no fim das linhas); <code>git diff --cached --check</code> faz o mesmo no que já está na área de preparo. Sem saída = nada esquecido.</li>
+  <li><code>git merge --continue</code> conclui o merge, como o <code>git commit</code>.</li>
+</ul>
+
+<div class="warning"><strong>Cuidado com o "ours" e o "theirs":</strong> em um <code>git merge</code>, "ours" é o branch onde você está. Em um <code>git rebase</code>, os papéis se invertem (veja <a href="rebase-conflitos.html">Conflitos no Rebase</a>). Na dúvida, abra o arquivo e confira com <code>cat</code> antes do <code>git add</code>.</div>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Como resolver</th></tr>
+<tr><td>A versão certa é uma mistura das duas</td><td>Edite o arquivo, apague os marcadores, <code>git add</code>, <code>git commit</code>.</td></tr>
+<tr><td>Vale inteira a versão do branch atual</td><td><code>git checkout --ours arquivo</code>, <code>git add</code>, <code>git commit</code>.</td></tr>
+<tr><td>Vale inteira a versão do branch que chega</td><td><code>git checkout --theirs arquivo</code>, <code>git add</code>, <code>git commit</code>.</td></tr>
+<tr><td>Bagunçou a resolução e quer os marcadores de volta</td><td><code>git checkout --merge arquivo</code>.</td></tr>
+<tr><td>Não dá para decidir agora</td><td><code>git merge --abort</code>.</td></tr>
+<tr><td>Prefere uma ferramenta visual</td><td>O VS Code mostra botões sobre os marcadores (veja <a href="interfaces-graficas.html">Git no VS Code</a>); <code>git mergetool</code> abre a ferramenta configurada.</td></tr>
+</table>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;printf 'Bolo de cenoura\nForno: 180 graus por 40 minutos\nCobertura: chocolate\n' &gt; bolo.txt;;printf '&lt;h1&gt;Receitas da Ana&lt;/h1&gt;\n&lt;p&gt;Bolo de cenoura&lt;/p&gt;\n' &gt; index.html;;git add .;;git commit -q -m 'Cria a receita de bolo e a página inicial';;git switch -q -c forno;;printf 'Bolo de cenoura\nForno: 180 graus por 35 minutos\nCobertura: chocolate\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Diminui o tempo de forno para 35 minutos';;echo '&lt;p&gt;Testado em outubro&lt;/p&gt;' &gt;&gt; index.html;;git add index.html;;git commit -q -m 'Avisa que as receitas foram testadas';;git switch -q main;;printf 'Bolo de cenoura\nForno: 170 graus por 40 minutos\nCobertura: chocolate\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Baixa o forno para 170 graus';;git merge forno" data-goal="semconflito,limpo,head:main,commits:5,contem:HEAD:bolo.txt=180 graus por 35 minutos" data-solucao="git checkout --theirs bolo.txt;;git add bolo.txt;;git commit --no-edit">
+<p class="try-task"><strong>Missão 3:</strong> de novo o conflito no <code>bolo.txt</code>, mas desta vez a Ana decidiu que vale <strong>inteira a versão do branch <code>forno</code></strong> (180 graus por 35 minutos). Fique com a versão "deles" sem editar o arquivo na mão, avise o Git e conclua o merge.</p>
+</div>
+
+<hr>
+
+<h2>Quando dá errado</h2>
+
+<div class="cenario">
+<strong>"Committing is not possible because you have unmerged files"</strong>
+<p>Você viu este na etapa 3: <code>git commit</code> com arquivo ainda marcado como "ambos modificados".</p>
+<p><strong>O que aconteceu:</strong> o Git não deixa concluir o merge enquanto houver arquivo sem resolução. A linha <code>U       bolo.txt</code> mostra qual (<code>U</code> de <em>unmerged</em>, "não mesclado").</p>
+<p><strong>Como resolver:</strong> deixe o arquivo como deve ficar, <code>git add bolo.txt</code> e só então <code>git commit</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>"fatal: cannot switch branch while merging"</strong>
+<p><strong>O que aconteceu:</strong> há um merge em andamento (etapa 2). O Git não troca de branch com o trabalho pela metade.</p>
+<p><strong>Como resolver:</strong> termine o merge (resolver, <code>git add</code>, <code>git commit</code>) ou desista com <code>git merge --abort</code>. A dica fala de <code>git merge --quit</code>, que larga o merge <strong>sem</strong> desfazer o que já está na pasta: é para quem sabe o que está fazendo. Na dúvida, <code>--abort</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Commitei com os marcadores dentro do arquivo!</strong>
+<pre class="term" data-cwd="~/receitas">$ git merge forno
+Mesclagem automática de bolo.txt
+CONFLITO (conteúdo): conflito de mesclagem em bolo.txt
+Automatic merge failed; fix conflicts and then commit the result.
+$ git add bolo.txt
+$ git commit --no-edit
+[main 244bd0c] Merge branch 'forno'
+$ cat bolo.txt
+Bolo de cenoura
+&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+Forno: 170 graus por 40 minutos
+=======
+Forno: 180 graus por 35 minutos
+&gt;&gt;&gt;&gt;&gt;&gt;&gt; forno
+Cobertura: chocolate</pre>
+<p><strong>O que aconteceu:</strong> o <code>git add</code> só quer dizer "considere resolvido". O Git <strong>acredita em você</strong> e não confere se os marcadores sumiram. O merge foi concluído com a receita quebrada.</p>
+<p><strong>Como confirmar:</strong> <code>cat</code> no arquivo, ou <code>git grep -n '&lt;&lt;&lt;&lt;&lt;&lt;&lt;'</code> para procurar marcadores no projeto inteiro. Antes do <code>git add</code>, <code>git diff --check</code> teria avisado (<code>leftover conflict marker</code>); depois do <code>git add</code> e antes do commit, <code>git diff --cached --check</code>.</p>
+<p><strong>Como resolver:</strong> o merge já está feito; não tente "voltar" para ele. Corrija o arquivo e faça um commit novo: <code>git add bolo.txt</code> e <code>git commit -m 'Remove marcadores de conflito da receita'</code>. Se ainda não enviou para o GitHub, dá também para emendar o commit de merge com <a href="commit-amend.html">git commit --amend</a>.</p>
+</div>
+
+<div class="cenario">
+<strong>"Your local changes … would be overwritten by merge"</strong>
+<pre class="term" data-cwd="~/receitas">$ echo 'Rende 12 fatias' &gt;&gt; bolo.txt
+$ git merge forno
+error: Your local changes to the following files would be overwritten by merge:
+	bolo.txt
+Please commit your changes or stash them before you merge.
+Aborting
+Merge with strategy ort failed.</pre>
+<p><strong>O que aconteceu:</strong> a Ana tinha uma mudança <strong>não commitada</strong> no <code>bolo.txt</code>, justamente um arquivo que o merge precisa mexer. O Git recusou o merge para não misturar as coisas (nada foi alterado).</p>
+<p><strong>Como resolver:</strong> commite a mudança antes (e aí o merge pode ou não dar conflito), ou guarde com <a href="git-stash.html">git stash</a>, faça o merge e depois <code>git stash pop</code>. Regra prática: comece todo merge com o <code>git status</code> limpo.</p>
+</div>
+
+<div class="cenario">
+<strong>"There is no merge to abort (MERGE_HEAD missing)"</strong>
+<pre class="term" data-cwd="~/receitas">$ git merge --abort
+fatal: There is no merge to abort (MERGE_HEAD missing).</pre>
+<p><strong>O que aconteceu:</strong> não há merge em andamento: ou ele já foi concluído com o commit, ou nunca começou. ("Não há merge para abortar"; o <code>MERGE_HEAD</code> é o arquivo onde o Git anota o merge em andamento.)</p>
+<p><strong>Como resolver:</strong> se o merge já foi concluído e você quer desfazê-lo, o caminho é outro: <a href="git-revert.html">git revert</a> (seguro, se já enviou) ou <a href="git-reset.html">git reset</a> (só se ainda não enviou). Veja <a href="ref-desfazer.html">Como Desfazer Qualquer Coisa</a>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida do conflito</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>Para quê</th></tr>
+<tr><td><code>git status</code></td><td>Ver quais arquivos estão em conflito ("ambos modificados").</td></tr>
+<tr><td><code>git diff</code></td><td>Ver os trechos em conflito com as duas versões.</td></tr>
+<tr><td><code>git merge --abort</code></td><td>Desistir e voltar a antes do merge.</td></tr>
+<tr><td><code>git add arquivo</code></td><td>Avisar que o arquivo foi resolvido.</td></tr>
+<tr><td><code>git commit</code> / <code>git merge --continue</code></td><td>Concluir o merge.</td></tr>
+<tr><td><code>git checkout --ours</code> / <code>--theirs arquivo</code></td><td>Ficar com uma das versões inteira.</td></tr>
+<tr><td><code>git diff --check</code></td><td>Procurar marcadores esquecidos.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Desistir</h3>
+<p>Complete para desistir de um merge com conflito e voltar ao estado de antes:</p>
+<div class="ex-code">git merge <input data-answer="--abort" aria-label="opção"></div>
+</div>
+
+<div class="exercise">
+<h3>2. Avisar que resolveu</h3>
+<p>Você editou o <code>bolo.txt</code> e apagou os marcadores. Complete o comando que avisa o Git:</p>
+<div class="ex-code">git <input data-answer="add" aria-label="subcomando"> bolo.txt</div>
+</div>
+
+<div class="exercise">
+<h3>3. Ficar com a versão do branch atual</h3>
+<p>Complete para ficar inteiro com a versão do branch onde você está:</p>
+<div class="ex-code">git checkout <input data-answer="--ours" aria-label="opção"> bolo.txt</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. A Ana está no <code>main</code> e rodou <code>git merge forno</code>. No arquivo apareceu um trecho entre <code>=======</code> e <code>&gt;&gt;&gt;&gt;&gt;&gt;&gt; forno</code>. De quem é essa versão?</p>
+<label><input type="radio" name="q4"> Do <code>main</code>.</label>
+<label><input type="radio" name="q4"> Do branch <code>forno</code>, que está chegando.</label>
+<label><input type="radio" name="q4"> Do commit inicial, de antes dos dois branches.</label>
+<label><input type="radio" name="q4"> É a versão já resolvida pelo Git.</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">5. Depois de editar o arquivo e apagar os marcadores, o <code>git status</code> ainda diz "ambos modificados". Por quê?</p>
+<label><input type="radio" name="q5"> O Git não salvou o arquivo.</label>
+<label><input type="radio" name="q5"> Ainda há marcadores escondidos no arquivo.</label>
+<label><input type="radio" name="q5"> Falta avisar o Git com <code>git add</code>: ele não lê o arquivo para saber se você terminou.</label>
+<label><input type="radio" name="q5"> É preciso abortar e começar de novo.</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">6. Dois branches mudaram arquivos <strong>diferentes</strong>. O que acontece no merge?</p>
+<label><input type="radio" name="q6"> O Git junta sozinho, sem conflito.</label>
+<label><input type="radio" name="q6"> Sempre dá conflito quando os dois branches andaram.</label>
+<label><input type="radio" name="q6"> O Git fica com a versão do branch mais novo.</label>
+<label><input type="radio" name="q6"> O merge é recusado.</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Conflito = dois branches mudaram <strong>a mesma linha</strong> de jeitos diferentes. É normal: o Git só não decide por você.</li>
+  <li>O merge para no meio. O <code>git status</code> lista os arquivos "ambos modificados" e mostra o caminho: corrigir e commitar, ou <code>git merge --abort</code>.</li>
+  <li>No arquivo, <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD</code> … <code>=======</code> é a versão do branch atual; <code>=======</code> … <code>&gt;&gt;&gt;&gt;&gt;&gt;&gt; outro</code> é a que está chegando.</li>
+  <li>Para resolver: deixe o arquivo como deve ficar (sem marcadores), <code>git add</code>, <code>git commit</code>.</li>
+  <li>Uma versão inteira? <code>git checkout --ours</code> ou <code>--theirs</code>. Bagunçou? <code>git checkout --merge</code> traz os marcadores de volta.</li>
+  <li>Antes do commit, <code>cat</code> o arquivo (ou <code>git diff --check</code>) para não deixar marcadores esquecidos.</li>
+</ul>
+
+<p>Próximo projeto: o conflito mais comum na vida real é entre <strong>duas pessoas</strong>. Veja a Ana e o Bruno dividindo o mesmo repositório no GitHub em <a href="projeto-dupla.html">Trabalhando em Dupla</a>.</p>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
