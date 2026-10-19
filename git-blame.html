@@ -201,8 +201,8 @@ index 61ce905..9d2e9cf 100644
 
 <p>Também dá para usar o hash de 8 caracteres do blame (<code>git show 7b98d460</code>): o Git aceita qualquer começo do hash que não seja ambíguo (veja <a href="hash.html">O Hash do Commit</a>).</p>
 
-<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;printf 'Bolo de cenoura\n\nIngredientes:\n3 cenouras\n4 ovos\n1 xícara de óleo\n\nForno: 30 minutos\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona a receita de bolo de cenoura';;sed -i 's/4 ovos/3 ovos/' bolo.txt;;git commit -q --author='Bruno Lima &lt;bruno@exemplo.com&gt;' -am 'Usa 3 ovos no bolo';;sed -i 's/30 minutos/40 minutos/' bolo.txt;;git commit -q -am 'Corrige o tempo de forno do bolo';;echo 'Cobertura: 200 g de chocolate' &gt;&gt; bolo.txt;;git commit -q --author='Bruno Lima &lt;bruno@exemplo.com&gt;' -am 'Adiciona a cobertura de chocolate'" data-goal="ran:git show,out:-4 ovos" data-solucao="git show 7b98d46">
-<p class="try-task"><strong>Missão:</strong> o repositório da receita de bolo já está pronto. Descubra em que commit a linha <code>3 ovos</code> foi mudada (com <code>git blame bolo.txt</code> ou <code>git log --oneline -- bolo.txt</code>) e mostre esse commit com <code>git show</code>, até ver a linha antiga, <code>-4 ovos</code>.</p>
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;printf 'Bolo de cenoura\n\nIngredientes:\n3 cenouras\n4 ovos\n1 xícara de óleo\n\nForno: 30 minutos\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona a receita de bolo de cenoura';;sed -i 's/4 ovos/3 ovos/' bolo.txt;;git commit -q --author='Bruno Lima &lt;bruno@exemplo.com&gt;' -am 'Usa 3 ovos no bolo';;sed -i 's/30 minutos/40 minutos/' bolo.txt;;git commit -q -am 'Corrige o tempo de forno do bolo';;echo 'Cobertura: 200 g de chocolate' &gt;&gt; bolo.txt;;git commit -q --author='Bruno Lima &lt;bruno@exemplo.com&gt;' -am 'Adiciona a cobertura de chocolate'" data-goal="ran:git blame,ran:git show,out:-4 ovos" data-solucao="git blame bolo.txt;;git show 7b98d46">
+<p class="try-task"><strong>Missão:</strong> o repositório da receita de bolo já está pronto. Descubra com <code>git blame bolo.txt</code> em que commit a linha <code>3 ovos</code> foi mudada e mostre esse commit com <code>git show</code>, até ver a linha antiga, <code>-4 ovos</code>.</p>
 </div>
 
 <hr>
@@ -269,6 +269,7 @@ e1e63c4d (Ana Souza         2026-10-15 10:30:00 -0300  8) Forno: 40 minutos
 <hr>
 
 <h2 id="errado">Quando dá errado</h2>
+<p class="small">As mensagens de erro abaixo saem em inglês mesmo com o sistema em português: a tradução do Git no Ubuntu é parcial (a aula <a href="primeiro-commit.html">Seu Primeiro Commit</a> explica).</p>
 
 <div class="cenario">
 <strong><code>fatal: no such path 'receita.txt' in HEAD</code></strong>
