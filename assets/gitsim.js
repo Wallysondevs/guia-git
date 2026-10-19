@@ -321,7 +321,14 @@
       return "";
     }
     function decodUtf8(bs) { try { return decodeURIComponent(bs.map(function (x) { return "%" + (x < 16 ? "0" : "") + x.toString(16); }).join("")); } catch (e) { return String.fromCharCode.apply(null, bs.slice(0, -1)); } }
-    function diffUnificado(ta, tb, ctx) {
+    function palavras(old, neu) { // --word-diff=plain: [-apagado-]{+novo+}
+      var A = old.match(/\s+|\S+/g) || [], Bt = neu.match(/\s+|\S+/g) || [], ops = myers(A, Bt), out = "", del = "", ins = "";
+      function solta() { if (del) out += "[-" + del + "-]"; if (ins) out += "{+" + ins + "+}"; del = ins = ""; }
+      ops.forEach(function (o) { if (o[0] === "-") del += A[o[1]]; else if (o[0] === "+") ins += Bt[o[1]]; else { solta(); out += A[o[1]]; } });
+      solta();
+      return out;
+    }
+    function diffUnificado(ta, tb, ctx, porPalavra) {
       var A = separarLinhas(ta), Bl = separarLinhas(tb), a = A.l, b = Bl.l;
       // a última linha sem \n é diferente da mesma linha com \n
       var a2 = a.slice(), b2 = b.slice();
@@ -332,6 +339,16 @@
         var cab = "@@ -" + (h.c1 === 0 ? h.s1 : h.s1 + 1) + (h.c1 !== 1 ? "," + h.c1 : "") + " +" + (h.c2 === 0 ? h.s2 : h.s2 + 1) + (h.c2 !== 1 ? "," + h.c2 : "") + " @@";
         var fn = funcLinha(a, h.s1);
         out += cab + (fn ? " " + fn : "") + "\n";
+        if (porPalavra) {
+          var k = 0, L = h.linhas;
+          while (k < L.length) {
+            if (L[k].t === " ") { out += a2[L[k].i].replace(/\u0000$/, "") + "\n"; k++; continue; }
+            var del = [], ins = [];
+            while (k < L.length && L[k].t !== " ") { if (L[k].t === "-") del.push(a2[L[k].i].replace(/\u0000$/, "")); else ins.push(b2[L[k].j].replace(/\u0000$/, "")); k++; }
+            out += palavras(del.join("\n"), ins.join("\n")) + "\n";
+          }
+          return;
+        }
         h.linhas.forEach(function (x) {
           var txt = x.t === "+" ? b2[x.j] : a2[x.i];
           var sem = txt.slice(-1) === "\u0000";
@@ -704,7 +721,7 @@
         if (binario(ta) || binario(tb)) { out += "Binary files " + (m.a ? "a/" + de : "/dev/null") + " and " + (m.b ? "b/" + para : "/dev/null") + " differ\n"; return; }
         if (ta === tb) return;
         out += "--- " + (m.tipo === "A" ? "/dev/null" : "a/" + de) + "\n+++ " + (m.tipo === "D" ? "/dev/null" : "b/" + para) + "\n";
-        out += diffUnificado(ta, tb, ctx).txt;
+        out += diffUnificado(ta, tb, ctx, opt.palavras).txt;
       });
       return out;
     };
@@ -972,6 +989,7 @@
           if (NAO_FEITOS[nome]) { io.err("(simulador) o comando \"git " + nome + "\" não existe neste simulador. Use o laboratório (o Git de verdade) para ele.\n"); return 1; }
           io.err("git: '" + nome + "' não é um comando git. Veja 'git --help'.\n" + sugestao(nome)); return 1;
         }
+        if (a.length === 2 && a[1] === "-h" && global.GITSIM_AJUDA && global.GITSIM_AJUDA[nome]) { io.out(global.GITSIM_AJUDA[nome]); return 129; }
         var r = cmd(a.slice(1), io, sh);
         if (r && typeof r.next === "function") r = yield* r;
         return r || 0;
@@ -1200,6 +1218,7 @@
       if (ramo) s += "No ramo " + ramo + "\n";
       else { var det = descricaoDestacada(repo); s += det + "\n"; }
       if (estado.rebase) s += estado.rebase;
+      if (estado.bisect) s += estado.bisect;
       if (up && st.head) s += textoUpstream(repo, st.head, up);
       if (!st.head) s += "\nNo commits yet\n";
       if (estado.merge) s += conf.length ? "Você tem caminhos não mesclados.\n  (fixar conflitos e executar \"git commit\")\n  (use \"git merge --abort\" to abort the merge)\n" : "Todos os conflitos foram corrigidos mas você continua mesclando.\n  (use  \"git commit\" para concluir a mesclagem)\n";
@@ -1254,6 +1273,7 @@
       if (repo.existe("MERGE_HEAD")) r.merge = true;
       if (repo.existe("CHERRY_PICK_HEAD")) { var h = repo.arq("CHERRY_PICK_HEAD").slice(0, 40); r.cherry = "You are currently cherry-picking commit " + repo.abrev(h) + ".\n" + (Object.keys(repo.estado().conf).length ? "  (fix conflicts and run \"git cherry-pick --continue\")\n" : "  (all conflicts fixed: run \"git cherry-pick --continue\")\n") + "  (use \"git cherry-pick --skip\" to skip this patch)\n  (use \"git cherry-pick --abort\" to cancel the cherry-pick operation)\n"; }
       if (repo.existe("REVERT_HEAD")) { var h2 = repo.arq("REVERT_HEAD").slice(0, 40); r.revert = "You are currently reverting commit " + repo.abrev(h2) + ".\n" + (Object.keys(repo.estado().conf).length ? "  (fix conflicts and run \"git revert --continue\")\n" : "  (all conflicts fixed: run \"git revert --continue\")\n") + "  (use \"git revert --skip\" to skip this patch)\n  (use \"git revert --abort\" to cancel the revert operation)\n"; }
+      if (repo.existe("BISECT_START")) { var bs = repo.arq("BISECT_START").replace(/\n$/, ""); r.bisect = "You are currently bisecting, started from branch '" + bs + "'.\n  (use \"git bisect reset\" para voltar ao ramo original)\n\n"; }
       var rb = repo.arq("rebase-merge/head-name");
       if (rb != null) {
         var onto = repo.arq("rebase-merge/onto").trim(), ramo = rb.trim().replace(/^refs\/heads\//, "");
@@ -1812,7 +1832,7 @@
         else if (a === "--exit-code") o.exitCode = true;
         else if (a === "--color=never" || a === "--no-color" || a === "--color" || a === "--color=always") {}
         else if ((m = /^-U(\d+)$/.exec(a)) || (m = /^--unified=(\d+)$/.exec(a))) o.ctx = +m[1];
-        else if (a === "--word-diff") o.wordDiff = true;
+        else if (a === "--word-diff" || a === "--word-diff=plain") o.wordDiff = true;
         else if (a[0] === "-") { io.err("error: invalid option: " + a + "\n"); return 129; }
         else o.revs.push(a);
       }
@@ -1852,7 +1872,7 @@
       else if (o.nameStatus) mud.forEach(function (m) { out += m.tipo + "\t" + repo.relCwd(m.para) + "\n"; });
       else if (o.stat) out += repo.diffstat(mud);
       else if (o.shortstat) out += mud.length ? repo.shortstat(mud) : "";
-      else out += repo.patch(mud, { ctx: o.ctx });
+      else out += repo.patch(mud, { ctx: o.ctx, palavras: o.wordDiff });
       io.out(out);
       return o.exitCode && mud.length ? 1 : 0;
     };
@@ -1965,7 +1985,7 @@
         if (!dentro.length) fatal("not under version control, source=" + rf + ", destination=" + rd);
         var nd2 = noDe(sh, repo.absDe(rd));
         if (nd2 && !g.o["-f"]) fatal("destination exists, source=" + rf + ", destination=" + rd);
-        if (g.o["-v"] || g.o["-n"]) out += "Renaming " + rf + " to " + rd + "\n";
+        if (g.o["-v"] || g.o["-n"]) out += "Checking rename of '" + rf + "' to '" + rd + "'\nRenaming " + rf + " to " + rd + "\n";
         if (g.o["-n"]) continue;
         // move no sistema de arquivos
         var r = sh.resolver(sh.abs(f), false), pp = sh.paiDe(repo.absDe(rd));
@@ -2717,12 +2737,13 @@
 
     /* ---------- clean ---------- */
     CMDS.clean = function (args, io, sh) {
-      var g = opcoes(args, { "-n": true, "--dry-run": "-n", "-f": true, "--force": "-f", "-d": true, "-x": true, "-X": true, "-q": true, "--quiet": "-q", "-i": true });
+      var g = opcoes(args, { "-n": true, "--dry-run": "-n", "-f": true, "--force": "-f", "-d": true, "-x": true, "-X": true, "-q": true, "--quiet": "-q", "-i": true, "--interactive": "-i", "-e": "valor", "--exclude": "-e" });
       if (g.erro) { io.err("error: " + g.erro + "\n"); return 129; }
       var repo = precisaRepo(io); precisaArvore(repo);
       var o = g.o;
       if (!o["-n"] && !o["-f"] && !o["-i"]) { io.err("fatal: clean.requireForce is true and -f not given: refusing to clean\n"); return 128; }
-      if (o["-i"]) { io.err("(simulador) o modo interativo (git clean -i) não existe aqui; use -n para ver e -f para apagar.\n"); return 1; }
+      if (o["-i"]) { io.err("(simulador) o modo interativo (git clean -i) faz perguntas num menu, que não existe aqui; use git clean -n para ver o que seria apagado e git clean -f para apagar.\n"); return 1; }
+      var exclui = lista(o["-e"]).map(function (p) { return compilarIgnore(p, "", "-e")[0]; }).filter(Boolean);
       var st = repo.estado(), specs = g.ops.map(function (p) { return pathspec(repo, p); });
       var cands = [];
       var lst = o["-x"] ? st.naoRastr.concat(st.ignorados) : o["-X"] ? st.ignorados : st.naoRastr;
@@ -2732,6 +2753,7 @@
         // sem -d, arquivos dentro de pastas rastreadas aparecem; pastas não rastreadas são puladas
       }
       grupos = grupos.filter(function (k) { return !specs.length || specs.some(function (s) { return casaSpec(s, k.replace(/\/$/, "")); }); });
+      grupos = grupos.filter(function (k) { var kk = k.replace(/\/$/, ""); return !exclui.some(function (r) { return (!r.soDir || /\/$/.test(k)) && r.re.test(kk); }); });
       var out = "";
       grupos.forEach(function (k) {
         var r = repo.relCwd(k.replace(/\/$/, "")) + (/\/$/.test(k) ? "/" : "");
@@ -3442,6 +3464,228 @@
       io.err("Successfully rebased and updated " + (ref || "detached HEAD") + ".\n");
       return 0;
     }
+
+    /* ---------- bisect ---------- */
+    function bisectEstado(repo) {
+      var ruim = repo.resolverRef("refs/bisect/bad"), bons = repo.listarRefs("refs/bisect/").filter(function (r) { return /^refs\/bisect\/good-/.test(r.nome); }).map(function (r) { return r.hash; });
+      var pulados = repo.listarRefs("refs/bisect/").filter(function (r) { return /^refs\/bisect\/skip-/.test(r.nome); }).map(function (r) { return r.hash; });
+      return { ruim: ruim, bons: bons, pulados: pulados };
+    }
+    function bisectLog(repo, txt) { repo.gravar("BISECT_LOG", (repo.arq("BISECT_LOG") || "") + txt); }
+    function passosBisect(all) { if (all < 3) return 0; var n = 0; while ((1 << (n + 1)) <= all) n++; var e = 1 << n, x = all - e; return e < 3 * x ? n : n - 1; }
+    // escolhe o próximo commit para testar; devolve {fim:hash} quando achou o primeiro ruim
+    function bisectProximo(repo, io, sh, est) {
+      var cands = repo.revList([est.ruim], est.bons, {});
+      var pul = {}; est.pulados.forEach(function (h) { pul[h] = 1; });
+      if (cands.length === 1 || cands.every(function (h) { return h === est.ruim || pul[h]; })) {
+        var h = est.ruim;
+        var c = formatarCommit(repo, h, {}), mud = mudancasCommit(repo, h);
+        io.out(h + " is the first bad commit\n" + c + "\n" + repo.diffstat(mud));
+        bisectLog(repo, "# first bad commit: [" + h + "] " + assunto(repo.ler(h).msg) + "\n");
+        return { fim: h };
+      }
+      var dentro = {}; cands.forEach(function (h) { dentro[h] = 1; });
+      var all = cands.length, melhor = null, melhorD = -1, alcance = 0, peso = {};
+      // como o do_find_bisection do git: pesos calculados do mais antigo para o mais novo, em passadas
+      // sobre a lista (do mais novo para o mais antigo); para no primeiro commit "quase no meio"
+      cands.forEach(function (h) { var ps = repo.ler(h).parents.filter(function (p) { return dentro[p]; }); if (!ps.length) peso[h] = 1; });
+      function meio(h) { var d = 2 * peso[h] - all; return d >= -1 && d <= 1 && h !== est.ruim && !pul[h]; }
+      var achado = null;
+      var faltam = cands.filter(function (h) { return !peso[h]; }).length;
+      while (!achado && faltam) {
+        var mudou = false;
+        for (var q = 0; q < cands.length && !achado; q++) {
+          var h = cands[q]; if (peso[h]) continue;
+          var ps = repo.ler(h).parents.filter(function (p) { return dentro[p]; });
+          if (ps.length === 1) { if (!peso[ps[0]]) continue; peso[h] = peso[ps[0]] + 1; }
+          else { var anc = repo.ancestrais([h]), w = 0; Object.keys(anc).forEach(function (x) { if (dentro[x]) w++; }); peso[h] = w; }
+          faltam--; mudou = true;
+          if (meio(h)) achado = h;
+        }
+        if (!mudou) break;
+      }
+      if (achado) { melhor = achado; alcance = peso[achado]; }
+      else cands.forEach(function (h) {
+        if (h === est.ruim || pul[h]) return;
+        var w = peso[h], d = Math.min(w, all - w);
+        if (d > melhorD) { melhorD = d; melhor = h; alcance = w; }
+      });
+      var nr = all - alcance - 1, passos = passosBisect(all);
+      var head = repo.head();
+      repo.trocarArvore(repo.arvoreDe(head), repo.arvoreDe(melhor), { forcar: false });
+      repo.gravar("HEAD", melhor + "\n"); repo.logar("HEAD", head, melhor, "checkout: moving from " + (repo.branchAtual() || head) + " to " + melhor);
+      io.out("Bisecting: " + nr + " revision" + (nr === 1 ? "" : "s") + " left to test after this (roughly " + passos + " step" + (passos === 1 ? "" : "s") + ")\n[" + melhor + "] " + assunto(repo.ler(melhor).msg) + "\n");
+      return { prox: melhor };
+    }
+    function bisectStatus(repo, io, est) {
+      if (!est.ruim && !est.bons.length) { io.out("status: waiting for both good and bad commits\n"); bisectLog(repo, "# status: waiting for both good and bad commits\n"); return true; }
+      if (!est.bons.length) { io.out("status: waiting for good commit(s), bad commit known\n"); bisectLog(repo, "# status: waiting for good commit(s), bad commit known\n"); return true; }
+      if (!est.ruim) { var n = est.bons.length, t = "status: waiting for bad commit, " + n + " good commit" + (n === 1 ? "" : "s") + " known\n"; io.out(t); bisectLog(repo, "# " + t); return true; }
+      return false;
+    }
+    function bisectMarcar(repo, io, tipo, h) {
+      var c = repo.ler(h), lin = "# " + tipo + ": [" + h + "] " + assunto(c.msg) + "\ngit bisect " + tipo + " " + h + "\n";
+      if (tipo === "bad") repo.gravar("refs/bisect/bad", h + "\n"); else repo.gravar("refs/bisect/" + tipo + "-" + h, h + "\n");
+      bisectLog(repo, lin);
+    }
+    CMDS.bisect = function* (args, io, sh) {
+      var repo = precisaRepo(io); precisaArvore(repo);
+      var sub = args[0], a = args.slice(1), emBisect = repo.existe("BISECT_START");
+      var TERMOS = { bad: "bad", new: "bad", good: "good", old: "good", skip: "skip" };
+      if (sub === "start") {
+        if (emBisect) { /* recomeça */ CMDS.bisect(["reset"], { sh: sh, out: function () {}, err: function () {} }, sh); }
+        var st = repo.estado(); if (st.preparado.length || st.naoPrep.length) { /* o git deixa começar; o checkout pode falhar depois */ }
+        repo.gravar("BISECT_START", (repo.branchAtual() || repo.head()) + "\n");
+        repo.gravar("BISECT_LOG", "git bisect start\n");
+        var revs = a.filter(function (x) { return x !== "--"; });
+        if (revs.length) {
+          var hb = repo.commitDe(revs[0]); if (!hb) { io.err("fatal: '" + revs[0] + "' does not appear to be a valid revision\n"); return 1; }
+          bisectMarcar(repo, io, "bad", hb);
+          for (var i = 1; i < revs.length; i++) { var hg = repo.commitDe(revs[i]); if (!hg) { io.err("fatal: '" + revs[i] + "' does not appear to be a valid revision\n"); return 1; } bisectMarcar(repo, io, "good", hg); }
+          repo.gravar("BISECT_LOG", "git bisect start '" + revs.join("' '") + "'\n" + (repo.arq("BISECT_LOG") || "").replace(/^git bisect start\n/, ""));
+        }
+        var est = bisectEstado(repo);
+        if (bisectStatus(repo, io, est)) return 0;
+        bisectProximo(repo, io, sh, est); return 0;
+      }
+      if (sub === "reset") {
+        if (!emBisect) { io.out("We are not bisecting.\n"); return 0; }
+        var orig = repo.arq("BISECT_START").replace(/\n$/, ""), alvo = a[0] || orig;
+        ["BISECT_START", "BISECT_LOG", "BISECT_TERMS", "BISECT_EXPECTED_REV", "BISECT_ANCESTORS_OK", "BISECT_NAMES", "BISECT_RUN"].forEach(function (f) { repo.apagarArq(f); });
+        apagar(sh, repo.g + "/refs/bisect");
+        if (repo.resolverRef("refs/heads/" + alvo)) return trocarPara(repo, io, { ramo: alvo }, {});
+        var h = repo.commitDe(alvo); if (h) return trocarPara(repo, io, { hash: h, nome: alvo }, {});
+        return 0;
+      }
+      if (sub === "log") { if (!emBisect) { io.err("error: We are not bisecting.\n"); return 1; } io.out(repo.arq("BISECT_LOG")); return 0; }
+      if (TERMOS[sub]) {
+        if (!emBisect) { io.err("You need to start by \"git bisect start\"\n\n"); return 1; }
+        var tipo = TERMOS[sub], alvos = a.length ? a : ["HEAD"];
+        for (var j = 0; j < alvos.length; j++) {
+          var hh = repo.commitDe(alvos[j]); if (!hh) { io.err("fatal: Bad rev input: " + alvos[j] + "\n"); return 128; }
+          var est0 = bisectEstado(repo);
+          if ((tipo === "good" && est0.ruim === hh) || (tipo === "bad" && est0.bons.indexOf(hh) >= 0)) { bisectMarcar(repo, io, tipo, hh); io.out(hh + " was both good and bad\n"); return 1; }
+          bisectMarcar(repo, io, tipo, hh);
+        }
+        var est2 = bisectEstado(repo);
+        if (bisectStatus(repo, io, est2)) return 0;
+        var r = bisectProximo(repo, io, sh, est2); return 0;
+      }
+      if (sub === "run") {
+        if (!emBisect) { io.err("You need to start by \"git bisect start\"\n\n"); return 1; }
+        if (!a.length) { io.err("error: bisect run failed: no command provided.\n"); return 1; }
+        while (true) {
+          var est3 = bisectEstado(repo);
+          if (!est3.ruim || !est3.bons.length) { io.err("error: bisect run failed: no command provided.\n"); return 1; }
+          io.out("running " + a.map(function (x) { return "'" + x + "'"; }).join(" ") + "\n");
+          var n = sh.fork();
+          var stc = yield* n.rodarFonte(a.map(qsh).join(" ") + "\n", {});
+          if (stc >= 128 || stc < 0) { io.err("bisect run failed: exit code " + stc + " from '" + a.join(" ") + "' is < 0 or >= 128\n"); return 1; }
+          var tp = stc === 0 ? "good" : stc === 125 ? "skip" : "bad";
+          bisectMarcar(repo, io, tp, repo.head());
+          var r2 = bisectProximo(repo, io, sh, bisectEstado(repo));
+          if (r2.fim) { io.out("bisect found first bad commit\n"); return 0; }
+        }
+      }
+      if (sub === "visualize" || sub === "view") return CMDS.log(["--oneline"], io, sh);
+      io.err("error: unknown command: '" + (sub || "") + "'\n" + (global.GITSIM_AJUDA && global.GITSIM_AJUDA.bisect || "")); return 1;
+    };
+
+    /* ---------- blame ---------- */
+    CMDS.blame = function (args, io, sh) {
+      var g = opcoes(args, { "-L": "valor", "-s": true, "-e": true, "--show-email": "-e", "-l": true, "-w": true, "-M": true, "-C": true });
+      if (g.erro) { io.err("error: " + g.erro + "\n"); return 129; }
+      var repo = precisaRepo(io), rev = null, cam;
+      if (g.ops.length > 1) { rev = g.ops[0]; cam = g.ops[1]; } else cam = g.ops[0];
+      if (!cam) { io.err((global.GITSIM_AJUDA && global.GITSIM_AJUDA.blame) || "usage: git blame [<options>] [<rev-opts>] [<rev>] [--] <file>\n"); return 129; }
+      var k = pathspec(repo, cam), head = rev ? repo.commitDe(rev) : repo.head();
+      if (!head) { io.err("fatal: no such ref: HEAD\n"); return 128; }
+      var T = repo.arvoreDe(head), naoComitado = false, texto;
+      if (!T[k]) { if (!rev && noDe(sh, repo.absDe(k))) { io.err("fatal: no such path '" + k + "' in HEAD\n"); return 128; } io.err("fatal: no such path " + k + " in " + (rev || "HEAD") + "\n"); return 128; }
+      if (!rev) { var nw = noDe(sh, repo.absDe(k)); texto = nw ? repo.conteudoNo(nw) : repo.textoBlob(T[k].hash); } else texto = repo.textoBlob(T[k].hash);
+      var linhas = separarLinhas(texto).l, donos = new Array(linhas.length);
+      // linhas da pasta que não estão no HEAD: "Not Committed Yet"
+      var pend = [];
+      var tHead = separarLinhas(repo.textoBlob(T[k].hash)).l;
+      if (!rev && texto !== repo.textoBlob(T[k].hash)) {
+        var mc = mudancas(tHead, linhas), mapa = alinhar(mc, tHead.length, linhas.length);
+        linhas.forEach(function (l, i) { if (mapa[i] < 0) donos[i] = { h: null, linha: i }; else pend.push({ i: i, j: mapa[i] }); });
+      } else linhas.forEach(function (l, i) { pend.push({ i: i, j: i }); });
+      // sobe na história: cada linha fica com o commit que a introduziu
+      (function subir(h, caminho, itens) {
+        if (!itens.length) return;
+        var c = repo.ler(h), atual = separarLinhas(repo.textoBlob(repo.arvoreDe(h)[caminho].hash)).l;
+        var resto = itens;
+        for (var p = 0; p < c.parents.length && resto.length; p++) {
+          var TP = repo.arvoreDe(c.parents[p]); if (!TP[caminho]) continue;
+          var ant = separarLinhas(repo.textoBlob(TP[caminho].hash)).l, mc2 = mudancas(ant, atual), m2 = alinhar(mc2, ant.length, atual.length);
+          var passam = [], ficam = [];
+          resto.forEach(function (it) { if (m2[it.j] >= 0) passam.push({ i: it.i, j: m2[it.j] }); else ficam.push(it); });
+          subir(c.parents[p], caminho, passam);
+          resto = ficam;
+        }
+        resto.forEach(function (it) { donos[it.i] = { h: h, linha: it.j, raiz: !c.parents.length }; });
+      })(head, k, pend);
+      var L0 = 1, L1 = linhas.length;
+      if (g.o["-L"]) { var mL = /^(\d+)(?:,(\+?)(\d+))?$/.exec(g.o["-L"]); if (mL) { L0 = +mL[1]; L1 = mL[3] ? (mL[2] ? L0 + +mL[3] - 1 : +mL[3]) : linhas.length; } if (L0 > linhas.length) { io.err("fatal: file " + k + " has only " + linhas.length + " line" + (linhas.length === 1 ? "" : "s") + "\n"); return 128; } }
+      var largNome = 0, largNum = String(L1).length;
+      for (var i = L0 - 1; i < L1; i++) { var d = donos[i], nome = d.h ? parseIdent(repo.ler(d.h).author).nome : "Not Committed Yet"; if (g.o["-e"]) nome = "<" + (d.h ? parseIdent(repo.ler(d.h).author).email : "not.committed.yet") + ">"; largNome = Math.max(largNome, nome.length); }
+      var out = "";
+      for (i = L0 - 1; i < L1; i++) {
+        var dd = donos[i], id, nm, dt;
+        if (dd.h) { var a2 = parseIdent(repo.ler(dd.h).author); id = (dd.raiz ? "^" + dd.h.slice(0, 7) : dd.h.slice(0, 8)); if (g.o["-l"]) id = (dd.raiz ? "^" : "") + dd.h; nm = g.o["-e"] ? "<" + a2.email + ">" : a2.nome; dt = dataIso(a2.ts, a2.tz); }
+        else { id = g.o["-l"] ? ZERO : "00000000"; nm = g.o["-e"] ? "<not.committed.yet>" : "Not Committed Yet"; dt = dataIso(Math.floor(sh.k.clock / 1000), "-0300"); }
+        var num = String(i + 1); while (num.length < largNum) num = " " + num;
+        out += id + (g.o["-s"] ? " " + num + ") " : " (" + nm + rep(" ", largNome - nm.length) + " " + dt + " " + num + ") ") + linhas[i] + "\n";
+      }
+      io.out(out); return 0;
+    };
+    // mapa de linhas: índice em b → índice em a (ou -1 se a linha é nova)
+    function alinhar(mc, na, nb) {
+      var m = new Array(nb), i = 0, j = 0;
+      while (i < na || j < nb) {
+        if (i < na && mc.ca[i]) { i++; continue; }
+        if (j < nb && mc.cb[j]) { m[j] = -1; j++; continue; }
+        if (j < nb) m[j] = i; i++; j++;
+      }
+      return m;
+    }
+
+    /* ---------- grep ---------- */
+    CMDS.grep = function (args, io, sh) {
+      var g = opcoes(args, { "-n": true, "--line-number": "-n", "-i": true, "--ignore-case": "-i", "-c": true, "--count": "-c", "-l": true, "--files-with-matches": "-l", "-L": true, "-w": true, "--word-regexp": "-w", "-v": true, "--invert-match": "-v", "-e": "valor", "-E": true, "--extended-regexp": "-E", "-F": true, "--fixed-strings": "-F", "--cached": true, "-h": true, "-q": true, "--quiet": "-q", "-o": true });
+      if (g.erro) { io.err("error: " + g.erro + "\n"); return 129; }
+      var repo = precisaRepo(io), o = g.o, ops = g.ops.slice(), padroes = lista(o["-e"]);
+      if (!padroes.length) { if (!ops.length) { io.err("fatal: no pattern given\n"); return 128; } padroes = [ops.shift()]; }
+      var rev = null; if (ops.length && repo.commitDe(ops[0]) && !noDe(sh, sh.abs(ops[0]))) rev = ops.shift();
+      var specs = ops.map(function (p) { return pathspec(repo, p); });
+      var res = padroes.map(function (p) {
+        var src = o["-F"] ? p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") : o["-E"] ? p : p.replace(/\\([(){}|+?])/g, "\u0001$1").replace(/([(){}|+?])/g, "\\$1").replace(/\u0001(.)/g, "$1");
+        if (o["-w"]) src = "(?:^|[^A-Za-z0-9_])(?:" + src + ")(?=$|[^A-Za-z0-9_])";
+        return new RegExp(src, o["-i"] ? "i" : "");
+      });
+      var arqs = {};
+      if (rev) { var T = repo.arvoreDe(repo.commitDe(rev)); Object.keys(T).forEach(function (k) { arqs[k] = repo.textoBlob(T[k].hash); }); }
+      else if (o["--cached"]) repo.lerIndice().forEach(function (e) { if (!e.stage) arqs[e.path] = repo.textoBlob(e.hash); });
+      else repo.lerIndice().forEach(function (e) { if (e.stage > 1) return; var n = noDe(sh, repo.absDe(e.path)); if (n && n.t === "f") arqs[e.path] = repo.conteudoNo(n); });
+      var out = "", achou = false;
+      Object.keys(arqs).sort(cmpCam).forEach(function (k) {
+        if (specs.length && !specs.some(function (s) { return casaSpec(s, k); })) return;
+        var txt = arqs[k]; if (binario(txt)) { if (res.some(function (r) { return r.test(txt); })) { out += "Binary file " + k + " matches\n"; achou = true; } return; }
+        var nome = (rev ? rev + ":" : "") + repo.relCwd(k), cont = 0;
+        separarLinhas(txt).l.forEach(function (l, i) {
+          var casa = res.some(function (r) { return r.test(l); }); if (o["-v"]) casa = !casa;
+          if (!casa) return;
+          cont++; achou = true;
+          if (!o["-c"] && !o["-l"] && !o["-L"]) out += (o["-h"] ? "" : nome + ":") + (o["-n"] ? (i + 1) + ":" : "") + l + "\n";
+        });
+        if (o["-c"] && cont) out += nome + ":" + cont + "\n";
+        if (o["-l"] && cont) out += nome + "\n";
+        if (o["-L"] && !cont) out += nome + "\n";
+      });
+      if (!o["-q"]) io.out(out);
+      return achou ? 0 : 1;
+    };
 
     /* ---------- help ---------- */
     CMDS.help = function (args, io, sh) {

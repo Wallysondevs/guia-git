@@ -10844,6 +10844,7 @@
   }
   if (typeof module !== "undefined" && module.exports) {
     module.exports = BashSim;
+    try { require("./gitsim-ajuda.js"); } catch (e) {}
     try { require("./gitsim.js")(BashSim); } catch (e) { if (!/Cannot find module/.test(e.message)) throw e; } // o Git simulado
   }
 })(typeof window !== "undefined" ? window : globalThis);

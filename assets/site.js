@@ -523,7 +523,7 @@ var NIVEIS = [
       if (!t.querySelector(".try-head")) t.insertBefore(el("p", { "class": "try-head" }, t.classList.contains("tryscript") ? "Experimente: edite e rode o script" : "Experimente você mesmo"), t.firstChild);
     });
     // o Git simulado (gitsim.js) vem antes e se instala quando o bashsim.js carrega
-    ["assets/gitsim.js", "assets/bashsim.js"].forEach(function (src) { var s = el("script", { src: src }); s.async = false; body.appendChild(s); });
+    ["assets/gitsim-ajuda.js", "assets/gitsim.js", "assets/bashsim.js"].forEach(function (src) { var s = el("script", { src: src }); s.async = false; body.appendChild(s); });
   }
 
   /* ---------- Exercícios de completar ----------
