@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git reset — voltando no tempo | Guia Git</title>
+<meta name="description" content="O que o git reset faz: mover o branch para um commit anterior. git reset HEAD~1 para desfazer o último commit sem perder o trabalho, HEAD~2, voltar para um hash, desfazer o reset com ORIG_HEAD e o reflog, o git reset arquivo (o jeito antigo de tirar da área de preparo) e por que não usar reset em commits já enviados. Saídas reais do Git em português.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">reset</span></h1>
+
+<p class="intro">A Ana fez um commit cedo demais: a receita de brigadeiro ainda não estava pronta, e ela preferia que aquele commit nem existisse ainda. O <code>git reset</code> (em inglês, <em>reset</em> = "redefinir, voltar à posição") faz isso: ele <strong>leva o branch de volta</strong> para um commit anterior, como se os commits de depois não tivessem acontecido. Nesta aula você aprende o uso mais comum e mais seguro dele; os três "modos" (<code>--soft</code>, <code>--mixed</code> e <code>--hard</code>) têm uma aula só para eles, a próxima.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que o <code>git reset</code> faz de verdade: muda o commit para onde o branch aponta.</li>
+  <li>Como desfazer o último commit (ou os dois últimos) <strong>sem perder</strong> o trabalho, com <code>git reset HEAD~1</code>.</li>
+  <li>Como voltar para um commit pelo hash, e como desfazer um reset com <code>ORIG_HEAD</code>.</li>
+  <li>O <code>git reset arquivo</code>, o jeito antigo de tirar um arquivo da área de preparo.</li>
+  <li>Por que <strong>não</strong> se dá reset em commits que já foram enviados ao GitHub.</li>
+</ul>
+</div>
+
+<p>Todas as saídas desta aula vieram do Git real da máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português.</p>
+
+<hr>
+
+<h2>A ideia: o marcador de página</h2>
+<p>Pense no histórico como um caderno de receitas em que cada página é um commit, e o branch <code>main</code> é um <strong>marcador de página</strong> que diz "o caderno vai até aqui". Quando você faz um commit, escreve uma página nova e o marcador avança. O <code>git reset</code> <strong>puxa o marcador para trás</strong>.</p>
+<pre>Antes:   A --- B --- C --- D   &lt;- main
+
+git reset HEAD~1
+
+Depois:  A --- B --- C         &lt;- main
+                      \
+                       D        (fora do histórico do main)</pre>
+<p>A página <code>D</code> não foi rasgada na hora: ela continua guardada na pasta <code>.git</code> por um tempo (e dá para voltar a ela, como você vai ver). Mas, para o <code>git log</code>, o caderno agora termina em <code>C</code>.</p>
+<p>E o que acontece com os <strong>arquivos</strong> de <code>D</code>? Depende do modo. No modo padrão, que é o desta aula, as mudanças de <code>D</code> <strong>continuam na pasta</strong>, como mudanças ainda não commitadas. Você não perde nada do que escreveu; só "descommita".</p>
+
+<hr>
+
+<h2>1. Desfazendo o último commit</h2>
+<p>O repositório <code>receitas</code> da Ana tem quatro commits:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+a122cf9 Adiciona receita de brigadeiro   « o HEAD está aqui
+91591a1 Adiciona receita de pudim
+62fc1c8 Adiciona receita de bolo
+fe996fb Primeiro commit
+</pre>
+
+<p>Ela quer desfazer o commit do brigadeiro, mas sem perder o arquivo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git reset HEAD~1
+</pre>
+
+<dl class="anatomy">
+  <dt>git reset</dt><dd>"Leve o branch atual para…".</dd>
+  <dt>HEAD~1</dt><dd>"…um commit antes do HEAD". O <code>HEAD</code> é o commit em que você está agora (veja <a href="head.html">O que é HEAD</a>); o <code>~1</code> quer dizer "um passo para trás". <code>HEAD~2</code> seria dois passos, e assim por diante.</dd>
+</dl>
+
+<p>A resposta do Git: <strong>nenhuma</strong>. Como quase todo comando de terminal, o <code>git reset</code> fica quieto quando dá certo. (Quando algum arquivo que o Git já conhecia fica com mudanças fora da área de preparo, ele lista esses arquivos debaixo de <code>Unstaged changes after reset:</code>; você vai ver isso na seção 4. Aqui, o único arquivo do commit desfeito era novo, então não havia o que listar.) Para ver o que aconteceu, pergunte ao <code>git log</code> e ao <code>git status</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+91591a1 Adiciona receita de pudim   « o HEAD agora está aqui
+62fc1c8 Adiciona receita de bolo
+fe996fb Primeiro commit
+$ git status
+No ramo main
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	brigadeiro.txt   « o arquivo continua na pasta
+
+nada adicionado ao envio mas arquivos não registrados estão presentes (use "git add" to registrar)
+</pre>
+
+<p>O <code>git log</code> termina no pudim: o commit do brigadeiro saiu do histórico. E o <code>git status</code> mostra o <code>brigadeiro.txt</code> como "não rastreado", exatamente como estava <strong>antes</strong> de a Ana dar <code>git add</code> nele. O arquivo continua na pasta, com o mesmo conteúdo. Quando a receita ficar pronta, é só <code>git add</code> e <code>git commit</code> de novo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git add brigadeiro.txt
+$ git commit -q -m "Adiciona receita de brigadeiro"
+$ git log --oneline
+a122cf9 Adiciona receita de brigadeiro
+91591a1 Adiciona receita de pudim
+62fc1c8 Adiciona receita de bolo
+fe996fb Primeiro commit
+</pre>
+
+<p>(O <code>-q</code>, de <em>quiet</em>, "quieto", só esconde o resumo do commit. E o hash saiu igual ao de antes, <code>a122cf9</code>, porque o conteúdo, a mensagem e o pai são os mesmos e o relógio do laboratório do guia é fixo; no seu computador, a hora mudaria e o hash também.)</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;echo 'Brigadeiro' &gt; brigadeiro.txt;;git add brigadeiro.txt;;git commit -q -m 'Adiciona receita de brigadeiro'" data-goal="commits:2,file:brigadeiro.txt,msg:bolo" data-solucao="git reset HEAD~1">
+<p class="try-task"><strong>Missão:</strong> desfaça o último commit da Ana ("Adiciona receita de brigadeiro") com <code>git reset</code>, sem perder o arquivo. Confira com <code>git log --oneline</code> (devem sobrar 2 commits) e com <code>git status</code> (o <code>brigadeiro.txt</code> deve aparecer como não rastreado).</p>
+</div>
+
+<hr>
+
+<h2>2. Voltando mais de um commit</h2>
+<p>Com <code>HEAD~2</code>, o branch volta dois commits, e as mudanças <strong>dos dois</strong> ficam na pasta:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git reset HEAD~2
+$ git log --oneline
+62fc1c8 Adiciona receita de bolo
+fe996fb Primeiro commit
+$ git status
+No ramo main
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	brigadeiro.txt
+	pudim.txt
+
+nada adicionado ao envio mas arquivos não registrados estão presentes (use "git add" to registrar)
+</pre>
+
+<p>O <code>main</code> agora está no commit do bolo, e o pudim e o brigadeiro voltaram a ser arquivos não rastreados. Esse é um jeito comum de <strong>juntar</strong> commits: desfazer os dois e fazer um commit só com tudo (o nome disso é <a href="squash.html">squash</a>).</p>
+
+<h3>Pelo hash</h3>
+<p>Em vez de contar passos, você pode dizer o hash do commit para onde quer voltar, copiado do <code>git log --oneline</code>: <code>git reset 62fc1c8</code> teria o mesmo efeito do <code>HEAD~2</code> acima. Com hash, não tem como errar a conta.</p>
+
+<hr>
+
+<h2>3. Arrependeu-se? <code>ORIG_HEAD</code></h2>
+<p>Antes de mover o branch, o <code>git reset</code> anota onde ele estava num apelido especial chamado <code>ORIG_HEAD</code> ("HEAD original"). Para desfazer o reset que acabou de fazer:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git reset ORIG_HEAD
+$ git log --oneline
+a122cf9 Adiciona receita de brigadeiro
+91591a1 Adiciona receita de pudim
+62fc1c8 Adiciona receita de bolo
+fe996fb Primeiro commit
+$ git status
+No ramo main
+nothing to commit, working tree clean
+</pre>
+
+<p>O histórico voltou a ter os quatro commits, com os <strong>mesmos hashes</strong> de antes: o Git não recriou nada, só levou o marcador de volta para a página que nunca tinha sido rasgada. E a pasta está limpa, porque o conteúdo dos arquivos é igual ao do commit.</p>
+<p>O <code>ORIG_HEAD</code> só guarda o <strong>último</strong> movimento perigoso. Para voltar mais longe, use o <a href="git-reflog.html">git reflog</a>, que lista todos os lugares por onde o <code>HEAD</code> passou (com os apelidos <code>HEAD@{1}</code>, <code>HEAD@{2}</code>…).</p>
+
+<hr>
+
+<h2>4. <code>git reset arquivo</code>: o jeito antigo de "desadicionar"</h2>
+<p>O <code>git reset</code> tem um segundo uso, bem diferente: com o <strong>nome de um arquivo</strong>, ele não mexe no branch; só tira o arquivo da área de preparo. A Ana mudou o tempo do bolo e deu <code>git add</code>, mas mudou de ideia sobre colocar isso no próximo commit:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'Tempo: 45 minutos' &gt;&gt; bolo.txt
+$ git add bolo.txt
+$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	modified:   bolo.txt   « na área de preparo
+
+$ git reset bolo.txt
+Unstaged changes after reset:
+M	bolo.txt
+$ git status
+No ramo main
+Changes not staged for commit:
+  (utilize "git add &lt;arquivo&gt;..." para atualizar o que será submetido)
+  (use "git restore &lt;file&gt;..." to discard changes in working directory)
+	modified:   bolo.txt   « fora da área de preparo
+
+nenhuma modificação adicionada à submissão (utilize "git add" e/ou "git commit -a")
+</pre>
+
+<p>A resposta <code>Unstaged changes after reset:</code> quer dizer "mudanças fora da área de preparo depois do reset", e o <code>M</code> antes do nome quer dizer <em>modified</em>, "modificado". Depois do <code>git reset bolo.txt</code>, o arquivo passou de "Mudanças a serem submetidas" para <em>Changes not staged for commit</em> ("mudanças não preparadas para o commit"; o Git do Ubuntu mistura português e inglês nessas mensagens): saiu da área de preparo, mas a mudança <strong>continua no arquivo</strong>. É exatamente o que o <a href="restore-staged.html">git restore --staged</a> faz. O <code>git reset arquivo</code> é o jeito antigo, de antes do Git 2.23; você vai encontrá-lo em muitos tutoriais e respostas da internet (às vezes escrito <code>git reset HEAD bolo.txt</code>, que é a mesma coisa). Hoje, o próprio <code>git status</code> sugere o <code>restore --staged</code>.</p>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de desfazer commits</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Você quer…</th><th>Use</th><th>Aula</th></tr>
+<tr><td>Desfazer os últimos commits, mantendo as mudanças na pasta</td><td><code>git reset HEAD~1</code></td><td>esta</td></tr>
+<tr><td>O mesmo, mas deixando as mudanças já na área de preparo</td><td><code>git reset --soft HEAD~1</code></td><td><a href="reset-modos.html">reset --soft, --mixed e --hard</a></td></tr>
+<tr><td>Jogar fora os commits <strong>e</strong> as mudanças</td><td><code>git reset --hard HEAD~1</code> (cuidado!)</td><td><a href="reset-modos.html">reset --soft, --mixed e --hard</a></td></tr>
+<tr><td>Só corrigir o último commit</td><td><code>git commit --amend</code></td><td><a href="commit-amend.html">--amend</a></td></tr>
+<tr><td>Desfazer um commit já enviado ao GitHub</td><td><code>git revert &lt;hash&gt;</code></td><td><a href="git-revert.html">git revert</a></td></tr>
+<tr><td>Tirar um arquivo da área de preparo</td><td><code>git restore --staged arquivo</code> (ou o antigo <code>git reset arquivo</code>)</td><td><a href="restore-staged.html">Tirando da Área de Preparo</a></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Voltou mais commits do que existem</strong>
+<pre class="term" data-cwd="~/receitas">$ git reset HEAD~9
+fatal: ambiguous argument 'HEAD~9': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git &lt;command&gt; [&lt;revision&gt;...] -- [&lt;file&gt;...]'
+</pre>
+<p>"Argumento ambíguo <code>HEAD~9</code>: revisão desconhecida, ou caminho que não está na árvore de trabalho. Use <code>--</code> para separar caminhos de revisões." O histórico tem 4 commits; não existe um commit 9 passos antes do HEAD. A mensagem é longa porque o Git não sabe se você quis dizer um commit ou um arquivo chamado <code>HEAD~9</code>; e, como não achou nenhum dos dois, não mexeu em nada. <strong>Como resolver:</strong> conte os commits no <code>git log --oneline</code> (ou use o hash).</p>
+</div>
+
+<div class="cenario">
+<strong>Nome de arquivo ou commit errado</strong>
+<pre class="term" data-cwd="~/receitas">$ git reset brigadeiro
+fatal: ambiguous argument 'brigadeiro': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git &lt;command&gt; [&lt;revision&gt;...] -- [&lt;file&gt;...]'
+</pre>
+<p>Não existe commit nem arquivo chamado <code>brigadeiro</code> (o arquivo é <code>brigadeiro.txt</code>). A mesma mensagem do cenário anterior. <strong>Como resolver:</strong> confira o nome com <code>git status</code> ou <code>ls</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Dei reset num commit que já tinha enviado</strong>
+<p>Se o commit já está no GitHub, o reset só muda o <strong>seu</strong> branch. No próximo <code>git push</code>, o GitHub vai recusar, porque o histórico dele tem um commit que o seu não tem (veja <a href="push-rejeitado.html">Push Rejeitado</a>). E se você forçar, quem já baixou aquele commit (o Bruno) vai ter um histórico diferente do seu. <strong>Como resolver:</strong> volte ao estado de antes com <code>git reset ORIG_HEAD</code> (ou pelo <code>git reflog</code>) e desfaça o commit com <a href="git-revert.html">git revert</a>, que não reescreve nada. A regra completa está em <a href="regra-de-ouro.html">A Regra de Ouro</a>.</p>
+</div>
+
+<div class="cenario">
+<strong>"Sumiram" os meus commits depois de um reset</strong>
+<p>Eles não sumiram: só saíram do histórico do branch. Rode <code>git reflog</code>, ache a linha de antes do reset (o hash do commit mais novo que você tinha) e volte com <code>git reset &lt;hash&gt;</code>. Se foi o último reset, <code>git reset ORIG_HEAD</code> basta. Mais em <a href="recuperar-commit.html">Recuperando Commits Perdidos</a>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git reset HEAD~1</code></td><td>Desfaz o último commit; as mudanças ficam na pasta, fora da área de preparo</td></tr>
+<tr><td><code>git reset HEAD~N</code></td><td>Desfaz os últimos N commits, do mesmo jeito</td></tr>
+<tr><td><code>git reset &lt;hash&gt;</code></td><td>Leva o branch até esse commit</td></tr>
+<tr><td><code>git reset ORIG_HEAD</code></td><td>Desfaz o último reset (volta para onde o branch estava)</td></tr>
+<tr><td><code>git reset arquivo</code></td><td>Tira o arquivo da área de preparo (jeito antigo de <code>git restore --staged</code>)</td></tr>
+<tr><td><code>git reset --soft</code> / <code>--mixed</code> / <code>--hard</code></td><td>Os três modos: veja <a href="reset-modos.html">a próxima aula</a></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o comando</h3>
+<p>Complete para desfazer os <strong>dois</strong> últimos commits, mantendo as mudanças na pasta:</p>
+<div class="ex-code">git reset HEAD<input data-answer="~2" aria-label="quantos commits"></div>
+</div>
+
+<div class="exercise">
+<h3>2. O apelido do "antes"</h3>
+<p>Qual apelido guarda onde o branch estava antes do último reset?</p>
+<div class="ex-code"><input data-answer="ORIG_HEAD" aria-label="apelido"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. Depois de <code>git reset HEAD~1</code> (sem opções), o que acontece com o arquivo que o último commit tinha criado?</p>
+<label><input type="radio" name="q3"> É apagado da pasta</label>
+<label><input type="radio" name="q3"> Continua na pasta, como mudança não commitada</label>
+<label><input type="radio" name="q3"> Continua no commit</label>
+<label><input type="radio" name="q3"> Vai para o stash</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. O commit errado já foi enviado ao GitHub e o Bruno já o baixou. O que usar?</p>
+<label><input type="radio" name="q4"> <code>git reset HEAD~1</code> e <code>git push --force</code></label>
+<label><input type="radio" name="q4"> <code>git reset HEAD~1</code> e mais nada</label>
+<label><input type="radio" name="q4"> <code>git commit --amend</code></label>
+<label><input type="radio" name="q4"> <code>git revert</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. Que comando faz o mesmo que o antigo <code>git reset bolo.txt</code>?</p>
+<label><input type="radio" name="q5"> <code>git restore --staged bolo.txt</code></label>
+<label><input type="radio" name="q5"> <code>git restore bolo.txt</code></label>
+<label><input type="radio" name="q5"> <code>git rm bolo.txt</code></label>
+<label><input type="radio" name="q5"> <code>git reset HEAD~1</code></label>
+</div>
+
+<h3>Missão final: juntando dois commits em um</h3>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit';;echo 'Pudim de leite' &gt; pudim.txt;;git add pudim.txt;;git commit -q -m 'Adiciona pudim';;echo 'Calda de açúcar' &gt; calda.txt;;git add calda.txt;;git commit -q -m 'Adiciona calda'" data-goal="commits:2,limpo,msg:Adiciona receita de pudim com calda,contem:HEAD:calda.txt=Calda,contem:HEAD:pudim.txt=Pudim" data-solucao="git reset HEAD~2;;git add pudim.txt calda.txt;;git commit -m 'Adiciona receita de pudim com calda'">
+<p class="try-task"><strong>Missão:</strong> a Ana fez dois commits pequenos demais: "Adiciona pudim" e "Adiciona calda". Use <code>git reset</code> para desfazer os dois (sem perder os arquivos) e faça <strong>um</strong> commit com os dois arquivos e a mensagem "Adiciona receita de pudim com calda". No fim, o histórico deve ter 2 commits.</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git reset &lt;commit&gt;</code> leva o branch atual para aquele commit; os commits de depois saem do histórico (mas continuam guardados por um tempo).</li>
+  <li>No modo padrão, as mudanças dos commits desfeitos ficam <strong>na pasta</strong>, fora da área de preparo: nada se perde.</li>
+  <li><code>HEAD~1</code>, <code>HEAD~2</code>… contam para trás a partir do commit atual; o hash também serve.</li>
+  <li><code>git reset ORIG_HEAD</code> desfaz o último reset; o <code>git reflog</code> leva mais longe.</li>
+  <li><code>git reset arquivo</code> só tira o arquivo da área de preparo (hoje, <code>git restore --staged</code>).</li>
+  <li>Reset reescreve o histórico: use só em commits que ainda não foram enviados. Para os enviados, <code>git revert</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
