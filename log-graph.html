@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git log --graph — vendo os galhos do histórico | Guia Git</title>
+<meta name="description" content="O git log --graph para quem está começando: --all para ver todos os branches, como ler o desenho (*, |, / e |\), as etiquetas (HEAD -&gt; main), o commit de merge, --first-parent, --simplify-by-decoration e um apelido git arvore, com saídas reais do Git em português.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">log --graph: Vendo os Galhos</span></h1>
+
+<p class="intro">Enquanto você trabalha num branch só, o histórico é uma fila: um commit depois do outro. Mas quando aparecem os <a href="branches.html">branches</a> (ramos), a história se divide em <strong>galhos</strong> que crescem lado a lado e, depois, se juntam num <a href="git-merge.html">merge</a>. O <code>git log</code> comum continua mostrando uma lista, e uma lista não mostra galhos. Para ver a árvore de verdade, existe o <code>git log --graph</code>: ele <strong>desenha</strong> o histórico no terminal, com riscos e asteriscos.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Por que o <code>git log</code> sozinho esconde os outros branches, e como o <code>--all</code> mostra todos.</li>
+  <li>A ler o desenho do <code>--graph</code>: o <code>*</code>, o <code>|</code>, o <code>|/</code> (onde um galho nasce) e o <code>|\</code> (onde dois galhos se juntam).</li>
+  <li>O que são as etiquetas <code>(HEAD -&gt; main)</code> e <code>(doces)</code>.</li>
+  <li>Como o desenho fica depois de um merge, e os atalhos <code>--first-parent</code> e <code>--simplify-by-decoration</code>.</li>
+  <li>A criar o apelido <code>git arvore</code> para não digitar tudo isso todo dia.</li>
+</ul>
+</div>
+
+<p>As saídas desta aula saíram do Git 2.53 do Ubuntu 26.04, num terminal de verdade da máquina da Ana (no terminal, o Git mostra as etiquetas dos branches e cores; as cores não aparecem aqui).</p>
+
+<hr>
+
+<h2>A ideia: o mapa do metrô</h2>
+<p>Pense no mapa do metrô. Cada estação é um ponto; as linhas ligam as estações. Numa linha só, o mapa é um risco reto. Quando uma linha se divide em duas (uma vai para o centro, outra para o aeroporto), o mapa mostra a <strong>bifurcação</strong>. E quando duas linhas chegam à mesma estação, o mapa mostra o <strong>encontro</strong>.</p>
+<p>O <code>git log --graph</code> é o mapa do metrô do seu repositório: cada <strong>commit</strong> é uma estação (um <code>*</code>), os riscos (<code>|</code>, <code>/</code>, <code>\</code>) são as linhas, e os branches são os nomes das linhas.</p>
+
+<h2>O repositório desta aula</h2>
+<p>A Ana criou o README e a receita de bolo no <code>main</code>. Depois criou o branch <code>doces</code> e fez dois commits nele (brigadeiro e beijinho). Por fim, voltou ao <code>main</code> e corrigiu o tempo de forno do bolo. Em desenho simples, a situação é esta:</p>
+
+<pre>                      brigadeiro --- beijinho     ← doces
+                     /
+README --- bolo ----+
+                     \
+                      forno do bolo               ← main (HEAD)
+</pre>
+
+<p>Agora vamos ver o que o Git mostra.</p>
+
+<hr>
+
+<h2>1. O problema: o <code>git log</code> só mostra o branch atual</h2>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+c20285a (HEAD -&gt; main) Corrige o tempo de forno do bolo
+c34349b Adiciona a receita de bolo
+700bbd5 Cria o README
+</pre>
+
+<p>Só 3 commits. Cadê o brigadeiro e o beijinho? Eles existem, mas o <code>git log</code> mostra só o caminho que leva ao commit <strong>atual</strong> (o <a href="head.html">HEAD</a>), voltando de pai em pai. Os commits do <code>doces</code> não estão nesse caminho: estão em outro galho.</p>
+
+<p>Repare na etiqueta entre parênteses no primeiro commit:</p>
+<dl class="anatomy">
+  <dt>(HEAD -&gt; main)</dt><dd>"Você está aqui". O <code>HEAD</code> aponta (<code>-&gt;</code>) para o branch <code>main</code>, que aponta para este commit. Ou seja: você está no branch <code>main</code>, e este é o último commit dele.</dd>
+</dl>
+
+<h2>2. Todos os branches: <code>--all</code></h2>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --all
+e26a98a (doces) Adiciona a receita de beijinho
+c20285a (HEAD -&gt; main) Corrige o tempo de forno do bolo
+abceaaf Adiciona a receita de brigadeiro
+c34349b Adiciona a receita de bolo
+700bbd5 Cria o README
+</pre>
+
+<dl class="anatomy">
+  <dt>--all</dt><dd>"Todos": começa de <strong>todos</strong> os branches (e tags), não só do atual. Agora os 5 commits aparecem.</dd>
+  <dt>(doces)</dt><dd>A etiqueta do branch <code>doces</code>: este é o último commit dele. Sem o <code>HEAD -&gt;</code>, porque você não está nele.</dd>
+</dl>
+
+<p>Apareceu tudo, mas a lista ficou <strong>misturada</strong>: o brigadeiro (do <code>doces</code>) está entre a correção do forno (do <code>main</code>) e o bolo. Olhando só a lista, não dá para saber o que é de qual branch. Pior: como a Ana fez todos os commits no mesmo minuto, nem a ordem de data ajuda. Falta o desenho.</p>
+
+<hr>
+
+<h2>3. O desenho: <code>--graph</code></h2>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --graph --all
+* e26a98a (doces) Adiciona a receita de beijinho
+* abceaaf Adiciona a receita de brigadeiro
+| * c20285a (HEAD -&gt; main) Corrige o tempo de forno do bolo
+|/
+* c34349b Adiciona a receita de bolo
+* 700bbd5 Cria o README
+</pre>
+
+<p>Agora sim. Leia de <strong>baixo para cima</strong>, que é a ordem em que as coisas aconteceram:</p>
+
+<dl class="anatomy">
+  <dt>* 700bbd5 … Cria o README</dt><dd>Cada <code>*</code> é um commit (uma "estação"). Este é o primeiro.</dd>
+  <dt>* c34349b … receita de bolo</dt><dd>O segundo commit, logo acima: é filho do README. Até aqui, um galho só.</dd>
+  <dt>|/</dt><dd>A <strong>bifurcação</strong>: aqui a história se dividiu em duas. O risco <code>/</code> sai do bolo e sobe para a coluna da direita.</dd>
+  <dt>| * c20285a (HEAD -&gt; main) …</dt><dd>Na coluna da direita, o commit do <code>main</code>: a correção do forno. O <code>|</code> à esquerda é a outra linha passando ao lado.</dd>
+  <dt>* abceaaf … brigadeiro<br>* e26a98a (doces) … beijinho</dt><dd>Na coluna da esquerda, os dois commits do <code>doces</code>, um em cima do outro. A etiqueta <code>(doces)</code> marca a ponta do galho.</dd>
+</dl>
+
+<p>É o mesmo desenho que você viu lá em cima, só que deitado: o Git desenha de cima (mais novo) para baixo (mais antigo).</p>
+
+<div class="tip">
+<strong>Dá para pedir um branch específico</strong>
+<p>No lugar do <code>--all</code>, você pode dizer qual branch quer ver: <code>git log --oneline --graph doces</code> mostra o caminho do <code>doces</code> até o começo.</p>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --graph doces
+* e26a98a (doces) Adiciona a receita de beijinho
+* abceaaf Adiciona a receita de brigadeiro
+* c34349b Adiciona a receita de bolo
+* 700bbd5 Cria o README
+</pre>
+<p>Para o <code>doces</code>, a história é uma linha reta: a correção do forno, que aconteceu no <code>main</code>, não faz parte dela.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;printf 'Bolo de cenoura\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona a receita de bolo';;git switch -q -c doces;;printf 'Brigadeiro\n' &gt; brigadeiro.txt;;git add brigadeiro.txt;;git commit -q -m 'Adiciona a receita de brigadeiro';;printf 'Beijinho\n' &gt; beijinho.txt;;git add beijinho.txt;;git commit -q -m 'Adiciona a receita de beijinho';;git switch -q main;;echo 'Forno: 40 minutos' &gt;&gt; bolo.txt;;git commit -q -am 'Corrige o tempo de forno do bolo'" data-goal="ran:--graph,ran:--all,out:Adiciona a receita de beijinho" data-solucao="git log --oneline --graph --all">
+<p class="try-task"><strong>Missão:</strong> você está no <code>main</code> do repositório da Ana. Rode <code>git log --oneline</code> e repare que o brigadeiro e o beijinho não aparecem. Depois, desenhe o histórico de <strong>todos</strong> os branches.</p>
+</div>
+
+<hr>
+
+<h2>4. Depois do merge: os galhos se juntam</h2>
+<p>A Ana gostou dos doces e juntou o branch <code>doces</code> no <code>main</code> com um merge (veja <a href="git-merge.html">git merge</a> e <a href="merge-tres-vias.html">Merge de Três Vias</a>):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git merge doces -m "Junta o branch 'doces'"
+Merge made by the 'ort' strategy.
+ beijinho.txt   | 1 +
+ brigadeiro.txt | 1 +
+ 2 files changed, 2 insertions(+)
+ create mode 100644 beijinho.txt
+ create mode 100644 brigadeiro.txt
+$ git log --oneline --graph
+*   7b950b8 (HEAD -&gt; main) Junta o branch 'doces'
+|\
+| * e26a98a (doces) Adiciona a receita de beijinho
+| * abceaaf Adiciona a receita de brigadeiro
+* | c20285a Corrige o tempo de forno do bolo
+|/
+* c34349b Adiciona a receita de bolo
+* 700bbd5 Cria o README
+</pre>
+
+<p>Repare que agora nem foi preciso o <code>--all</code>: os commits do <code>doces</code> fazem parte da história do <code>main</code>, porque o merge os trouxe. As novidades do desenho:</p>
+
+<dl class="anatomy">
+  <dt>*   7b950b8 … Junta o branch 'doces'</dt><dd>O <strong>commit de merge</strong>. Os espaços depois do <code>*</code> abrem lugar para o risco que vem embaixo.</dd>
+  <dt>|\</dt><dd>O <strong>encontro</strong>: o commit de merge tem <strong>dois pais</strong>. O <code>|</code> desce para o pai da esquerda (o forno, que era o <code>main</code>) e o <code>\</code> desce para o pai da direita (o beijinho, que era o <code>doces</code>).</dd>
+  <dt>* | c20285a …</dt><dd>O commit do <code>main</code> agora está na coluna da <strong>esquerda</strong>, com o galho do <code>doces</code> passando ao lado (<code>|</code>). O Git reorganizou as colunas: o <strong>primeiro pai</strong> do merge (o <code>main</code>, o branch em que a Ana estava quando fez o merge) fica sempre na coluna da esquerda.</dd>
+  <dt>|/</dt><dd>A bifurcação, a mesma de antes: os dois galhos nasceram do bolo.</dd>
+</dl>
+
+<p>O desenho completo agora parece um "olho": a história se abre no bolo e se fecha no merge.</p>
+
+<pre>README --- bolo ----+--- forno do bolo ---------+--- merge   ← main (HEAD)
+                     \                          /
+                      brigadeiro --- beijinho -+              ← doces
+</pre>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;printf 'Bolo de cenoura\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona a receita de bolo';;git switch -q -c doces;;printf 'Brigadeiro\n' &gt; brigadeiro.txt;;git add brigadeiro.txt;;git commit -q -m 'Adiciona a receita de brigadeiro';;printf 'Beijinho\n' &gt; beijinho.txt;;git add beijinho.txt;;git commit -q -m 'Adiciona a receita de beijinho';;git switch -q main;;echo 'Forno: 40 minutos' &gt;&gt; bolo.txt;;git commit -q -am 'Corrige o tempo de forno do bolo'" data-goal="commits:6,head:main,ran:--graph" data-solucao="git merge doces -m 'Junta o branch doces';;git log --oneline --graph">
+<p class="try-task"><strong>Missão:</strong> junte o branch <code>doces</code> no <code>main</code> com <code>git merge doces</code> (dê uma mensagem com <code>-m</code>) e veja o desenho do histórico com <code>--graph</code>. Procure o <code>|\</code>.</p>
+</div>
+
+<hr>
+
+<h2>5. Mais um branch, e os atalhos</h2>
+<p>A Ana criou um terceiro branch, <code>salgados</code>, com a receita de coxinha, e voltou para o <code>main</code>. Com três branches, o desenho completo fica assim:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --graph --all
+* be7090d (salgados) Adiciona a receita de coxinha
+*   7b950b8 (HEAD -&gt; main) Junta o branch 'doces'
+|\
+| * e26a98a (doces) Adiciona a receita de beijinho
+| * abceaaf Adiciona a receita de brigadeiro
+* | c20285a Corrige o tempo de forno do bolo
+|/
+* c34349b Adiciona a receita de bolo
+* 700bbd5 Cria o README
+</pre>
+
+<p>O <code>salgados</code> nasceu do commit de merge e tem um commit a mais: por isso aparece logo acima dele, na mesma coluna.</p>
+
+<h3>Só os commits do "tronco": <code>--first-parent</code></h3>
+<p>Num projeto grande, os galhos podem ser tantos que o desenho vira um emaranhado. O <code>--first-parent</code> ("só o primeiro pai") segue apenas o primeiro pai de cada merge, que é o branch em que você estava quando fez o merge. O resultado é o "tronco" do <code>main</code>, sem os commits de dentro dos galhos:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --first-parent
+7b950b8 (HEAD -&gt; main) Junta o branch 'doces'
+c20285a Corrige o tempo de forno do bolo
+c34349b Adiciona a receita de bolo
+700bbd5 Cria o README
+</pre>
+
+<p>O brigadeiro e o beijinho sumiram da lista, mas o merge que os trouxe está lá. É um bom jeito de ver "o que entrou no <code>main</code>, um passo por vez".</p>
+
+<h3>Só os pontos importantes: <code>--simplify-by-decoration</code></h3>
+<p>Para ter só uma visão geral dos branches, peça apenas os commits que têm etiqueta (as "decorações"), mais os que são necessários para ligar o desenho:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --graph --all --simplify-by-decoration
+* be7090d (salgados) Adiciona a receita de coxinha
+* 7b950b8 (HEAD -&gt; main) Junta o branch 'doces'
+* e26a98a (doces) Adiciona a receita de beijinho
+* 700bbd5 Cria o README
+</pre>
+
+<h3>Limitando com <code>-n</code></h3>
+<p>Os filtros da aula <a href="log-filtros.html">git log: Filtros e Formatos</a> também valem com o <code>--graph</code>. Com <code>-3</code>, o desenho para no terceiro commit, mesmo no meio de um galho:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --graph --all -3
+* be7090d (salgados) Adiciona a receita de coxinha
+*   7b950b8 (HEAD -&gt; main) Junta o branch 'doces'
+|\
+| * e26a98a (doces) Adiciona a receita de beijinho
+</pre>
+
+<hr>
+
+<h2>6. Sem o <code>--oneline</code>, e com o seu formato</h2>
+<p>O <code>--graph</code> também funciona com o formato completo do <code>git log</code>: os riscos continuam na margem esquerda, ao lado de cada commit. Fica comprido (5 linhas por commit), então o <code>--oneline</code> é o parceiro de sempre. Um meio-termo é o <code>--format</code>, com o nome do autor no fim:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --graph --format='%h %s (%an)' --all
+* be7090d Adiciona a receita de coxinha (Ana Souza)
+*   7b950b8 Junta o branch 'doces' (Ana Souza)
+|\
+| * e26a98a Adiciona a receita de beijinho (Ana Souza)
+| * abceaaf Adiciona a receita de brigadeiro (Ana Souza)
+* | c20285a Corrige o tempo de forno do bolo (Ana Souza)
+|/
+* c34349b Adiciona a receita de bolo (Ana Souza)
+* 700bbd5 Cria o README (Ana Souza)
+</pre>
+
+<p>Com um <code>--format</code> próprio, as etiquetas dos branches somem: elas são parte do <code>--oneline</code> e do formato normal. Para tê-las no seu formato, use o código <code>%d</code> (de <em>decorations</em>, "enfeites"):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --format="%h%d %s" -3
+7b950b8 (HEAD -&gt; main) Junta o branch 'doces'
+c20285a Corrige o tempo de forno do bolo
+e26a98a (doces) Adiciona a receita de beijinho
+</pre>
+
+<hr>
+
+<h2>7. Um apelido: <code>git arvore</code></h2>
+<p>Digitar <code>git log --oneline --graph --all</code> várias vezes por dia cansa. Crie um apelido (veja <a href="alias.html">Apelidos</a>):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git config --global alias.arvore 'log --oneline --graph --all'
+$ git arvore
+* be7090d (salgados) Adiciona a receita de coxinha
+*   7b950b8 (HEAD -&gt; main) Junta o branch 'doces'
+|\
+| * e26a98a (doces) Adiciona a receita de beijinho
+| * abceaaf Adiciona a receita de brigadeiro
+* | c20285a Corrige o tempo de forno do bolo
+|/
+* c34349b Adiciona a receita de bolo
+* 700bbd5 Cria o README
+</pre>
+
+<dl class="anatomy">
+  <dt>git config --global</dt><dd>Guarda uma configuração para todos os seus repositórios (no arquivo <code>~/.gitconfig</code>).</dd>
+  <dt>alias.arvore</dt><dd>O nome do apelido: <code>git arvore</code> vai passar a existir.</dd>
+  <dt>'log --oneline --graph --all'</dt><dd>O que o apelido faz: o Git troca <code>arvore</code> por esse texto. Sem o <code>git</code> na frente.</dd>
+</dl>
+
+<p>Muita gente chama esse apelido de <code>git lg</code> ou <code>git tree</code>. O nome é você quem escolhe.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;printf 'Bolo de cenoura\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona a receita de bolo';;git switch -q -c doces;;printf 'Brigadeiro\n' &gt; brigadeiro.txt;;git add brigadeiro.txt;;git commit -q -m 'Adiciona a receita de brigadeiro';;printf 'Beijinho\n' &gt; beijinho.txt;;git add beijinho.txt;;git commit -q -m 'Adiciona a receita de beijinho';;git switch -q main;;echo 'Forno: 40 minutos' &gt;&gt; bolo.txt;;git commit -q -am 'Corrige o tempo de forno do bolo'" data-goal="ran:git config.*alias\.arvore,ran:^\s*git arvore" data-solucao="git config --global alias.arvore 'log --oneline --graph --all';;git arvore">
+<p class="try-task"><strong>Missão:</strong> crie o apelido <code>arvore</code> para <code>log --oneline --graph --all</code> e use-o: <code>git arvore</code>.</p>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de ver os galhos</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que mostra</th><th>Quando usar</th></tr>
+<tr><td><code>git log --oneline</code></td><td>Só o branch atual, em lista</td><td>Histórico do branch em que você está</td></tr>
+<tr><td><code>git log --oneline --all</code></td><td>Todos os branches, em lista (misturados)</td><td>Procurar um commit pelo nome, sem se importar com o galho</td></tr>
+<tr><td><code>git log --oneline --graph --all</code></td><td>Todos os branches, desenhados</td><td>Entender onde cada galho nasceu e onde se juntou (o mais útil)</td></tr>
+<tr><td><code>git log --oneline --graph NOME</code></td><td>O caminho de um branch</td><td>Ver só a história de um branch</td></tr>
+<tr><td><code>git log --oneline --first-parent</code></td><td>O "tronco", sem o interior dos galhos</td><td>Ver o que entrou no <code>main</code>, merge por merge</td></tr>
+<tr><td><code>git log --oneline --graph --all --simplify-by-decoration</code></td><td>Só as pontas dos branches</td><td>Visão geral rápida</td></tr>
+</table>
+</div>
+
+<p>Também existem programas que desenham o histórico com janelas e cores, como o <code>gitk</code> e as extensões dos editores de código (veja <a href="interfaces-graficas.html">Interfaces Gráficas</a>). Eles mostram o mesmo grafo; o <code>--graph</code> tem a vantagem de funcionar em qualquer terminal.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>"Sumiram" os commits do outro branch</strong>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+c20285a (HEAD -&gt; main) Corrige o tempo de forno do bolo
+c34349b Adiciona a receita de bolo
+700bbd5 Cria o README
+</pre>
+<p><strong>O que aconteceu:</strong> nada se perdeu. O <code>git log</code> mostra só a história do branch atual, e os commits do <code>doces</code> estão em outro galho.</p>
+<p><strong>Como confirmar:</strong> <code>git branch</code> lista os branches que existem (o <code>*</code> marca o atual):</p>
+<pre class="term" data-cwd="~/receitas">$ git branch
+  doces
+* main
+</pre>
+<p><strong>Como resolver:</strong> <code>git log --oneline --graph --all</code>, ou <code>git log --oneline doces</code> para ver só aquele branch.</p>
+</div>
+
+<div class="cenario">
+<strong>Nome do branch errado: <code>ambiguous argument</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --graph doce
+fatal: ambiguous argument 'doce': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git &lt;command&gt; [&lt;revision&gt;...] -- [&lt;file&gt;...]'
+</pre>
+<p><strong>O que aconteceu:</strong> não existe branch (nem commit, nem arquivo) chamado <code>doce</code>: o nome certo é <code>doces</code>. A mensagem diz "argumento ambíguo: revisão desconhecida ou caminho fora da pasta de trabalho".</p>
+<p><strong>Como resolver:</strong> confira o nome com <code>git branch</code> e use o <kbd>Tab</kbd> para completar.</p>
+</div>
+
+<div class="cenario">
+<strong>Opção escrita errado</strong>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --grpah
+fatal: argumento não reconhecido: --grpah
+</pre>
+<p><strong>O que aconteceu:</strong> um erro de digitação (<code>grpah</code> no lugar de <code>graph</code>, "gráfico" em inglês). O Git não tenta adivinhar e para.</p>
+<p><strong>Como resolver:</strong> corrija para <code>--graph</code>. Um apelido como o <code>git arvore</code> evita esse tipo de erro.</p>
+</div>
+
+<div class="cenario">
+<strong>O desenho é grande demais e "prende" o terminal</strong>
+<p>Num repositório com muitos commits, o <code>git log --graph</code> abre no paginador (<code>less</code>), e o prompt não volta.</p>
+<p><strong>Como resolver:</strong> use as setas ou o espaço para rolar e <kbd>q</kbd> para sair. Para ver só o começo, limite: <code>git log --oneline --graph --all -15</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>No desenho</th><th>Quer dizer</th></tr>
+<tr><td><code>*</code></td><td>Um commit</td></tr>
+<tr><td><code>|</code></td><td>Uma linha da história passando por ali</td></tr>
+<tr><td><code>|/</code></td><td>Bifurcação: um galho nasce (lendo de baixo para cima)</td></tr>
+<tr><td><code>|\</code> (abaixo de um <code>*</code>)</td><td>Merge: o commit de cima tem dois pais</td></tr>
+<tr><td><code>(HEAD -&gt; main)</code></td><td>Você está no branch <code>main</code>, e este é o último commit dele</td></tr>
+<tr><td><code>(doces)</code></td><td>A ponta do branch <code>doces</code></td></tr>
+</table>
+</div>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Opção</th><th>O que faz</th></tr>
+<tr><td><code>--graph</code></td><td>Desenha os galhos na margem esquerda</td></tr>
+<tr><td><code>--all</code></td><td>Mostra todos os branches, não só o atual</td></tr>
+<tr><td><code>--oneline</code></td><td>Uma linha por commit, com as etiquetas</td></tr>
+<tr><td><code>--first-parent</code></td><td>Segue só o primeiro pai de cada merge (o "tronco")</td></tr>
+<tr><td><code>--simplify-by-decoration</code></td><td>Só os commits com etiqueta (e os necessários para o desenho)</td></tr>
+<tr><td><code>%d</code> no <code>--format</code></td><td>As etiquetas dos branches no seu formato</td></tr>
+<tr><td><code>git config --global alias.arvore 'log --oneline --graph --all'</code></td><td>Cria o atalho <code>git arvore</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o comando</h3>
+<p>Desenhe o histórico de todos os branches, uma linha por commit:</p>
+<div class="ex-code">git log --oneline <input data-answer="--graph" aria-label="opção do desenho"> <input data-answer="--all" aria-label="opção de todos os branches"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">2. No desenho do <code>--graph</code>, o que quer dizer um <code>|\</code> logo abaixo de um <code>*</code>?</p>
+<label><input type="radio" name="q2"> Um commit apagado</label>
+<label><input type="radio" name="q2"> Que aquele commit é um merge, com dois pais</label>
+<label><input type="radio" name="q2"> Um conflito</label>
+<label><input type="radio" name="q2"> Um branch apagado</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. A Ana está no <code>main</code> e rodou <code>git log --oneline</code>. Os commits do branch <code>doces</code> (que ainda não foi juntado) não apareceram. Por quê?</p>
+<label><input type="radio" name="q3"> Eles foram apagados</label>
+<label><input type="radio" name="q3"> O <code>--oneline</code> esconde os commits de outros branches</label>
+<label><input type="radio" name="q3"> O <code>git log</code> mostra só a história do branch atual; falta o <code>--all</code> (ou o nome do branch)</label>
+<label><input type="radio" name="q3"> É preciso fazer <code>git pull</code> antes</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">4. O que mostra a etiqueta <code>(HEAD -&gt; main)</code>?</p>
+<label><input type="radio" name="q4"> Que você está no branch <code>main</code> e este é o último commit dele</label>
+<label><input type="radio" name="q4"> Que o commit foi enviado para o GitHub</label>
+<label><input type="radio" name="q4"> Que este é o primeiro commit do repositório</label>
+<label><input type="radio" name="q4"> Que o <code>main</code> vai ser apagado</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">5. Qual opção mostra só o "tronco" do <code>main</code>, sem os commits de dentro dos branches juntados?</p>
+<label><input type="radio" name="q5"> <code>--all</code></label>
+<label><input type="radio" name="q5"> <code>--graph</code></label>
+<label><input type="radio" name="q5"> <code>--simplify-by-decoration</code></label>
+<label><input type="radio" name="q5"> <code>--first-parent</code></label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O <code>git log</code> mostra só a história do branch atual; <code>--all</code> mostra todos os branches.</li>
+  <li><code>--graph</code> desenha os galhos: <code>*</code> é commit, <code>|/</code> é onde um galho nasce, <code>|\</code> é um merge (dois pais). Leia de baixo para cima.</li>
+  <li>As etiquetas mostram onde estão os branches: <code>(HEAD -&gt; main)</code> é onde você está.</li>
+  <li>Depois de um merge, os commits do outro branch passam a fazer parte da história, e o desenho fecha o "olho".</li>
+  <li><code>--first-parent</code> mostra o tronco; <code>--simplify-by-decoration</code>, só as pontas; <code>-n</code> limita o desenho.</li>
+  <li>O trio de todo dia é <code>git log --oneline --graph --all</code>: vale um apelido (<code>git arvore</code>).</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
