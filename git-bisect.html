@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git bisect — achando o commit que criou o bug por busca binária | Guia Git</title>
+<meta name="description" content="git bisect para iniciantes: a busca binária que acha o commit que introduziu um erro, com uma sessão real completa (bisect start, bad, good, reset), o bisect log, a automação com git bisect run e um script de teste, os códigos de saída, e os erros reais (bom e ruim trocados, esquecer o reset, bisect sem start).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">bisect</span></h1>
+
+<p class="intro">Na versão 1.0, a calculadora de ovos do site de receitas da Ana funcionava: 2 formas de bolo de cenoura, 6 ovos. Hoje ela diz <strong>5 ovos</strong>. Entre a 1.0 e hoje há vários commits, e ninguém lembra qual deles estragou a conta. Abrir um por um daria trabalho. O Git tem um comando que acha o culpado <strong>fazendo perguntas</strong>: o <code>git bisect</code> (de "bissecção", cortar ao meio). Você diz um commit bom e um ruim; ele vai cortando o caminho ao meio até sobrar um só.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A ideia da <strong>busca binária</strong>: por que poucos testes bastam para muitos commits.</li>
+  <li>Uma sessão completa à mão: <code>git bisect start</code>, <code>bad</code>, <code>good</code>, até o Git dizer <code>is the first bad commit</code>, e o <code>git bisect reset</code>.</li>
+  <li>Como ver o que foi respondido (<code>git bisect log</code>) e o estado do repositório durante a busca.</li>
+  <li>Como deixar o Git testar sozinho com <code>git bisect run</code> e um script de teste.</li>
+  <li>Os erros reais: bom e ruim trocados, resposta errada, esquecer o <code>reset</code>.</li>
+</ul>
+</div>
+
+<p>Todos os comandos desta aula rodaram no Git 2.53 do Ubuntu da Ana (usuária <code>ana</code>, computador <code>notebook</code>). As mensagens do <code>git bisect</code> ainda não têm tradução para o português nessa versão e saem em inglês; a aula traduz cada uma.</p>
+
+<hr>
+
+<h2>A ideia: adivinhar um número de 1 a 100</h2>
+<p>Alguém pensou num número de 1 a 100, e só responde "maior" ou "menor". Chutar 1, 2, 3… pode levar 100 tentativas. O jeito esperto é chutar o <strong>meio</strong>: 50. "Menor." Agora sobrou de 1 a 49: chute 25. "Maior." Sobrou de 26 a 49: chute 37… A cada pergunta, metade das possibilidades vai embora. Em no máximo <strong>7</strong> perguntas você acha qualquer número de 1 a 100. Isso é a <strong>busca binária</strong>.</p>
+<p>O <code>git bisect</code> faz o mesmo com os commits. Você diz:</p>
+<ul>
+  <li>um commit <strong>ruim</strong> (<em>bad</em>): onde o defeito já existe, normalmente o atual;</li>
+  <li>um commit <strong>bom</strong> (<em>good</em>): onde tudo funcionava, por exemplo a tag <code>v1.0</code>.</li>
+</ul>
+<p>O Git coloca na pasta o commit do <strong>meio</strong> do caminho e pergunta, em silêncio: "e aqui, está bom ou ruim?". Você testa e responde. Ele corta o caminho pela metade e repete, até sobrar <strong>o primeiro commit ruim</strong>, o que introduziu o defeito.</p>
+<pre>
+bom                                              ruim
+ v1.0 ── c1 ── c2 ── c3 ── c4 ── c5 ── HEAD
+                     ▲
+              1º teste: o meio. Se estiver ruim, o defeito está de c3 para trás;
+              se estiver bom, de c4 para a frente. Metade do caminho foi descartada.
+</pre>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Commits no caminho</th><th>Testes, no máximo (mais ou menos)</th></tr>
+<tr><td>10</td><td>4</td></tr>
+<tr><td>100</td><td>7</td></tr>
+<tr><td>1000</td><td>10</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>1. O repositório e o defeito</h2>
+<p>O histórico da Ana tem 10 commits; a tag <code>v1.0</code> está em <code>79398d7</code>. A calculadora é um pequeno script, <code>formas.sh</code>, que recebe o número de formas e diz quantos ovos usar (3 por forma):</p>
+<pre class="term" data-cwd="~/receitas">$ sh formas.sh 2
+Para 2 formas: 5 ovos                    « errado: 2 formas × 3 ovos = 6
+$ git log --oneline
+a06fdb5 Adiciona índice das receitas
+809abb2 Adiciona receita de mousse
+05b0fcf Melhora a descrição do README
+95263d8 Adiciona receita de quindim
+57a80f9 Guarda os ovos por forma numa variável
+9abbd4a Adiciona receita de brigadeiro
+79398d7 Adiciona receita de pudim         « aqui está a tag v1.0, que funcionava
+69e4c4f Adiciona calculadora de formas
+c8ee073 Adiciona receita de bolo de cenoura
+a56584f Cria o site de receitas
+</pre>
+<p>Você e a Ana podem até desconfiar do commit certo pelo título, mas num projeto de verdade são dezenas de commits com títulos inocentes, e o defeito pode vir de onde menos se espera. Vamos deixar o <code>bisect</code> provar.</p>
+
+<hr>
+
+<h2>2. Uma sessão completa, à mão</h2>
+
+<h3>2.1 Começar e dizer o ruim e o bom</h3>
+<pre class="term" data-cwd="~/receitas">$ git bisect start
+status: waiting for both good and bad commits
+$ git bisect bad
+status: waiting for good commit(s), bad commit known
+$ git bisect good v1.0
+Bisecting: 2 revisions left to test after this (roughly 2 steps)
+[95263d8b8dbc3c3fddbb9bbbd7c05dc7d77f0b94] Adiciona receita de quindim
+</pre>
+
+<dl class="anatomy">
+  <dt>git bisect start</dt><dd>Começa a busca. <code>status: waiting for both good and bad commits</code>: "esperando um commit bom e um ruim".</dd>
+  <dt>git bisect bad</dt><dd>"O commit atual é ruim." Sem nada depois, vale para o <code>HEAD</code> (aqui, <code>a06fdb5</code>, onde a Ana viu o 5 ovos). <code>status: waiting for good commit(s), bad commit known</code>: "esperando commit(s) bom(ns); o ruim já é conhecido".</dd>
+  <dt>git bisect good v1.0</dt><dd>"A <code>v1.0</code> é boa." Pode ser uma tag, um hash (<code>79398d7</code>) ou um branch.</dd>
+  <dt>Bisecting: 2 revisions left to test after this (roughly 2 steps)</dt><dd>"Bissectando: depois deste, restam 2 commits para testar (cerca de 2 passos)."</dd>
+  <dt>[95263d8…] Adiciona receita de quindim</dt><dd>O commit do meio do caminho, que o Git <strong>acabou de colocar na sua pasta</strong>. Os arquivos agora estão como estavam nesse commit. É ele que você vai testar.</dd>
+</dl>
+
+<h3>2.2 Testar e responder, até o fim</h3>
+<p>A cada passo, a Ana roda o teste (aqui, a calculadora) e responde <code>good</code> se o resultado está certo e <code>bad</code> se está errado:</p>
+<pre class="term" data-cwd="~/receitas">$ sh formas.sh 2
+Para 2 formas: 5 ovos                       « errado neste commit
+$ git bisect bad
+Bisecting: 0 revisions left to test after this (roughly 1 step)
+[57a80f9e3eb7fa18a1bfba97f1ae6b1bb36d169e] Guarda os ovos por forma numa variável
+$ sh formas.sh 2
+Para 2 formas: 5 ovos                       « errado de novo
+$ git bisect bad
+Bisecting: 0 revisions left to test after this (roughly 0 steps)
+[9abbd4a45550db6a12c40241b7c9bcbc870da0ed] Adiciona receita de brigadeiro
+$ sh formas.sh 2
+Para 2 formas: 6 ovos                       « certo!
+$ git bisect good
+57a80f9e3eb7fa18a1bfba97f1ae6b1bb36d169e is the first bad commit
+commit 57a80f9e3eb7fa18a1bfba97f1ae6b1bb36d169e
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Guarda os ovos por forma numa variável
+
+ formas.sh | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+</pre>
+<p>Siga o raciocínio do Git, passo a passo:</p>
+<ol class="passo">
+  <li>Ruim em <code>a06fdb5</code>, bom em <code>79398d7</code> (<code>v1.0</code>). Testou o meio, <code>95263d8</code> (quindim): <strong>ruim</strong>. Então o defeito nasceu no quindim ou antes dele: mousse, README e índice foram descartados.</li>
+  <li>Testou <code>57a80f9</code>: <strong>ruim</strong>. O culpado é ele ou o anterior.</li>
+  <li>Testou <code>9abbd4a</code> (brigadeiro): <strong>bom</strong>. Então o primeiro ruim é o seguinte, <code>57a80f9</code>.</li>
+</ol>
+<p><code>57a80f9… is the first bad commit</code>: "é o primeiro commit ruim". Embaixo, o Git mostra o commit, como um <a href="git-show.html">git show</a> resumido: só o arquivo <code>formas.sh</code> mudou. Foram <strong>3 testes</strong> para 6 commits suspeitos (os que vieram depois da <code>v1.0</code>). Para ver exatamente o que mudou:</p>
+<pre class="term" data-cwd="~/receitas">$ git show 57a80f9 -- formas.sh
+commit 57a80f9e3eb7fa18a1bfba97f1ae6b1bb36d169e
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Guarda os ovos por forma numa variável
+
+diff --git a/formas.sh b/formas.sh
+index 85f21dd..04fedd0 100644
+--- a/formas.sh
++++ b/formas.sh
+@@ -1,3 +1,4 @@
+ #!/bin/sh
+ # Quantos ovos para N formas de bolo de cenoura
+-echo "Para $1 formas: $(( $1 * 3 )) ovos"
++ovos_por_forma=3
++echo "Para $1 formas: $(( $1 + ovos_por_forma )) ovos"    « o * virou +
+</pre>
+<p>Achado: ao "só guardar os ovos numa variável", alguém trocou a multiplicação (<code>*</code>) por uma soma (<code>+</code>). 2 + 3 = 5.</p>
+
+<h3>2.3 Durante a busca: onde estou?</h3>
+<p>Enquanto o <code>bisect</code> não termina (e mesmo depois de achar o culpado, até o <code>reset</code>), o repositório fica num estado especial. O <code>git status</code> avisa:</p>
+<pre class="term" data-cwd="~/receitas">$ git status
+HEAD detached at 9abbd4a
+You are currently bisecting, started from branch 'main'.
+  (use "git bisect reset" para voltar ao ramo original)
+
+nothing to commit, working tree clean
+</pre>
+<dl class="anatomy">
+  <dt>HEAD detached at 9abbd4a</dt><dd>"HEAD destacado em <code>9abbd4a</code>": você não está em nenhum branch, e sim num commit solto, o último que o Git colocou na pasta (veja <a href="head-destacado.html">HEAD Destacado</a>).</dd>
+  <dt>You are currently bisecting, started from branch 'main'.</dt><dd>"Você está no meio de um bisect, começado a partir do branch <code>main</code>."</dd>
+  <dt>(use "git bisect reset" para voltar ao ramo original)</dt><dd>A dica de saída, meio em inglês, meio em português: use <code>git bisect reset</code> para voltar ao branch original.</dd>
+</dl>
+<p>O <code>git bisect log</code> mostra tudo o que foi respondido até agora, e serve para conferir se você não errou nenhuma resposta:</p>
+<pre class="term" data-cwd="~/receitas">$ git bisect log
+git bisect start
+# status: waiting for both good and bad commits
+# bad: [a06fdb57d3e93329669e6caa130c17a7cb460033] Adiciona índice das receitas
+git bisect bad a06fdb57d3e93329669e6caa130c17a7cb460033
+# status: waiting for good commit(s), bad commit known
+# good: [79398d7fc2a0b88268fd1eeeefdb920de4c6ef9a] Adiciona receita de pudim
+git bisect good 79398d7fc2a0b88268fd1eeeefdb920de4c6ef9a
+# bad: [95263d8b8dbc3c3fddbb9bbbd7c05dc7d77f0b94] Adiciona receita de quindim
+git bisect bad 95263d8b8dbc3c3fddbb9bbbd7c05dc7d77f0b94
+# bad: [57a80f9e3eb7fa18a1bfba97f1ae6b1bb36d169e] Guarda os ovos por forma numa variável
+git bisect bad 57a80f9e3eb7fa18a1bfba97f1ae6b1bb36d169e
+# good: [9abbd4a45550db6a12c40241b7c9bcbc870da0ed] Adiciona receita de brigadeiro
+git bisect good 9abbd4a45550db6a12c40241b7c9bcbc870da0ed
+# first bad commit: [57a80f9e3eb7fa18a1bfba97f1ae6b1bb36d169e] Guarda os ovos por forma numa variável
+</pre>
+<p>As linhas com <code>#</code> são comentários; as outras são os comandos, com o hash completo de cada resposta.</p>
+
+<h3>2.4 Terminar: <code>git bisect reset</code></h3>
+<pre class="term" data-cwd="~/receitas">$ git bisect reset
+Previous HEAD position was 9abbd4a Adiciona receita de brigadeiro
+Switched to branch 'main'
+$ git status
+No ramo main
+nothing to commit, working tree clean
+</pre>
+<p>"A posição anterior do HEAD era <code>9abbd4a</code>… Trocou para o branch <code>main</code>." A Ana está de volta onde começou, com todos os commits. Agora ela pode consertar a conta num commit novo (ou desfazer o culpado com <a href="git-revert.html">git revert</a>). <strong>Sempre termine com <code>git bisect reset</code></strong>, inclusive quando desistir no meio.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o site';;printf 'echo &quot;Para $1 formas: $(( $1 * 3 )) ovos&quot;\n' &gt; formas.sh;;git add formas.sh;;git commit -q -m 'Adiciona calculadora de formas';;git tag v1.0;;echo '# Pudim' &gt; pudim.md;;git add pudim.md;;git commit -q -m 'Adiciona pudim';;echo '# Quindim' &gt; quindim.md;;git add quindim.md;;git commit -q -m 'Adiciona quindim';;printf 'echo &quot;Para $1 formas: $(( $1 + 3 )) ovos&quot;\n' &gt; formas.sh;;git commit -q -a -m 'Simplifica a conta das formas';;echo '# Mousse' &gt; mousse.md;;git add mousse.md;;git commit -q -m 'Adiciona mousse';;echo '# Bolo' &gt; bolo.md;;git add bolo.md;;git commit -q -m 'Adiciona bolo';;echo '# Brigadeiro' &gt; brigadeiro.md;;git add brigadeiro.md;;git commit -q -m 'Adiciona brigadeiro'" data-goal="out:is the first bad commit,ran:bisect start" data-solucao="git bisect start;;git bisect bad;;git bisect good v1.0;;sh formas.sh 2;;git bisect bad;;sh formas.sh 2;;git bisect good">
+<p class="try-task"><strong>Missão:</strong> no repositório <code>receitas</code>, <code>sh formas.sh 2</code> diz <code>5 ovos</code>, mas na tag <code>v1.0</code> dizia <code>6 ovos</code>. Ache o commit culpado com <code>git bisect</code>: <code>git bisect start</code>, <code>git bisect bad</code>, <code>git bisect good v1.0</code>; depois, a cada passo, rode <code>sh formas.sh 2</code> e responda <code>git bisect good</code> (6 ovos) ou <code>git bisect bad</code> (5 ovos), até aparecer <code>is the first bad commit</code>. Não esqueça do <code>git bisect reset</code> depois de ler o resultado.</p>
+</div>
+
+<hr>
+
+<h2>3. Deixe o Git testar sozinho: <code>git bisect run</code></h2>
+<p>Responder à mão é fácil com 3 passos, mas cansa com 10 e é fácil errar uma resposta. Se o teste pode ser feito por um <strong>script</strong>, o Git roda o script em cada passo e decide sozinho pelo <strong>código de saída</strong> dele (o <code>$?</code>): <strong>0</strong> quer dizer bom; <strong>1</strong> (ou outro número de 1 a 127, menos o 125) quer dizer ruim. A Ana escreveu um teste de 3 linhas:</p>
+<pre class="term" data-cwd="~/receitas">$ cat teste.sh
+#!/bin/sh
+# Teste: 2 formas precisam de 6 ovos
+resultado=$(sh formas.sh 2)
+echo "Testando: $resultado"
+[ "$resultado" = "Para 2 formas: 6 ovos" ]
+$ sh teste.sh
+Testando: Para 2 formas: 5 ovos
+$ echo $?
+1                                          « 1 = ruim, como esperado no commit atual
+$ git status --short
+?? teste.sh                                « o teste não é rastreado: ele não muda quando o Git troca de commit
+</pre>
+<p>A última linha do script, <code>[ … = … ]</code>, compara o resultado com o esperado e devolve 0 se for igual e 1 se for diferente; como é a última, esse vira o código de saída do script. O <code>teste.sh</code> fica <strong>fora do Git</strong> de propósito (<code>??</code> = não rastreado): se ele estivesse no histórico, em commits antigos ele nem existiria.</p>
+
+<pre class="term" data-cwd="~/receitas">$ git bisect start HEAD v1.0
+Bisecting: 2 revisions left to test after this (roughly 2 steps)
+[95263d8b8dbc3c3fddbb9bbbd7c05dc7d77f0b94] Adiciona receita de quindim
+$ git bisect run sh teste.sh
+running 'sh' 'teste.sh'
+Testando: Para 2 formas: 5 ovos
+Bisecting: 0 revisions left to test after this (roughly 1 step)
+[57a80f9e3eb7fa18a1bfba97f1ae6b1bb36d169e] Guarda os ovos por forma numa variável
+running 'sh' 'teste.sh'
+Testando: Para 2 formas: 5 ovos
+Bisecting: 0 revisions left to test after this (roughly 0 steps)
+[9abbd4a45550db6a12c40241b7c9bcbc870da0ed] Adiciona receita de brigadeiro
+running 'sh' 'teste.sh'
+Testando: Para 2 formas: 6 ovos
+57a80f9e3eb7fa18a1bfba97f1ae6b1bb36d169e is the first bad commit
+commit 57a80f9e3eb7fa18a1bfba97f1ae6b1bb36d169e
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Guarda os ovos por forma numa variável
+
+ formas.sh | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+bisect found first bad commit
+$ git bisect reset
+Previous HEAD position was 9abbd4a Adiciona receita de brigadeiro
+Switched to branch 'main'
+</pre>
+
+<dl class="anatomy">
+  <dt>git bisect start HEAD v1.0</dt><dd>Atalho: <code>start</code> já com o ruim (<code>HEAD</code>) e o bom (<code>v1.0</code>), nessa ordem. Substitui os três comandos da seção 2.</dd>
+  <dt>git bisect run sh teste.sh</dt><dd>"Rode <code>sh teste.sh</code> em cada passo e responda pelo código de saída." Tudo o que vem depois do <code>run</code> é o comando de teste.</dd>
+  <dt>running 'sh' 'teste.sh'</dt><dd>"Rodando o teste" no commit da vez. Em seguida aparece o que o seu script escreveu (<code>Testando: …</code>).</dd>
+  <dt>bisect found first bad commit</dt><dd>"O bisect achou o primeiro commit ruim." O mesmo resultado da busca à mão, sem nenhuma resposta digitada.</dd>
+</dl>
+
+<div class="tip">
+<strong>Os códigos de saída que o <code>bisect run</code> entende</strong>
+<p><strong>0</strong> = bom · <strong>1 a 127, exceto 125</strong> = ruim · <strong>125</strong> = "não dá para testar este commit, pule" (o mesmo que <code>git bisect skip</code>) · <strong>acima de 127</strong> = interrompe a busca. Use o 125 quando um commit nem compila ou não tem o arquivo que o teste usa. (Fonte: a documentação oficial, <a href="https://git-scm.com/docs/git-bisect">git-scm.com/docs/git-bisect</a>.)</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o site';;printf 'echo &quot;Para $1 formas: $(( $1 * 3 )) ovos&quot;\n' &gt; formas.sh;;git add formas.sh;;git commit -q -m 'Adiciona calculadora de formas';;git tag v1.0;;echo '# Pudim' &gt; pudim.md;;git add pudim.md;;git commit -q -m 'Adiciona pudim';;echo '# Quindim' &gt; quindim.md;;git add quindim.md;;git commit -q -m 'Adiciona quindim';;printf 'echo &quot;Para $1 formas: $(( $1 + 3 )) ovos&quot;\n' &gt; formas.sh;;git commit -q -a -m 'Simplifica a conta das formas';;echo '# Mousse' &gt; mousse.md;;git add mousse.md;;git commit -q -m 'Adiciona mousse';;echo '# Bolo' &gt; bolo.md;;git add bolo.md;;git commit -q -m 'Adiciona bolo';;echo '# Brigadeiro' &gt; brigadeiro.md;;git add brigadeiro.md;;git commit -q -m 'Adiciona brigadeiro';;printf 'r=$(sh formas.sh 2)\necho &quot;Testando: $r&quot;\n[ &quot;$r&quot; = &quot;Para 2 formas: 6 ovos&quot; ]\n' &gt; ../teste.sh" data-goal="out:is the first bad commit,ran:bisect run" data-solucao="git bisect start HEAD v1.0;;git bisect run sh ../teste.sh">
+<p class="try-task"><strong>Missão:</strong> agora sem responder à mão. Já existe um teste pronto, <code>../teste.sh</code> (fora do repositório; veja com <code>cat ../teste.sh</code>). Comece o bisect com o ruim e o bom no mesmo comando (<code>git bisect start HEAD v1.0</code>) e deixe o Git achar o culpado com <code>git bisect run sh ../teste.sh</code>.</p>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Para</th><th>Comando</th><th>Quando usar</th></tr>
+<tr><td>Começar dizendo ruim e bom de uma vez</td><td><code>git bisect start RUIM BOM</code></td><td>Sempre que você já sabe os dois.</td></tr>
+<tr><td>Responder à mão</td><td><code>git bisect good</code> / <code>git bisect bad</code></td><td>Quando o teste é olhar a página, clicar, conferir com os olhos.</td></tr>
+<tr><td>Pular um commit que não dá para testar</td><td><code>git bisect skip</code></td><td>O commit não roda por outro motivo.</td></tr>
+<tr><td>Automático</td><td><code>git bisect run comando…</code></td><td>Quando o teste cabe num script (código de saída 0 = bom).</td></tr>
+<tr><td>Palavras diferentes de bom/ruim</td><td><code>git bisect old</code> / <code>git bisect new</code></td><td>Quando você procura uma <strong>mudança</strong> que não é um defeito ("quando a receita passou a usar forno elétrico?"): <code>old</code> = antes da mudança, <code>new</code> = depois.</td></tr>
+<tr><td>Ver as respostas dadas</td><td><code>git bisect log</code></td><td>Conferir ou guardar a sessão.</td></tr>
+<tr><td>Sair</td><td><code>git bisect reset</code></td><td>Sempre, no fim ou para desistir.</td></tr>
+</table>
+</div>
+<p>Sem o <code>bisect</code>, a alternativa é procurar o culpado por pistas: <a href="git-blame.html">git blame</a> (quem mudou esta linha?) e <a href="buscar-historico.html">git log -S</a> (em que commit este texto apareceu?). Eles são ótimos quando você sabe <strong>qual linha</strong> está errada; o <code>bisect</code> brilha quando você só sabe <strong>que</strong> algo está errado.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Respondi errado no meio do caminho</strong>
+<p>Numa primeira tentativa, a Ana se distraiu: o quindim deu <code>5 ovos</code> e ela respondeu <code>good</code>.</p>
+<pre class="term" data-cwd="~/receitas">$ sh formas.sh 2
+Para 2 formas: 5 ovos
+$ git bisect good                          « resposta errada: 5 ovos é ruim
+Bisecting: 0 revisions left to test after this (roughly 1 step)
+[809abb21fa431f5ee7962533ea8fb571f6c99089] Adiciona receita de mousse
+</pre>
+<p>Ela continuou respondendo certo dali em diante, e o Git acusou um inocente:</p>
+<pre class="term" data-cwd="~/receitas">$ sh formas.sh 2
+Para 2 formas: 5 ovos
+$ git bisect bad
+Bisecting: 0 revisions left to test after this (roughly 0 steps)
+[05b0fcf7c89b8d4938c1f186c63d8bbd631a2ebb] Melhora a descrição do README
+$ sh formas.sh 2
+Para 2 formas: 5 ovos
+$ git bisect bad
+05b0fcf7c89b8d4938c1f186c63d8bbd631a2ebb is the first bad commit
+commit 05b0fcf7c89b8d4938c1f186c63d8bbd631a2ebb
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Melhora a descrição do README
+
+ README.md | 2 ++
+ 1 file changed, 2 insertions(+)
+</pre>
+<p><strong>O que aconteceu:</strong> o Git confia nas respostas. Um <code>good</code> errado descarta justamente a metade onde estava o culpado. <strong>Como desconfiar:</strong> o "culpado" só mexeu no <code>README.md</code>, que nada tem a ver com a conta. <strong>Como confirmar:</strong> o <code>git bisect log</code> mostra cada resposta com o commit. <strong>Como resolver:</strong> <code>git bisect reset</code> e comece de novo, com mais atenção, ou use o <code>git bisect run</code>, que não se distrai.</p>
+</div>
+
+<div class="cenario">
+<strong>Troquei o bom e o ruim</strong>
+<pre class="term" data-cwd="~/receitas">$ git bisect start
+status: waiting for both good and bad commits
+$ git bisect good
+status: waiting for bad commit, 1 good commit known
+$ git bisect bad v1.0
+Some good revs are not ancestors of the bad rev.
+git bisect cannot work properly in this case.
+Maybe you mistook good and bad revs?
+</pre>
+<p>"Alguns commits bons não são ancestrais do commit ruim. O <code>git bisect</code> não funciona direito nesse caso. Será que você confundiu os bons e os ruins?" O bom tem de ser <strong>mais antigo</strong> que o ruim. <strong>Como resolver:</strong> <code>git bisect reset</code> e recomece na ordem certa. Se você está procurando quando algo <strong>passou a funcionar</strong> (o contrário de um defeito), use as palavras <code>old</code> e <code>new</code>, que não confundem.</p>
+</div>
+
+<div class="cenario">
+<strong>Esqueci o <code>git bisect reset</code></strong>
+<p>Sintoma: o <code>git status</code> mostra <code>HEAD detached at …</code> e <code>You are currently bisecting</code>, e os seus commits mais novos "sumiram" da pasta. Eles não sumiram: a pasta só está num commit antigo. <strong>Como resolver:</strong> <code>git bisect reset</code> leva você de volta ao branch onde começou. Não faça commits durante o bisect: eles ficariam num HEAD destacado.</p>
+</div>
+
+<div class="cenario">
+<strong><code>You need to start by "git bisect start"</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git bisect bad
+You need to start by "git bisect start"
+
+Do you want me to do it for you [Y/n]? n
+</pre>
+<p>"Você precisa começar com <code>git bisect start</code>. Quer que eu faça isso por você [S/n]?" Você respondeu <code>good</code> ou <code>bad</code> sem ter começado (ou depois do <code>reset</code>). Responder <kbd>Enter</kbd> ou <code>Y</code> começa o bisect ali mesmo; com <code>n</code>, nada acontece. (Quando o Git não está ligado a um terminal, como num script, ele não faz a pergunta.)</p>
+</div>
+
+<div class="cenario">
+<strong>O teste do <code>bisect run</code> sumiu no meio do caminho</strong>
+<p>Se o script de teste é um arquivo <strong>rastreado</strong> e foi criado depois do commit bom, nos commits antigos ele não existe: o <code>sh teste.sh</code> falha com "arquivo não encontrado", e o Git conta isso como <strong>ruim</strong>. Resultado errado, sem aviso. <strong>Como evitar:</strong> deixe o teste fora do repositório (<code>../teste.sh</code>) ou não rastreado, como a Ana fez.</p>
+</div>
+
+<hr>
+
+<h2>Referência</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git bisect start</code></td><td>Começa a busca</td></tr>
+<tr><td><code>git bisect start RUIM BOM</code></td><td>Começa já com o ruim e o bom</td></tr>
+<tr><td><code>git bisect bad [commit]</code></td><td>Marca como ruim (sem commit: o atual)</td></tr>
+<tr><td><code>git bisect good [commit]</code></td><td>Marca como bom (sem commit: o atual)</td></tr>
+<tr><td><code>git bisect skip</code></td><td>Pula o commit atual</td></tr>
+<tr><td><code>git bisect run comando…</code></td><td>Testa sozinho: 0 = bom, 125 = pular, 1–127 = ruim</td></tr>
+<tr><td><code>git bisect log</code></td><td>Mostra as respostas dadas</td></tr>
+<tr><td><code>git bisect reset</code></td><td>Termina e volta ao branch original</td></tr>
+<tr><td><code>git bisect old</code> / <code>new</code></td><td>Sinônimos de <code>good</code>/<code>bad</code> para procurar uma mudança qualquer</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete a sessão</h3>
+<div class="ex-code">git bisect <input data-answer="start" aria-label="subcomando para começar"><br>git bisect <input data-answer="bad" aria-label="marca o atual como ruim"><br>git bisect <input data-answer="good" aria-label="marca a v1.0 como boa"> v1.0<br>…<br>git bisect <input data-answer="reset" aria-label="subcomando para terminar"></div>
+</div>
+
+<div class="exercise">
+<h3>2. Código de saída</h3>
+<p>No <code>git bisect run</code>, que código de saída o script deve devolver quando o commit está <strong>bom</strong>?</p>
+<div class="ex-code">exit <input data-answer="0" aria-label="código de saída"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. Entre o commit bom e o ruim há cerca de 1000 commits. Quantos testes, mais ou menos, o <code>git bisect</code> precisa?</p>
+<label><input type="radio" name="q3"> 500</label>
+<label><input type="radio" name="q3"> 10</label>
+<label><input type="radio" name="q3"> 100</label>
+<label><input type="radio" name="q3"> 1000</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. O <code>git status</code> diz <code>You are currently bisecting</code>. O que fazer para voltar ao branch?</p>
+<label><input type="radio" name="q4"> <code>git switch -</code></label>
+<label><input type="radio" name="q4"> <code>git reset --hard</code></label>
+<label><input type="radio" name="q4"> Apagar a pasta e clonar de novo</label>
+<label><input type="radio" name="q4"> <code>git bisect reset</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. O bisect apontou como culpado um commit que só mudou o README, mas o defeito é numa conta do site. O que provavelmente aconteceu?</p>
+<label><input type="radio" name="q5"> Alguma resposta <code>good</code>/<code>bad</code> foi dada errada; confira com <code>git bisect log</code></label>
+<label><input type="radio" name="q5"> O README quebrou a conta</label>
+<label><input type="radio" name="q5"> O <code>git bisect</code> sempre aponta o commit seguinte ao culpado</label>
+<label><input type="radio" name="q5"> Faltou o <code>git bisect skip</code></label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git bisect</code> acha o commit que introduziu um defeito por <strong>busca binária</strong>: a cada teste, metade dos suspeitos é descartada (1000 commits ≈ 10 testes).</li>
+  <li>À mão: <code>git bisect start</code>, <code>git bisect bad</code> (o atual), <code>git bisect good v1.0</code>; teste o commit que o Git colocou na pasta e responda <code>good</code> ou <code>bad</code> até aparecer <code>is the first bad commit</code>.</li>
+  <li>Durante a busca você está num HEAD destacado; <code>git bisect log</code> mostra as respostas; <strong><code>git bisect reset</code></strong> termina e volta ao branch.</li>
+  <li>Automático: <code>git bisect start RUIM BOM</code> e <code>git bisect run sh teste.sh</code>; o script responde pelo código de saída (0 bom, 125 pular, 1–127 ruim). Deixe o teste fora do Git.</li>
+  <li>Uma resposta errada leva a um culpado errado; bom e ruim trocados dão <code>Maybe you mistook good and bad revs?</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
