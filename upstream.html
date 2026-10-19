@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git upstream — o branch de rastreamento | Guia Git</title>
+<meta name="description" content="O que é o upstream (branch de rastreamento) no Git: o par entre main e origin/main, como ver com git branch -vv (ahead, behind, gone), como configurar com git push -u e git branch -u (--set-upstream-to), o atalho @{u}, git switch criando branch a partir do remoto, e os erros reais: no upstream configured, upstream is gone.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Branch de Rastreamento (upstream)</span></h1>
+
+<p class="intro">Por que, depois do primeiro <code>git push -u origin main</code>, basta digitar <code>git push</code> e <code>git pull</code>? E como o <code>git status</code> sabe dizer "à frente de 'origin/main' por 1"? Porque o seu <code>main</code> ganhou um <strong>par</strong> no remoto. Esse par se chama <strong>upstream</strong> (em inglês, "rio acima": de onde vem a água), ou <strong>branch de rastreamento</strong>. Nesta aula você aprende a ver, criar, trocar e apagar esse par.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é o upstream e o que ele permite: <code>push</code> e <code>pull</code> sem argumentos, e o "à frente/atrás" do <code>git status</code>.</li>
+  <li>Como ver o par de cada branch com <code>git branch -vv</code> (e ler <code>ahead</code>, <code>behind</code> e <code>gone</code>).</li>
+  <li>As formas de criar o par: <code>git push -u</code>, <code>git branch -u</code> e o <code>git switch</code> que cria o branch a partir do remoto.</li>
+  <li>O atalho <code>@{u}</code> e onde o Git anota o par.</li>
+  <li>Os erros: <code>no upstream configured</code>, <code>There is no tracking information</code> e <code>the upstream is gone</code>.</li>
+</ul>
+</div>
+
+<hr>
+
+<h2>A ideia antes do comando</h2>
+<p>Pense em duas pessoas que combinam de dividir um caderno: cada uma tem a sua cópia, e elas anotam na primeira página "a minha cópia é par da cópia da Maria". Com essa anotação, você não precisa perguntar "de quem eu copio?" toda vez, e consegue comparar: "estou duas páginas na frente dela".</p>
+<p>No Git, a anotação diz: "o meu <code>main</code> é par do <code>origin/main</code>". Com ela:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Com upstream</th><th>Sem upstream</th></tr>
+<tr><td><code>git push</code> sabe para onde enviar</td><td><code>fatal: The current branch … has no upstream branch</code></td></tr>
+<tr><td><code>git pull</code> sabe de onde puxar</td><td><code>There is no tracking information for the current branch</code></td></tr>
+<tr><td><code>git status</code> diz se você está à frente, atrás ou em dia</td><td><code>git status</code> não fala nada sobre o remoto</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Vendo os pares: <code>git branch -vv</code></h2>
+<dl class="anatomy">
+  <dt>git branch</dt><dd>Lista os branches (veja <a href="git-branch.html">git branch</a>).</dd>
+  <dt>-v</dt><dd><em>verbose</em> ("detalhado"): mostra também o último commit de cada branch.</dd>
+  <dt>-vv</dt><dd>Mais detalhado ainda: mostra, entre colchetes, o <strong>upstream</strong> de cada branch e a distância até ele.</dd>
+</dl>
+
+<pre class="term" data-cwd="~/receitas">$ git branch -vv
+* main 4f68d0e [origin/main] Adiciona receita de bolo        « o par do main é origin/main</pre>
+
+<p>A Ana cria um branch novo. Ele nasce <strong>sem par</strong>: repare na falta dos colchetes, e no <code>git status</code> sem a linha sobre o remoto:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch -c salgados
+Switched to a new branch 'salgados'
+$ git branch -vv
+  main     4f68d0e [origin/main] Adiciona receita de bolo
+* salgados 4f68d0e Adiciona receita de bolo                   « sem colchetes: sem upstream
+$ git status
+No ramo salgados
+nothing to commit, working tree clean                         « nada sobre o remoto</pre>
+
+<hr>
+
+<h2>Criando o par</h2>
+
+<h3>Forma 1: no primeiro push, com <code>-u</code></h3>
+<p>É a forma mais comum: enviar o branch e criar o par no mesmo comando (veja <a href="git-push.html">git push</a>).</p>
+<pre class="term" data-cwd="~/receitas">$ git push -u origin salgados
+Enumerating objects: 6, done.
+Counting objects: 100% (6/6), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (3/3), done.
+Writing objects: 100% (6/6), 504 bytes | 504.00 KiB/s, done.
+Total 6 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+remote:
+remote: Create a pull request for 'salgados' on GitHub by visiting:
+remote:      https://github.com/ana-souza/receitas/pull/new/salgados
+remote:
+To https://github.com/ana-souza/receitas.git
+ * [new branch]      salgados -&gt; salgados
+branch 'salgados' set up to track 'origin/salgados'.          « o par foi criado
+$ git branch -vv
+  main     4f68d0e [origin/main] Adiciona receita de bolo
+* salgados 4f68d0e [origin/salgados] Adiciona receita de bolo  « agora tem colchetes</pre>
+<p><code>branch 'salgados' set up to track 'origin/salgados'</code> = "o branch <code>salgados</code> foi configurado para rastrear o <code>origin/salgados</code>".</p>
+
+<h3>Forma 2: depois, com <code>git branch -u</code></h3>
+<p>A Ana enviou o branch <code>doces</code> e esqueceu o <code>-u</code>. O branch existe no GitHub, mas o dela continua sem par:</p>
+<pre class="term" data-cwd="~/receitas">$ git switch -c doces
+Switched to a new branch 'doces'
+$ git push -q origin doces                                    « sem -u
+remote:
+remote: Create a pull request for 'doces' on GitHub by visiting:
+remote:      https://github.com/ana-souza/receitas/pull/new/doces
+remote:
+$ git branch -vv
+  bebidas  ee0aa0e [origin/bebidas] Adiciona limonada
+* doces    382be8d Adiciona receita de pudim                   « sem par
+  main     382be8d [origin/main: ahead 1, behind 1] Adiciona receita de pudim
+  salgados 4f68d0e [origin/salgados: gone] Adiciona receita de bolo
+$ git branch -u origin/doces
+branch 'doces' set up to track 'origin/doces'.
+$ git branch -vv
+  bebidas  ee0aa0e [origin/bebidas] Adiciona limonada
+* doces    382be8d [origin/doces] Adiciona receita de pudim    « par criado, sem enviar nada
+  main     382be8d [origin/main: ahead 1, behind 1] Adiciona receita de pudim
+  salgados 4f68d0e [origin/salgados: gone] Adiciona receita de bolo
+$ git status
+No ramo doces
+Your branch is up to date with 'origin/doces'.
+
+nothing to commit, working tree clean</pre>
+<dl class="anatomy">
+  <dt>git branch -u origin/doces</dt><dd>"Ligue o branch atual ao <code>origin/doces</code>". <code>-u</code> é a forma curta de <code>--set-upstream-to=</code>; a forma longa é <code>git branch --set-upstream-to=origin/doces</code>.</dd>
+  <dt>git branch -u origin/doces outro</dt><dd>Com um nome no fim, liga <strong>outro</strong> branch, sem precisar trocar para ele.</dd>
+</dl>
+<p>(Os outros branches da lista, <code>bebidas</code>, <code>main</code> e <code>salgados</code>, aparecem nas próximas seções.)</p>
+
+<h3>Forma 3: o <code>git switch</code> cria o branch já com par</h3>
+<p>O Bruno enviou o branch <code>bebidas</code>. Depois de um <code>git fetch</code>, a Ana tem o <code>origin/bebidas</code>, mas não um <code>bebidas</code> dela. Basta trocar para ele pelo nome:</p>
+<pre class="term" data-cwd="~/receitas">$ git switch bebidas
+branch 'bebidas' set up to track 'origin/bebidas'.             « criou e já ligou
+Switched to a new branch 'bebidas'</pre>
+<p>Como não existe um <code>bebidas</code> local, mas existe um <code>origin/bebidas</code>, o Git entende que você quer trabalhar no branch do remoto: cria o seu <code>bebidas</code> no mesmo commit e já o liga ao <code>origin/bebidas</code>. O <code>git clone</code> faz a mesma coisa com o <code>main</code>: por isso, num repositório clonado, o <code>main</code> já nasce com par.</p>
+
+<hr>
+
+<h2>Lendo o "à frente" e o "atrás"</h2>
+<p>O <code>git branch -vv</code> e o <code>git status</code> comparam o seu branch com a <strong>lembrança</strong> do remoto (<code>origin/main</code>), que só se atualiza com <code>fetch</code>, <code>pull</code> ou <code>push</code>. Depois de um <code>git fetch</code> que trouxe o commit do óleo do Bruno:</p>
+<pre class="term" data-cwd="~/receitas">$ git fetch -q
+$ git branch -vv
+* main     4f68d0e [origin/main: behind 1] Adiciona receita de bolo     « 1 atrás
+  salgados 4f68d0e [origin/salgados] Adiciona receita de bolo</pre>
+<p>E depois que a Ana fez o commit do pudim, sem ainda ter puxado o do Bruno:</p>
+<pre class="term" data-cwd="~/receitas">$ git branch -vv
+* main     382be8d [origin/main: ahead 1, behind 1] Adiciona receita de pudim   « 1 à frente e 1 atrás
+  salgados 4f68d0e [origin/salgados] Adiciona receita de bolo
+$ git status
+No ramo main
+O seu branch e 'origin/main' divergiram-se,
+e cada um tem 1 e 1 submissões, respectivamente.
+  (use "git pull" if you want to integrate the remote branch with yours)
+
+nothing to commit, working tree clean</pre>
+
+<div class="table-wrap">
+<table class="ref">
+<tr><th>No <code>git branch -vv</code></th><th>No <code>git status</code></th><th>O que fazer</th></tr>
+<tr><td><code>[origin/main]</code></td><td><code>Your branch is up to date with 'origin/main'.</code></td><td>Nada: em dia</td></tr>
+<tr><td><code>[origin/main: ahead 2]</code></td><td><code>Seu ramo está à frente de 'origin/main' por 2 submissões.</code></td><td><code>git push</code></td></tr>
+<tr><td><code>[origin/main: behind 1]</code></td><td><code>Seu ramo está atrás de 'origin/main' em 1 submissão, e pode ser avançado.</code></td><td><code>git pull</code></td></tr>
+<tr><td><code>[origin/main: ahead 1, behind 1]</code></td><td><code>O seu branch e 'origin/main' divergiram-se …</code></td><td><code>git pull</code> (escolhendo merge ou rebase), depois <code>git push</code></td></tr>
+<tr><td><code>[origin/salgados: gone]</code></td><td><code>… but the upstream is gone.</code></td><td>Veja "Quando dá errado"</td></tr>
+<tr><td>sem colchetes</td><td>nenhuma linha sobre o remoto</td><td><code>git push -u</code> ou <code>git branch -u</code></td></tr>
+</table>
+</div>
+<p class="small">(<em>ahead</em> = "à frente"; <em>behind</em> = "atrás"; <em>gone</em> = "sumiu". Como a tradução brasileira do Git não está completa, o <code>git branch -vv</code> mostra essas palavras em inglês mesmo num sistema em português.)</p>
+
+<hr>
+
+<h2>O atalho <code>@{u}</code></h2>
+<p>Em qualquer comando que aceita um nome de branch, <code>@{u}</code> (ou <code>@{upstream}</code>) quer dizer "o upstream do branch atual". Assim você não precisa lembrar se o par é <code>origin/main</code> ou outro:</p>
+<pre class="term" data-cwd="~/receitas">$ git log --oneline -1 @{u}
+3dbde00 (origin/main, origin/HEAD) Adiciona óleo ao bolo       « o último commit do par
+$ git rev-parse --abbrev-ref @{u}
+origin/main                                                    « qual é o par</pre>
+<p>Combinações úteis: <code>git log @{u}..</code> (o que eu tenho e o par não: o que o push vai enviar) e <code>git log ..@{u}</code> (o que o par tem e eu não: o que o pull vai trazer).</p>
+
+<h2>Onde o Git anota o par</h2>
+<p>No arquivo <code>.git/config</code> do repositório. Não precisa editar à mão, mas vale a pena olhar uma vez:</p>
+<pre class="term" data-cwd="~/receitas">$ cat .git/config
+[core]
+        repositoryformatversion = 0
+        filemode = true
+        bare = false
+        logallrefupdates = true
+[remote "origin"]                                         « o remoto
+        url = https://github.com/ana-souza/receitas.git
+        fetch = +refs/heads/*:refs/remotes/origin/*
+[branch "main"]                                           « o par do main:
+        remote = origin                                   « o remoto é o origin
+        merge = refs/heads/main                           « e o branch de lá é o main</pre>
+
+<hr>
+
+<h2>Experimente</h2>
+<p>Nos terminais abaixo, o "GitHub" é uma pasta de treino (<code>~/servidor/receitas.git</code>).</p>
+
+<div class="try" data-setup="git init -q --bare ~/servidor/receitas.git;;mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas' &gt; README.md;;git add README.md;;git commit -qm 'Adiciona README';;git remote add origin ~/servidor/receitas.git;;git push -q origin main" data-goal="ran:git branch,out:[origin/main]" data-solucao="git branch -u origin/main;;git branch -vv">
+<p class="try-task"><strong>Missão:</strong> a Ana enviou o <code>main</code> <strong>sem</strong> o <code>-u</code>. Confira com <code>git branch -vv</code> que ele está sem par, ligue o <code>main</code> ao <code>origin/main</code> sem enviar nada e rode <code>git branch -vv</code> de novo para ver os colchetes.</p>
+</div>
+
+<div class="try" data-setup="git init -q --bare ~/servidor/receitas.git;;mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas' &gt; README.md;;git add README.md;;git commit -qm 'Adiciona README';;git remote add origin ~/servidor/receitas.git;;git push -q -u origin main;;git switch -q -c doces;;echo 'Brigadeiro' &gt; brigadeiro.txt;;git add brigadeiro.txt;;git commit -qm 'Adiciona brigadeiro'" data-goal="contem:origin/doces:brigadeiro.txt=Brigadeiro,ran:git branch,out:[origin/doces]" data-solucao="git push -u origin doces;;git branch -vv">
+<p class="try-task"><strong>Missão:</strong> a Ana está no branch novo <code>doces</code>. Tente <code>git push</code> e leia a mensagem. Depois, envie o branch criando o par e confira com <code>git branch -vv</code>.</p>
+</div>
+
+<hr>
+
+<h2>Formas diferentes de fazer</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Comando</th></tr>
+<tr><td>Branch novo, que ainda não existe no remoto</td><td><code>git push -u origin NOME</code></td></tr>
+<tr><td>Branch que já existe no remoto, mas o seu está sem par</td><td><code>git branch -u origin/NOME</code></td></tr>
+<tr><td>Branch que só existe no remoto (do colega)</td><td><code>git switch NOME</code> (depois de um <code>git fetch</code>)</td></tr>
+<tr><td>Repositório novo, vindo do GitHub</td><td><code>git clone URL</code> (o <code>main</code> já vem com par)</td></tr>
+<tr><td>Nunca mais esquecer o <code>-u</code> <span class="versao">git 2.37+</span></td><td><code>git config --global push.autoSetupRemote true</code></td></tr>
+<tr><td>Desfazer o par</td><td><code>git branch --unset-upstream</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Quando dá errado</h2>
+
+<div class="cenario">
+<strong>"no upstream configured for branch"</strong>
+<pre class="term" data-cwd="~/receitas">$ git switch -c teste
+Switched to a new branch 'teste'
+$ git rev-parse --abbrev-ref @{u}
+fatal: no upstream configured for branch 'teste'</pre>
+<p><strong>O que aconteceu:</strong> "nenhum upstream configurado para o branch <code>teste</code>". O <code>@{u}</code> só funciona em branch com par. O mesmo branch, no <code>git pull</code>, dá <code>There is no tracking information for the current branch</code> e, no <code>git push</code>, <code>has no upstream branch</code> (veja <a href="git-pull.html">git pull</a> e <a href="git-push.html">git push</a>).</p>
+<p><strong>Como resolver:</strong> <code>git push -u origin teste</code> (se o branch é seu e ainda não está no remoto) ou <code>git branch -u origin/NOME</code> (se já existe lá).</p>
+</div>
+
+<div class="cenario">
+<strong>"O solicitado a montante branch … não existe"</strong>
+<pre class="term" data-cwd="~/receitas">$ git branch -u origin/doce
+fatal: O solicitado a montante branch 'origin/doce' não existe
+hint:
+hint: If you are planning on basing your work on an upstream
+hint: branch that already exists at the remote, you may need to
+hint: run "git fetch" to retrieve it.
+hint:
+hint: If you are planning to push out a new local branch that
+hint: will track its remote counterpart, you may want to use
+hint: "git push -u" to set the upstream config as you push.
+hint: Disable this message with "git config set advice.setUpstreamFailure false"</pre>
+<p><strong>O que aconteceu:</strong> a frase em português é uma tradução literal e estranha de "the requested upstream branch 'origin/doce' does not exist": "o branch upstream pedido, <code>origin/doce</code>, não existe" ("a montante" é a tradução de <em>upstream</em>). Aqui foi erro de digitação (<code>doce</code> em vez de <code>doces</code>). A dica lembra duas outras causas: o branch existe no remoto, mas você ainda não fez <code>git fetch</code>; ou o branch ainda não existe lá, e o certo é <code>git push -u</code>.</p>
+<p><strong>Como confirmar:</strong> <code>git branch -r</code> lista os branches remotos que o seu Git conhece.</p>
+</div>
+
+<div class="cenario">
+<strong>"Your branch is based on 'origin/…', but the upstream is gone."</strong>
+<pre class="term" data-cwd="~/receitas">$ git fetch --prune
+From https://github.com/ana-souza/receitas
+ - [deleted]         (none)     -&gt; origin/salgados
+$ git status
+No ramo salgados
+Your branch is based on 'origin/salgados', but the upstream is gone.
+  (use "git branch --unset-upstream" to fixup)
+
+nothing to commit, working tree clean
+$ git branch -vv
+  bebidas  ee0aa0e [origin/bebidas] Adiciona limonada
+  main     382be8d [origin/main: ahead 1, behind 1] Adiciona receita de pudim
+* salgados 4f68d0e [origin/salgados: gone] Adiciona receita de bolo      « gone = sumiu</pre>
+<p><strong>O que aconteceu:</strong> "seu branch é baseado no <code>origin/salgados</code>, mas o upstream sumiu". O branch foi apagado no GitHub (é comum depois que um <a href="pull-request.html">pull request</a> é aceito) e o <code>--prune</code> apagou a lembrança.</p>
+<p><strong>Como resolver:</strong> se o trabalho já foi juntado ao <code>main</code>, apague o branch local (<code>git switch main</code> e <code>git branch -d salgados</code>; veja <a href="apagar-branch.html">Apagando Branches</a>). Se quer continuar nele, desfaça o par com <code>git branch --unset-upstream</code>, como a dica sugere, e envie de novo com <code>git push -u origin salgados</code> quando quiser.</p>
+</div>
+
+<div class="cenario">
+<strong>"O status diz que estou em dia, mas não estou"</strong>
+<p><strong>O que aconteceu:</strong> a comparação é com a lembrança (<code>origin/main</code>), não com o GitHub ao vivo.</p>
+<p><strong>Como resolver:</strong> <code>git fetch</code> e olhe de novo (veja <a href="git-fetch.html">git fetch</a>).</p>
+</div>
+
+<hr>
+
+<h2>Referência</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git branch -vv</code></td><td>Mostra o upstream de cada branch e a distância (<code>ahead</code>/<code>behind</code>/<code>gone</code>)</td></tr>
+<tr><td><code>git push -u origin NOME</code></td><td>Envia e cria o par</td></tr>
+<tr><td><code>git branch -u origin/NOME</code></td><td>Cria o par sem enviar (<code>--set-upstream-to=</code>)</td></tr>
+<tr><td><code>git branch --unset-upstream</code></td><td>Desfaz o par</td></tr>
+<tr><td><code>git switch NOME</code></td><td>Cria um branch local a partir de <code>origin/NOME</code>, já com par</td></tr>
+<tr><td><code>@{u}</code> / <code>@{upstream}</code></td><td>"O upstream do branch atual", em qualquer comando</td></tr>
+<tr><td><code>git rev-parse --abbrev-ref @{u}</code></td><td>Mostra o nome do upstream</td></tr>
+<tr><td><code>git config --global push.autoSetupRemote true</code></td><td>O primeiro <code>git push</code> cria o par sozinho</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Ver os pares</h3>
+<p>Complete para listar os branches com o upstream de cada um:</p>
+<div class="ex-code">git branch <input data-answer="-vv" aria-label="opção"></div>
+</div>
+
+<div class="exercise">
+<h3>2. Ligar sem enviar</h3>
+<p>O branch <code>receitas-veganas</code> já existe no GitHub, mas o da Ana está sem par. Complete (forma longa):</p>
+<div class="ex-code">git branch <input data-answer="--set-upstream-to=origin/receitas-veganas" aria-label="opção e branch"></div>
+</div>
+
+<div class="exercise">
+<h3>3. O atalho</h3>
+<p>Complete para ver os commits que o <code>git pull</code> vai trazer, usando o atalho do upstream:</p>
+<div class="ex-code">git log ..<input data-answer="@{u}" aria-label="atalho"></div>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. O <code>git branch -vv</code> mostra <code>[origin/main: ahead 2]</code>. O que isso quer dizer?</p>
+<label><input type="radio" name="q4"> O GitHub tem 2 commits que a Ana não tem.</label>
+<label><input type="radio" name="q4"> Há 2 arquivos modificados sem commit.</label>
+<label><input type="radio" name="q4"> O branch foi apagado no GitHub.</label>
+<label><input type="radio" name="q4"> A Ana tem 2 commits que o <code>origin/main</code> não tem: falta o <code>git push</code>.</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">5. O Bruno enviou o branch <code>bebidas</code>. Depois de um <code>git fetch</code>, qual é o jeito mais simples de a Ana trabalhar nele, já com par?</p>
+<label><input type="radio" name="q5"> <code>git push -u origin bebidas</code></label>
+<label><input type="radio" name="q5"> <code>git switch bebidas</code></label>
+<label><input type="radio" name="q5"> <code>git branch --unset-upstream</code></label>
+<label><input type="radio" name="q5"> <code>git clone</code> de novo.</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">6. O que significa <code>[origin/salgados: gone]</code>?</p>
+<label><input type="radio" name="q6"> O branch <code>salgados</code> não existe mais no remoto.</label>
+<label><input type="radio" name="q6"> O branch local <code>salgados</code> foi apagado.</label>
+<label><input type="radio" name="q6"> A Ana está muitos commits atrás.</label>
+<label><input type="radio" name="q6"> O push foi rejeitado.</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O upstream é o par de um branch local no remoto (ex.: <code>main</code> ↔ <code>origin/main</code>), anotado no <code>.git/config</code>.</li>
+  <li>Com ele, <code>git push</code> e <code>git pull</code> funcionam sem argumentos e o <code>git status</code> diz se você está à frente ou atrás.</li>
+  <li><code>git branch -vv</code> mostra o par de cada branch: <code>ahead</code> (à frente), <code>behind</code> (atrás), <code>gone</code> (sumiu); sem colchetes, sem par.</li>
+  <li>Crie o par com <code>git push -u</code>, <code>git branch -u origin/NOME</code> ou <code>git switch NOME</code> (branch do remoto); desfaça com <code>git branch --unset-upstream</code>.</li>
+  <li><code>@{u}</code> é o atalho para "o upstream do branch atual".</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
