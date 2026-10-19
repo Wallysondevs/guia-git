@@ -147,7 +147,7 @@ Separe as metas com vírgula; `\,` é uma vírgula dentro de uma meta.
 ## 5. Fidelidade: o laboratório (`~/guia-git-lab/lab`, na VPS)
 É a máquina da Ana (usuária `ana`, computador `notebook`, `/home/ana`, pt_BR, Ubuntu 26.04) com **o Git real do Ubuntu**, a data fixa (15/10/2026 10:30, a mesma do simulador) e um "GitHub de mentira" local para `clone`/`push`/`pull` (detalhes no `~/guia-git-lab/COMO-USAR.md`, na VPS):
 - toda saída de `pre.term` sai do lab, **nunca de memória**;
-- **as mensagens do Git saem em português** (pt_BR): copie como saíram;
+- **as mensagens do Git saem misturadas**: a tradução do Git do Ubuntu é parcial (português do Brasil, de Portugal e muito inglês: o merge, o stash, o tag, as dicas `hint:`). Copie exatamente como saíram e aponte para a nota de `primeiro-commit.html`, que explica isso ao leitor;
 - o que é do site do GitHub (botões, telas, pull request na web) é **ilustrativo**: diga isso e baseie-se na documentação oficial (docs.github.com/pt);
 - **Privacidade:** nada da máquina real nem da VPS; só `/home/ana/…`, `ana@notebook`, `Ana Souza <ana@exemplo.com>`, usuário `ana-souza` no GitHub (fictício).
 
