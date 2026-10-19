@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git HEAD destacado — detached HEAD sem medo | Guia Git</title>
+<meta name="description" content="O que é o HEAD destacado (detached HEAD) do Git para quem nunca usou: visitar um commit antigo com git switch --detach ou git checkout, o aviso enorme traduzido linha por linha, fazer commits sem branch, o aviso de commit deixado para trás, como salvar o trabalho com git switch -c e como recuperar um commit perdido com git branch e git reflog.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">HEAD destacado</span> (detached HEAD)</h1>
+
+<p class="intro">Um dia você vai rodar um <code>git checkout</code> com um hash e o Git vai responder com um parágrafo enorme em inglês começando por <code>You are in 'detached HEAD' state</code>. Assusta, mas não é erro: quer dizer que o HEAD está "<strong>destacado</strong>" (solto) de qualquer branch, parado direto num commit. É o jeito de <strong>visitar o passado</strong> do projeto. Esta aula mostra quando isso acontece, o que dá para fazer ali, e o único cuidado que importa: não deixar commits para trás.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A diferença entre o HEAD apontando para um branch e o HEAD apontando direto para um commit.</li>
+  <li>Como entrar no HEAD destacado (<code>git switch --detach</code>, <code>git checkout HASH</code>) e como sair (<code>git switch -</code>).</li>
+  <li>O aviso do Git, traduzido linha por linha.</li>
+  <li>O que acontece com commits feitos sem branch, e como salvá-los com <code>git switch -c</code> ou <code>git branch</code>, mesmo depois de sair.</li>
+</ul>
+</div>
+
+<p>As saídas vieram do Git 2.53 do Ubuntu 26.04, na máquina da Ana, com o sistema em português. As mensagens desta aula saem todas em inglês: a tradução do Git ainda não as cobre. Por isso cada uma vem traduzida aqui.</p>
+
+<hr>
+
+<h2>A ideia: o marcador de página solto</h2>
+<p>Lembre da aula <a href="head.html">O que é HEAD</a>: o HEAD é o marcador "você está aqui". Normalmente ele aponta para um <strong>branch</strong>, e o branch aponta para um commit. É como um marcador preso na etiqueta "Receitas salgadas" do caderno: quando a Ana escreve uma página nova, a etiqueta anda junto, e o marcador vai junto com ela.</p>
+<p>No HEAD destacado, o marcador está <strong>solto</strong>, enfiado direto numa página antiga, sem etiqueta nenhuma. Dá para ler a página, e até escrever páginas novas a partir dali, mas nenhuma etiqueta aponta para elas. Se a Ana fechar o caderno e abrir em outra etiqueta, essas páginas ficam sem nada que leve até elas.</p>
+
+<pre>Normal:     A---B---C   ← main ← HEAD          (HEAD → branch → commit)
+
+Destacado:  A---B---C   ← main
+                ↑
+               HEAD                            (HEAD → commit, sem branch)
+</pre>
+
+<hr>
+
+<h2>1. Entrando: <code>git switch --detach</code></h2>
+<p>A Ana quer ver como o site estava antes da receita de pão de queijo. O repositório tem três commits:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline
+0244251 (HEAD -&gt; main) Adiciona receita de pão de queijo
+7225e04 Adiciona receita de bolo
+700bbd5 Cria o README
+$ cat .git/HEAD
+ref: refs/heads/main                      « HEAD aponta para o branch main
+</pre>
+
+<p>O <code>git switch</code> se recusa a ir para um commit sem que você peça:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch HEAD~1
+fatal: a branch is expected, got commit 'HEAD~1'
+hint: If you want to detach HEAD at the commit, try again with the --detach option.
+$ git switch --detach HEAD~1
+HEAD is now at 7225e04 Adiciona receita de bolo
+</pre>
+
+<dl class="anatomy">
+  <dt>fatal: a branch is expected, got commit 'HEAD~1'</dt><dd>"Era esperado um branch, veio um commit". A proteção do <code>switch</code>.</dd>
+  <dt>hint: … try again with the --detach option</dt><dd>"Se você quer destacar o HEAD nesse commit, tente de novo com a opção <code>--detach</code>".</dd>
+  <dt>git switch --detach HEAD~1</dt><dd><code>--detach</code> = "destacar". <code>HEAD~1</code> = um commit antes do atual; qualquer jeito de apontar um commit serve (o hash <code>7225e04</code>, uma tag…).</dd>
+  <dt>HEAD is now at 7225e04 Adiciona receita de bolo</dt><dd>"O HEAD agora está em 7225e04", com a mensagem desse commit.</dd>
+</dl>
+
+<p>Veja como tudo muda de cara:</p>
+
+<pre class="term" data-cwd="~/receitas">$ cat .git/HEAD
+7225e04b2a5e6944860a305db669f7d0991b1acb       « um hash, e não mais "ref: refs/heads/…"
+$ git status
+HEAD detached at 7225e04                       « em vez de "No ramo …"
+nothing to commit, working tree clean
+$ git branch
+* (HEAD detached at 7225e04)
+  main
+$ git log --oneline --graph --all
+* 0244251 (main) Adiciona receita de pão de queijo
+* 7225e04 (HEAD) Adiciona receita de bolo       « HEAD sem seta: não aponta para branch
+* 700bbd5 Cria o README
+$ ls
+README.md  bolo.txt                            « o pao.txt ainda não existia aqui
+</pre>
+
+<pre>Antes:   A---B---C   ← main ← HEAD
+
+Depois:  A---B---C   ← main
+             ↑
+            HEAD                 (A = 700bbd5, B = 7225e04, C = 0244251)
+</pre>
+
+<p>Três sinais de que o HEAD está destacado: o <code>git status</code> diz <code>HEAD detached at …</code> ("HEAD destacado em…"), o <code>git branch</code> mostra <code>* (HEAD detached at …)</code> em vez de um nome, e o <code>git log</code> mostra <code>(HEAD)</code> sozinho, sem a seta <code>-&gt;</code>.</p>
+
+<p>Para sair, é só ir para um branch:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch main
+Previous HEAD position was 7225e04 Adiciona receita de bolo
+Switched to branch 'main'
+</pre>
+
+<p>"A posição anterior do HEAD era 7225e04…; mudado para o ramo 'main'". Como a Ana só olhou, nada se perdeu.</p>
+
+<hr>
+
+<h2>2. O aviso comprido do <code>git checkout</code></h2>
+<p>O <code>git checkout</code> (o comando antigo, <a href="git-checkout.html">aula própria</a>) vai para um commit sem precisar de <code>--detach</code>, e por isso mostra um aviso grande:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git checkout HEAD~1
+Note: switching to 'HEAD~1'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c &lt;new-branch-name&gt;
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at 7225e04 Adiciona receita de bolo
+</pre>
+
+<p>Em português, parágrafo por parágrafo:</p>
+<dl class="anatomy">
+  <dt>Note: switching to 'HEAD~1'.</dt><dd>"Atenção: mudando para 'HEAD~1'."</dd>
+  <dt>You are in 'detached HEAD' state. …</dt><dd>"Você está no estado de HEAD destacado. Você pode olhar à vontade, fazer mudanças experimentais e commitá-las, e pode descartar qualquer commit feito neste estado, sem afetar nenhum branch, voltando para um branch." Ou seja: pode mexer, nada aqui estraga os seus branches.</dd>
+  <dt>If you want to create a new branch to retain commits you create …</dt><dd>"Se você quiser criar um branch novo para <strong>guardar</strong> os commits que fizer, pode fazer isso (agora ou depois) usando <code>-c</code> com o comando switch. Exemplo: <code>git switch -c &lt;nome-do-branch-novo&gt;</code>". É a dica mais importante: a seção 4 mostra.</dd>
+  <dt>Or undo this operation with: git switch -</dt><dd>"Ou desfaça esta operação com <code>git switch -</code>" (voltar para onde estava).</dd>
+  <dt>Turn off this advice …</dt><dd>"Desligue este conselho pondo a configuração <code>advice.detachedHead</code> em <code>false</code>". Quando você já conhece o aviso, pode desligá-lo (veja a referência).</dd>
+  <dt>HEAD is now at 7225e04 …</dt><dd>"O HEAD agora está em 7225e04", a mesma linha do <code>switch --detach</code>.</dd>
+</dl>
+
+<hr>
+
+<h2>3. Commitando sem branch, e saindo sem salvar</h2>
+<p>Ainda destacada no commit do bolo, a Ana testa uma cobertura de chocolate e faz um commit:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'Bolo de cenoura com chocolate' &gt; bolo.txt
+$ git commit -am 'Testa cobertura de chocolate'
+[detached HEAD 7052e9a] Testa cobertura de chocolate     « o "branch" é: nenhum
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+$ git status
+HEAD detached from 7225e04                               « "destacado A PARTIR de"
+nothing to commit, working tree clean
+$ git log --oneline --graph --all
+* 0244251 (main) Adiciona receita de pão de queijo
+| * 7052e9a (HEAD) Testa cobertura de chocolate
+|/
+* 7225e04 Adiciona receita de bolo
+* 700bbd5 Cria o README
+</pre>
+
+<p>O commit funcionou: o <code>[detached HEAD 7052e9a]</code> diz que ele entrou "em nenhum branch". O <code>git status</code> mudou de <code>detached at</code> ("destacado em") para <code>detached from</code> ("destacado a partir de"): o HEAD já andou para longe do commit onde começou. O HEAD andou junto com o commit, mas <strong>nenhuma etiqueta</strong> aponta para ele:</p>
+
+<pre>A---B---C   ← main
+     \
+      X   ← HEAD (só ele!)        (X = 7052e9a, o chocolate)
+</pre>
+
+<p>Agora a Ana volta para o <code>main</code>, e o Git avisa:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch main
+Warning: you are leaving 1 commit behind, not connected to
+any of your branches:
+
+  7052e9a Testa cobertura de chocolate
+
+If you want to keep it by creating a new branch, this may be a good time
+to do so with:
+
+ git branch &lt;new-branch-name&gt; 7052e9a
+
+Switched to branch 'main'
+$ git log --oneline --graph --all
+* 0244251 (HEAD -&gt; main) Adiciona receita de pão de queijo
+* 7225e04 Adiciona receita de bolo
+* 700bbd5 Cria o README
+</pre>
+
+<dl class="anatomy">
+  <dt>Warning: you are leaving 1 commit behind, not connected to any of your branches</dt><dd>"Aviso: você está deixando 1 commit para trás, não ligado a nenhum dos seus branches".</dd>
+  <dt>7052e9a Testa cobertura de chocolate</dt><dd>Qual commit. <strong>Anote o hash.</strong></dd>
+  <dt>If you want to keep it … git branch &lt;new-branch-name&gt; 7052e9a</dt><dd>"Se quiser mantê-lo criando um branch novo, esta pode ser uma boa hora, com: <code>git branch &lt;nome-novo&gt; 7052e9a</code>".</dd>
+</dl>
+
+<p>Repare no <code>git log --all</code>: o commit do chocolate <strong>sumiu do desenho</strong>. O <code>--all</code> mostra tudo o que é alcançável a partir de alguma etiqueta (branches, tags, o HEAD), e nenhuma leva mais até ele. Ele ainda existe dentro do <code>.git</code>, mas está "órfão". Se ninguém o resgatar, um dia a limpeza automática do Git (o <code>git gc</code>) apaga commits assim; isso não acontece na hora (por padrão, só depois de semanas), então dá tempo de salvar.</p>
+
+<pre>A---B---C   ← main ← HEAD
+     \
+      X       (sem etiqueta: invisível no git log --all)
+</pre>
+
+<hr>
+
+<h2>4. Salvando o trabalho: dê um nome a ele</h2>
+
+<h3>Antes de sair: <code>git switch -c</code></h3>
+<p>O jeito certo é o da dica do aviso: <strong>ainda destacada</strong>, crie um branch. O branch nasce onde o HEAD está, e o HEAD passa a apontar para ele:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch --detach HEAD~1
+HEAD is now at 7225e04 Adiciona receita de bolo
+$ echo 'Bolo de cenoura com chocolate' &gt; bolo.txt
+$ git commit -q -am 'Testa cobertura de chocolate'
+$ git switch -c cobertura
+Switched to a new branch 'cobertura'
+$ git log --oneline --graph --all
+* 7052e9a (HEAD -&gt; cobertura) Testa cobertura de chocolate
+| * 0244251 (main) Adiciona receita de pão de queijo
+|/
+* 7225e04 Adiciona receita de bolo
+* 700bbd5 Cria o README
+</pre>
+
+<pre>Antes:   A---B---C   ← main
+              \
+               X   ← HEAD
+
+Depois:  A---B---C   ← main
+              \
+               X   ← cobertura ← HEAD
+</pre>
+
+<p>A seta voltou: <code>(HEAD -&gt; cobertura)</code>. O HEAD não está mais destacado, e o commit do chocolate tem nome. Daqui para frente, é um branch como qualquer outro.</p>
+
+<h3>Depois de sair: <code>git branch NOME HASH</code></h3>
+<p>Se você já saiu, use o hash que o aviso mostrou. Se o aviso já sumiu da tela, o <a href="git-reflog.html">git reflog</a> (o "diário" de onde o HEAD esteve) tem o hash. A Ana testou um bolo de fubá destacada e saiu sem salvar:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch -q main
+$ git switch --detach HEAD~1
+HEAD is now at 7225e04 Adiciona receita de bolo
+$ echo 'Bolo de fubá' &gt; bolo.txt
+$ git commit -q -am 'Testa bolo de fubá'
+$ git switch -q main                           « com -q, nem o aviso aparece!
+$ git reflog -3
+0244251 (HEAD -&gt; main) HEAD@{0}: checkout: moving from 6fb20d2ba5831c9432e3c43cc5aabd39e196a219 to main
+6fb20d2 HEAD@{1}: commit: Testa bolo de fubá       « aqui está ele
+7225e04 HEAD@{2}: checkout: moving from main to HEAD~1
+$ git branch fuba 6fb20d2
+$ git log --oneline --graph --all
+* 7052e9a (cobertura) Testa cobertura de chocolate
+| * 6fb20d2 (fuba) Testa bolo de fubá
+|/
+| * 0244251 (HEAD -&gt; main) Adiciona receita de pão de queijo
+|/
+* 7225e04 Adiciona receita de bolo
+* 700bbd5 Cria o README
+</pre>
+
+<p>Cada linha do <code>git reflog</code> é um lugar onde o HEAD esteve, do mais recente (<code>HEAD@{0}</code>) para o mais antigo. A linha <code>commit: Testa bolo de fubá</code> tem o hash <code>6fb20d2</code>; com ele, o <code>git branch fuba 6fb20d2</code> pôs uma etiqueta no commit, e ele voltou ao desenho. (Também daria para escrever <code>git branch fuba HEAD@{1}</code>, o nome que o reflog dá a essa linha; mas esses números mudam a cada movimento do HEAD, então o hash é mais seguro.)</p>
+
+<hr>
+
+<h2>5. Quando o HEAD destacado é útil</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Como</th></tr>
+<tr><td>Ver como o projeto estava numa versão antiga (rodar, testar, comparar)</td><td><code>git switch --detach HASH</code>, olhar, <code>git switch -</code></td></tr>
+<tr><td>Ver uma versão marcada com tag (<a href="git-tag.html">git tag</a>)</td><td><code>git switch --detach v1.0</code></td></tr>
+<tr><td>Testar uma ideia rápida a partir do passado</td><td>Destacar, commitar; se prestar, <code>git switch -c NOME</code></td></tr>
+<tr><td>Achar o commit que trouxe um defeito (<a href="git-bisect.html">git bisect</a>)</td><td>O próprio <code>bisect</code> destaca o HEAD em cada commit testado</td></tr>
+</table>
+</div>
+
+<p>Com uma tag, o <code>switch</code> também pede o <code>--detach</code>, e o <code>git status</code> mostra o nome da tag:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git tag v1.0 HEAD~1
+$ git switch v1.0
+fatal: a branch is expected, got tag 'v1.0'
+hint: If you want to detach HEAD at the commit, try again with the --detach option.
+$ git switch --detach v1.0
+HEAD is now at 7225e04 Adiciona receita de bolo
+$ git status
+HEAD detached at v1.0
+nothing to commit, working tree clean
+</pre>
+
+<p>Por que não dá para "ficar" na tag, como num branch? Porque uma tag é uma etiqueta <strong>fixa</strong>: ela nunca anda. Se o HEAD apontasse para ela e você commitasse, a tag teria de andar, e ela existe justamente para marcar um ponto que não muda.</p>
+
+<hr>
+
+<h2>Experimente</h2>
+<p>O terminal está na pasta <code>receitas</code>, com três commits no <code>main</code>. Olhe o <code>git status</code> e o <code>git log --oneline --graph --all</code> a cada passo.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;echo 'Pão de queijo' &gt; pao.txt;;git add pao.txt;;git commit -q -m 'Adiciona receita de pão de queijo'" data-goal="head:destacado,absent:pao.txt" data-solucao="git switch --detach HEAD~1">
+<p class="try-task"><strong>Missão:</strong> visite o commit da receita de bolo (um antes do atual), destacando o HEAD. Confira com <code>ls</code> que o <code>pao.txt</code> ainda não existia ali, e com <code>git status</code> que o HEAD está destacado.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;echo 'Pão de queijo' &gt; pao.txt;;git add pao.txt;;git commit -q -m 'Adiciona receita de pão de queijo';;git switch -q --detach HEAD~1;;echo 'Bolo de cenoura com chocolate' &gt; bolo.txt;;git commit -q -am 'Testa cobertura de chocolate'" data-goal="branch:cobertura,head:cobertura,msg:chocolate" data-solucao="git switch -c cobertura">
+<p class="try-task"><strong>Missão:</strong> a Ana está com o HEAD destacado e acabou de commitar uma cobertura de chocolate. Antes de sair, salve esse commit num branch chamado <code>cobertura</code> e fique nele.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;echo 'Pão de queijo' &gt; pao.txt;;git add pao.txt;;git commit -q -m 'Adiciona receita de pão de queijo';;git switch -q --detach HEAD~1;;echo 'Bolo de fubá' &gt; bolo.txt;;git commit -q -am 'Testa bolo de fubá';;git switch -q main" data-goal="branch:fuba,contem:fuba:bolo.txt=fubá,head:main" data-solucao="git branch fuba 6fb20d2">
+<p class="try-task"><strong>Missão de resgate:</strong> a Ana commitou um bolo de fubá com o HEAD destacado e voltou para o <code>main</code> com <code>-q</code>, sem ver aviso nenhum. Ache o commit perdido no <code>git reflog</code> e crie o branch <code>fuba</code> nele, sem sair do <code>main</code>.</p>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de entrar e de sair</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Para</th><th>Comando novo</th><th>Comando antigo</th></tr>
+<tr><td>Destacar o HEAD num commit</td><td><code>git switch --detach HASH</code></td><td><code>git checkout HASH</code></td></tr>
+<tr><td>Voltar para onde estava</td><td><code>git switch -</code></td><td><code>git checkout -</code></td></tr>
+<tr><td>Voltar para um branch</td><td><code>git switch main</code></td><td><code>git checkout main</code></td></tr>
+<tr><td>Salvar os commits, ainda destacado</td><td><code>git switch -c NOME</code></td><td><code>git checkout -b NOME</code></td></tr>
+<tr><td>Salvar os commits, ainda destacado, sem sair do HEAD destacado</td><td colspan="2"><code>git branch NOME</code> (cria a etiqueta; o HEAD continua destacado)</td></tr>
+<tr><td>Salvar depois de sair</td><td colspan="2"><code>git branch NOME HASH</code> (hash do aviso ou do <code>git reflog</code>)</td></tr>
+</table>
+</div>
+<p><strong>Qual usar?</strong> Prefira o <code>git switch --detach</code>: você só entra no HEAD destacado quando pede. E, se for commitar, crie o branch <strong>antes</strong> de commitar (<code>git switch -c NOME HASH</code> cria o branch já no commit antigo): assim você nem passa pelo HEAD destacado.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>"You are in 'detached HEAD' state" e eu não pedi isso</strong>
+<p><strong>O que aconteceu:</strong> você deu ao <code>git checkout</code> um hash, uma tag, um branch remoto (<code>origin/main</code>) ou algo como <code>HEAD~1</code>. <strong>Como confirmar:</strong> <code>git status</code> começa com <code>HEAD detached at …</code>. <strong>Como resolver:</strong> se não fez nenhum commit, <code>git switch -</code> ou <code>git switch main</code>, e pronto.</p>
+</div>
+
+<div class="cenario">
+<strong>Fiz commits destacada e quero ficar com eles</strong>
+<p><strong>Como confirmar:</strong> <code>git status</code> diz <code>HEAD detached from …</code> e o <code>git log --oneline --graph --all</code> mostra commits com <code>(HEAD)</code> fora de qualquer branch. <strong>Como resolver:</strong> <code>git switch -c NOME</code> antes de sair. Se quiser levar esse trabalho para o <code>main</code>, depois junte com <a href="git-merge.html">git merge</a>.</p>
+</div>
+
+<div class="cenario">
+<strong>"Warning: you are leaving 1 commit behind"</strong>
+<p>Você saiu sem salvar. <strong>Como resolver:</strong> copie o hash do aviso e rode <code>git branch NOME HASH</code> (no exemplo da seção 3, <code>git branch chocolate 7052e9a</code>). Perdeu o aviso? <code>git reflog</code> mostra o hash (seção 4). Se o commit não serve para nada, ignore o aviso: o Git limpa sozinho, um dia.</p>
+</div>
+
+<div class="cenario">
+<strong><code>fatal: a branch is expected, got commit '…'</code> / <code>got tag '…'</code></strong>
+<p>É o <code>git switch</code> protegendo você: ele não entra no HEAD destacado sem <code>--detach</code>. <strong>Como resolver:</strong> se queria visitar o commit, repita com <code>--detach</code>; se queria um branch, confira o nome com <code>git branch</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando / sinal</th><th>O que é</th></tr>
+<tr><td><code>git switch --detach HASH</code></td><td>Destaca o HEAD no commit</td></tr>
+<tr><td><code>HEAD detached at 7225e04</code></td><td>(<code>git status</code>) destacado, no commit onde entrou</td></tr>
+<tr><td><code>HEAD detached from 7225e04</code></td><td>(<code>git status</code>) destacado, e já fez commits a partir dali</td></tr>
+<tr><td><code>* (HEAD detached at …)</code></td><td>(<code>git branch</code>) nenhum branch é o atual</td></tr>
+<tr><td><code>(HEAD)</code> sem seta</td><td>(<code>git log</code>) HEAD num commit, sem branch</td></tr>
+<tr><td><code>[detached HEAD 7052e9a]</code></td><td>(<code>git commit</code>) commit feito sem branch</td></tr>
+<tr><td><code>git switch -c NOME</code></td><td>Salva o lugar atual num branch e sai do estado destacado</td></tr>
+<tr><td><code>git branch NOME HASH</code></td><td>Resgata um commit deixado para trás</td></tr>
+<tr><td><code>git reflog</code></td><td>Mostra onde o HEAD esteve (para achar o hash)</td></tr>
+<tr><td><code>git config --global advice.detachedHead false</code></td><td>Desliga o aviso comprido do <code>checkout</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">1. O que quer dizer "HEAD destacado"?</p>
+<label><input type="radio" name="q1"> Que o repositório está corrompido</label>
+<label><input type="radio" name="q1"> Que o HEAD aponta direto para um commit, e não para um branch</label>
+<label><input type="radio" name="q1"> Que o branch atual foi apagado</label>
+<label><input type="radio" name="q1"> Que existe um conflito</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">2. Qual destes comandos entra no HEAD destacado?</p>
+<label><input type="radio" name="q2"> <code>git switch main</code></label>
+<label><input type="radio" name="q2"> <code>git switch -c teste</code></label>
+<label><input type="radio" name="q2"> <code>git switch --detach 7225e04</code></label>
+<label><input type="radio" name="q2"> <code>git branch teste 7225e04</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">3. Destacada, a Ana fez dois commits e quer guardá-los. Qual é o melhor comando, antes de sair?</p>
+<label><input type="radio" name="q3"> <code>git switch -c experimento</code></label>
+<label><input type="radio" name="q3"> <code>git switch main</code></label>
+<label><input type="radio" name="q3"> <code>git commit --save</code></label>
+<label><input type="radio" name="q3"> Nenhum: commits destacados não podem ser guardados</label>
+</div>
+
+<div class="exercise">
+<h3>4. Complete o resgate</h3>
+<p>O Git avisou <code>you are leaving 1 commit behind</code>, com o commit <code>7052e9a</code>. Complete o comando que cria o branch <code>chocolate</code> nesse commit:</p>
+<div class="ex-code">git <input data-answer="branch" aria-label="subcomando"> chocolate <input data-answer="7052e9a" aria-label="hash"></div>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">5. Depois de sair do HEAD destacado sem salvar, o commit some do <code>git log --oneline --graph --all</code>. Ele foi apagado?</p>
+<label><input type="radio" name="q5"> Sim, na hora</label>
+<label><input type="radio" name="q5"> Sim, mas está na lixeira do sistema</label>
+<label><input type="radio" name="q5"> Não: ele foi movido para o <code>main</code></label>
+<label><input type="radio" name="q5"> Ainda não: ele existe, mas nenhuma etiqueta leva até ele; o <code>git reflog</code> mostra o hash</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Normalmente o HEAD aponta para um branch. No <strong>HEAD destacado</strong>, ele aponta direto para um commit: <code>.git/HEAD</code> tem um hash.</li>
+  <li>Entra-se com <code>git switch --detach HASH</code> (ou <code>git checkout HASH</code>, com o aviso comprido); sai-se com <code>git switch -</code> ou <code>git switch NOME</code>.</li>
+  <li>Sinais: <code>HEAD detached at/from …</code> no <code>git status</code>, <code>(HEAD)</code> sem seta no <code>git log</code>.</li>
+  <li>Dá para commitar destacado, mas nenhum branch guarda esses commits. Salve com <code>git switch -c NOME</code> antes de sair.</li>
+  <li>Saiu sem salvar? <code>git branch NOME HASH</code>, com o hash do aviso <code>leaving 1 commit behind</code> ou do <code>git reflog</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
