@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Merge de Três Vias — quando os dois branches andaram | Guia Git</title>
+<meta name="description" content="O merge de três vias do Git para quem está começando: o que é o ancestral comum (merge-base), por que o Git cria um commit de merge com dois pais, a mensagem padrão no editor, -m e --no-edit, --no-ff, e os erros reais (Já está atualizado, branch inexistente, mudanças locais que seriam sobrescritas).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Merge de Três Vias</span></h1>
+
+<p class="intro">Na aula <a href="fast-forward.html">Merge Fast-forward</a>, o <code>main</code> ficou parado enquanto o branch andava, e o Git só precisou "empurrar a etiqueta" para a frente. Na vida real, quase sempre os <strong>dois lados andam</strong>: a Ana cria a receita de bolo num branch e, enquanto isso, acrescenta a receita de pudim no <code>main</code>. Não dá para só empurrar a etiqueta. O Git, então, faz um <strong>merge de três vias</strong> (em inglês, <em>three-way merge</em>) e cria um commit novo, especial, que junta os dois caminhos.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Por que o merge se chama "de três vias": as duas pontas e o <strong>ancestral comum</strong> (<code>git merge-base</code>).</li>
+  <li>Como fazer o merge quando os dois branches andaram, e ler a saída do Git linha por linha.</li>
+  <li>O que é o <strong>commit de merge</strong>, que tem dois pais, e como vê-lo no <code>git log --graph</code>.</li>
+  <li>Como escolher a mensagem: o editor, <code>-m</code> e <code>--no-edit</code>; e como forçar um commit de merge com <code>--no-ff</code>.</li>
+  <li>Os erros mais comuns: nada para juntar, branch que não existe e mudanças locais que seriam sobrescritas.</li>
+</ul>
+</div>
+
+<p>Todas as saídas desta aula vieram do Git 2.53.0 da máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português. A tradução do Git para o português do Brasil é <strong>incompleta</strong>, e quase todas as mensagens do merge saem em inglês, como você vai ver: elas estão copiadas exatamente como saíram, e cada uma ganha tradução na explicação (mais sobre isso em <a href="primeiro-commit.html">Seu Primeiro Commit</a>).</p>
+
+<hr>
+
+<h2>A ideia: dois cadernos copiados do mesmo original</h2>
+<p>A Ana tem um caderno de receitas. Ela tira uma <strong>cópia</strong> dele e entrega ao irmão, que escreve nela a receita de bolo. Enquanto isso, a Ana escreve no original a receita de pudim. No fim do dia, ela quer um caderno só, com as duas receitas. Para não perder nada, ela compara <strong>três</strong> cadernos:</p>
+<ol class="passo">
+  <li>A <strong>cópia de hoje de manhã</strong>, como ela era antes de qualquer um escrever: o ponto de partida dos dois.</li>
+  <li>O <strong>caderno dela</strong>, agora: o que mudou em relação à cópia de manhã? Entrou o pudim.</li>
+  <li>O <strong>caderno do irmão</strong>, agora: o que mudou em relação à cópia de manhã? Entrou o bolo.</li>
+</ol>
+<p>Comparando cada lado com o ponto de partida, fica fácil: "o pudim é novidade dela, o bolo é novidade dele; fica com os dois". Sem o caderno da manhã, ela não saberia se o irmão <strong>apagou</strong> o pudim ou se ele simplesmente nunca existiu na cópia dele.</p>
+<p>O Git faz exatamente isso. As "três vias" são:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Via</th><th>No caderno</th><th>No Git</th></tr>
+<tr><td>1. A base</td><td>A cópia de hoje de manhã</td><td>O <strong>ancestral comum</strong>: o último commit que os dois branches têm em comum (em inglês, <em>merge base</em>)</td></tr>
+<tr><td>2. O nosso lado</td><td>O caderno da Ana</td><td>A ponta do branch onde você está (o <code>HEAD</code>, aqui o <code>main</code>)</td></tr>
+<tr><td>3. O outro lado</td><td>O caderno do irmão</td><td>A ponta do branch que você está trazendo (aqui o <code>bolo</code>)</td></tr>
+</table>
+</div>
+
+<pre>          C   ← main (Adiciona a receita de pudim)
+         /
+    A ──┤          A = base (ancestral comum)
+         \
+          B   ← bolo (Adiciona a receita de bolo)
+
+depois do merge:
+
+    A ─── C ─── M   ← main
+     \         /
+      └── B ──┘     ← bolo         M = commit de merge (pais: C e B)</pre>
+
+<p>O resultado é um commit novo, o <code>M</code>, que tem <strong>dois pais</strong>: o <code>C</code> (o <code>main</code> de antes) e o <code>B</code> (a ponta do <code>bolo</code>). Um commit comum tem um pai só; o commit de merge é o "nó" que amarra os dois caminhos.</p>
+
+<hr>
+
+<h2>1. Montando a situação: os dois lados andam</h2>
+<p>A Ana começa com um repositório de um commit só, cria o branch <code>bolo</code> e faz um commit nele:</p>
+
+<pre class="term">$ mkdir receitas
+$ cd receitas
+$ git init -q
+$ printf '# Receitas da Ana\n' &gt; README.md
+$ git add README.md
+$ git commit -m 'Cria o README'
+[main (root-commit) 700bbd5] Cria o README
+ 1 file changed, 1 insertion(+)
+ create mode 100644 README.md
+$ git switch -c bolo
+Switched to a new branch 'bolo'
+$ printf 'Bolo de cenoura\n- 3 cenouras\n- 3 ovos\n- 2 xícaras de açúcar\n' &gt; bolo.txt
+$ git add bolo.txt
+$ git commit -m 'Adiciona a receita de bolo'
+[bolo 6dde70f] Adiciona a receita de bolo
+ 1 file changed, 4 insertions(+)
+ create mode 100644 bolo.txt
+</pre>
+
+<p>Até aqui, nada de novo: o commit <code>700bbd5</code> no <code>main</code> e, a partir dele, o commit <code>6dde70f</code> no branch <code>bolo</code> (o <code>printf</code> só escreve a receita no arquivo; veja <a href="terminal-basico.html">O Mínimo de Terminal</a>). Se a Ana fizesse o merge agora, seria um fast-forward, porque o <code>main</code> não andou.</p>
+
+<p>Agora ela volta para o <code>main</code> e, <strong>antes</strong> de juntar o bolo, faz um commit lá também:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch main
+Switched to branch 'main'
+$ printf 'Pudim\n- 1 lata de leite condensado\n- 3 ovos\n' &gt; pudim.txt
+$ git add pudim.txt
+$ git commit -m 'Adiciona a receita de pudim'
+[main 99a4d8c] Adiciona a receita de pudim
+ 1 file changed, 3 insertions(+)
+ create mode 100644 pudim.txt
+</pre>
+
+<p>O desenho mostra os dois galhos. Use <code>--all</code> para ver todos os branches, e não só o atual (veja <a href="log-graph.html">Vendo os Galhos</a>):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --graph --all
+* 6dde70f (bolo) Adiciona a receita de bolo
+| * 99a4d8c (HEAD -&gt; main) Adiciona a receita de pudim
+|/
+* 700bbd5 Cria o README
+</pre>
+
+<dl class="anatomy">
+  <dt>* 6dde70f (bolo)</dt><dd>A ponta do branch <code>bolo</code>: a receita de bolo. Cada <code>*</code> é um commit.</dd>
+  <dt>| * 99a4d8c (HEAD -&gt; main)</dt><dd>A ponta do <code>main</code>, onde a Ana está (<code>HEAD -&gt; main</code>): a receita de pudim. Ele aparece numa coluna ao lado porque é <strong>outro caminho</strong>.</dd>
+  <dt>|/</dt><dd>As duas linhas se encontram embaixo: os dois caminhos saíram do mesmo commit.</dd>
+  <dt>* 700bbd5 Cria o README</dt><dd>O ponto de partida comum. É o "A" do desenho lá de cima.</dd>
+</dl>
+
+<h3>Quem é o ancestral comum? <code>git merge-base</code></h3>
+<p>O comando <code>git merge-base</code> responde à pergunta "qual é o último commit que estes dois branches têm em comum?". É o caderno da manhã:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git merge-base main bolo
+700bbd5eb7964a024ce4076aeeb11c490e1bac2e
+</pre>
+
+<p>O <code>git merge-base</code> mostra o hash completo (os 40 caracteres; veja <a href="hash.html">O Hash do Commit</a>). Os 7 primeiros, <code>700bbd5</code>, são o commit <code>Cria o README</code>: é dele que o Git parte para descobrir o que cada lado mudou. Você não precisa rodar este comando antes de um merge, o Git faz isso sozinho; ele só serve para você <strong>ver</strong> a base. Em relação a ela, o <code>main</code> ganhou o <code>pudim.txt</code> e o <code>bolo</code> ganhou o <code>bolo.txt</code>. Nenhum dos dois mexeu no que o outro mexeu, então o Git consegue juntar tudo sem perguntar nada.</p>
+
+<hr>
+
+<h2>2. O merge: <code>git merge bolo</code></h2>
+<p>O comando é o mesmo da aula <a href="git-merge.html">git merge</a>: você fica no branch que vai <strong>receber</strong> as mudanças (o <code>main</code>) e diz qual branch quer trazer.</p>
+
+<dl class="anatomy">
+  <dt>git</dt><dd>O programa.</dd>
+  <dt>merge</dt><dd>"Mesclar, juntar": traz para o branch atual o trabalho de outro branch.</dd>
+  <dt>bolo</dt><dd>O branch que vem. O branch atual (<code>main</code>) é o que recebe; o <code>bolo</code> continua existindo, igualzinho.</dd>
+</dl>
+
+<p>Quando o Git precisa criar um commit de merge, ele abre o <strong>editor de texto</strong> (o <code>nano</code>, o <code>vim</code> ou o que você configurou em <a href="git-config.html">git config</a>) com uma mensagem pronta, para você confirmar ou mudar. A Ana digitou <code>git merge bolo</code> e o <code>nano</code> abriu com este texto:</p>
+
+<pre class="file" data-file=".git/MERGE_MSG (no editor nano)">Merge branch 'bolo'
+# Please enter a commit message to explain why this merge is necessary,
+# especially if it merges an updated upstream into a topic branch.
+#
+# Lines starting with '#' will be ignored, and an empty message aborts
+# the commit.
+</pre>
+
+<p>Esse é o arquivo que abre no editor (na máquina da Ana, o <code>nano</code>, com o nome <code>/home/ana/receitas/.git/MERGE_MSG</code> no alto da tela). A primeira linha é a mensagem pronta; as linhas que começam com <code>#</code> são instruções, em inglês, e são jogadas fora. Traduzindo: "Escreva uma mensagem de commit explicando por que este merge é necessário, especialmente se ele junta um upstream atualizado num branch de tópico. Linhas começando com '#' serão ignoradas, e uma mensagem vazia cancela o commit." A Ana salvou e fechou o editor sem mudar nada, e o terminal mostrou:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git merge bolo
+Merge made by the 'ort' strategy.
+ bolo.txt | 4 ++++
+ 1 file changed, 4 insertions(+)
+ create mode 100644 bolo.txt
+</pre>
+
+<p>Linha por linha:</p>
+<dl class="anatomy">
+  <dt>Merge made by the 'ort' strategy.</dt><dd>"Merge feito pela estratégia 'ort'." Esta é a frase que diz que foi um merge de <strong>três vias</strong>, com commit de merge (no fast-forward, a primeira linha é <code>Fast-forward</code>). O <code>ort</code> é o nome do "motor" de merge que o Git usa desde a versão 2.34; você não precisa escolhê-lo.</dd>
+  <dt>bolo.txt | 4 ++++</dt><dd>O que <strong>entrou no <code>main</code></strong> com o merge: o <code>bolo.txt</code>, com 4 linhas novas (um <code>+</code> para cada uma). O <code>pudim.txt</code> não aparece porque ele já estava no <code>main</code>.</dd>
+  <dt>1 file changed, 4 insertions(+)</dt><dd>"1 arquivo mudado, 4 inserções": o resumo das linhas acima.</dd>
+  <dt>create mode 100644 bolo.txt</dt><dd>O <code>bolo.txt</code> é um arquivo <strong>novo</strong> no <code>main</code> (o <code>100644</code> quer dizer "arquivo comum, não executável").</dd>
+</dl>
+
+<p>Para aceitar a mensagem pronta, é só <strong>salvar e fechar</strong> o editor (no <code>nano</code>, <kbd>Ctrl</kbd>+<kbd>O</kbd>, <kbd>Enter</kbd>, <kbd>Ctrl</kbd>+<kbd>X</kbd>; no <code>vim</code>, <kbd>Esc</kbd> e <code>:wq</code>). Enquanto o editor está aberto, o terminal mostra <code>hint: Waiting for your editor to close the file...</code> ("dica: esperando você fechar o arquivo no editor"); essa linha some quando você fecha. E se você apagar a mensagem e salvar o arquivo vazio? Veja em <a href="#errado">Quando dá errado</a>.</p>
+
+<h3>Depois do merge</h3>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline --graph --all
+*   abc5385 (HEAD -&gt; main) Merge branch 'bolo'
+|\
+| * 6dde70f (bolo) Adiciona a receita de bolo
+* | 99a4d8c Adiciona a receita de pudim
+|/
+* 700bbd5 Cria o README
+$ ls
+README.md  bolo.txt  pudim.txt
+$ git status
+No ramo main
+nothing to commit, working tree clean
+</pre>
+
+<p>O desenho agora tem a forma de um "losango": os dois caminhos saem do <code>700bbd5</code> e voltam a se encontrar no <code>abc5385</code>, o <strong>commit de merge</strong>, com a mensagem <code>Merge branch 'bolo'</code>. O <code>|\</code> embaixo dele mostra que ele tem duas linhas chegando: dois pais. A pasta tem as duas receitas, e o <code>git status</code> diz <code>No ramo main</code> e <code>nothing to commit, working tree clean</code> ("nada a commitar, pasta de trabalho limpa"): o merge terminou. O branch <code>bolo</code> continua lá, no mesmo commit <code>6dde70f</code>; se não for mais usar, você pode apagá-lo (aula <a href="apagar-branch.html">Renomeando e Apagando Branches</a>).</p>
+
+<h3>Por dentro: um commit com dois pais</h3>
+<p>O <code>git log -1</code> mostra o último commit. Num commit de merge, aparece uma linha a mais:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log -1
+commit abc538510565bd3210cfbc98b5a0cb7d80af4aea (HEAD -&gt; main)
+Merge: 99a4d8c 6dde70f
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Merge branch 'bolo'
+</pre>
+
+<p>A linha <code>Merge: 99a4d8c 6dde70f</code> lista os <strong>dois pais</strong>: primeiro o <code>99a4d8c</code> (o pudim, que era o <code>main</code>, o lado que recebeu), depois o <code>6dde70f</code> (o bolo, o lado que veio). Essa ordem importa: o primeiro pai é sempre o branch em que você estava. O resto é igual a qualquer commit: autor, data (o Git mostra a data em inglês, <code>Thu Oct 15</code> = quinta-feira, 15 de outubro) e a mensagem.</p>
+
+<p>Para ver o commit "cru", como o Git guardou (veja <a href="como-git-guarda.html">Como o Git Guarda as Coisas</a>), use <code>git cat-file -p</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git cat-file -p HEAD
+tree 3a08b778fd61c7b986381a4e011f5ddfc02eab9c
+parent 99a4d8ce4f8a5f275407e07a0c3e7fae9312b448
+parent 6dde70ffc7ad8d913422fb63a25d71da2470f9c8
+author Ana Souza &lt;ana@exemplo.com&gt; 1792071000 -0300
+committer Ana Souza &lt;ana@exemplo.com&gt; 1792071000 -0300
+
+Merge branch 'bolo'
+</pre>
+
+<p>Duas linhas <code>parent</code> ("pai"). Um commit comum tem uma; o primeiro commit do repositório não tem nenhuma; um commit de merge tem duas. É só isso que faz dele um commit de merge. A linha <code>tree</code> aponta para a "fotografia" da pasta com os três arquivos juntos. (O <code>1792071000</code> é a data contada em segundos desde 1970, o jeito que o Git guarda datas.) Contando os commits que chegam ao <code>main</code>, agora são 4: os dois do <code>main</code>, o do <code>bolo</code> e o de merge (<code>git rev-list --count HEAD</code> mostrou <code>4</code>).</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;git switch -q -c bolo;;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona a receita de bolo';;git switch -q main;;echo 'Pudim' &gt; pudim.txt;;git add pudim.txt;;git commit -q -m 'Adiciona a receita de pudim'" data-goal="head:main,commits:4,limpo,msg:Merge branch,contem:HEAD:bolo.txt=Bolo de cenoura,contem:HEAD:pudim.txt=Pudim" data-solucao="git merge --no-edit bolo">
+<p class="try-task"><strong>Missão:</strong> o repositório <code>receitas</code> já está como o da Ana: o <code>main</code> tem o pudim e o branch <code>bolo</code> tem o bolo. Veja os dois galhos com <code>git log --oneline --graph --all</code>, descubra o ancestral comum com <code>git merge-base main bolo</code> e junte o <code>bolo</code> no <code>main</code> com a mensagem padrão (<code>git merge --no-edit bolo</code>). No fim, olhe o desenho de novo e o <code>git log -1</code>.</p>
+</div>
+
+<hr>
+
+<h2>3. A mensagem do commit de merge: <code>-m</code> e <code>--no-edit</code></h2>
+<p>Se você não quer que o editor abra, dê a mensagem na própria linha, como no <code>git commit -m</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git merge bolo -m 'Junta a receita de bolo'
+Merge made by the 'ort' strategy.
+ bolo.txt | 3 +++
+ 1 file changed, 3 insertions(+)
+ create mode 100644 bolo.txt
+$ git log --oneline --graph
+*   b17594e (HEAD -&gt; main) Junta a receita de bolo
+|\
+| * cf4d4e0 (bolo) Adiciona a receita de bolo
+* | 2240ef2 Adiciona a receita de pudim
+|/
+* 700bbd5 Cria o README
+</pre>
+
+<p>(Este repositório foi montado de novo, com receitas um pouco mais curtas; por isso os hashes são outros.) O editor não abriu, e o commit de merge ficou com a mensagem que a Ana escreveu. O <code>-m</code> pode vir antes ou depois do nome do branch.</p>
+
+<p>E se a mensagem padrão (<code>Merge branch 'bolo'</code>) já serve, <code>--no-edit</code> ("sem editar") aceita-a sem abrir o editor. É o que você vai ver nos exemplos a seguir.</p>
+
+<div class="tip">
+<strong>Qual mensagem escrever?</strong>
+<p>A padrão, <code>Merge branch 'bolo'</code>, já diz o essencial e é a mais comum em projetos de verdade. Escreva uma sua quando quiser contar <strong>o que</strong> entrou: <code>Junta a receita de bolo</code>. Como nos outros commits, use o imperativo (veja <a href="mensagens-commit.html">Boas Mensagens de Commit</a>).</p>
+</div>
+
+<hr>
+
+<h2>4. Fast-forward ou três vias? Quem decide é o Git</h2>
+<p>Você não escolhe o tipo de merge: o Git olha o histórico e decide.</p>
+<ul>
+  <li>Se o branch atual <strong>não andou</strong> desde que o outro saiu dele, o Git faz <strong>fast-forward</strong>: só move a etiqueta, sem commit novo (aula <a href="fast-forward.html">Merge Fast-forward</a>).</li>
+  <li>Se os <strong>dois andaram</strong>, ele faz o merge de <strong>três vias</strong> e cria o commit de merge.</li>
+</ul>
+<p>Dá para pedir um commit de merge mesmo quando o fast-forward seria possível, com <code>--no-ff</code> ("no fast-forward", "sem avanço rápido"). Muitas equipes fazem isso para o histórico mostrar onde cada funcionalidade começou e terminou. A Ana criou o branch <code>suco</code>, fez um commit nele e voltou para o <code>main</code>, que ficou parado:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch -q -c suco
+$ printf 'Suco de laranja\n' &gt; suco.txt
+$ git add suco.txt
+$ git commit -q -m 'Adiciona o suco'
+$ git switch -q main
+$ git merge --no-ff --no-edit suco
+Merge made by the 'ort' strategy.
+ suco.txt | 1 +
+ 1 file changed, 1 insertion(+)
+ create mode 100644 suco.txt
+$ git log --oneline --graph
+*   4715114 (HEAD -&gt; main) Merge branch 'suco'
+|\
+| * 51df8cd (suco) Adiciona o suco
+|/
+*   b17594e Junta a receita de bolo
+|\
+| * cf4d4e0 (bolo) Adiciona a receita de bolo
+* | 2240ef2 Adiciona a receita de pudim
+|/
+* 700bbd5 Cria o README
+</pre>
+
+<p>(O <code>-q</code>, de <em>quiet</em>, "quieto", só esconde as mensagens dos comandos de preparação.) Sem o <code>--no-ff</code>, o Git teria feito fast-forward e o commit <code>51df8cd</code> ficaria "em linha reta" no <code>main</code>. Com ele, apareceu o commit de merge <code>4715114</code>, e o desenho mostra uma "bolha" ao lado: dá para ver que o suco foi feito num branch separado. Repare também que o merge do bolo, mais embaixo, continua lá, com a mensagem escolhida pela Ana.</p>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer a mesma coisa</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que acontece</th><th>Quando usar</th></tr>
+<tr><td><code>git merge bolo</code></td><td>Abre o editor com <code>Merge branch 'bolo'</code></td><td>Quando você quer ler ou ajustar a mensagem</td></tr>
+<tr><td><code>git merge bolo -m "Junta a receita de bolo"</code></td><td>Usa a sua mensagem, sem editor</td><td>Quando a mensagem é curta e você já sabe o que escrever</td></tr>
+<tr><td><code>git merge --no-edit bolo</code></td><td>Aceita a mensagem padrão, sem editor</td><td>No dia a dia, quando a padrão serve</td></tr>
+<tr><td><code>git merge --no-ff suco</code></td><td>Cria o commit de merge mesmo quando daria fast-forward</td><td>Quando a equipe quer ver no histórico cada branch que entrou</td></tr>
+<tr><td><code>git merge --ff-only bolo</code></td><td>Só aceita fast-forward; se precisar de três vias, desiste com erro</td><td>Quando você <strong>não</strong> quer commits de merge (por exemplo, ao atualizar uma cópia)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Não tem nada para juntar: <code>Already up to date.</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git merge bolo
+Already up to date.
+</pre>
+<p>"Já está atualizado." A Ana rodou o merge do <code>bolo</code> uma segunda vez. Tudo o que existe no <code>bolo</code> já está no <code>main</code> (o commit <code>6dde70f</code> é um dos pais do commit de merge), então não há nada para trazer. Não é erro: nada mudou. <strong>Como confirmar:</strong> o <code>git log --oneline --graph --all</code> mostra a ponta do <code>bolo</code> "dentro" do histórico do <code>main</code>. O mesmo acontece se você fizer o merge de um branch nele mesmo (<code>git merge main</code> estando no <code>main</code>).</p>
+</div>
+
+<div class="cenario">
+<strong>O branch não existe: <code>not something we can merge</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git merge bolinho
+merge: bolinho - not something we can merge
+</pre>
+<p>"<code>bolinho</code>: não é algo que possamos juntar". Não existe branch (nem commit, nem tag) com esse nome. Quase sempre é erro de digitação. <strong>Como confirmar:</strong> <code>git branch</code> lista os branches que existem (aula <a href="git-branch.html">git branch</a>). <strong>Como resolver:</strong> rode de novo com o nome certo.</p>
+</div>
+
+<div class="cenario">
+<strong>Mudanças não commitadas no caminho: <code>would be overwritten by merge</code></strong>
+<p>No branch <code>calda</code>, a Ana acrescentou uma calda ao <code>bolo.txt</code>. No <code>main</code>, ela começou a reescrever o mesmo <code>bolo.txt</code> (um bolo de fubá) e, <strong>sem commitar</strong>, tentou o merge:</p>
+<pre class="term" data-cwd="~/receitas">$ git status --short
+ M bolo.txt
+$ git merge --no-edit calda
+error: Your local changes to the following files would be overwritten by merge:
+        bolo.txt
+Please commit your changes or stash them before you merge.
+Aborting
+Merge with strategy ort failed.
+</pre>
+<p>Linha por linha: "erro: as suas mudanças locais nos arquivos a seguir seriam sobrescritas pelo merge: <code>bolo.txt</code>. Por favor, faça commit das suas mudanças ou guarde-as com <em>stash</em> antes do merge. Cancelando. O merge com a estratégia ort falhou." O Git <strong>se recusou a começar</strong> para não estragar o trabalho que ainda não está guardado em nenhum commit. Nada mudou: o <code>git status --short</code> continua mostrando o <code> M bolo.txt</code>, e nenhum commit foi criado.</p>
+<p><strong>Como resolver</strong>, conforme o que você quer fazer com a mudança:</p>
+<ul>
+  <li>quer ficar com ela: faça o commit dela primeiro (<a href="git-commit.html">git commit</a>) e depois o merge;</li>
+  <li>quer guardar para depois: <code>git stash</code>, o merge, e <code>git stash pop</code> (aula <a href="git-stash.html">git stash</a>);</li>
+  <li>não quer: descarte com <code>git restore bolo.txt</code> (aula <a href="git-restore.html">git restore</a>). Foi o que a Ana fez:</li>
+</ul>
+<pre class="term" data-cwd="~/receitas">$ git restore bolo.txt
+$ git merge --no-edit calda
+Merge made by the 'ort' strategy.
+ bolo.txt | 1 +
+ 1 file changed, 1 insertion(+)
+</pre>
+<p>Regra prática: <strong>antes de um merge, <code>git status</code> limpo</strong>.</p>
+</div>
+
+<div class="cenario">
+<strong><code>--ff-only</code> com os dois lados andando: <code>Not possible to fast-forward</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git merge --ff-only bolo
+hint: Diverging branches can't be fast-forwarded, you need to either:
+hint:
+hint: 	git merge --no-ff
+hint:
+hint: or:
+hint:
+hint: 	git rebase
+hint:
+hint: Disable this message with "git config set advice.diverging false"
+fatal: Not possible to fast-forward, aborting.
+</pre>
+<p>"Dica: branches que divergiram não podem avançar rápido; você precisa ou fazer <code>git merge --no-ff</code> ou <code>git rebase</code>. (…) Fatal: não é possível avançar rápido, cancelando." Você pediu "só fast-forward", mas os dois lados andaram: o Git não fez nada. <strong>Como resolver:</strong> se o commit de merge não for problema, rode o merge sem o <code>--ff-only</code>; a outra saída, o <code>git rebase</code>, tem aula própria (<a href="git-rebase.html">git rebase</a>).</p>
+</div>
+
+<div class="cenario">
+<strong>Apagou a mensagem no editor: <code>Empty commit message</code></strong>
+<p>Se você apagar a linha <code>Merge branch 'bolo'</code> e salvar o arquivo vazio, o Git não cria o commit de merge:</p>
+<pre class="term" data-cwd="~/receitas">$ git merge bolo
+error: Empty commit message.
+Not committing merge; use 'git commit' to complete the merge.
+$ git status
+No ramo main
+Todos os conflitos foram corrigidos mas você continua mesclando.
+  (use  "git commit" para concluir a mesclagem)
+
+Mudanças a serem submetidas:
+        new file:   bolo.txt
+
+</pre>
+<p>"Erro: mensagem de commit vazia. Não vou fazer o commit do merge; use <code>git commit</code> para concluí-lo." Atenção: o merge <strong>não foi cancelado</strong>. Ele ficou <strong>em andamento</strong>, com o <code>bolo.txt</code> já preparado, e o <code>git status</code> avisa: "você continua mesclando; use <code>git commit</code> para concluir a mesclagem". <strong>Como resolver:</strong> para terminar, <code>git commit</code> (ou <code>git commit --no-edit</code>, que usa a mensagem padrão); para desistir, <code>git merge --abort</code> (aula <a href="abortar-merge.html">Desistindo de um Merge</a>).</p>
+<pre class="term" data-cwd="~/receitas">$ git commit --no-edit
+[main abc5385] Merge branch 'bolo'
+</pre>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git merge-base main bolo</code></td><td>Mostra o hash do ancestral comum dos dois branches</td></tr>
+<tr><td><code>git merge bolo</code></td><td>Junta o <code>bolo</code> no branch atual; com os dois lados andando, cria o commit de merge (abre o editor)</td></tr>
+<tr><td><code>git merge bolo -m "mensagem"</code></td><td>O mesmo, com a mensagem dada</td></tr>
+<tr><td><code>git merge --no-edit bolo</code></td><td>O mesmo, com a mensagem padrão, sem editor</td></tr>
+<tr><td><code>git merge --no-ff suco</code></td><td>Cria o commit de merge mesmo quando daria fast-forward</td></tr>
+<tr><td><code>git log --oneline --graph --all</code></td><td>Desenha os galhos e o ponto onde se juntam</td></tr>
+<tr><td><code>git log -1</code></td><td>No commit de merge, mostra a linha <code>Merge:</code> com os dois pais</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o comando</h3>
+<p>Você está no <code>main</code> e quer juntar o branch <code>pudim</code>, aceitando a mensagem padrão sem abrir o editor:</p>
+<div class="ex-code">git <input data-answer="merge" aria-label="subcomando"> <input data-answer="--no-edit" aria-label="opção"> pudim</div>
+</div>
+
+<div class="exercise">
+<h3>2. Quantos pais?</h3>
+<p>Quantos pais tem um commit de merge comum, como o desta aula? Responda com um número.</p>
+<div class="ex-code">Tem <input data-answer="2" aria-label="número de pais"> pais.</div>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">3. Por que o merge de três vias precisa do ancestral comum?</p>
+<label><input type="radio" name="q3"> Para saber qual branch é mais novo</label>
+<label><input type="radio" name="q3"> Para apagar o branch depois do merge</label>
+<label><input type="radio" name="q3"> Para saber o que cada lado mudou desde que os caminhos se separaram</label>
+<label><input type="radio" name="q3"> Não precisa: ele só junta as duas pontas</label>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. O <code>main</code> não andou desde que o branch <code>suco</code> foi criado. O que o <code>git merge suco</code> faz?</p>
+<label><input type="radio" name="q4"> Um merge de três vias, com commit de merge</label>
+<label><input type="radio" name="q4"> Um fast-forward: só move o <code>main</code> para a frente</label>
+<label><input type="radio" name="q4"> Dá erro, porque não há nada para juntar</label>
+<label><input type="radio" name="q4"> Apaga o branch <code>suco</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. Depois do <code>git merge bolo</code> no <code>main</code>, o que acontece com o branch <code>bolo</code>?</p>
+<label><input type="radio" name="q5"> Continua existindo, apontando para o mesmo commit de antes</label>
+<label><input type="radio" name="q5"> É apagado automaticamente</label>
+<label><input type="radio" name="q5"> Passa a apontar para o commit de merge</label>
+<label><input type="radio" name="q5"> Vira um branch remoto</label>
+</div>
+
+<h3>Missão final: juntar com a sua mensagem</h3>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Cria o README';;git switch -q -c suco;;echo 'Suco de laranja' &gt; suco.txt;;git add suco.txt;;git commit -q -m 'Adiciona o suco';;git switch -q main;;echo 'Pudim' &gt; pudim.txt;;git add pudim.txt;;git commit -q -m 'Adiciona a receita de pudim'" data-goal="head:main,commits:4,limpo,msg:Junta o suco de laranja,contem:HEAD:suco.txt=Suco de laranja" data-solucao="git merge suco -m 'Junta o suco de laranja'">
+<p class="try-task"><strong>Missão:</strong> o <code>main</code> ganhou o pudim, e o branch <code>suco</code> tem o suco de laranja. Junte o <code>suco</code> no <code>main</code> com a mensagem <code>Junta o suco de laranja</code>, sem abrir o editor. Confira com <code>git log --oneline --graph</code>.</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Quando os <strong>dois</strong> branches andaram, o Git faz um merge de <strong>três vias</strong>: compara cada ponta com o <strong>ancestral comum</strong> (o <code>git merge-base</code>) e junta as mudanças dos dois lados.</li>
+  <li>O resultado é um <strong>commit de merge</strong>, com <strong>dois pais</strong>: o <code>git log -1</code> mostra a linha <code>Merge:</code>, e o <code>git log --graph</code> desenha os galhos se juntando.</li>
+  <li>O <code>git merge</code> abre o editor com a mensagem <code>Merge branch '…'</code>; <code>-m "…"</code> dá outra mensagem, e <code>--no-edit</code> aceita a padrão.</li>
+  <li>Quem decide entre fast-forward e três vias é o Git; <code>--no-ff</code> força o commit de merge e <code>--ff-only</code> o proíbe.</li>
+  <li>Antes de um merge, deixe o <code>git status</code> limpo: mudanças não commitadas nos arquivos que o merge mexe fazem o Git recusar.</li>
+  <li>Quando os dois lados mudam <strong>as mesmas linhas</strong>, o Git não sabe qual escolher: é o <strong>conflito</strong>, assunto da próxima aula, <a href="conflitos.html">Conflitos de Merge</a>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
