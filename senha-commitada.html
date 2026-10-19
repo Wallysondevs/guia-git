@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Senha Commitada — o que fazer de verdade | Guia Git</title>
+<meta name="description" content="Commitei uma senha no Git: primeiro revogue a senha; depois, se ainda não fez push, git rm --cached, .gitignore e commit --amend; se já fez push, git filter-repo --sensitive-data-removal e push --force --mirror, com saídas reais, o BFG e como evitar que aconteça de novo.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Commitei uma Senha! E Agora?</span></h1>
+
+<p class="intro">Acontece com todo mundo: a Ana fez <code>git add .</code>, commitou, e junto foi o arquivo <code>.env</code> com a chave da API do site de receitas. Em outro dia, pior: enviou para o GitHub um arquivo com a senha do painel. Esta aula é o plano de ação, na ordem certa. Spoiler do passo mais importante: <strong>ele não tem nada a ver com o Git</strong>.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Por que o primeiro passo é sempre <strong>trocar (revogar) a senha</strong>, e não mexer no histórico.</li>
+  <li>Como tirar o arquivo do commit quando você <strong>ainda não fez push</strong> (<code>git rm --cached</code>, <code>.gitignore</code> e <code>--amend</code>).</li>
+  <li>Por que <code>git rm</code> sozinho <strong>não</strong> apaga a senha do histórico.</li>
+  <li>Como limpar o histórico <strong>depois do push</strong> com o <code>git filter-repo</code>, e o que fazer com o GitHub e os colegas.</li>
+  <li>Como evitar que aconteça de novo.</li>
+</ul>
+</div>
+
+<div class="warning">
+<strong>As senhas desta aula são inventadas</strong>
+<p><code>chave-de-exemplo-0000</code> e <code>senha-de-exemplo-123</code> são exemplos, não servem para nada. Nunca use uma senha de verdade para "testar" estes comandos.</p>
+</div>
+
+<hr>
+
+<h2>A ideia: trocar a fechadura, não só esconder a chave</h2>
+<p>Imagine que a Ana perdeu a chave de casa numa praça. Ela pode voltar à praça e procurar a chave, mas não tem como saber se alguém já pegou, copiou e devolveu. O que resolve de verdade é <strong>trocar a fechadura</strong>: a chave antiga passa a não abrir nada.</p>
+<p>Com senhas no Git é igual. Depois que um commit sai do seu computador (push), você não sabe quem já viu: robôs varrem o GitHub atrás de senhas e chaves o tempo todo. Por isso a documentação do GitHub (<a href="https://docs.github.com/pt/authentication/keeping-your-account-and-data-secure/removing-sensitive-data-from-a-repository">Removendo dados confidenciais de um repositório</a>) manda, como primeira etapa, <strong>revogar e/ou alterar o segredo</strong>: depois disso, ele não serve mais para acessar nada. E diz mais: com o segredo revogado, pode nem ser necessário reescrever o histórico.</p>
+
+<h3>O mapa da decisão</h3>
+<pre>Commitei uma senha.
+│
+├─ 1. SEMPRE: troque/revogue a senha no serviço dela.   (se já fez push: agora!)
+│
+├─ Ainda NÃO fiz push?
+│    └─ Tire o arquivo do commit (git rm --cached + .gitignore + --amend).   ← fácil
+│
+└─ JÁ fiz push?
+     ├─ A senha foi revogada? Talvez baste isso + um commit que remove o arquivo.
+     └─ Precisa sumir do histórico? git filter-repo + push --force --mirror
+        + avisar colegas + suporte do GitHub.                                ← trabalhoso</pre>
+
+<hr>
+
+<h2>Passo 1: revogue a senha (fora do Git)</h2>
+<p>Onde trocar depende de que senha é:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>O que vazou</th><th>Onde resolver</th></tr>
+<tr><td>Um <a href="https-token.html">token de acesso</a> do GitHub</td><td>Nas configurações da sua conta do GitHub, na parte de tokens: apague o token e gere outro.</td></tr>
+<tr><td>Uma <a href="ssh.html">chave SSH</a> privada</td><td>Remova a chave pública correspondente da sua conta do GitHub (e de servidores) e gere um par novo.</td></tr>
+<tr><td>Chave de API (mapas, pagamentos, e-mail…)</td><td>No painel do serviço que emitiu a chave: revogue e gere outra.</td></tr>
+<tr><td>Senha de banco de dados, painel, e-mail</td><td>Troque a senha no próprio sistema. Se ela é usada em outro lugar, troque lá também.</td></tr>
+</table>
+</div>
+<p>Depois, atualize os programas que usavam a senha antiga, e <strong>só então</strong> cuide do histórico.</p>
+
+<hr>
+
+<h2>Caso A: ainda não fiz push</h2>
+<p>Esse é o caso feliz: o commit só existe no computador da Ana. Ela tinha acabado de commitar:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'CHAVE_API=chave-de-exemplo-0000' &gt; .env
+$ git add .                                     « o "." levou tudo, inclusive o .env
+$ git status
+No ramo main
+Your branch is up to date with 'origin/main'.
+
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	new file:   .env                        « o aviso estava aqui!
+	new file:   busca.js
+	modified:   index.html
+
+$ git commit -m 'Adiciona busca de receitas'
+[main db57cbc] Adiciona busca de receitas
+ 3 files changed, 3 insertions(+)
+ create mode 100644 .env
+ create mode 100644 busca.js
+$ git show --stat --oneline HEAD
+db57cbc Adiciona busca de receitas
+ .env       | 1 +                           « a chave está no commit
+ busca.js   | 1 +
+ index.html | 1 +
+ 3 files changed, 3 insertions(+)</pre>
+
+<p>Para consertar, são três movimentos: tirar o <code>.env</code> do Git (sem apagar o arquivo da pasta), mandar o Git ignorá-lo daqui em diante e <strong>refazer</strong> o último commit.</p>
+
+<dl class="anatomy">
+  <dt>git rm --cached .env</dt><dd>Tira o arquivo da área de preparo e do próximo commit, mas <strong>deixa o arquivo na pasta</strong> (<code>--cached</code> = "só no Git, não no disco"). Veja <a href="git-rm.html">git rm</a>.</dd>
+  <dt>echo '.env' &gt;&gt; .gitignore</dt><dd>Acrescenta a linha <code>.env</code> ao <a href="gitignore.html">.gitignore</a>, para o Git nunca mais oferecê-lo.</dd>
+  <dt>git commit --amend --no-edit</dt><dd>Refaz o último commit com o que está preparado agora, mantendo a mensagem (<code>--no-edit</code>). Veja <a href="commit-amend.html">--amend</a>.</dd>
+</dl>
+
+<pre class="term" data-cwd="~/receitas">$ git rm --cached .env
+rm '.env'                                        « saiu do Git (não do disco)
+$ echo '.env' &gt;&gt; .gitignore
+$ git add .gitignore
+$ git status
+No ramo main
+Seu ramo está à frente de 'origin/main' por 1 submissão.
+  (use "git push" to publish your local commits)
+
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	deleted:    .env                         « em relação ao commit com a chave
+	new file:   .gitignore
+
+$ git commit --amend --no-edit
+[main 2790fde] Adiciona busca de receitas
+ Date: Thu Oct 15 10:30:00 2026 -0300
+ 3 files changed, 3 insertions(+)
+ create mode 100644 .gitignore
+ create mode 100644 busca.js
+$ git show --stat --oneline HEAD
+2790fde Adiciona busca de receitas               « um commit novo, com outro hash
+ .gitignore | 1 +
+ busca.js   | 1 +
+ index.html | 1 +                               « e sem o .env
+ 3 files changed, 3 insertions(+)
+$ git status
+No ramo main
+Seu ramo está à frente de 'origin/main' por 1 submissão.
+  (use "git push" to publish your local commits)
+
+nothing to commit, working tree clean           « o .env não aparece: está ignorado
+$ ls -a
+.  ..  .env  .git  .gitignore  busca.js  index.html
+$ cat .env
+CHAVE_API=chave-de-exemplo-0000                  « o arquivo continua na pasta</pre>
+
+<p>Linha por linha:</p>
+<ul>
+  <li><code>rm '.env'</code>: o <code>git rm</code> confirma o que tirou. Com <code>--cached</code>, foi só do Git: o <code>ls -a</code> e o <code>cat</code> no fim mostram que o arquivo continua lá.</li>
+  <li><code>deleted:    .env</code>: "apagado", comparando com o último commit (que tinha o <code>.env</code>). Depois do <code>--amend</code>, esse commit é substituído.</li>
+  <li><code>Seu ramo está à frente de 'origin/main' por 1 submissão</code>: confirma que o commit ainda <strong>não foi enviado</strong>. É o que torna este caso fácil.</li>
+  <li><code>[main 2790fde]</code>: o commit novo tem outro hash; o antigo (<code>db57cbc</code>, com a chave) ficou sem etiqueta e só existe no seu computador, no <a href="git-reflog.html">reflog</a>, até a faxina automática do Git apagá-lo.</li>
+</ul>
+
+<div class="tip">
+<strong>E se o commit com a senha não é o último?</strong>
+<p>Se ainda não houve push, você pode reescrever os commits locais com o <a href="rebase-interativo.html">rebase interativo</a> (marcando o commit com <code>edit</code> e fazendo o mesmo <code>git rm --cached</code> + <code>--amend</code> nele), ou usar o <code>git filter-repo</code> do caso B, que funciona igual sem push.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '&lt;h1&gt;Receitas&lt;/h1&gt;' &gt; index.html;;git add index.html;;git commit -q -m 'Cria a página inicial';;echo 'CHAVE_API=chave-de-exemplo-0000' &gt; .env;;echo 'fetch(1)' &gt; busca.js;;git add .;;git commit -q -m 'Adiciona busca de receitas'" data-goal="file:.env,ignorado:.env,limpo,commits:2,msg:busca,contem:HEAD:.gitignore=.env" data-solucao="git rm --cached .env;;echo '.env' &gt;&gt; .gitignore;;git add .gitignore;;git commit --amend --no-edit">
+<p class="try-task"><strong>Missão:</strong> o último commit ("Adiciona busca de receitas") levou o arquivo <code>.env</code> com uma chave (de exemplo), e ainda não houve push. Tire o <code>.env</code> do commit <strong>sem apagá-lo da pasta</strong>, faça o Git ignorá-lo com o <code>.gitignore</code> e refaça o último commit com <code>--amend</code> (o repositório deve continuar com 2 commits). Confira com <code>git show --stat HEAD</code>.</p>
+</div>
+
+<hr>
+
+<h2>Caso B: já fiz push</h2>
+<p>Semana passada, antes de criar o <code>.gitignore</code>, a Ana enviou ao GitHub o arquivo <code>credenciais.txt</code>, com a senha do painel. Depois disso vieram mais commits. <strong>Passo 1 feito</strong>: ela já trocou a senha do painel. Agora, o histórico.</p>
+
+<h3>Por que <code>git rm</code> não basta</h3>
+<p>O primeiro impulso é apagar o arquivo e commitar. Veja o que acontece:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git log --oneline -- credenciais.txt
+b81e404 Adiciona dados do painel                 « o commit que criou o arquivo
+$ git rm -q credenciais.txt
+$ git commit -m 'Remove as credenciais'
+[main 3bf4b84] Remove as credenciais
+ 1 file changed, 1 deletion(-)
+ delete mode 100644 credenciais.txt
+$ git push -q
+$ ls
+bolo.txt  busca.js  index.html  pudim.txt        « sumiu da pasta…
+$ git log --oneline -- credenciais.txt
+3bf4b84 Remove as credenciais
+b81e404 Adiciona dados do painel                 « …mas o commit antigo continua lá
+$ git show b81e404:credenciais.txt
+SENHA_DO_PAINEL=senha-de-exemplo-123             « qualquer um com o repositório lê</pre>
+
+<dl class="anatomy">
+  <dt>git log --oneline -- credenciais.txt</dt><dd>Mostra só os commits que mexeram nesse arquivo (o <code>--</code> separa as opções do caminho).</dd>
+  <dt>git show b81e404:credenciais.txt</dt><dd>Mostra o arquivo <strong>como ele era</strong> no commit <code>b81e404</code>. Qualquer pessoa que clonar o repositório pode fazer isso.</dd>
+</dl>
+<p>O Git guarda <strong>todas</strong> as versões: apagar o arquivo hoje não apaga as fotos de ontem. Para a senha sumir, é preciso <strong>reescrever o histórico</strong>: refazer todos os commits desde o <code>b81e404</code>, como se o arquivo nunca tivesse existido.</p>
+
+<div class="warning">
+<strong>Reescrever histórico público é sério</strong>
+<p>É o que a <a href="regra-de-ouro.html">Regra de Ouro</a> manda evitar: todos os commits a partir do vazamento ganham hashes novos, e quem tem uma cópia antiga fica com um histórico diferente. Faça só quando a senha precisa mesmo sumir (revogar nem sempre é possível; dados pessoais, por exemplo, não se "revogam"), e combine antes com a equipe.</p>
+</div>
+
+<h3>A ferramenta recomendada: <code>git filter-repo</code></h3>
+<p>O <code>git filter-repo</code> não vem com o Git: é um programa à parte, recomendado pela documentação do GitHub e pelo próprio projeto Git (no lugar do antigo <code>git filter-branch</code>). No Ubuntu 26.04 ele está no pacote <code>git-filter-repo</code> (versão 2.47.0), que se instala com <code>sudo apt install git-filter-repo</code>. A opção <code>--sensitive-data-removal</code>, feita exatamente para senhas vazadas, exige a versão 2.47 ou mais nova.</p>
+
+<p>A recomendação é trabalhar numa <strong>cópia nova</strong>, clonada do GitHub, e não na sua pasta do dia a dia:</p>
+
+<pre class="term">$ git clone https://github.com/ana-souza/receitas.git receitas-limpeza
+Cloning into 'receitas-limpeza'...
+remote: Enumerating objects: 19, done.
+remote: Counting objects: 100% (19/19), done.
+remote: Compressing objects: 100% (12/12), done.
+remote: Total 19 (delta 4), reused 0 (delta 0), pack-reused 0 (from 0)
+Receiving objects: 100% (19/19), done.
+Resolving deltas: 100% (4/4), done.
+$ cd receitas-limpeza
+$ git filter-repo --sensitive-data-removal --invert-paths --path credenciais.txt
+NOTICE: Fetching all refs from origin to make sure we rewrite
+        all history that may reference the sensitive data, via
+      git fetch -q --prune --update-head-ok --refmap "" origin +refs/*:refs/*
+Parsed 6 commits
+New history written in 0.18 seconds; now repacking/cleaning...
+You rewrote 4 (of 6) commits.                    « reescreveu 4 dos 6 commits
+
+NOTE: First Changed Commit(s) is/are:
+  b81e404c14fbd4e6e31348c1f233af6a402f46d0       « o primeiro commit alterado
+NOTE: LFS object orphaning not checked (LFS not in use)
+
+Repacking your repo and cleaning out old unneeded objects
+HEAD is now at 77a0575 Adiciona pudim
+Enumerating objects: 14, done.
+Counting objects: 100% (14/14), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (8/8), done.
+Writing objects: 100% (14/14), done.
+Total 14 (delta 2), reused 9 (delta 0), pack-reused 0 (from 0)
+Completely finished after 0.22 seconds.
+
+NEXT STEPS FOR YOUR SENSITIVE DATA REMOVAL:
+  * If you are doing your rewrite in multiple steps, ignore these next steps
+    until you have completed all your invocations of git-filter-repo.
+  * See the "Sensitive Data Removal" subsection of the "DISCUSSION" section
+    of the manual for more details about any of the steps below.
+  * Inspect this repository and verify that the sensitive data is indeed
+    completely removed from all commits.
+  * Force push the rewritten history to the server:
+      git push --force --mirror origin
+  * Contact the server admins for additional steps they need to take; the
+    First Changed Commit(s) may come in handy here.
+  * Have other colleagues with a clone either discard their clone and reclone
+    OR follow the detailed steps in the manual to repeatedly rebase and
+    purge the sensitive data from their copy.  Again, the First Changed
+    Commit(s) may come in handy.
+  * See the "Prevent repeats and avoid future sensitive data spills" section
+    of the manual.</pre>
+
+<dl class="anatomy">
+  <dt>git filter-repo</dt><dd>O programa que reescreve o histórico inteiro, commit por commit.</dd>
+  <dt>--sensitive-data-removal</dt><dd>"Remoção de dados confidenciais": busca antes <strong>todas</strong> as referências do servidor (a linha <code>NOTICE</code>) para não deixar nenhum branch ou tag com a senha, e mostra o "primeiro commit alterado" e os próximos passos.</dd>
+  <dt>--path credenciais.txt</dt><dd>O arquivo a tratar, com o caminho completo dentro do repositório (se ele mudou de nome ou de pasta, repita <code>--path</code> com o caminho antigo).</dd>
+  <dt>--invert-paths</dt><dd>"Inverta": em vez de manter só esse caminho, <strong>remova</strong> esse caminho e mantenha todo o resto.</dd>
+</dl>
+
+<p>A saída é em inglês (o <code>git filter-repo</code> não tem tradução). O que ela diz:</p>
+<ul>
+  <li><code>You rewrote 4 (of 6) commits.</code>: "você reescreveu 4 de 6 commits": o que tinha o arquivo e os 3 seguintes ganharam hashes novos.</li>
+  <li><code>First Changed Commit(s) is/are: b81e404…</code>: o primeiro commit alterado, justamente o do vazamento. Guarde esse hash: o suporte do GitHub e os colegas vão precisar dele.</li>
+  <li><code>NEXT STEPS</code> ("próximos passos"): conferir se a senha sumiu de todos os commits; enviar à força com <code>git push --force --mirror origin</code>; falar com os administradores do servidor (no GitHub, o suporte); e pedir aos colegas que <strong>descartem o clone e clonem de novo</strong>.</li>
+</ul>
+
+<h3>Conferir e enviar</h3>
+<pre class="term" data-cwd="~/receitas-limpeza">$ git log --oneline
+77a0575 (HEAD -&gt; main) Adiciona pudim            « hashes novos…
+11c3b78 Adiciona bolo de cenoura
+2790fde Adiciona busca de receitas               « …a partir do vazamento
+0b71801 Cria a página inicial
+$ git log --oneline --all -- credenciais.txt     « nenhuma linha: nenhum commit tem o arquivo
+$ git push --force --mirror origin
+Enumerating objects: 14, done.
+Counting objects: 100% (14/14), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (6/6), done.
+Writing objects: 100% (14/14), 1.09 KiB | 1.09 MiB/s, done.
+Total 14 (delta 2), reused 14 (delta 2), pack-reused 0 (from 0)
+To https://github.com/ana-souza/receitas.git
+ + 3bf4b84...77a0575 main -&gt; main (forced update)    « o GitHub aceitou o histórico novo</pre>
+
+<p>Repare que o commit "Adiciona dados do painel" sumiu do histórico: ele só tinha o arquivo da senha, então ficou vazio e o <code>filter-repo</code> o descartou. O commit "Remove as credenciais" também sumiu, pelo mesmo motivo.</p>
+<dl class="anatomy">
+  <dt>--force</dt><dd>Aceita substituir o histórico do servidor (normalmente o Git recusa, veja <a href="push-rejeitado.html">push rejeitado</a>). Aqui é um dos raros casos em que o <code>--force</code> é a ferramenta certa.</dd>
+  <dt>--mirror</dt><dd>Envia <strong>todas</strong> as referências (branches, tags…), deixando o servidor igual à sua cópia. A documentação do GitHub observa que o <code>--force</code> já está implícito no <code>--mirror</code>; ela o escreve mesmo assim, como lembrete de que tudo será sobrescrito.</dd>
+</dl>
+<p>No GitHub real, a documentação avisa que esse comando falha ao enviar as referências que começam com <code>refs/pull/</code> (as dos pull requests), que são só de leitura, e que branches protegidos podem precisar de ajuste temporário (ilustrativo: o "GitHub de mentira" do laboratório não tem pull requests).</p>
+
+<h3>As cópias antigas (a sua e a dos colegas)</h3>
+<p>A pasta antiga da Ana, <code>~/receitas</code>, ainda tem o histórico com a senha. Veja o que o Git diz depois de um <a href="git-fetch.html">git fetch</a>:</p>
+<pre class="term" data-cwd="~/receitas">$ git fetch
+remote: Enumerating objects: 8, done.
+remote: Counting objects: 100% (8/8), done.
+remote: Compressing objects: 100% (4/4), done.
+remote: Total 6 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (6/6), 565 bytes | 565.00 KiB/s, done.
+From https://github.com/ana-souza/receitas
+ + 3bf4b84...77a0575 main       -&gt; origin/main  (forced update)
+$ git status
+No ramo main
+O seu branch e 'origin/main' divergiram-se,
+e cada um tem 4 e 2 submissões, respectivamente.     « histórico velho × novo
+  (use "git pull" if you want to integrate the remote branch with yours)
+
+nothing to commit, working tree clean</pre>
+<p><strong>Não siga a dica do <code>git pull</code> aqui!</strong> Juntar o histórico velho com o novo traria a senha de volta, e o próximo push a mandaria de novo ao GitHub. A saída segura é jogar a cópia antiga fora e usar a limpa:</p>
+<pre class="term">$ cd ~
+$ rm -rf receitas
+$ mv receitas-limpeza receitas
+$ cd receitas
+$ git status
+No ramo main
+Your branch is up to date with 'origin/main'.
+
+nothing to commit, working tree clean</pre>
+<p>O Bruno, e todo mundo que tinha clonado, faz o mesmo: apaga a cópia antiga e <a href="git-clone.html">clona de novo</a> (salvando antes, à parte, o trabalho que ainda não tinha enviado).</p>
+
+<h3>O que fica fora do seu alcance (ilustrativo)</h3>
+<p>Segundo a documentação do GitHub:</p>
+<ul>
+  <li><strong>Forks:</strong> se o commit com a senha existe num <a href="fork.html">fork</a>, ele continua acessível lá; você precisa falar com o dono do fork.</li>
+  <li><strong>Pull requests:</strong> os hashes mudam, o que pode bagunçar pull requests abertos; a recomendação é juntar ou fechar os pull requests abertos antes da limpeza.</li>
+  <li><strong>Cópias guardadas pelo GitHub:</strong> para remover visualizações em cache e referências de pull requests, é preciso entrar em contato com o suporte do GitHub, informando o repositório e os "First Changed Commit(s)" que o <code>filter-repo</code> mostrou.</li>
+</ul>
+<p>É por isso que o passo 1 importa tanto: o histórico limpo reduz o estrago, mas só a senha trocada garante que a antiga não abre mais nada.</p>
+
+<hr>
+
+<h2>Formas diferentes de limpar o histórico</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Ferramenta</th><th>Como</th><th>Observações</th></tr>
+<tr><td><code>git filter-repo</code>, removendo o arquivo</td><td><code>git filter-repo --sensitive-data-removal --invert-paths --path ARQUIVO</code></td><td>A recomendada pela documentação do GitHub (rodada no laboratório, acima).</td></tr>
+<tr><td><code>git filter-repo</code>, trocando o texto (ilustrativo)</td><td><code>git filter-repo --sensitive-data-removal --replace-text ../senhas.txt</code></td><td>Para quando a senha está <strong>dentro</strong> de um arquivo que deve continuar existindo. O <code>senhas.txt</code> (fora do repositório!) lista os textos a trocar; por padrão, eles viram <code>***REMOVED***</code>.</td></tr>
+<tr><td>BFG Repo-Cleaner (ilustrativo)</td><td>Segundo o site do projeto: <code>git clone --mirror …</code>, depois <code>bfg --delete-files ARQUIVO repo.git</code> ou <code>bfg --replace-text senhas.txt repo.git</code>, depois <code>git reflog expire --expire=now --all &amp;&amp; git gc --prune=now --aggressive</code> e <code>git push</code>.</td><td>Ferramenta antiga e popular, em Java. Atenção: por padrão, o BFG <strong>não mexe no último commit</strong> do branch; você precisa tirar a senha dele antes, com um commit comum.</td></tr>
+<tr><td><code>git filter-branch</code></td><td>(não use)</td><td>O comando antigo do próprio Git. A documentação dele mesmo recomenda o <code>git filter-repo</code> no lugar.</td></tr>
+<tr><td>Só revogar + commit que remove</td><td>Trocar a senha e <code>git rm</code></td><td>Aceitável quando a senha revogada não vale mais nada e reescrever o histórico causaria mais problema do que resolve.</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Para não acontecer de novo</h2>
+<ol class="passo">
+  <li><strong>Senha fora do código:</strong> guarde-as em variáveis de ambiente ou num arquivo <code>.env</code> que está no <code>.gitignore</code> desde o primeiro commit.</li>
+  <li><strong>Um modelo sem senha:</strong> commite um <code>.env.exemplo</code> com <code>CHAVE_API=coloque-sua-chave-aqui</code>, para os colegas saberem o que preencher.</li>
+  <li><strong>Olhe antes de commitar:</strong> <code>git status</code> e <a href="git-diff-staged.html">git diff --staged</a> mostram exatamente o que vai entrar. Cuidado com <code>git add .</code> e <code>git commit -a</code>, que levam tudo.</li>
+  <li><strong>Deixe uma máquina vigiar:</strong> um <a href="hooks.html">hook</a> <code>pre-commit</code> ou ferramentas como <code>gitleaks</code> e <code>git-secrets</code> procuram senhas antes do commit. No GitHub, a <strong>proteção por push</strong> bloqueia pushes que contêm segredos conhecidos (veja a <a href="https://docs.github.com/pt/code-security/secret-scanning">documentação de verificação de segredos</a>; ilustrativo).</li>
+</ol>
+
+<hr>
+
+<h2>Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>git: 'filter-repo' não é um comando git</code></strong>
+<pre class="term">$ git filter-repo --invert-paths --path credenciais.txt
+git: 'filter-repo' não é um comando git. Veja 'git --help'.</pre>
+<p><strong>O que aconteceu:</strong> o <code>git filter-repo</code> não vem com o Git e não está instalado.</p>
+<p><strong>Como resolver:</strong> no Ubuntu, <code>sudo apt install git-filter-repo</code>. Confira se a sua versão aceita <code>--sensitive-data-removal</code> (2.47 ou mais nova); se não aceitar, instale uma mais nova pelas instruções do projeto.</p>
+</div>
+
+<div class="cenario">
+<strong>Apaguei o arquivo e commitei, mas a senha "ainda está lá"</strong>
+<p><strong>O que aconteceu:</strong> <code>git rm</code> + commit apaga a versão de <strong>hoje</strong>; os commits antigos continuam com o arquivo (<code>git show HASH:arquivo</code> mostra, como acima).</p>
+<p><strong>Como resolver:</strong> revogue a senha; se ela precisa sumir do histórico, use o <code>git filter-repo</code> (caso B).</p>
+</div>
+
+<div class="cenario">
+<strong>Usei <code>git rm</code> sem <code>--cached</code> e o arquivo sumiu da pasta</strong>
+<p><strong>O que aconteceu:</strong> sem <code>--cached</code>, o <code>git rm</code> tira o arquivo do Git <strong>e do disco</strong>.</p>
+<p><strong>Como resolver:</strong> se o arquivo estava em algum commit, traga-o de volta para a pasta com <code>git restore --source=HEAD~1 .env</code> (ou do commit onde ele estava; veja <a href="git-restore.html">git restore</a>), e garanta que ele está no <code>.gitignore</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>A senha voltou ao GitHub depois da limpeza</strong>
+<p><strong>O que aconteceu:</strong> alguém (às vezes você mesmo) fez <code>git pull</code> e <code>git push</code> numa cópia antiga, juntando o histórico velho ao novo.</p>
+<p><strong>Como confirmar:</strong> <code>git log --oneline --all -- credenciais.txt</code> volta a mostrar commits.</p>
+<p><strong>Como resolver:</strong> repita a limpeza numa cópia nova e peça, de novo e com mais ênfase, que todos apaguem as cópias antigas e clonem outra vez.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>O que fazer</th></tr>
+<tr><td>Qualquer senha commitada</td><td>Revogar/trocar a senha no serviço, <strong>primeiro</strong>.</td></tr>
+<tr><td>Último commit, sem push</td><td><code>git rm --cached ARQ</code>, <code>echo ARQ &gt;&gt; .gitignore</code>, <code>git add .gitignore</code>, <code>git commit --amend --no-edit</code></td></tr>
+<tr><td>Commit antigo, sem push</td><td><a href="rebase-interativo.html">rebase -i</a> com <code>edit</code>, ou <code>git filter-repo</code></td></tr>
+<tr><td>Já enviado</td><td>Clone novo → <code>git filter-repo --sensitive-data-removal --invert-paths --path ARQ</code> → <code>git push --force --mirror origin</code> → colegas reclonam → suporte do GitHub</td></tr>
+<tr><td>Achar onde o arquivo aparece</td><td><code>git log --oneline --all -- ARQ</code></td></tr>
+<tr><td>Ver o arquivo num commit antigo</td><td><code>git show HASH:ARQ</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Só do Git, não do disco</h3>
+<p>Complete para tirar o <code>.env</code> do Git sem apagá-lo da pasta:</p>
+<div class="ex-code">git rm <input data-answer="--cached" aria-label="opção"> .env</div>
+</div>
+
+<div class="exercise">
+<h3>2. Refazer o último commit</h3>
+<p>Complete para refazer o último commit mantendo a mensagem:</p>
+<div class="ex-code">git commit --amend <input data-answer="--no-edit" aria-label="opção"></div>
+</div>
+
+<div class="exercise">
+<h3>3. Remover o arquivo de todo o histórico</h3>
+<p>Complete a opção que faz o <code>filter-repo</code> remover o caminho, em vez de manter só ele:</p>
+<div class="ex-code">git filter-repo --sensitive-data-removal <input data-answer="--invert-paths" aria-label="opção"> --path credenciais.txt</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">4. Você descobriu que enviou um token do GitHub num commit. Qual é o primeiro passo?</p>
+<label><input type="radio" name="q4"> Rodar <code>git filter-repo</code>.</label>
+<label><input type="radio" name="q4"> Revogar o token e gerar outro.</label>
+<label><input type="radio" name="q4"> Apagar o arquivo e commitar.</label>
+<label><input type="radio" name="q4"> Apagar o repositório do GitHub.</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">5. A Ana rodou <code>git rm credenciais.txt</code>, commitou e fez push. A senha ainda pode ser lida?</p>
+<label><input type="radio" name="q5"> Não: o arquivo foi apagado.</label>
+<label><input type="radio" name="q5"> Só por quem tem a senha do GitHub da Ana.</label>
+<label><input type="radio" name="q5"> Sim: os commits antigos continuam com o arquivo (<code>git show HASH:credenciais.txt</code>).</label>
+<label><input type="radio" name="q5"> Só nos próximos 30 dias.</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">6. Depois da limpeza com <code>filter-repo</code> e do push, o <code>git status</code> da cópia antiga diz que os branches "divergiram". O que fazer?</p>
+<label><input type="radio" name="q6"> Apagar a cópia antiga e clonar de novo.</label>
+<label><input type="radio" name="q6"> <code>git pull</code> e <code>git push</code>.</label>
+<label><input type="radio" name="q6"> <code>git push --force</code> a partir da cópia antiga.</label>
+<label><input type="radio" name="q6"> Nada: o Git resolve sozinho.</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><strong>Primeiro, revogue/troque a senha.</strong> Só isso garante que a antiga não abre mais nada.</li>
+  <li>Sem push: <code>git rm --cached</code>, <code>.gitignore</code> e <code>git commit --amend</code>.</li>
+  <li><code>git rm</code> + commit não apaga a senha dos commits antigos.</li>
+  <li>Com push: numa cópia nova, <code>git filter-repo --sensitive-data-removal --invert-paths --path ARQ</code>, depois <code>git push --force --mirror origin</code>.</li>
+  <li>Todos reclonam; forks, pull requests e cópias em cache do GitHub exigem contato com donos e suporte.</li>
+  <li>Prevenção: <code>.gitignore</code> desde o início, <code>.env.exemplo</code>, <code>git diff --staged</code> antes de commitar, proteção por push.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
