@@ -1440,6 +1440,24 @@
       }
     };
 
+    // "git commit" sem -m: abre o editor (GIT_EDITOR / core.editor). No simulador só funcionam editores
+    // de linha de comando (sed, true, :) — os de tela (nano, vim) dão a mensagem "(simulador)".
+    var commitDireto = CMDS.commit;
+    CMDS.commit = function (args, io, sh) {
+      var temMsg = args.some(function (a) { return /^(-m|--message|-F|--file|-C|--reuse-message|--no-edit)(=|$)|^-[a-zA-Z]*[mFC]/.test(a); });
+      var repo0 = achar(sh);
+      if (temMsg || !repo0 || args.indexOf("-h") >= 0 || args.indexOf("--dry-run") >= 0) return commitDireto(args, io, sh);
+      var ed = sh.valor("GIT_EDITOR") || repo0.config("core.editor") || sh.valor("VISUAL") || sh.valor("EDITOR");
+      if (!ed || /^(nano|vim?|code|gedit|emacs)\b/.test(ed)) return commitDireto(args, io, sh); // dá a mensagem "(simulador)" (ou mantém a do --amend)
+      return (function* () {
+        var emMerge = repo0.existe("MERGE_HEAD"), amend = args.indexOf("--amend") >= 0;
+        var base = emMerge ? (repo0.arq("MERGE_MSG") || "") : amend && repo0.head() ? repo0.ler(repo0.head()).msg : "";
+        repo0.gravar("COMMIT_EDITMSG", base + (emMerge ? "# Please enter a commit message to explain why this merge is necessary,\n# especially if it merges an updated upstream into a topic branch.\n#\n" : "\n") + "# Please enter the commit message for your changes. Lines starting\n# with '#' will be ignored, and an empty message aborts the commit.\n#\n");
+        yield* rodarEditor(repo0, sh, ed, repo0.g + "/COMMIT_EDITMSG");
+        return commitDireto(args.concat(["-F", repo0.g + "/COMMIT_EDITMSG"]), io, sh);
+      })();
+    };
+
     /* ---------- log / show ---------- */
     function formatarCommit(repo, h, opt) {
       var c = repo.ler(h), s = "", au = parseIdent(c.author), co = parseIdent(c.committer);
