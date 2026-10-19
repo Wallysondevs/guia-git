@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git README — a capa do repositório, escrita em Markdown | Guia Git</title>
+<meta name="description" content="O que é o README.md, por que todo repositório precisa de um, onde o GitHub o mostra, e o Markdown básico para escrevê-lo: títulos com #, parágrafos, negrito, itálico, listas, links, imagens e blocos de código. Com o commit real do README no Git 2.53 e os erros mais comuns.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">README e Markdown</span></h1>
+
+<p class="intro">Quando alguém abre um repositório no GitHub, a primeira coisa que vê, logo abaixo da lista de arquivos, é o conteúdo de um arquivo chamado <code>README.md</code>. Ele é a <strong>capa</strong> do projeto: diz o que é, para que serve e como usar. O nome vem do inglês <em>read me</em>, "leia-me". O <code>.md</code> no fim quer dizer <strong>Markdown</strong>, um jeito simples de escrever texto com títulos, listas e links usando só caracteres comuns, como <code>#</code> e <code>*</code>. Nesta aula a Ana escreve o README do site de receitas e o versiona com o Git.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é o README e o que ele deve contar.</li>
+  <li>Onde o GitHub procura o README e onde o mostra.</li>
+  <li>O Markdown básico: títulos, parágrafos, <strong>negrito</strong>, <em>itálico</em>, listas, links, imagens e código.</li>
+  <li>Como criar, commitar e enviar o README com o Git.</li>
+  <li>Os tropeços mais comuns de quem começa no Markdown.</li>
+</ul>
+</div>
+
+<p>Os comandos desta aula rodaram no <strong>Git 2.53</strong> da máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português. A aparência do README <strong>no site do GitHub</strong> está descrita com base na documentação oficial (<a href="https://docs.github.com/pt/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-readmes">Sobre os READMEs</a>) e é <strong>ilustrativa</strong>.</p>
+
+<hr>
+
+<h2>A ideia: a contracapa do livro</h2>
+<p>Numa livraria, você pega um livro, vira e lê a <strong>contracapa</strong>: em poucas linhas, ela diz do que o livro trata e se ele serve para você. Ninguém lê o livro inteiro para descobrir isso. O README é a contracapa do repositório. A documentação do GitHub lista o que ele costuma responder:</p>
+<ul>
+  <li><strong>o que</strong> o projeto faz;</li>
+  <li><strong>por que</strong> ele é útil;</li>
+  <li><strong>como começar</strong> a usar;</li>
+  <li><strong>onde pedir ajuda</strong>;</li>
+  <li><strong>quem</strong> mantém e contribui.</li>
+</ul>
+<p>E o <strong>Markdown</strong>? É como escrever um bilhete à mão com algumas convenções: sublinhar o título, pôr um tracinho na frente de cada item da lista. No Markdown, o título ganha um <code>#</code> na frente e o item da lista ganha um <code>-</code>. O arquivo continua sendo texto puro (dá para ler no terminal), mas o GitHub o <strong>desenha</strong> bonito, com letras grandes, marcadores e links clicáveis.</p>
+
+<hr>
+
+<h2>1. Onde o GitHub procura e mostra o README</h2>
+<ul>
+  <li>O GitHub procura o README em três lugares, nesta ordem: a pasta <code>.github</code>, a <strong>raiz</strong> do repositório (o lugar mais comum) e a pasta <code>docs</code>. Use a raiz.</li>
+  <li>Ele aparece na página principal do repositório, abaixo da lista de arquivos (ilustrativo).</li>
+  <li>O GitHub monta sozinho um <strong>sumário</strong> com os títulos do README, num ícone no alto do arquivo (ilustrativo).</li>
+  <li>Num repositório <strong>público</strong> com o <strong>mesmo nome</strong> do seu usuário (para a Ana, <code>ana-souza/ana-souza</code>), o README aparece na sua página de <strong>perfil</strong>.</li>
+  <li>O que passar de 500 KiB é cortado: README é para ser curto.</li>
+</ul>
+<p>Para o Git, o README é um arquivo como outro qualquer: ele é criado, adicionado e commitado do mesmo jeito. Quem dá o destaque é o GitHub.</p>
+
+<hr>
+
+<h2>2. O Markdown básico, peça por peça</h2>
+<p>Este é o README que a Ana escreveu para o site de receitas:</p>
+
+<pre class="file" data-file="README.md"># Receitas da Ana
+
+Site com as receitas da família, testadas na cozinha da Ana.
+
+## Receitas
+
+- [Bolo de cenoura](bolo.txt)
+- Pão de queijo *(em breve)*
+
+## Como contribuir
+
+1. Faça um fork.
+2. Crie um branch.
+3. Abra um **pull request**.
+</pre>
+
+<dl class="anatomy">
+  <dt># Receitas da Ana</dt><dd>Um <code>#</code>, um <strong>espaço</strong> e o texto: título principal (o maior). Use um só no arquivo, com o nome do projeto.</dd>
+  <dt>## Receitas</dt><dd>Dois <code>#</code>: um subtítulo, um nível abaixo. Existem até seis níveis (<code>######</code>).</dd>
+  <dt>(linha em branco)</dt><dd>Separa os blocos. Uma linha de texto seguida de outra, <strong>sem</strong> linha em branco entre elas, vira um parágrafo só.</dd>
+  <dt>- item</dt><dd>Um <code>-</code> (ou <code>*</code>) e um espaço: item de lista com marcador.</dd>
+  <dt>1. item</dt><dd>Número, ponto e espaço: lista numerada.</dd>
+  <dt>[Bolo de cenoura](bolo.txt)</dt><dd>Um <strong>link</strong>: o texto entre colchetes, o endereço entre parênteses, sem espaço no meio. Aqui o endereço é <strong>relativo</strong> (o arquivo <code>bolo.txt</code> do próprio repositório); a documentação do GitHub recomenda links relativos, que continuam funcionando para quem clona.</dd>
+  <dt>*(em breve)*</dt><dd>Entre um asterisco de cada lado: <em>itálico</em>.</dd>
+  <dt>**pull request**</dt><dd>Entre dois asteriscos de cada lado: <strong>negrito</strong>.</dd>
+</dl>
+
+<p>No GitHub, esse texto aparece mais ou menos assim (ilustrativo):</p>
+<figure>
+<div style="border:1px solid var(--border,#ccc);border-radius:8px;padding:12px 18px">
+<p style="font-size:1.6em;font-weight:700;margin:.2em 0;border-bottom:1px solid var(--border,#ccc)">Receitas da Ana</p>
+<p>Site com as receitas da família, testadas na cozinha da Ana.</p>
+<p style="font-size:1.3em;font-weight:700;margin:.4em 0;border-bottom:1px solid var(--border,#ccc)">Receitas</p>
+<ul><li><a href="#">Bolo de cenoura</a></li><li>Pão de queijo <em>(em breve)</em></li></ul>
+<p style="font-size:1.3em;font-weight:700;margin:.4em 0;border-bottom:1px solid var(--border,#ccc)">Como contribuir</p>
+<ol><li>Faça um fork.</li><li>Crie um branch.</li><li>Abra um <strong>pull request</strong>.</li></ol>
+</div>
+<figcaption>O README da Ana desenhado pelo GitHub (ilustrativo).</figcaption>
+</figure>
+
+<h3>Mais peças que aparecem em todo README</h3>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Você escreve</th><th>O GitHub mostra</th></tr>
+<tr><td><code>`git status`</code> (entre crases)</td><td>Código no meio da frase, em letra de máquina: <code>git status</code></td></tr>
+<tr><td>Três crases numa linha, o código nas linhas seguintes, e três crases para fechar</td><td>Um <strong>bloco de código</strong>, com a fonte de máquina e o fundo cinza (ótimo para mostrar comandos)</td></tr>
+<tr><td><code>![Foto do bolo](imagens/bolo.jpg)</code></td><td>Uma <strong>imagem</strong>: igual ao link, com <code>!</code> na frente; o texto entre colchetes descreve a imagem para quem não a vê</td></tr>
+<tr><td><code>&gt; Dica: use cenoura fresca.</code></td><td>Uma citação, com uma barra na margem</td></tr>
+<tr><td><code>---</code> sozinho numa linha</td><td>Uma linha horizontal separando partes</td></tr>
+<tr><td><code>- [ ] Pão de queijo</code> / <code>- [x] Bolo</code></td><td>Uma lista de tarefas, com caixinhas (desmarcada / marcada)</td></tr>
+</table>
+</div>
+
+<p>Um bloco de código no README fica assim:</p>
+<pre class="file" data-file="README.md (trecho)">## Como baixar
+
+```
+git clone https://github.com/ana-souza/receitas.git
+```
+</pre>
+
+<hr>
+
+<h2>3. Versionando o README com o Git</h2>
+<p>A Ana já tem o repositório <code>receitas</code> com a receita do bolo. Ela cria o <code>README.md</code> com o editor (ou, no terminal, com <code>cat &gt; README.md</code> e um <em>here-doc</em>, como no laboratório) e olha o <code>git status</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git status
+No ramo main
+Arquivos não monitorados:                                       « arquivos que o Git ainda não acompanha
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	README.md
+
+nada adicionado ao envio mas arquivos não registrados estão presentes (use "git add" to registrar)
+</pre>
+<p>O README aparece em "Arquivos não monitorados" (não rastreados), como qualquer arquivo novo (aula <a href="git-status.html">git status</a>). A dica entre parênteses já diz o próximo passo: <code>git add</code>. Ele entra no histórico pelo caminho de sempre, <code>git add</code> e <code>git commit</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git add README.md
+$ git commit -m 'Adiciona README'
+[main f3deee4] Adiciona README
+ 1 file changed, 14 insertions(+)
+ create mode 100644 README.md                « create = arquivo novo no histórico
+$ git log --oneline
+f3deee4 Adiciona README
+8bf5d5b Adiciona receita de bolo
+$ git show --stat HEAD
+commit f3deee4f2ad5aefb5d1adc50d93efd6bda4e67c7
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Adiciona README
+
+ README.md | 14 ++++++++++++++              « 14 linhas novas
+ 1 file changed, 14 insertions(+)
+</pre>
+
+<p>O <code>git show --stat</code> confirma: o commit criou o <code>README.md</code> com as linhas dele (aula <a href="git-show.html">git show</a>). Depois, um <code>git push</code> manda o commit ao GitHub (aula <a href="git-push.html">git push</a>), e o README aparece na página do repositório.</p>
+
+<div class="tip">
+<strong>Criar o repositório com README no site</strong>
+<p>Na tela de criar repositório (aula <a href="github-repositorio.html">Criando um Repositório no GitHub</a>), o GitHub oferece a opção de já começar com um README. Se você marcar essa opção, o repositório nasce com um commit; aí o caminho é <strong>clonar</strong> (aula <a href="git-clone.html">git clone</a>), e não <code>git init</code> + <code>git remote add</code>, para não terminar com dois históricos diferentes.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo 'Bolo de cenoura' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo'" data-goal="contem:HEAD:README.md=# Receitas da Ana,limpo,commits:2" data-solucao="echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -m 'Adiciona README'">
+<p class="try-task"><strong>Missão:</strong> crie o <code>README.md</code> com o título <code># Receitas da Ana</code> (dica: <code>echo '# Receitas da Ana' &gt; README.md</code>; as aspas simples impedem o terminal de tratar o <code>#</code> como comentário), confira com <code>git status</code> e faça o commit com a mensagem "Adiciona README".</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo 'Bolo de cenoura' &gt; bolo.txt;;echo '# Receitas da Ana' &gt; README.md;;git add .;;git commit -q -m 'Primeiro commit'" data-goal="contem:HEAD:README.md=## Como usar,limpo,commits:2" data-solucao="echo '## Como usar' &gt;&gt; README.md;;echo 'Abra o arquivo da receita.' &gt;&gt; README.md;;git add README.md;;git commit -m 'Explica como usar no README'">
+<p class="try-task"><strong>Missão:</strong> acrescente ao fim do README um subtítulo <code>## Como usar</code> e uma frase embaixo (use <code>&gt;&gt;</code>, que <strong>acrescenta</strong> ao arquivo; um <code>&gt;</code> só apagaria o título). Veja a mudança com <code>git diff</code> e faça o commit.</p>
+</div>
+
+<hr>
+
+<h2>Formas diferentes de escrever o README</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Forma</th><th>Como</th><th>Quando usar</th></tr>
+<tr><td>No editor de texto</td><td>Abra <code>README.md</code> no VS Code, gedit, nano… e salve</td><td>O jeito do dia a dia; o VS Code mostra uma prévia do Markdown</td></tr>
+<tr><td>No terminal</td><td><code>echo '# Título' &gt; README.md</code>, ou <code>cat &gt; README.md</code> com um <em>here-doc</em></td><td>README curto, ou num script</td></tr>
+<tr><td>No site do GitHub</td><td>Marcando a opção de README ao criar o repositório, ou editando o arquivo pelo site (ilustrativo)</td><td>Correção rápida; depois, rode <code>git pull</code> para trazer o commit para o seu computador</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Commitou sem o <code>git add</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git commit -m 'Adiciona README'
+No ramo main
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	README.md
+
+nada adicionado ao envio mas arquivos não registrados estão presentes (use "git add" to registrar)
+</pre>
+<p>"Nada adicionado ao envio (ao commit), mas há arquivos não registrados." Nenhum commit foi criado. O Git não commita arquivo novo sozinho. A própria mensagem ensina: <code>git add</code> primeiro, depois o commit.</p>
+</div>
+
+<div class="cenario">
+<strong>O título não virou título</strong>
+<p>Você escreveu <code>#Receitas da Ana</code>, sem espaço, e o GitHub mostrou o texto com o <code>#</code> no começo, como frase comum. No Markdown do GitHub, o título precisa de <strong>um espaço</strong> depois dos <code>#</code>: <code># Receitas da Ana</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>As linhas grudaram</strong>
+<p>Duas linhas escritas uma embaixo da outra apareceram juntas, no mesmo parágrafo. É o Markdown: uma quebra de linha simples não separa parágrafos. <strong>Como resolver:</strong> deixe uma <strong>linha em branco</strong> entre eles.</p>
+</div>
+
+<div class="cenario">
+<strong>O link quebrou</strong>
+<p><code>[Bolo de cenoura] (bolo.txt)</code>, com espaço entre <code>]</code> e <code>(</code>, não vira link. E <code>[Bolo](Bolo.txt)</code> não acha o arquivo <code>bolo.txt</code>: no GitHub, maiúsculas e minúsculas fazem diferença nos nomes de arquivos. Escreva <code>[Bolo de cenoura](bolo.txt)</code>, colado e com o nome exato.</p>
+</div>
+
+<div class="cenario">
+<strong>O <code>#</code> sumiu no terminal</strong>
+<pre class="term" data-cwd="~/receitas">$ echo # Receitas &gt; teste.md
+
+$ ls teste.md
+ls: não é possível acessar 'teste.md': Arquivo ou diretório inexistente
+</pre>
+<p>Sem aspas, o terminal entende o <code>#</code> como começo de um <strong>comentário</strong> e ignora o resto da linha, inclusive o <code>&gt; teste.md</code>: sobrou só um <code>echo</code>, que mostrou uma linha vazia, e o arquivo nem foi criado. Use aspas simples: <code>echo '# Receitas' &gt; teste.md</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida de Markdown</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Markdown</th><th>Resultado</th></tr>
+<tr><td><code># Título</code> … <code>###### Título</code></td><td>Títulos, do maior (1) ao menor (6)</td></tr>
+<tr><td>Linha em branco</td><td>Novo parágrafo</td></tr>
+<tr><td><code>**texto**</code></td><td><strong>negrito</strong></td></tr>
+<tr><td><code>*texto*</code> ou <code>_texto_</code></td><td><em>itálico</em></td></tr>
+<tr><td><code>- item</code> ou <code>* item</code></td><td>Lista com marcadores</td></tr>
+<tr><td><code>1. item</code></td><td>Lista numerada</td></tr>
+<tr><td><code>[texto](endereço)</code></td><td>Link</td></tr>
+<tr><td><code>![descrição](imagem.png)</code></td><td>Imagem</td></tr>
+<tr><td><code>`código`</code></td><td>Código no meio da frase</td></tr>
+<tr><td>Três crases antes e depois</td><td>Bloco de código</td></tr>
+<tr><td><code>&gt; texto</code></td><td>Citação</td></tr>
+<tr><td><code>---</code></td><td>Linha horizontal</td></tr>
+<tr><td><code>- [ ] tarefa</code></td><td>Lista de tarefas</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete o Markdown</h3>
+<p>Complete para fazer um subtítulo "Ingredientes" e um link para <code>bolo.txt</code> com o texto "Ver receita":</p>
+<div class="ex-code"><input data-answer="##" aria-label="marca de subtítulo"> Ingredientes<br>[Ver receita](<input data-answer="bolo.txt" aria-label="endereço do link">)</div>
+</div>
+
+<div class="exercise">
+<h3>2. Qual é o nome do arquivo?</h3>
+<p>Escreva o nome do arquivo que o GitHub mostra como a capa do repositório:</p>
+<div class="ex-code"><input data-answer="README.md" aria-label="nome do arquivo"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. Como se escreve <strong>negrito</strong> no Markdown?</p>
+<label><input type="radio" name="q3"> <code>*negrito*</code></label>
+<label><input type="radio" name="q3"> <code>**negrito**</code></label>
+<label><input type="radio" name="q3"> <code>#negrito#</code></label>
+<label><input type="radio" name="q3"> <code>[negrito]</code></label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. A Ana criou o <code>README.md</code> e rodou <code>git commit -m 'Adiciona README'</code> direto. O que acontece?</p>
+<label><input type="radio" name="q4"> O README é commitado normalmente</label>
+<label><input type="radio" name="q4"> O GitHub recebe o README na hora</label>
+<label><input type="radio" name="q4"> Nada é commitado: faltou o <code>git add README.md</code></label>
+<label><input type="radio" name="q4"> O Git apaga o README</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. Onde o README da Ana aparece na página de perfil dela no GitHub?</p>
+<label><input type="radio" name="q5"> Quando está na raiz de um repositório público chamado <code>ana-souza</code>, igual ao usuário</label>
+<label><input type="radio" name="q5"> Em qualquer repositório dela</label>
+<label><input type="radio" name="q5"> Só se o arquivo se chamar <code>PERFIL.md</code></label>
+<label><input type="radio" name="q5"> Nunca: README só aparece nos repositórios</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O <code>README.md</code> é a capa do repositório: o GitHub o mostra abaixo da lista de arquivos. Ponha-o na raiz.</li>
+  <li>Ele responde: o que é, por que é útil, como começar, onde pedir ajuda, quem mantém.</li>
+  <li>Markdown: <code>#</code> + espaço para títulos, linha em branco entre parágrafos, <code>**negrito**</code>, <code>*itálico*</code>, <code>- </code> para listas, <code>[texto](endereço)</code> para links, crases para código.</li>
+  <li>Para o Git, o README é um arquivo comum: <code>git add README.md</code>, <code>git commit</code>, <code>git push</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
