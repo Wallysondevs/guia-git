@@ -65,7 +65,7 @@ git reset --hard      volta           volta             volta</pre>
 <p>O repositório da Ana tem três commits. No último, ela aumentou o tempo do bolo de 40 para 45 minutos. Com tudo commitado, as três gavetas concordam:</p>
 
 <pre class="term" data-cwd="~/receitas">$ git log --oneline
-2b77e82 Aumenta tempo do bolo para 45 minutos
+2b77e82 (HEAD -&gt; main) Aumenta tempo do bolo para 45 minutos
 62fc1c8 Adiciona receita de bolo
 fe996fb Primeiro commit
 $ git show HEAD:bolo.txt
@@ -87,7 +87,7 @@ Tempo: 45 minutos
 
 <pre class="term" data-cwd="~/receitas">$ git reset --soft HEAD~1
 $ git log --oneline
-62fc1c8 Adiciona receita de bolo
+62fc1c8 (HEAD -&gt; main) Adiciona receita de bolo
 fe996fb Primeiro commit
 $ git status
 No ramo main
@@ -115,7 +115,7 @@ Tempo: 45 minutos   « a pasta: não mexeu
 <p>De volta ao normal:</p>
 <pre class="term" data-cwd="~/receitas">$ git reset --soft ORIG_HEAD
 $ git log --oneline
-2b77e82 Aumenta tempo do bolo para 45 minutos
+2b77e82 (HEAD -&gt; main) Aumenta tempo do bolo para 45 minutos
 62fc1c8 Adiciona receita de bolo
 fe996fb Primeiro commit
 </pre>
@@ -133,7 +133,7 @@ fe996fb Primeiro commit
 Unstaged changes after reset:
 M	bolo.txt
 $ git log --oneline
-62fc1c8 Adiciona receita de bolo
+62fc1c8 (HEAD -&gt; main) Adiciona receita de bolo
 fe996fb Primeiro commit
 $ git status
 No ramo main
@@ -175,7 +175,7 @@ nothing to commit, working tree clean
 <pre class="term" data-cwd="~/receitas">$ git reset --hard HEAD~1
 HEAD is now at 62fc1c8 Adiciona receita de bolo
 $ git log --oneline
-62fc1c8 Adiciona receita de bolo
+62fc1c8 (HEAD -&gt; main) Adiciona receita de bolo
 fe996fb Primeiro commit
 $ git status
 No ramo main
@@ -202,7 +202,7 @@ Tempo: 40 minutos   « a pasta: voltou também
 <pre class="term" data-cwd="~/receitas">$ git reset --hard ORIG_HEAD
 HEAD is now at 2b77e82 Aumenta tempo do bolo para 45 minutos
 $ git log --oneline
-2b77e82 Aumenta tempo do bolo para 45 minutos
+2b77e82 (HEAD -&gt; main) Aumenta tempo do bolo para 45 minutos
 62fc1c8 Adiciona receita de bolo
 fe996fb Primeiro commit
 $ cat bolo.txt
@@ -302,11 +302,11 @@ warning: --mixed with paths is deprecated; use 'git reset -- &lt;paths&gt;' inst
 <strong>Dei <code>--hard</code> e perdi commits</strong>
 <p>Se foram <strong>commits</strong>, eles ainda estão no <code>.git</code>. O <code>git reset --hard ORIG_HEAD</code> desfaz o último reset (como na seção 4). Se você já fez outras coisas depois, procure o commit no <a href="git-reflog.html">git reflog</a>, que registra cada movimento do <code>HEAD</code>:</p>
 <pre class="term" data-cwd="~/receitas">$ git reflog -5
-2b77e82 HEAD@{0}: reset: moving to HEAD
-2b77e82 HEAD@{1}: reset: moving to HEAD
-2b77e82 HEAD@{2}: reset: moving to ORIG_HEAD
+2b77e82 (HEAD -&gt; main) HEAD@{0}: reset: moving to HEAD
+2b77e82 (HEAD -&gt; main) HEAD@{1}: reset: moving to HEAD
+2b77e82 (HEAD -&gt; main) HEAD@{2}: reset: moving to ORIG_HEAD
 62fc1c8 HEAD@{3}: reset: moving to HEAD~1
-2b77e82 HEAD@{4}: reset: moving to ORIG_HEAD
+2b77e82 (HEAD -&gt; main) HEAD@{4}: reset: moving to ORIG_HEAD
 </pre>
 <p>Cada linha é um reset desta aula (<code>moving to …</code> = "indo para …"). Ache o hash de antes do desastre e volte com <code>git reset --hard &lt;hash&gt;</code>. O passo a passo completo está em <a href="recuperar-commit.html">Recuperando Commits Perdidos</a>.</p>
 </div>
