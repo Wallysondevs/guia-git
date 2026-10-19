@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git restore --staged — tirando arquivos da área de preparo | Guia Git</title>
+<meta name="description" content="Como tirar um arquivo da área de preparo sem perder as mudanças, para quem nunca usou Git: git restore --staged (e -S), o arquivo de senha que entrou no git add . por engano, tirar tudo com ., o comando antigo git reset HEAD arquivo, o caso do repositório sem commits (git rm --cached e o fatal: could not resolve 'HEAD'), com as saídas reais do Git em português.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Tirando da <span class="hl">Área de Preparo</span> <span class="versao">git 2.23+</span></h1>
+
+<p class="intro">A Ana deu <code>git add .</code> e, ao conferir com o <code>git status</code>, viu que junto com a receita entrou o arquivo de senhas. Ela não quer apagar nada, nem perder a mudança da receita: só quer tirar o <code>senhas.txt</code> da "mala" antes de fechar o commit. Para isso existe o <code>git restore --staged</code>: ele <strong>desfaz um <code>git add</code></strong>, e as mudanças continuam intactas na pasta.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>A tirar um arquivo da área de preparo com <code>git restore --staged arquivo</code>, sem perder as mudanças.</li>
+  <li>A diferença entre <code>git restore --staged</code> (seguro) e <code>git restore</code> (descarta).</li>
+  <li>A tirar tudo de uma vez e a reconhecer o comando antigo, <code>git reset HEAD arquivo</code>.</li>
+  <li>O caso especial do repositório <strong>sem nenhum commit</strong> (<code>git rm --cached</code>).</li>
+</ul>
+</div>
+
+<p>Todas as saídas desta aula saíram do Git do Ubuntu 26.04 (Git 2.53), na máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português. Algumas mensagens do Git ainda não têm tradução e saem em inglês.</p>
+
+<hr>
+
+<h2>A ideia: tirar da mala, devolver à cama</h2>
+<p>Lembra da mala da aula <a href="git-diff-staged.html">git diff --staged</a>? As roupas separadas na cama são a pasta de trabalho; a mala é a área de preparo; fechar a mala é o commit. Tirar uma camiseta da mala <strong>não</strong> joga a camiseta fora: ela volta para a cama, do jeito que estava. É isso que o <code>git restore --staged</code> faz.</p>
+<pre>   último commit        área de preparo          sua pasta
+  ┌─────────────┐      ┌──────────────┐       ┌─────────────┐
+  │             │ ───► │  senhas.txt  │       │ senhas.txt  │
+  │             │      │  (preparado) │       │ (continua!) │
+  └─────────────┘      └──────────────┘       └─────────────┘
+      git restore --staged: copia o último commit para a área de preparo,
+      e NÃO mexe na sua pasta</pre>
+
+<hr>
+
+<h2>1. Desfazendo um <code>git add</code></h2>
+<p>A Ana acrescentou a farinha no bolo e, sem querer, deixou um <code>senhas.txt</code> na pasta. Um <code>git add .</code> preparou os dois:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git add .
+$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	modified:   bolo.txt
+	new file:   senhas.txt
+
+</pre>
+
+<p>O <code>senhas.txt</code> aparece como <code>new file</code> ("arquivo novo") em <code>Mudanças a serem submetidas</code>: ele iria no próximo commit. E a dica logo abaixo do título já diz o que fazer: <code>(use "git restore --staged &lt;file&gt;..." to unstage)</code>, "use <code>git restore --staged</code> para tirar da área de preparo" (<em>unstage</em> é o contrário de <em>stage</em>, "preparar"):</p>
+
+<pre class="term" data-cwd="~/receitas">$ git restore --staged senhas.txt
+$ git status
+No ramo main
+Mudanças a serem submetidas:
+  (use "git restore --staged &lt;file&gt;..." to unstage)
+	modified:   bolo.txt
+
+Arquivos não monitorados:
+  (utilize "git add &lt;arquivo&gt;..." para incluir o que será submetido)
+	senhas.txt
+
+$ cat senhas.txt
+SENHA=abacaxi123
+</pre>
+
+<dl class="anatomy">
+  <dt>git restore</dt><dd>O comando de restaurar (aula <a href="git-restore.html">git restore</a>).</dd>
+  <dt>--staged</dt><dd>"Restaure a <strong>área de preparo</strong>": ponha nela a versão do último commit, desfazendo o que o <code>git add</code> colocou. A pasta de trabalho não é tocada. Forma curta: <code>-S</code> (maiúsculo).</dd>
+  <dt>senhas.txt</dt><dd>O arquivo a tirar. Pode ser mais de um, uma pasta, <code>.</code> ou um padrão.</dd>
+</dl>
+
+<p>Resultado: o <code>bolo.txt</code> continua preparado; o <code>senhas.txt</code> voltou a ser um arquivo <strong>não monitorado</strong> (como era antes do <code>git add</code>), e o <code>cat</code> mostra que o conteúdo está lá, intacto. Para ele não voltar a entrar num <code>git add .</code>, ponha-o no <a href="gitignore.html">.gitignore</a>.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;printf 'Bolo de cenoura\n4 ovos\n' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Receita de bolo';;echo '2 xícaras de farinha' &gt;&gt; bolo.txt;;echo 'SENHA=abacaxi123' &gt; senhas.txt;;git add ." data-goal="commits:2,contem:HEAD:bolo.txt=farinha,ran:restore (--staged|-S) senhas,file:~/receitas/senhas.txt" data-solucao="git restore --staged senhas.txt;;git commit -m 'Acrescenta farinha ao bolo'">
+<p class="try-task"><strong>Missão:</strong> o <code>git add .</code> já foi dado e preparou o <code>bolo.txt</code> e o <code>senhas.txt</code>. Tire o <code>senhas.txt</code> da área de preparo (sem apagá-lo) e faça o commit só da mudança do bolo. Use <code>git status</code> antes e depois.</p>
+</div>
+
+<hr>
+
+<h2>2. Um arquivo já rastreado: a mudança fica na pasta</h2>
+<p>Com um arquivo que o Git já conhece, tirar da área de preparo devolve a mudança para a seção de "não preparadas". Nada se perde:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo 'calda de caramelo' &gt;&gt; pudim.txt
+$ git add pudim.txt
+$ git status --short
+M  bolo.txt
+M  pudim.txt
+?? senhas.txt
+$ git restore --staged .
+$ git status --short
+ M bolo.txt
+ M pudim.txt
+?? senhas.txt
+$ git diff --stat
+ bolo.txt  | 1 +
+ pudim.txt | 1 +
+ 2 files changed, 2 insertions(+)
+</pre>
+
+<p>Repare no <code>M</code>: antes ele estava na <strong>primeira</strong> coluna do <code>--short</code> (preparado); depois do <code>git restore --staged .</code>, pulou para a <strong>segunda</strong> (modificado, não preparado). O <code>.</code> tirou tudo da área de preparo de uma vez. E o <code>git diff --stat</code> confirma que as duas mudanças (a farinha e a calda) continuam na pasta, agora como mudanças não preparadas.</p>
+
+<div class="tip">
+<strong>Quando usar</strong>
+<ul>
+  <li>Um <code>git add .</code> pegou coisa demais (uma senha, um arquivo de teste, um log).</li>
+  <li>Você quer dividir as mudanças em <strong>dois commits</strong>: tire tudo da área de preparo e prepare de novo, um grupo por vez (veja <a href="mensagens-commit.html">Boas Mensagens de Commit</a>: commits pequenos, um assunto cada).</li>
+  <li>O <code>git diff --staged</code> mostrou algo que não devia ir no commit.</li>
+</ul>
+</div>
+
+<h3>Só um pedaço: <code>-p</code></h3>
+<p>Como no <code>git add -p</code> e no <code>git restore -p</code> (aula <a href="git-restore.html">git restore</a>), o <code>git restore --staged -p arquivo</code> mostra cada trecho preparado e pergunta se é para tirá-lo da área de preparo (<kbd>y</kbd>) ou mantê-lo (<kbd>n</kbd>). Útil quando o mesmo arquivo tem duas mudanças que devem ir em commits separados.</p>
+
+<hr>
+
+<h2>3. <code>git restore --staged</code> × <code>git restore</code></h2>
+<p>Os dois comandos se parecem, mas fazem coisas bem diferentes. Confundi-los é a forma mais comum de perder trabalho:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th></th><th><code>git restore --staged arquivo</code></th><th><code>git restore arquivo</code></th></tr>
+<tr><td>Mexe na</td><td>área de preparo</td><td>pasta de trabalho</td></tr>
+<tr><td>Desfaz</td><td>o <code>git add</code></td><td>as suas edições no arquivo</td></tr>
+<tr><td>As mudanças</td><td><strong>continuam</strong> na pasta</td><td><strong>são descartadas</strong></td></tr>
+<tr><td>Dica do <code>git status</code></td><td><code>to unstage</code></td><td><code>to discard changes in working directory</code></td></tr>
+<tr><td>Perigo</td><td>nenhum</td><td>⚠ não tem volta</td></tr>
+</table>
+</div>
+<p>E os dois juntos (<code>git restore --staged --worktree arquivo</code>) voltam o arquivo ao último commit nos dois lugares, descartando tudo. Veja o <a href="desfazer.html">mapa do desfazer</a>.</p>
+
+<hr>
+
+<h2>4. O comando antigo: <code>git reset HEAD arquivo</code></h2>
+<p>Antes do Git 2.23, a dica do <code>git status</code> era <code>use "git reset HEAD &lt;file&gt;..." to unstage</code>. Esse comando ainda funciona e aparece em muitos tutoriais:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git add bolo.txt pudim.txt
+$ git reset HEAD pudim.txt
+Unstaged changes after reset:
+M	pudim.txt
+$ git status --short
+M  bolo.txt
+ M pudim.txt
+?? senhas.txt
+</pre>
+
+<p>Mesmo efeito do <code>git restore --staged pudim.txt</code>, só que o <code>git reset</code> fala: <code>Unstaged changes after reset</code> ("mudanças não preparadas depois do reset"), com a lista dos arquivos que ficaram com mudanças fora da área de preparo. O <code>HEAD</code> pode ser omitido (<code>git reset pudim.txt</code>), e sem nenhum nome o <code>git reset</code> tira <strong>tudo</strong> da área de preparo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git reset
+Unstaged changes after reset:
+M	bolo.txt
+M	pudim.txt
+$ git status --short
+ M bolo.txt
+ M pudim.txt
+?? senhas.txt
+</pre>
+
+<div class="warning">
+<strong><code>git reset</code> tem outros usos, bem mais perigosos</strong>
+<p>Com um <strong>nome de arquivo</strong> (ou sem nada), o <code>git reset</code> só mexe na área de preparo: é seguro. Mas com outras opções, como <code>git reset --hard</code>, ele apaga mudanças e commits. É por isso que o Git criou o <code>git restore --staged</code>, que só faz a coisa segura. Os outros usos estão em <a href="git-reset.html">git reset</a> e <a href="reset-modos.html">reset --soft, --mixed e --hard</a>.</p>
+</div>
+
+<hr>
+
+<h2>5. O caso especial: repositório sem nenhum commit</h2>
+<p>Num repositório recém-criado, ainda sem commits, o <code>git status</code> dá uma dica <strong>diferente</strong>:</p>
+
+<pre class="term" data-cwd="~/novo">$ git init -q
+$ echo oi &gt; a.txt
+$ git add a.txt
+$ git status
+No ramo main
+
+No commits yet
+
+Mudanças a serem submetidas:
+  (utilize "git rm --cached &lt;arquivo&gt;..." para não apresentar)
+	new file:   a.txt
+
+</pre>
+
+<p><code>No commits yet</code> = "nenhum commit ainda". E a dica agora é <code>git rm --cached</code>. O motivo: o <code>git restore --staged</code> copia "o último commit" para a área de preparo, e aqui não existe último commit. Veja o que acontece se você tentar:</p>
+
+<pre class="term" data-cwd="~/novo">$ git restore --staged a.txt
+fatal: could not resolve 'HEAD'
+$ git rm --cached a.txt
+rm 'a.txt'
+$ git status --short
+?? a.txt
+</pre>
+
+<p><code>fatal: could not resolve 'HEAD'</code> = "não foi possível resolver (encontrar) o <code>HEAD</code>": o <code>HEAD</code> ainda não aponta para commit nenhum (veja <a href="head.html">O que é HEAD</a>). O <code>git rm --cached</code> (aula <a href="git-rm.html">git rm</a>) tira o arquivo da área de preparo sem apagá-lo da pasta, e o <code>a.txt</code> volta a ser não monitorado (<code>??</code>). Depois do primeiro commit, use o <code>git restore --staged</code> de sempre.</p>
+
+<div class="note">
+<strong>Por que não usar sempre o <code>git rm --cached</code>?</strong>
+<p>Num arquivo que já está em algum commit, o <code>git rm --cached</code> prepara a <strong>remoção</strong> do arquivo do repositório (aula <a href="git-rm.html">git rm</a>), que é outra coisa. Regra: siga a dica que o <code>git status</code> mostrar; ela muda conforme a situação.</p>
+</div>
+
+<hr>
+
+<h2 id="formas">Formas diferentes, e qual usar</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Use</th></tr>
+<tr><td>Tirar um arquivo da área de preparo (repositório com commits)</td><td><code>git restore --staged arquivo</code> (ou <code>-S</code>)</td></tr>
+<tr><td>Tirar tudo</td><td><code>git restore --staged .</code> (ou <code>git reset</code>)</td></tr>
+<tr><td>Tirar só alguns trechos</td><td><code>git restore --staged -p arquivo</code></td></tr>
+<tr><td>Em tutoriais antigos / Git antes do 2.23</td><td><code>git reset HEAD arquivo</code> ou <code>git reset arquivo</code></td></tr>
+<tr><td>Repositório sem nenhum commit</td><td><code>git rm --cached arquivo</code></td></tr>
+<tr><td>Tirar da área de preparo <strong>e</strong> descartar as mudanças</td><td><code>git restore --staged --worktree arquivo</code> (aula <a href="git-restore.html">git restore</a>)</td></tr>
+<tr><td>Nunca mais preparar aquele arquivo</td><td>Ponha-o no <a href="gitignore.html">.gitignore</a></td></tr>
+<tr><td>O arquivo já foi <strong>commitado</strong></td><td>Não é mais caso de área de preparo: veja <a href="commit-amend.html">--amend</a> e o <a href="desfazer.html">mapa</a></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>fatal: could not resolve 'HEAD'</code></strong>
+<p>O repositório ainda não tem nenhum commit (seção 5). <strong>Como resolver:</strong> <code>git rm --cached arquivo</code>, como diz o <code>git status</code>.</p>
+</div>
+
+<div class="cenario">
+<strong><code>error: pathspec '…' did not match any file(s) known to git</code></strong>
+<pre class="term" data-cwd="~/receitas">$ git restore --staged nada.txt
+error: pathspec 'nada.txt' did not match any file(s) known to git
+</pre>
+<p>"O caminho não corresponde a nenhum arquivo conhecido pelo Git": o nome está errado, ou o arquivo nunca foi preparado nem commitado. <strong>Como resolver:</strong> copie o nome exatamente como aparece no <code>git status</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>"Tirei da área de preparo e a mudança sumiu!"</strong>
+<p>Provavelmente você digitou <code>git restore arquivo</code>, <strong>sem</strong> o <code>--staged</code>. Aí o Git descartou as mudanças <strong>não preparadas</strong> da pasta (a versão preparada continuou lá). <strong>Como confirmar:</strong> <code>git status</code>; se o arquivo ainda aparece em <code>Mudanças a serem submetidas</code>, a parte preparada está salva. <strong>Como evitar:</strong> confira o comando antes do Enter; o <code>--staged</code> é o que torna a operação segura.</p>
+</div>
+
+<div class="cenario">
+<strong>"O arquivo saiu da área de preparo, mas continua aparecendo no <code>git status</code>"</strong>
+<p>É o esperado: as mudanças continuam na pasta, agora como não preparadas (ou o arquivo como não monitorado). Tirar da área de preparo não é apagar. Se você quer que ele pare de aparecer, use o <a href="gitignore.html">.gitignore</a> (arquivo novo) ou descarte as mudanças com <a href="git-restore.html">git restore</a> (arquivo rastreado).</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git restore --staged arquivo</code></td><td>Tira da área de preparo; as mudanças ficam na pasta</td></tr>
+<tr><td><code>git restore -S arquivo</code></td><td>O mesmo (forma curta)</td></tr>
+<tr><td><code>git restore --staged .</code></td><td>Tira tudo da área de preparo</td></tr>
+<tr><td><code>git restore --staged -p arquivo</code></td><td>Pergunta trecho por trecho</td></tr>
+<tr><td><code>git reset HEAD arquivo</code> / <code>git reset arquivo</code></td><td>Forma antiga (mostra <code>Unstaged changes after reset</code>)</td></tr>
+<tr><td><code>git reset</code></td><td>Forma antiga de tirar tudo</td></tr>
+<tr><td><code>git rm --cached arquivo</code></td><td>Repositório sem commits: tira da área de preparo</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Complete</h3>
+<div class="ex-code">Tirar o <code>teste.log</code> da área de preparo: git restore <input data-answer="--staged|-S" aria-label="opção"> teste.log<br>A mesma coisa, do jeito antigo: git <input data-answer="reset" aria-label="subcomando"> HEAD teste.log</div>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">2. Depois de <code>git restore --staged bolo.txt</code>, o que acontece com as mudanças do <code>bolo.txt</code>?</p>
+<label><input type="radio" name="q2"> Continuam na pasta, como mudanças não preparadas</label>
+<label><input type="radio" name="q2"> São descartadas</label>
+<label><input type="radio" name="q2"> Vão para o último commit</label>
+<label><input type="radio" name="q2"> Vão para o stash</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">3. No <code>git status --short</code>, o <code>bolo.txt</code> aparecia como <code>M&nbsp;&nbsp;bolo.txt</code>. Depois do <code>git restore --staged bolo.txt</code>, como aparece?</p>
+<label><input type="radio" name="q3"> Não aparece mais</label>
+<label><input type="radio" name="q3"> <code>?? bolo.txt</code></label>
+<label><input type="radio" name="q3"> <code>D&nbsp;&nbsp;bolo.txt</code></label>
+<label><input type="radio" name="q3"> <code>&nbsp;M bolo.txt</code> (o <code>M</code> na segunda coluna)</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. Num repositório <strong>sem nenhum commit</strong>, o <code>git restore --staged a.txt</code> responde <code>fatal: could not resolve 'HEAD'</code>. O que usar?</p>
+<label><input type="radio" name="q4"> <code>git restore a.txt</code></label>
+<label><input type="radio" name="q4"> <code>git reset --hard</code></label>
+<label><input type="radio" name="q4"> <code>git rm --cached a.txt</code></label>
+<label><input type="radio" name="q4"> Não tem jeito: é preciso commitar</label>
+</div>
+
+<h3>Missão final: dois commits em vez de um</h3>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo 'Bolo de cenoura' &gt; bolo.txt;;echo 'Pudim de leite' &gt; pudim.txt;;git add .;;git commit -q -m 'Receitas';;echo '2 xícaras de farinha' &gt;&gt; bolo.txt;;echo 'calda de caramelo' &gt;&gt; pudim.txt;;git add ." data-goal="commits:3,limpo,contem:HEAD~1:bolo.txt=farinha,contem:HEAD:pudim.txt=calda,ran:restore (--staged|-S)" data-solucao="git restore --staged pudim.txt;;git commit -m 'Acrescenta farinha ao bolo';;git add pudim.txt;;git commit -m 'Acrescenta calda ao pudim'">
+<p class="try-task"><strong>Missão:</strong> o <code>git add .</code> juntou duas mudanças sem relação (a farinha do bolo e a calda do pudim). Faça <strong>dois commits</strong>: primeiro só o bolo, depois só o pudim. Dica: tire o <code>pudim.txt</code> da área de preparo, commite, e depois prepare e commite o pudim.</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li><code>git restore --staged arquivo</code> (ou <code>-S</code>) desfaz um <code>git add</code>: tira o arquivo da área de preparo e <strong>mantém</strong> as mudanças na pasta. É seguro.</li>
+  <li>Não confunda com <code>git restore arquivo</code>, que <strong>descarta</strong> as mudanças da pasta.</li>
+  <li><code>git restore --staged .</code> tira tudo; <code>-p</code> escolhe trechos.</li>
+  <li>Em tutoriais antigos: <code>git reset HEAD arquivo</code> (ou <code>git reset arquivo</code>).</li>
+  <li>Sem nenhum commit no repositório, use <code>git rm --cached arquivo</code> (o <code>git status</code> avisa).</li>
+  <li>Siga a dica do <code>git status</code>: ela sempre mostra o comando certo para a situação.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
