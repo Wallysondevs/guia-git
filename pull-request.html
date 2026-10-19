@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git Pull Request — propondo mudanças no GitHub | Guia Git</title>
+<meta name="description" content="Pull request do começo ao fim: preparar o branch no terminal (git switch -c, commit, git push -u origin), o aviso real 'Create a pull request', abrir o pull request no site a partir de um fork (ilustrativo, conforme docs.github.com), atualizar com mais commits, o merge no GitHub e a limpeza depois (git pull upstream main, git branch -d, git push origin --delete).">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">Pull Request</span></h1>
+
+<p class="intro">Um <strong>pull request</strong> (muitas vezes abreviado <strong>PR</strong>) é um <strong>pedido</strong> que você faz no GitHub: "Bruno, por favor, puxe (<em>pull</em>) as mudanças do meu branch para o seu repositório". Ele não é um comando do Git: é uma página no site, com a descrição do que você mudou, as diferenças linha por linha, uma conversa e, no fim, um botão para juntar tudo. É o jeito padrão de contribuir com projetos de outras pessoas (depois de um <a href="fork.html">fork</a>) e também o jeito como muitas equipes trabalham no mesmo repositório.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é um pull request e o que acontece em cada etapa dele.</li>
+  <li>Como preparar o branch no terminal e enviá-lo, e o aviso real <code>Create a pull request</code>.</li>
+  <li>Como abrir o pull request no site (passo a passo da documentação oficial).</li>
+  <li>Como atualizar o pull request depois de um pedido de mudança: é só commitar e enviar de novo.</li>
+  <li>O que fazer no seu computador depois que o pull request é aceito.</li>
+</ul>
+</div>
+
+<div class="warning">
+<strong>O que é real e o que é ilustrativo nesta aula</strong>
+<p>Tudo o que acontece <strong>no site do GitHub</strong> (abrir o pull request, os botões, o merge) é <strong>ilustrativo</strong>: descrito conforme a documentação oficial, em <a href="https://docs.github.com/pt/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork">docs.github.com</a>. O site é em inglês; os nomes aparecem como estão nele, com a tradução ao lado. <strong>Todos os comandos</strong> rodaram de verdade no Git do Ubuntu, com o "GitHub de mentira" do laboratório do guia. Como o laboratório não tem a página do pull request, o merge do Bruno foi imitado com um <code>git merge --no-ff</code> no computador dele, com a mesma mensagem que o botão do GitHub usa.</p>
+</div>
+
+<hr>
+
+<h2>A ideia: a sugestão por escrito</h2>
+<p>Lembra da Ana e do caderno da cantina do Bruno (aula <a href="fork.html">Fork</a>)? Ela escreveu a receita de sexta na cópia dela. Agora ela não chega dizendo "copia aí". Ela entrega uma <strong>folha de sugestão</strong>:</p>
+<ul>
+  <li><strong>O que</strong> ela quer mudar (as páginas novas, marcadas);</li>
+  <li><strong>Por que</strong> (um bilhete explicando);</li>
+  <li>um espaço para o Bruno <strong>comentar</strong> ("e quem não come carne?"), para ela <strong>ajustar</strong> e entregar de novo;</li>
+  <li>e, no fim, o Bruno <strong>aceita</strong> (copia para o caderno oficial) ou <strong>recusa</strong>.</li>
+</ul>
+<p>O pull request é essa folha. Ele fica <strong>aberto</strong> enquanto a conversa acontece e, no fim, é <strong>mesclado</strong> (<em>merged</em>) ou <strong>fechado</strong> sem merge.</p>
+
+<h3>As etapas</h3>
+<ol class="passo">
+  <li><strong>No terminal:</strong> branch novo, commits, <code>git push</code> do branch para o fork.</li>
+  <li><strong>No site:</strong> abrir o pull request, do branch do fork para o <code>main</code> do original.</li>
+  <li><strong>No site:</strong> revisão (aula <a href="revisao-codigo.html">Revisão de Código</a>); se pedirem mudanças, volte ao passo 1 no <strong>mesmo branch</strong>.</li>
+  <li><strong>No site:</strong> quem cuida do repositório faz o merge.</li>
+  <li><strong>No terminal:</strong> atualize o seu <code>main</code> e apague o branch.</li>
+</ol>
+
+<hr>
+
+<h2>1. Preparando o branch (no terminal)</h2>
+<p>A Ana já tem o clone do fork, com o <code>origin</code> (o fork dela) e o <code>upstream</code> (o original do Bruno). Antes de começar, ela garante que o <code>main</code> está em dia com o original, e só então cria o branch da contribuição:</p>
+
+<pre class="term" data-cwd="~/cardapio">$ git switch main
+Already on 'main'
+Your branch is up to date with 'origin/main'.
+$ git pull upstream main
+From https://github.com/bruno-lima/cardapio
+ * branch            main       -&gt; FETCH_HEAD
+Already up to date.
+$ git switch -c receita-sexta
+Switched to a new branch 'receita-sexta'
+$ echo 'Sexta: pizza de calabresa' &gt;&gt; cardapio.txt
+$ git commit -am 'Adiciona a sexta-feira'
+[receita-sexta 9298686] Adiciona a sexta-feira
+ 1 file changed, 1 insertion(+)
+</pre>
+<ul>
+  <li><code>git pull upstream main</code>: busca o <code>main</code> do original e junta no <code>main</code> da Ana. Aqui, <code>Already up to date</code> ("já está atualizado"). A linha <code>* branch main -&gt; FETCH_HEAD</code> diz que o branch buscado ficou guardado com o nome temporário <code>FETCH_HEAD</code>.</li>
+  <li><code>git switch -c receita-sexta</code>: um branch só para esta contribuição, com um nome que diz o que ela é. Um pull request = um branch = um assunto.</li>
+</ul>
+
+<h3>Enviando o branch para o fork</h3>
+<p>Na primeira vez, o branch ainda não existe no GitHub. Um <code>git push</code> sozinho não sabe para onde ir:</p>
+
+<pre class="term" data-cwd="~/cardapio">$ git push
+fatal: The current branch receita-sexta has no upstream branch.
+To push the current branch and set the remote as upstream, use
+
+    git push --set-upstream origin receita-sexta
+
+To have this happen automatically for branches without a tracking
+upstream, see 'push.autoSetupRemote' in 'git help config'.
+
+$ git push -u origin receita-sexta
+Enumerating objects: 5, done.
+Counting objects: 100% (5/5), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (3/3), done.
+Writing objects: 100% (3/3), 335 bytes | 335.00 KiB/s, done.
+Total 3 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)
+remote:
+remote: Create a pull request for 'receita-sexta' on GitHub by visiting:
+remote:      https://github.com/ana-souza/cardapio/pull/new/receita-sexta
+remote:
+To https://github.com/ana-souza/cardapio.git
+ * [new branch]      receita-sexta -&gt; receita-sexta
+branch 'receita-sexta' set up to track 'origin/receita-sexta'.
+</pre>
+
+<dl class="anatomy">
+  <dt>fatal: The current branch receita-sexta has no upstream branch.</dt><dd>"O branch atual não tem branch de rastreamento" (veja <a href="upstream.html">Branch de Rastreamento</a>). O Git sugere o comando certo: <code>git push --set-upstream origin receita-sexta</code>. (Atenção: aqui "upstream" é o branch de rastreamento, e não o remoto <code>upstream</code> do fork. São duas coisas com o mesmo nome.)</dd>
+  <dt>git push -u origin receita-sexta</dt><dd>O <code>-u</code> é o atalho de <code>--set-upstream</code>: envia o branch para o <code>origin</code> (o fork) e lembra disso, para os próximos <code>git push</code> irem sem nada.</dd>
+  <dt>remote: Create a pull request for 'receita-sexta' on GitHub by visiting:</dt><dd>Uma mensagem <strong>do GitHub</strong> (tudo o que começa com <code>remote:</code> vem do servidor): "crie um pull request para <code>receita-sexta</code> no GitHub visitando:" e o endereço. Abrir esse endereço no navegador é um atalho para o passo 2.</dd>
+  <dt>* [new branch] receita-sexta -&gt; receita-sexta</dt><dd>O branch foi criado no fork.</dd>
+  <dt>branch 'receita-sexta' set up to track 'origin/receita-sexta'.</dt><dd>O efeito do <code>-u</code>: o branch local passa a acompanhar o do fork.</dd>
+</dl>
+
+<div class="try" data-setup="mkdir cardapio;;cd cardapio;;git init -q;;echo 'Quinta: peixe assado' &gt; cardapio.txt;;git add cardapio.txt;;git commit -q -m 'Cria o cardápio'" data-goal="head:receita-sexta,commits:2,contem:HEAD:cardapio.txt=Sexta,limpo" data-solucao="git switch -c receita-sexta;;echo 'Sexta: pizza de calabresa' &gt;&gt; cardapio.txt;;git commit -am 'Adiciona a sexta-feira'">
+<p class="try-task"><strong>Missão:</strong> prepare uma contribuição do jeito certo: crie o branch <code>receita-sexta</code> a partir do <code>main</code>, acrescente uma linha com a sexta-feira ao <code>cardapio.txt</code> (por exemplo, <code>echo 'Sexta: pizza de calabresa' &gt;&gt; cardapio.txt</code>) e commite. O <code>main</code> tem de continuar sem a sexta. (No terminal do guia não há GitHub: o <code>git push -u origin receita-sexta</code> você faz no seu computador.)</p>
+</div>
+
+<hr>
+
+<h2>2. Abrindo o pull request (no site, ilustrativo)</h2>
+<p>Conforme a documentação do GitHub, para um pull request a partir de um fork:</p>
+<ol class="passo">
+  <li>Abra o repositório <strong>original</strong> (<code>github.com/bruno-lima/cardapio</code>). Logo depois do push, costuma aparecer uma faixa amarela acima da lista de arquivos com o botão <strong>Compare &amp; pull request</strong> ("Comparar e criar pull request"). Clique nele (ou use o endereço que o <code>git push</code> mostrou).</li>
+  <li>Se a página não estiver comparando o fork, clique em <strong>compare across forks</strong> ("comparar entre forks").</li>
+  <li>Escolha <strong>para onde</strong> vão as mudanças: no menu <strong>base branch</strong>, o <code>main</code> do repositório do Bruno.</li>
+  <li>Escolha <strong>de onde</strong> vêm: no menu <strong>head fork</strong>, o fork da Ana (<code>ana-souza/cardapio</code>); no menu <strong>compare branch</strong>, o <code>receita-sexta</code>.</li>
+  <li>Escreva um <strong>título</strong> e uma <strong>descrição</strong>.</li>
+  <li>Se quiser que o Bruno possa fazer pequenos ajustes direto no seu branch, deixe marcado <strong>Allow edits from maintainers</strong> ("Permitir edições dos mantenedores").</li>
+  <li>Clique em <strong>Create Pull Request</strong> ("Criar pull request"). Para um PR que ainda não está pronto, a seta ao lado do botão oferece <strong>Create Draft Pull Request</strong> ("Criar pull request de rascunho"): um rascunho não pode ser mesclado até ser marcado como pronto.</li>
+</ol>
+
+<h3>Um bom título e uma boa descrição</h3>
+<p>O título segue as mesmas regras de uma <a href="mensagens-commit.html">boa mensagem de commit</a>: curto, no imperativo, dizendo o que muda. A descrição responde o que o revisor vai querer saber:</p>
+<pre class="file" data-file="descrição do pull request (exemplo)">Adiciona a sexta-feira ao cardápio
+
+O cardápio parava na quinta. Esta mudança acrescenta a sexta-feira
+com pizza de calabresa.
+
+Como conferir: abrir o cardapio.txt e ver a última linha.
+
+Closes #3
+</pre>
+<p>A última linha usa uma palavra-chave do GitHub: <code>Closes #3</code> ("fecha a issue 3") faz a <a href="issues.html">issue</a> número 3 ser fechada sozinha quando o pull request for mesclado no branch padrão. Funcionam também <code>close</code>/<code>closed</code>, <code>fix</code>/<code>fixes</code>/<code>fixed</code> e <code>resolve</code>/<code>resolves</code>/<code>resolved</code> (conforme a documentação de issues).</p>
+
+<h3>O que tem na página do pull request</h3>
+<p>Segundo a documentação, a página tem quatro abas:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Aba</th><th>O que mostra</th></tr>
+<tr><td><strong>Conversation</strong> ("Conversa")</td><td>A descrição, a linha do tempo, os comentários e as revisões; no fim, o botão de merge</td></tr>
+<tr><td><strong>Commits</strong></td><td>Os commits do branch, inclusive os que chegarem depois</td></tr>
+<tr><td><strong>Checks</strong> ("Verificações")</td><td>Testes automáticos, quando o repositório tem (veja <a href="github-actions.html">GitHub Actions</a>)</td></tr>
+<tr><td><strong>Files changed</strong> ("Arquivos alterados")</td><td>As diferenças linha por linha, como um <code>git diff</code>; é onde a revisão acontece</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>3. Pediram uma mudança: atualizando o pull request</h2>
+<p>O Bruno revisou e comentou: "e quem não come carne? Põe uma opção vegetariana". A Ana <strong>não</strong> abre um pull request novo. Ela continua no <strong>mesmo branch</strong>, commita o ajuste e envia:</p>
+
+<pre class="term" data-cwd="~/cardapio">$ sed -i 's/pizza de calabresa/pizza de calabresa ou de muçarela/' cardapio.txt
+$ git diff
+diff --git a/cardapio.txt b/cardapio.txt
+index d863071..2946aa4 100644
+--- a/cardapio.txt
++++ b/cardapio.txt
+@@ -2,4 +2,4 @@ Segunda: arroz, feijão e frango
+ Terça: macarrão ao sugo
+ Quarta: feijoada
+ Quinta: peixe assado
+-Sexta: pizza de calabresa
++Sexta: pizza de calabresa ou de muçarela
+$ git commit -am 'Inclui uma opção vegetariana na sexta'
+[receita-sexta 790bbdf] Inclui uma opção vegetariana na sexta
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+$ git push
+Enumerating objects: 5, done.
+Counting objects: 100% (5/5), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (3/3), done.
+Writing objects: 100% (3/3), 346 bytes | 346.00 KiB/s, done.
+Total 3 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/cardapio.git
+   9298686..790bbdf  receita-sexta -&gt; receita-sexta
+$ git log --oneline --graph --all
+* 790bbdf (HEAD -&gt; receita-sexta, origin/receita-sexta) Inclui uma opção vegetariana na sexta
+* 9298686 Adiciona a sexta-feira
+* 3e097d6 (upstream/main, upstream/HEAD, origin/main, origin/HEAD, main) Adiciona a quinta-feira
+* 396f305 Adiciona a quarta-feira
+* 2bc3f14 Cria o cardápio
+</pre>
+<p>Desta vez o <code>git push</code> foi sem nada (o <code>-u</code> do passo 1 lembrou o destino) e não apareceu o aviso de pull request, porque o branch já existia no fork. O pull request <strong>acompanha o branch</strong>: o commit novo aparece nele (na aba <strong>Commits</strong>), sem a Ana precisar fazer mais nada no site. Ela só responde ao comentário do Bruno avisando que ajustou.</p>
+
+<div class="tip">
+<strong>Rebase no branch do pull request?</strong>
+<p>Às vezes o dono do projeto pede "atualize o seu branch com o <code>main</code>" ou "junte os commits num só". Se você fizer isso com rebase, o push vai precisar de <a href="push-force.html">--force-with-lease</a>. Isso é aceitável num branch de pull request que só você usa (veja <a href="regra-de-ouro.html">A Regra de Ouro</a>); se outra pessoa commitou no seu branch, prefira merge.</p>
+</div>
+
+<hr>
+
+<h2>4. O merge (no site, ilustrativo)</h2>
+<p>Quando o Bruno está satisfeito, ele usa o botão de merge no fim da aba <strong>Conversation</strong>. Segundo a documentação, há três jeitos, escolhidos na setinha ao lado do botão:</p>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Opção no site</th><th>O que faz no histórico</th></tr>
+<tr><td><strong>Create a merge commit</strong> (o botão <strong>Merge pull request</strong>)</td><td>Junta todos os commits do branch com um commit de merge (como <code>git merge --no-ff</code>)</td></tr>
+<tr><td><strong>Squash and merge</strong></td><td>Junta todos os commits do branch num commit só (veja <a href="squash.html">squash</a>)</td></tr>
+<tr><td><strong>Rebase and merge</strong></td><td>Refaz cada commit em cima do branch de destino, com hashes novos (veja <a href="rebase-ou-merge.html">Rebase ou Merge?</a>)</td></tr>
+</table>
+</div>
+<p>Depois de escolher, ele confirma (<strong>Confirm merge</strong>, "Confirmar merge"). O Bruno usou o merge comum. No laboratório, isso foi imitado no computador dele com um <code>git merge --no-ff</code> e a mensagem padrão do GitHub, <code>Merge pull request #1 from ana-souza/receita-sexta</code>, seguida de um <code>push</code>.</p>
+
+<hr>
+
+<h2>5. Depois do merge: arrumando a casa (no terminal)</h2>
+<p>O trabalho da Ana agora está no repositório do Bruno. No computador dela, o <code>main</code> ainda não sabe disso, e o branch <code>receita-sexta</code> não serve mais. A arrumação:</p>
+
+<pre class="term" data-cwd="~/cardapio">$ git switch main
+Switched to branch 'main'
+Your branch is up to date with 'origin/main'.
+$ git pull upstream main
+remote: Enumerating objects: 1, done.
+remote: Counting objects: 100% (1/1), done.
+remote: Total 1 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (1/1), 235 bytes | 235.00 KiB/s, done.
+From https://github.com/bruno-lima/cardapio
+ * branch            main       -&gt; FETCH_HEAD
+   3e097d6..3781dd2  main       -&gt; upstream/main
+Updating 3e097d6..3781dd2
+Fast-forward
+ cardapio.txt | 1 +
+ 1 file changed, 1 insertion(+)
+$ git log --oneline --graph
+*   3781dd2 (HEAD -&gt; main, upstream/main, upstream/HEAD) Merge pull request #1 from ana-souza/receita-sexta
+|\
+| * 790bbdf (origin/receita-sexta, receita-sexta) Inclui uma opção vegetariana na sexta
+| * 9298686 Adiciona a sexta-feira
+|/
+* 3e097d6 (origin/main, origin/HEAD) Adiciona a quinta-feira
+* 396f305 Adiciona a quarta-feira
+* 2bc3f14 Cria o cardápio
+$ git push origin main
+Enumerating objects: 1, done.
+Counting objects: 100% (1/1), done.
+Writing objects: 100% (1/1), 255 bytes | 255.00 KiB/s, done.
+Total 1 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+To https://github.com/ana-souza/cardapio.git
+   3e097d6..3781dd2  main -&gt; main
+$ git branch -d receita-sexta
+Deleted branch receita-sexta (was 790bbdf).
+$ git push origin --delete receita-sexta
+To https://github.com/ana-souza/cardapio.git
+ - [deleted]         receita-sexta
+</pre>
+
+<ol class="passo">
+  <li><code>git pull upstream main</code>: traz o commit de merge do Bruno (<code>3781dd2</code>). Os commits da Ana já estavam no computador dela; só faltava o de merge (por isso o download foi de 1 objeto só). Foi um fast-forward.</li>
+  <li>O <code>log --graph</code> mostra o trabalho da Ana (<code>9298686</code> e <code>790bbdf</code>) dentro do histórico oficial, com o commit de merge do pull request.</li>
+  <li><code>git push origin main</code>: atualiza o <code>main</code> do fork.</li>
+  <li><code>git branch -d receita-sexta</code>: apaga o branch local. O <code>-d</code> só apaga branch já juntado; como o trabalho está no <code>main</code>, deu certo: "branch apagado (era o <code>790bbdf</code>)". Veja <a href="apagar-branch.html">Renomeando e Apagando Branches</a>.</li>
+  <li><code>git push origin --delete receita-sexta</code>: apaga o branch <strong>no fork</strong> (<code>- [deleted]</code>). No site, a página do pull request também oferece um botão para apagar o branch depois do merge.</li>
+</ol>
+
+<hr>
+
+<h2 id="formas">Formas diferentes de fazer a mesma coisa</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Situação</th><th>Como fica o pull request</th></tr>
+<tr><td>Contribuir com o projeto de outra pessoa</td><td>Fork → branch no fork → PR do fork para o original (esta aula)</td></tr>
+<tr><td>Equipe com permissão no mesmo repositório</td><td>Sem fork: branch no próprio repositório (<code>git push -u origin receita-sexta</code>) → PR do branch para o <code>main</code> do mesmo repositório (veja <a href="github-flow.html">O GitHub Flow</a>)</td></tr>
+<tr><td>Abrir o PR sem sair do terminal</td><td><code>gh pr create</code>, do <a href="github-cli.html">GitHub CLI</a> (ilustrativo)</td></tr>
+<tr><td>O trabalho ainda não está pronto, mas você quer mostrar</td><td><strong>Create Draft Pull Request</strong> (rascunho)</td></tr>
+<tr><td>Pediram ajustes</td><td>Novos commits no <strong>mesmo branch</strong> + <code>git push</code>; o PR se atualiza</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong><code>fatal: The current branch … has no upstream branch.</code></strong>
+<p>O primeiro <code>git push</code> de um branch novo (seção 1). <strong>Como resolver:</strong> <code>git push -u origin NOME-DO-BRANCH</code>, como o próprio Git sugere. Se quiser que o Git faça isso sozinho sempre, a dica cita a configuração <code>push.autoSetupRemote</code> (<code>git config --global push.autoSetupRemote true</code>; veja <a href="config-util.html">Configurações Úteis</a>).</p>
+</div>
+
+<div class="cenario">
+<strong>Fiz os commits no <code>main</code>, e não num branch</strong>
+<p>O pull request funciona mesmo assim (do <code>main</code> do fork para o <code>main</code> do original), mas fica difícil: enquanto ele está aberto, o seu <code>main</code> não pode receber as novidades do original sem misturar, e você não consegue começar outra contribuição separada. <strong>Como resolver antes do push:</strong> crie o branch onde você está (<code>git branch receita-sexta</code>), volte o <code>main</code> para o original (<code>git reset --hard upstream/main</code>; veja <a href="git-reset.html">git reset</a>) e vá para o branch (<code>git switch receita-sexta</code>). Os commits ficam no branch.</p>
+</div>
+
+<div class="cenario">
+<strong>O pull request mostra commits que não são meus</strong>
+<p><strong>O que aconteceu:</strong> o seu branch foi criado de um <code>main</code> desatualizado, ou de outro branch. <strong>Como confirmar:</strong> <code>git log --oneline upstream/main..HEAD</code> lista só os commits que o seu branch tem a mais que o original (depois de um <code>git fetch upstream</code>). <strong>Como evitar:</strong> sempre <code>git switch main</code> + <code>git pull upstream main</code> antes do <code>git switch -c</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>O site avisa que o pull request tem conflitos</strong>
+<p>O site avisa (ilustrativo) quando o <code>main</code> do original mudou nas mesmas linhas que o seu branch, e o merge pelo botão fica bloqueado. <strong>Como resolver no terminal:</strong> no seu branch, <code>git fetch upstream</code> e <code>git merge upstream/main</code>; resolva os conflitos como em <a href="resolver-conflitos.html">Resolvendo Conflitos</a>, commite e dê <code>git push</code>. O pull request se atualiza e o aviso some.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Etapa</th><th>Comandos (terminal) / ação (site)</th></tr>
+<tr><td>Atualizar antes de começar</td><td><code>git switch main</code> · <code>git pull upstream main</code></td></tr>
+<tr><td>Criar o branch</td><td><code>git switch -c NOME</code></td></tr>
+<tr><td>Enviar a primeira vez</td><td><code>git push -u origin NOME</code></td></tr>
+<tr><td>Abrir o PR</td><td><strong>Compare &amp; pull request</strong> → base: <code>main</code> do original; head: o seu branch → <strong>Create Pull Request</strong></td></tr>
+<tr><td>Ajustar</td><td>commits no mesmo branch · <code>git push</code></td></tr>
+<tr><td>Depois do merge</td><td><code>git switch main</code> · <code>git pull upstream main</code> · <code>git push origin main</code> · <code>git branch -d NOME</code> · <code>git push origin --delete NOME</code></td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. O primeiro push do branch</h3>
+<p>Complete para enviar o branch <code>receita-sexta</code> para o fork e lembrar do destino:</p>
+<div class="ex-code">git push <input data-answer="-u" aria-label="opção"> <input data-answer="origin" aria-label="remoto"> receita-sexta</div>
+</div>
+
+<div class="exercise">
+<h3>2. Apague o branch no fork</h3>
+<p>Depois do merge, complete para apagar o branch no GitHub:</p>
+<div class="ex-code">git push origin <input data-answer="--delete" aria-label="opção"> receita-sexta</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. O Bruno pediu um ajuste no seu pull request. O que você faz?</p>
+<label><input type="radio" name="q3"> Fecha o pull request e abre outro</label>
+<label><input type="radio" name="q3"> Commita o ajuste no mesmo branch e dá <code>git push</code></label>
+<label><input type="radio" name="q3"> Commita no <code>main</code></label>
+<label><input type="radio" name="q3"> Apaga o fork</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. De onde vem a mensagem <code>remote: Create a pull request for 'receita-sexta' on GitHub by visiting:</code>?</p>
+<label><input type="radio" name="q4"> Do Git do seu computador, que criou o pull request</label>
+<label><input type="radio" name="q4"> De um erro no push</label>
+<label><input type="radio" name="q4"> Do Bruno</label>
+<label><input type="radio" name="q4"> Do GitHub (o <code>remote:</code> indica o servidor), sugerindo o endereço para abrir o PR</label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. Num pull request do fork da Ana para o repositório do Bruno, qual é o <strong>base</strong>?</p>
+<label><input type="radio" name="q5"> O <code>main</code> do repositório do Bruno (para onde as mudanças vão)</label>
+<label><input type="radio" name="q5"> O branch <code>receita-sexta</code> do fork</label>
+<label><input type="radio" name="q5"> O computador da Ana</label>
+<label><input type="radio" name="q5"> O <code>main</code> do fork da Ana</label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">6. O que o <code>Closes #3</code> na descrição do pull request faz?</p>
+<label><input type="radio" name="q6"> Fecha o pull request número 3</label>
+<label><input type="radio" name="q6"> Apaga o commit 3</label>
+<label><input type="radio" name="q6"> Fecha a issue 3 quando o pull request for mesclado no branch padrão</label>
+<label><input type="radio" name="q6"> Nada: é só um comentário</label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>Um <strong>pull request</strong> é um pedido, no site do GitHub, para juntar as mudanças de um branch em outro, com descrição, diferenças, conversa e revisão.</li>
+  <li>No terminal: <code>main</code> em dia, <code>git switch -c NOME</code>, commits, <code>git push -u origin NOME</code>. O GitHub responde com o endereço para criar o PR.</li>
+  <li>No site: <strong>Compare &amp; pull request</strong>, base = <code>main</code> do original, head = o seu branch, título e descrição, <strong>Create Pull Request</strong>.</li>
+  <li>Ajustes pedidos: mais commits no <strong>mesmo branch</strong> e <code>git push</code>.</li>
+  <li>Depois do merge: <code>git pull upstream main</code>, <code>git push origin main</code>, <code>git branch -d</code> e <code>git push origin --delete</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
