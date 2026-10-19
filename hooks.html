@@ -53,23 +53,14 @@
 $ echo '# Receitas da Ana' &gt; README.md
 $ git add README.md &amp;&amp; git commit -q -m 'Primeiro commit'
 $ ls .git/hooks
-applypatch-msg.sample
-commit-msg.sample                 « exemplo de commit-msg (seção 4)
-fsmonitor-watchman.sample
-post-update.sample
-pre-applypatch.sample
-pre-commit.sample                 « exemplo de pre-commit (seção 2)
-pre-merge-commit.sample
-pre-push.sample
-pre-rebase.sample
-pre-receive.sample
-prepare-commit-msg.sample
-push-to-checkout.sample
-sendemail-validate.sample
-update.sample
+applypatch-msg.sample      pre-commit.sample        prepare-commit-msg.sample
+commit-msg.sample          pre-merge-commit.sample  push-to-checkout.sample
+fsmonitor-watchman.sample  pre-push.sample          sendemail-validate.sample
+post-update.sample         pre-rebase.sample        update.sample
+pre-applypatch.sample      pre-receive.sample
 </pre>
 
-<p>São <strong>exemplos</strong>, todos terminados em <code>.sample</code> ("amostra"). O Git ignora qualquer arquivo com essa terminação: eles estão ali só para você ler e copiar. Para um hook valer de verdade, ele precisa de duas coisas:</p>
+<p>São <strong>exemplos</strong>, todos terminados em <code>.sample</code> ("amostra"); entre eles, o <code>pre-commit.sample</code> (como o hook da seção 2) e o <code>commit-msg.sample</code> (como o da seção 4). O Git ignora qualquer arquivo com essa terminação: eles estão ali só para você ler e copiar. Para um hook valer de verdade, ele precisa de duas coisas:</p>
 <ol class="passo">
   <li>o <strong>nome exato</strong>, sem extensão: <code>pre-commit</code>, e não <code>pre-commit.sample</code> nem <code>pre-commit.sh</code>;</li>
   <li>a <strong>permissão de execução</strong> (o <code>chmod +x</code>), senão o Git não o roda (veja <a href="#errado">Quando dá errado</a>).</li>
@@ -136,7 +127,7 @@ $ echo $?
 <p>O histórico e a área de preparo continuam como estavam: o commit <strong>não</strong> foi criado, e o arquivo segue preparado, esperando:</p>
 
 <pre class="term" data-cwd="~/receitas">$ git log --oneline
-fe996fb Primeiro commit
+fe996fb (HEAD -&gt; main) Primeiro commit
 $ git status
 No ramo main
 Mudanças a serem submetidas:
@@ -157,7 +148,7 @@ $ git commit -m 'Adiciona configuração'
  1 file changed, 1 insertion(+)
  create mode 100644 config.txt
 $ git log --oneline
-9183582 Adiciona configuração
+9183582 (HEAD -&gt; main) Adiciona configuração
 fe996fb Primeiro commit
 </pre>
 
@@ -186,7 +177,7 @@ $ git commit --no-verify -m 'Teste sem o porteiro'
 [main 8b62765] Teste sem o porteiro
  1 file changed, 1 insertion(+)
 $ git log --oneline
-8b62765 Teste sem o porteiro          « passou, com a senha dentro
+8b62765 (HEAD -&gt; main) Teste sem o porteiro          « passou, com a senha dentro
 9183582 Adiciona configuração
 fe996fb Primeiro commit
 </pre>
@@ -238,7 +229,7 @@ $ git commit -m 'Anota o tempo de preparo no README'
 [main dae2d72] Anota o tempo de preparo no README
  1 file changed, 1 insertion(+)
 $ git log --oneline
-dae2d72 Anota o tempo de preparo no README
+dae2d72 (HEAD -&gt; main) Anota o tempo de preparo no README
 8b62765 Teste sem o porteiro
 9183582 Adiciona configuração
 fe996fb Primeiro commit
@@ -282,7 +273,7 @@ $ git add a.txt
 $ git commit -m 'Segundo commit da loja'
 pre-commit: conferindo...
 $ git log --oneline
-0d93a28 Primeiro commit da loja          « o segundo commit foi barrado
+0d93a28 (HEAD -&gt; main) Primeiro commit da loja          « o segundo commit foi barrado
 </pre>
 <p>Aqui a Ana usou o repositório da lojinha, cujo <code>pre-commit</code> de teste só escreve <code>pre-commit: conferindo...</code> e termina com <code>exit 1</code>.</p>
 
