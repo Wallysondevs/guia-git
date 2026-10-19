@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git HEAD — o "você está aqui" do Git | Guia Git</title>
+<meta name="description" content="O que é o HEAD do Git: o arquivo .git/HEAD (ref: refs/heads/main), o branch que aponta para um commit, como o HEAD anda a cada commit, HEAD~1, HEAD~2, HEAD^ e @, o HEAD ao trocar de branch, uma primeira olhada no HEAD destacado, e os erros de HEAD num repositório sem commits. Saídas reais do Git em português.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">HEAD</span></h1>
+
+<p class="intro">A palavra <code>HEAD</code> apareceu em quase todas as aulas até aqui: <code>git reset HEAD~1</code>, <code>git revert HEAD</code>, <code>git show HEAD</code>, <code>(HEAD -&gt; main)</code> no log. O <strong>HEAD</strong> (em inglês, "cabeça") é o jeito de o Git dizer <strong>"você está aqui"</strong>: o commit em que você está trabalhando agora, que vai ser o pai do seu próximo commit. Nesta aula você vê o que ele é por dentro (spoiler: um arquivo de uma linha), como ele anda, e como contar commits para trás a partir dele.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>O que é o <code>HEAD</code> e onde ele fica: o arquivo <code>.git/HEAD</code>.</li>
+  <li>A corrente <strong>HEAD → branch → commit</strong>, e como ela anda a cada commit.</li>
+  <li>Como apontar commits anteriores: <code>HEAD~1</code>, <code>HEAD~2</code>, <code>HEAD^</code> e o apelido <code>@</code>.</li>
+  <li>O que acontece com o <code>HEAD</code> quando você troca de branch, e o que é o "HEAD destacado".</li>
+  <li>Os erros de <code>HEAD</code> num repositório sem commits.</li>
+</ul>
+</div>
+
+<p>Todas as saídas desta aula vieram do Git real da máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>), com o sistema em português.</p>
+
+<hr>
+
+<h2>A ideia: o marcador "você está aqui"</h2>
+<p>No mapa de um shopping, há um ponto vermelho: <strong>"você está aqui"</strong>. Ele não é uma loja; é só uma indicação de onde você está entre as lojas. No Git:</p>
+<ul>
+  <li>os <strong>commits</strong> são as lojas (as fotografias do projeto);</li>
+  <li>os <strong>branches</strong> são placas com nome presas a um commit (<code>main</code> está aqui; veja <a href="branches.html">O que é um Branch</a>);</li>
+  <li>o <strong>HEAD</strong> é o "você está aqui": normalmente, ele aponta para uma placa (o branch atual), e a placa aponta para um commit.</li>
+</ul>
+<pre>HEAD ──► main ──► 91591a1 ("Adiciona receita de pudim")
+                     │ pai
+                  62fc1c8 ("Adiciona receita de bolo")
+                     │ pai
+                  fe996fb ("Primeiro commit")</pre>
+<p>Quando você faz um commit, o Git cria o commit novo com o pai = o commit do HEAD, e então <strong>move a placa</strong> do branch para o commit novo. O HEAD continua apontando para a placa, então ele "anda junto".</p>
+
+<hr>
+
+<h2>1. O <code>HEAD</code> é um arquivo</h2>
+<p>Num repositório recém-criado, a Ana espia o arquivo <code>.git/HEAD</code> com o <code>cat</code>:</p>
+
+<pre class="term" data-cwd="~">$ mkdir receitas &amp;&amp; cd receitas
+$ git init -q
+$ cat .git/HEAD
+ref: refs/heads/main
+$ ls .git/refs/heads
+</pre>
+
+<p>Uma linha só: <code>ref: refs/heads/main</code>, que quer dizer "o HEAD é uma <strong>referência</strong> ao branch <code>main</code>". O <code>refs/heads/main</code> é o caminho do arquivo do branch, dentro do <code>.git</code>. Mas a pasta <code>.git/refs/heads</code> está vazia: o branch <code>main</code> ainda não existe de verdade, porque não há commit nenhum para ele apontar. O HEAD aponta para uma placa que ainda vai ser pregada.</p>
+
+<p>Depois do primeiro commit:</p>
+
+<pre class="term" data-cwd="~/receitas">$ echo '# Receitas da Ana' &gt; README.md
+$ git add README.md
+$ git commit -q -m "Primeiro commit"
+$ cat .git/HEAD
+ref: refs/heads/main
+$ ls .git/refs/heads
+main
+$ cat .git/refs/heads/main
+fe996fb8ecae7fe25026045fd46f15ca756bc19c
+</pre>
+
+<p>O <code>.git/HEAD</code> não mudou: continua dizendo "estou no <code>main</code>". O que apareceu foi o arquivo do branch, <code>.git/refs/heads/main</code>, com uma linha só: o <a href="hash.html">hash</a> do primeiro commit. Um branch é <strong>só isso</strong>: um arquivinho com um hash.</p>
+
+<h3>O HEAD anda a cada commit</h3>
+
+<pre class="term" data-cwd="~/receitas">$ printf 'Bolo de cenoura\nTempo: 40 minutos\n' &gt; bolo.txt
+$ git add bolo.txt
+$ git commit -q -m "Adiciona receita de bolo"
+$ cat .git/refs/heads/main
+62fc1c8c3360d4d2a8fdd305433da11404bd3aa7   « o main andou para o commit novo
+$ echo 'Pudim de leite' &gt; pudim.txt
+$ git add pudim.txt
+$ git commit -q -m "Adiciona receita de pudim"
+$ git log --oneline --decorate
+91591a1 (HEAD -&gt; main) Adiciona receita de pudim
+62fc1c8 Adiciona receita de bolo
+fe996fb Primeiro commit
+</pre>
+
+<p>A cada commit, o Git escreveu o hash novo no arquivo do <code>main</code>. E o <code>git log --oneline --decorate</code> mostra as placas: <code>(HEAD -&gt; main)</code> quer dizer "o HEAD aponta para o <code>main</code>, que está neste commit". (A opção <code>--decorate</code>, "decorar", mostra os nomes ao lado dos commits; no terminal do dia a dia ela já vem ligada, e você vê o <code>(HEAD -&gt; main)</code> mesmo sem pedir.)</p>
+
+<p>Para traduzir <code>HEAD</code> (ou um branch) em hash, use o <code>git rev-parse</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git rev-parse HEAD
+91591a1289296941f2457423b98987a08fc12c29
+$ git rev-parse main
+91591a1289296941f2457423b98987a08fc12c29
+</pre>
+
+<p>Os dois dão o mesmo hash, porque o HEAD está no <code>main</code>. Na maioria dos comandos, <code>HEAD</code> e o nome do branch atual são intercambiáveis. E há um apelido mais curto ainda para o HEAD, o <code>@</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git show --stat --oneline @
+91591a1 Adiciona receita de pudim
+ pudim.txt | 1 +
+ 1 file changed, 1 insertion(+)
+</pre>
+
+<hr>
+
+<h2>2. Contando para trás: <code>HEAD~1</code>, <code>HEAD~2</code>, <code>HEAD^</code></h2>
+<p>Como cada commit sabe quem é o seu pai, dá para andar para trás a partir do HEAD:</p>
+
+<dl class="anatomy">
+  <dt>HEAD~1</dt><dd>"Um commit antes do HEAD": o pai. O <code>~</code> (til) seguido de um número conta gerações para trás.</dd>
+  <dt>HEAD~2</dt><dd>"Dois commits antes": o avô (o pai do pai).</dd>
+  <dt>HEAD^</dt><dd>Outro jeito de dizer "o pai" (o <code>^</code> é o acento circunflexo, sozinho). <code>HEAD^^</code> é o avô.</dd>
+  <dt>HEAD~</dt><dd>Sem número, o til vale 1: o mesmo que <code>HEAD~1</code>.</dd>
+</dl>
+
+<pre class="term" data-cwd="~/receitas">$ git rev-parse HEAD~1 HEAD^ HEAD~2 HEAD^^
+62fc1c8c3360d4d2a8fdd305433da11404bd3aa7   « HEAD~1: o bolo
+62fc1c8c3360d4d2a8fdd305433da11404bd3aa7   « HEAD^: o mesmo
+fe996fb8ecae7fe25026045fd46f15ca756bc19c   « HEAD~2: o primeiro commit
+fe996fb8ecae7fe25026045fd46f15ca756bc19c   « HEAD^^: o mesmo
+$ git show --stat HEAD~1
+commit 62fc1c8c3360d4d2a8fdd305433da11404bd3aa7
+Author: Ana Souza &lt;ana@exemplo.com&gt;
+Date:   Thu Oct 15 10:30:00 2026 -0300
+
+    Adiciona receita de bolo
+
+ bolo.txt | 2 ++
+ 1 file changed, 2 insertions(+)
+$ git log --oneline HEAD~1
+62fc1c8 Adiciona receita de bolo
+fe996fb Primeiro commit
+$ git show HEAD~2:README.md
+# Receitas da Ana
+</pre>
+
+<p>Os nomes relativos funcionam em todo comando que aceita um commit: o <code>git log HEAD~1</code> mostra o histórico a partir do pai; o <code>git show HEAD~2:README.md</code> mostra o README como estava dois commits atrás. E também se combinam: <code>HEAD~1~1</code> é o mesmo que <code>HEAD~2</code>.</p>
+
+<div class="tip">
+<strong><code>~</code> ou <code>^</code>?</strong>
+<p>Para "voltar N commits", use o <code>~</code>: <code>HEAD~3</code> é mais fácil de ler que <code>HEAD^^^</code>. O <code>^</code> tem um uso especial em commits de <a href="git-merge.html">merge</a>, que têm <strong>dois</strong> pais: <code>HEAD^1</code> é o primeiro pai e <code>HEAD^2</code> é o segundo. Em commits comuns, com um pai só, os dois dão no mesmo. Um cuidado no terminal: em alguns shells (como o zsh, padrão do macOS, dependendo da configuração), o <code>^</code> tem significado especial e precisa de aspas: <code>git show 'HEAD^'</code>. No bash do Ubuntu, não precisa.</p>
+</div>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit';;echo 'Bolo' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona receita de bolo';;echo 'Pudim' &gt; pudim.txt;;git add pudim.txt;;git commit -q -m 'Adiciona receita de pudim'" data-goal="ran:HEAD(~2|\^\^|~1~1),out:Primeiro commit" data-solucao="git show --stat HEAD~2">
+<p class="try-task"><strong>Missão:</strong> o repositório da Ana tem três commits. Sem usar hash, mostre com <code>git show</code> o commit que está <strong>dois</strong> commits antes do HEAD (o "Primeiro commit"). Use <code>HEAD~2</code> ou <code>HEAD^^</code>.</p>
+</div>
+
+<hr>
+
+<h2>3. O <code>HEAD</code> ao trocar de branch</h2>
+<p>Quando você troca de branch (veja <a href="git-switch.html">git switch</a>), o que muda é o arquivo <code>.git/HEAD</code>: ele passa a apontar para outra placa.</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch -c testes
+Switched to a new branch 'testes'
+$ cat .git/HEAD
+ref: refs/heads/testes   « o HEAD mudou de placa
+$ git log --oneline --decorate
+91591a1 (HEAD -&gt; testes, main) Adiciona receita de pudim
+62fc1c8 Adiciona receita de bolo
+fe996fb Primeiro commit
+$ git switch main
+Switched to branch 'main'
+$ cat .git/HEAD
+ref: refs/heads/main
+</pre>
+
+<p>O <code>git switch -c testes</code> criou o branch <code>testes</code> e mudou o HEAD para ele ("Mudou para um novo branch 'testes'"; estas mensagens o Git do Ubuntu ainda não traduziu). No log, <code>(HEAD -&gt; testes, main)</code>: as duas placas estão no mesmo commit, e o HEAD aponta para a <code>testes</code>. Um próximo commit moveria só a placa <code>testes</code>, a que o HEAD aponta. Com <code>git switch main</code>, o HEAD voltou para o <code>main</code>.</p>
+
+<h3>Uma olhada no HEAD destacado</h3>
+<p>O HEAD também pode apontar <strong>direto para um commit</strong>, sem placa no meio. Isso se chama <strong>HEAD destacado</strong> (<em>detached HEAD</em>), e acontece quando você vai para um commit antigo para dar uma olhada:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git switch --detach HEAD~1
+HEAD is now at 62fc1c8 Adiciona receita de bolo
+$ cat .git/HEAD
+62fc1c8c3360d4d2a8fdd305433da11404bd3aa7   « um hash, e não "ref: …"
+$ git status
+HEAD detached at 62fc1c8
+nothing to commit, working tree clean
+$ git log --oneline --decorate --all
+91591a1 (testes, main) Adiciona receita de pudim
+62fc1c8 (HEAD) Adiciona receita de bolo
+fe996fb Primeiro commit
+$ git switch main
+Previous HEAD position was 62fc1c8 Adiciona receita de bolo
+Switched to branch 'main'
+</pre>
+
+<p>O <code>.git/HEAD</code> agora tem um hash em vez de <code>ref: refs/heads/…</code>, o <code>git status</code> avisa <code>HEAD detached at 62fc1c8</code> ("HEAD destacado em 62fc1c8"), e o log mostra <code>(HEAD)</code> sozinho, sem seta para branch nenhum. Nada de grave: é só "estou olhando um commit antigo, fora de qualquer branch". O <code>git switch main</code> trouxe tudo de volta ("posição anterior do HEAD era 62fc1c8…; mudou para o branch 'main'"). O que dá para fazer (e o que evitar) nesse estado é assunto da aula <a href="head-destacado.html">HEAD Destacado</a>.</p>
+
+<hr>
+
+<h2 id="formas">Jeitos de apontar um commit</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Escrita</th><th>Quer dizer</th><th>Exemplo nesta aula</th></tr>
+<tr><td><code>HEAD</code> ou <code>@</code></td><td>O commit atual</td><td><code>91591a1</code></td></tr>
+<tr><td><code>main</code></td><td>O commit para onde o branch aponta</td><td><code>91591a1</code></td></tr>
+<tr><td><code>HEAD~1</code>, <code>HEAD~</code>, <code>HEAD^</code></td><td>O pai do commit atual</td><td><code>62fc1c8</code></td></tr>
+<tr><td><code>HEAD~2</code>, <code>HEAD^^</code>, <code>HEAD~1~1</code></td><td>O avô</td><td><code>fe996fb</code></td></tr>
+<tr><td><code>main~1</code></td><td>O pai do commit do <code>main</code> (o <code>~</code> funciona com qualquer nome)</td><td><code>62fc1c8</code></td></tr>
+<tr><td><code>fe996fb</code></td><td>O commit com esse hash</td><td><code>fe996fb</code></td></tr>
+<tr><td><code>HEAD~2:README.md</code></td><td>Um arquivo, na versão daquele commit</td><td><code># Receitas da Ana</code></td></tr>
+<tr><td><code>HEAD@{1}</code></td><td>Onde o HEAD estava antes do último movimento (veja <a href="git-reflog.html">git reflog</a>)</td><td>depende do histórico de movimentos</td></tr>
+<tr><td><code>ORIG_HEAD</code></td><td>Onde o branch estava antes do último reset, merge ou rebase (veja <a href="git-reset.html">git reset</a>)</td><td>idem</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Repositório sem nenhum commit</strong>
+<pre class="term" data-cwd="~/receitas">$ git log
+fatal: your current branch 'main' does not have any commits yet
+$ git rev-parse HEAD
+fatal: ambiguous argument 'HEAD': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git &lt;command&gt; [&lt;revision&gt;...] -- [&lt;file&gt;...]'
+HEAD
+$ git show HEAD
+fatal: ambiguous argument 'HEAD': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git &lt;command&gt; [&lt;revision&gt;...] -- [&lt;file&gt;...]'
+</pre>
+<p>"O seu branch atual, <code>main</code>, ainda não tem nenhum commit." Num repositório recém-criado, o HEAD aponta para o <code>main</code>, mas o <code>main</code> ainda não existe (lembre-se: a pasta <code>.git/refs/heads</code> estava vazia). Por isso, todo comando que precisa do commit do HEAD falha: <code>HEAD</code> não leva a commit nenhum. (O <code>git rev-parse</code> ainda repete o argumento, <code>HEAD</code>, na última linha.) <strong>Como resolver:</strong> faça o primeiro commit (veja <a href="primeiro-commit.html">Seu Primeiro Commit</a>).</p>
+</div>
+
+<div class="cenario">
+<strong>Voltou mais commits do que existem</strong>
+<pre class="term" data-cwd="~/receitas">$ git show HEAD~3
+fatal: ambiguous argument 'HEAD~3': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git &lt;command&gt; [&lt;revision&gt;...] -- [&lt;file&gt;...]'
+</pre>
+<p>O histórico tem 3 commits: <code>HEAD</code>, <code>HEAD~1</code> e <code>HEAD~2</code>. O <code>HEAD~3</code> seria o pai do primeiro commit, e o primeiro commit não tem pai. <strong>Como resolver:</strong> conte no <code>git log --oneline</code>; o último da lista é <code>HEAD~</code>(número de commits − 1).</p>
+</div>
+
+<div class="cenario">
+<strong>Escreveu <code>head</code> em minúsculas</strong>
+<pre class="term" data-cwd="~/receitas">$ git show head
+fatal: ambiguous argument 'head': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git &lt;command&gt; [&lt;revision&gt;...] -- [&lt;file&gt;...]'
+</pre>
+<p>No Linux, o nome é <code>HEAD</code>, em maiúsculas: <code>head</code> é outra coisa (e não existe). Em computadores com Windows ou macOS, o <code>head</code> minúsculo às vezes "funciona" por acidente, porque o sistema de arquivos não diferencia maiúsculas, mas isso causa problemas estranhos com branches. <strong>Como resolver:</strong> escreva <code>HEAD</code>, ou use o apelido <code>@</code>.</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>cat .git/HEAD</code></td><td>Mostra para onde o HEAD aponta (<code>ref: refs/heads/main</code>, ou um hash se estiver destacado)</td></tr>
+<tr><td><code>cat .git/refs/heads/main</code></td><td>Mostra o hash para onde o branch aponta</td></tr>
+<tr><td><code>git rev-parse HEAD</code></td><td>O hash do commit atual</td></tr>
+<tr><td><code>git log --oneline --decorate</code></td><td>O histórico com as placas: <code>(HEAD -&gt; main)</code></td></tr>
+<tr><td><code>git show HEAD~N</code></td><td>O commit N gerações antes do atual</td></tr>
+<tr><td><code>git show HEAD~N:arquivo</code></td><td>O arquivo como estava N commits atrás</td></tr>
+<tr><td><code>git switch &lt;branch&gt;</code></td><td>Muda o HEAD para outro branch</td></tr>
+<tr><td><code>git switch --detach &lt;commit&gt;</code></td><td>Destaca o HEAD num commit (veja <a href="head-destacado.html">HEAD Destacado</a>)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Por dentro</h3>
+<p>Complete o conteúdo do arquivo <code>.git/HEAD</code> quando a Ana está no branch <code>main</code>:</p>
+<div class="ex-code"><input data-answer="ref:" aria-label="começo da linha"> refs/heads/<input data-answer="main" aria-label="nome do branch"></div>
+</div>
+
+<div class="exercise">
+<h3>2. O avô</h3>
+<p>Complete para mostrar o commit que está dois commits antes do atual:</p>
+<div class="ex-code">git show HEAD<input data-answer="~2" aria-label="dois para trás"></div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. A Ana está no <code>main</code> e faz um commit. O que muda dentro do <code>.git</code>?</p>
+<label><input type="radio" name="q3"> O arquivo <code>.git/HEAD</code> passa a ter o hash do commit novo</label>
+<label><input type="radio" name="q3"> O arquivo <code>.git/refs/heads/main</code> passa a ter o hash do commit novo; o <code>.git/HEAD</code> continua <code>ref: refs/heads/main</code></label>
+<label><input type="radio" name="q3"> Nada: o HEAD fica no commit antigo</label>
+<label><input type="radio" name="q3"> O Git cria um branch novo</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">4. Qual destas escritas <strong>não</strong> aponta para o pai do commit atual?</p>
+<label><input type="radio" name="q4"> <code>HEAD~1</code></label>
+<label><input type="radio" name="q4"> <code>HEAD^</code></label>
+<label><input type="radio" name="q4"> <code>HEAD~</code></label>
+<label><input type="radio" name="q4"> <code>HEAD~2</code></label>
+</div>
+
+<div class="mc" data-answer="1">
+<p class="mc-q">5. O <code>cat .git/HEAD</code> mostrou um hash em vez de <code>ref: refs/heads/…</code>. O que isso quer dizer?</p>
+<label><input type="radio" name="q5"> O HEAD está destacado: apontando direto para um commit, fora de qualquer branch</label>
+<label><input type="radio" name="q5"> O repositório está estragado</label>
+<label><input type="radio" name="q5"> Não há nenhum commit ainda</label>
+<label><input type="radio" name="q5"> O branch <code>main</code> foi apagado</label>
+</div>
+
+<h3>Missão final: trocando de placa</h3>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit'" data-goal="head:testes,branch:main,ran:switch" data-solucao="git switch -c testes">
+<p class="try-task"><strong>Missão:</strong> crie um branch chamado <code>testes</code> e faça o HEAD apontar para ele, com <code>git switch -c</code>. Depois confira com <code>git log --oneline --decorate</code>: deve aparecer <code>(HEAD -&gt; testes, main)</code>.</p>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O <code>HEAD</code> é o "você está aqui" do Git: o commit atual, pai do próximo commit.</li>
+  <li>Por dentro, é o arquivo <code>.git/HEAD</code>, que normalmente diz <code>ref: refs/heads/main</code>: o HEAD aponta para o branch, e o branch (o arquivo <code>.git/refs/heads/main</code>) aponta para um commit.</li>
+  <li>A cada commit, o branch atual anda para o commit novo, e o HEAD anda junto.</li>
+  <li><code>HEAD~1</code> (ou <code>HEAD^</code>) é o pai; <code>HEAD~2</code>, o avô; <code>@</code> é um apelido para o <code>HEAD</code>.</li>
+  <li>Trocar de branch muda o <code>.git/HEAD</code>. Se ele apontar direto para um commit, o HEAD está destacado (<code>HEAD detached at …</code>).</li>
+  <li>Sem nenhum commit, <code>HEAD</code> não leva a lugar nenhum: <code>does not have any commits yet</code>.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
