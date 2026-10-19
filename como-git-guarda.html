@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git por dentro — como o Git guarda as coisas (blob, tree e commit) | Guia Git</title>
+<meta name="description" content="Por dentro da pasta .git: o Git guarda fotografias (snapshots), não diferenças. Os três tipos de objeto (blob, tree e commit) vistos de verdade com git cat-file -t e -p, como um commit aponta para a árvore e para o pai, por que arquivos iguais são guardados uma vez só, e por que um commit nunca muda. Saídas reais do Git.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("tema");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar" id="sidebar" aria-label="Tópicos"></nav>
+<main class="main">
+<div class="content">
+
+<div class="pager"></div>
+
+<h1>Git <span class="hl">por dentro</span></h1>
+
+<p class="intro">Até aqui você usou o Git "por fora": <code>add</code>, <code>commit</code>, <code>log</code>, <code>reset</code>. Nesta aula você abre a tampa e olha dentro da pasta <code>.git</code>, onde o Git guarda tudo. Não é preciso saber isso para usar o Git no dia a dia, mas quem entende o que tem lá dentro para de ter medo: fica claro por que um commit "nunca se perde", por que o <code>--amend</code> muda o hash, e o que o <code>reset</code> realmente move. E é bem mais simples do que parece: são só <strong>três tipos de objeto</strong>.</p>
+
+<div class="note">
+<strong>Você vai aprender</strong>
+<ul>
+  <li>Que o Git guarda <strong>fotografias</strong> (snapshots) do projeto inteiro, não listas de diferenças.</li>
+  <li>O que há dentro da pasta <code>.git</code>, e o que é a pasta <code>.git/objects</code>.</li>
+  <li>Os três tipos de objeto: <strong>blob</strong> (conteúdo de arquivo), <strong>tree</strong> (pasta) e <strong>commit</strong>.</li>
+  <li>Como espiar cada objeto com <code>git cat-file -t</code> e <code>git cat-file -p</code>.</li>
+  <li>Por que arquivos iguais ocupam espaço uma vez só, e por que um commit nunca pode ser alterado.</li>
+</ul>
+</div>
+
+<p>Todas as saídas desta aula vieram do Git real da máquina da Ana (usuária <code>ana</code>, computador <code>notebook</code>). Como o laboratório do guia usa o mesmo nome, o mesmo e-mail e a mesma data fixa em todos os commits (15/10/2026, 10:30), os hashes que você vê aqui saem <strong>iguais</strong> se você repetir os mesmos passos no terminal do guia. A próxima aula, <a href="hash.html">O Hash do Commit</a>, explica por quê.</p>
+
+<hr>
+
+<h2>A ideia: um álbum de fotos, não um diário de mudanças</h2>
+<p>Há dois jeitos de guardar a história de um projeto:</p>
+<ul>
+  <li><strong>Diário de mudanças</strong>: guardar o projeto original e, a cada versão, anotar só o que mudou ("linha 2: troquei 40 por 45"). Para ver a versão 50, é preciso partir do original e aplicar 49 anotações.</li>
+  <li><strong>Álbum de fotografias</strong>: a cada versão, tirar uma foto do projeto <strong>inteiro</strong>. Para ver a versão 50, basta abrir a foto 50.</li>
+</ul>
+<p>O Git usa o <strong>álbum</strong>: cada commit é uma fotografia completa (em inglês, <em>snapshot</em>) de todos os arquivos naquele momento. "Mas isso não ocupa um espaço enorme?" Não, por causa de um truque: se um arquivo não mudou de uma foto para a outra, o Git <strong>não guarda outra cópia</strong>; a foto nova só aponta para o mesmo conteúdo da foto anterior. Você vai ver isso acontecer com os próprios olhos.</p>
+<p>(As diferenças que o <a href="git-diff.html">git diff</a> e o <a href="git-show.html">git show</a> mostram não estão guardadas em lugar nenhum: o Git as <strong>calcula na hora</strong>, comparando duas fotografias.)</p>
+
+<hr>
+
+<h2>1. Dentro da pasta <code>.git</code></h2>
+<p>Um repositório recém-criado tem só a pasta <code>.git</code> (o <code>ls -A</code> mostra também os nomes que começam com ponto):</p>
+
+<pre class="term" data-cwd="~">$ mkdir receitas &amp;&amp; cd receitas
+$ git init -q
+$ ls -A
+.git
+$ ls .git
+HEAD
+config
+description
+hooks
+info
+objects
+refs
+</pre>
+
+<dl class="anatomy">
+  <dt>HEAD</dt><dd>Um arquivinho de texto que diz em que branch você está (veja <a href="head.html">O que é HEAD</a>).</dd>
+  <dt>config</dt><dd>As configurações <strong>deste</strong> repositório (as que você faz com <code>git config</code> sem <code>--global</code>; veja <a href="git-config.html">git config</a>).</dd>
+  <dt>description, hooks, info</dt><dd>Arquivos de apoio: uma descrição usada por ferramentas antigas, os <a href="hooks.html">hooks</a> (scripts que rodam em certos momentos) e regras locais de exclusão.</dd>
+  <dt>objects</dt><dd><strong>O banco de dados do Git.</strong> Todo conteúdo de arquivo, toda pasta e todo commit que você já fez está aqui, cada um num "objeto".</dd>
+  <dt>refs</dt><dd>As etiquetas com nome: os branches (<code>refs/heads/</code>) e as tags (<code>refs/tags/</code>). Cada uma é só um arquivinho com o hash de um commit.</dd>
+</dl>
+
+<div class="warning">
+<strong>Olhe, mas não mexa</strong>
+<p>Espiar a pasta <code>.git</code> é seguro. Editar ou apagar arquivos lá dentro à mão pode estragar o repositório. Use sempre os comandos do Git. E apagar a pasta <code>.git</code> inteira apaga <strong>todo o histórico</strong> do projeto (os arquivos da pasta de trabalho ficam, mas sem nenhum commit).</p>
+</div>
+
+<hr>
+
+<h2>2. O primeiro objeto: o <strong>blob</strong></h2>
+<p>A pasta <code>objects</code> começa vazia. A Ana cria o README e dá <code>git add</code>, e algo aparece lá dentro:</p>
+
+<pre class="term" data-cwd="~/receitas">$ find .git/objects -type f
+$ echo '# Receitas da Ana' &gt; README.md
+$ git add README.md
+$ find .git/objects -type f
+.git/objects/26/44316531953179572e7fdf95ede19e1b33c399
+</pre>
+
+<p>O primeiro <code>find</code> (que lista os arquivos de uma pasta e das subpastas) não mostrou nada. Depois do <code>git add</code>, apareceu um arquivo com um nome estranho: <code>26/44316531953179572e7fdf95ede19e1b33c399</code>. Juntando a pasta (<code>26</code>) e o nome do arquivo, dá <code>2644316531953179572e7fdf95ede19e1b33c399</code>: 40 caracteres, o <strong>hash</strong> desse objeto, uma espécie de "impressão digital" do conteúdo (explicada em <a href="hash.html">O Hash do Commit</a>). O Git separa os dois primeiros caracteres numa pasta só para não juntar milhares de arquivos numa pasta só.</p>
+
+<p>Repare: o objeto foi criado no <code>git add</code>, não no <code>git commit</code>. Preparar um arquivo já guarda o conteúdo dele no banco de dados.</p>
+
+<p>Para perguntar ao Git o que é esse objeto, existe o <code>git cat-file</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git cat-file -t 2644316
+blob
+$ git cat-file -p 2644316
+# Receitas da Ana
+$ git cat-file -s 2644316
+18
+</pre>
+
+<dl class="anatomy">
+  <dt>git cat-file</dt><dd>"Mostre um objeto do banco de dados". É um comando de "encanamento" (<em>plumbing</em>): feito para olhar as entranhas do Git, não para o uso diário.</dd>
+  <dt>-t</dt><dd>De <em>type</em>: mostra o <strong>tipo</strong> do objeto. Aqui, <code>blob</code>.</dd>
+  <dt>-p</dt><dd>De <em>pretty-print</em>, "mostrar bonito": mostra o <strong>conteúdo</strong> do objeto, num formato legível.</dd>
+  <dt>-s</dt><dd>De <em>size</em>: o tamanho do conteúdo em bytes. <code>18</code>: os 17 caracteres de <code># Receitas da Ana</code> mais a quebra de linha.</dd>
+  <dt>2644316</dt><dd>O hash do objeto. Não precisa dos 40 caracteres: basta o começo (no mínimo 4), desde que nenhum outro objeto comece igual.</dd>
+</dl>
+
+<p><strong>Blob</strong> (de <em>binary large object</em>, "objeto binário grande") é o tipo de objeto que guarda o <strong>conteúdo</strong> de um arquivo. Só o conteúdo: o blob não sabe o nome do arquivo, nem em que pasta ele está, nem quando foi criado. Quem sabe disso é a tree.</p>
+
+<div class="note">
+<strong>Lá dentro, comprimido</strong>
+<p>Se você abrir o arquivo do objeto com o <code>cat</code>, não vai ler nada: o Git guarda os objetos comprimidos (com o zlib, o mesmo método dos arquivos <code>.zip</code>). O comando <code>file</code> confirma:</p>
+<pre class="term" data-cwd="~/receitas">$ file .git/objects/26/44316531953179572e7fdf95ede19e1b33c399
+.git/objects/26/44316531953179572e7fdf95ede19e1b33c399: zlib compressed data
+</pre>
+<p>Por isso se usa o <code>git cat-file</code>: ele descomprime e mostra.</p>
+</div>
+
+<hr>
+
+<h2>3. O commit e a <strong>tree</strong></h2>
+<p>Agora a Ana faz o primeiro commit e olha a pasta <code>objects</code> de novo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git commit -q -m "Primeiro commit"
+$ find .git/objects -type f | sort
+.git/objects/22/66689caa9ea60c127cd9b491dbe117f9699670
+.git/objects/26/44316531953179572e7fdf95ede19e1b33c399
+.git/objects/fe/996fb8ecae7fe25026045fd46f15ca756bc19c
+$ git log --oneline
+fe996fb Primeiro commit
+</pre>
+
+<p>Apareceram mais dois objetos. Um deles, <code>fe996fb…</code>, tem o mesmo começo do hash que o <code>git log</code> mostra: <strong>é o commit</strong>. Vamos abri-lo:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git cat-file -t fe996fb
+commit
+$ git cat-file -p fe996fb
+tree 2266689caa9ea60c127cd9b491dbe117f9699670
+author Ana Souza &lt;ana@exemplo.com&gt; 1792071000 -0300
+committer Ana Souza &lt;ana@exemplo.com&gt; 1792071000 -0300
+
+Primeiro commit
+</pre>
+
+<p>Um commit, por dentro, é um textinho:</p>
+<dl class="anatomy">
+  <dt>tree 2266689…</dt><dd>A <strong>fotografia</strong>: o hash da tree (a pasta principal do projeto) naquele momento. É o terceiro objeto que apareceu.</dd>
+  <dt>author Ana Souza &lt;ana@exemplo.com&gt; 1792071000 -0300</dt><dd>Quem escreveu a mudança, e quando. A data está em "segundos desde 1º de janeiro de 1970" (o jeito como os computadores contam o tempo): <code>1792071000</code> é 15 de outubro de 2026, 10:30, no fuso <code>-0300</code>.</dd>
+  <dt>committer …</dt><dd>Quem gravou o commit, e quando. Quase sempre é a mesma pessoa e a mesma hora do <code>author</code>; eles diferem, por exemplo, depois de um <a href="commit-amend.html">--amend</a> feito mais tarde, ou quando alguém aplica a mudança de outra pessoa.</dd>
+  <dt>(linha em branco) Primeiro commit</dt><dd>A mensagem do commit.</dd>
+</dl>
+
+<p>E a tree:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git cat-file -p HEAD^{tree}
+100644 blob 2644316531953179572e7fdf95ede19e1b33c399	README.md
+</pre>
+
+<p>O <code>HEAD^{tree}</code> quer dizer "a tree do commit <code>HEAD</code>" (poderia ser o hash <code>2266689</code>, dá no mesmo). Uma <strong>tree</strong> ("árvore") é uma <strong>pasta</strong>: uma lista de nomes, cada um apontando para um blob (arquivo) ou para outra tree (subpasta). Cada linha tem:</p>
+<dl class="anatomy">
+  <dt>100644</dt><dd>O modo: <code>100644</code> é arquivo comum, <code>100755</code> é arquivo executável, <code>040000</code> é pasta.</dd>
+  <dt>blob</dt><dd>O tipo do objeto apontado.</dd>
+  <dt>2644316…</dt><dd>O hash do objeto: o blob do README, aquele criado no <code>git add</code>.</dd>
+  <dt>README.md</dt><dd>O <strong>nome</strong> do arquivo. É aqui, na tree, que o nome fica guardado.</dd>
+</dl>
+
+<p>Em desenho, o primeiro commit da Ana é assim:</p>
+<pre>commit fe996fb  ("Primeiro commit", Ana Souza, 15/10/2026 10:30)
+   │
+   └── tree 2266689  (a pasta receitas/)
+          │
+          └── README.md → blob 2644316  ("# Receitas da Ana")</pre>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit'" data-goal="ran:cat-file,out:Primeiro commit,out:tree" data-solucao="git cat-file -p HEAD">
+<p class="try-task"><strong>Missão:</strong> o repositório da Ana já tem o primeiro commit. Abra o objeto do commit com <code>git cat-file -p</code> (use <code>HEAD</code> ou o hash do <code>git log --oneline</code>) e encontre a linha <code>tree</code>. Depois, se quiser, abra a tree com <code>git cat-file -p</code> e o hash dela.</p>
+</div>
+
+<hr>
+
+<h2>4. O segundo commit: o "pai" e o reaproveitamento</h2>
+<p>A Ana cria a receita de bolo e uma pasta <code>doces</code> com a receita de pudim, e commita:</p>
+
+<pre class="term" data-cwd="~/receitas">$ mkdir doces
+$ printf 'Bolo de cenoura\nTempo: 40 minutos\n' &gt; bolo.txt
+$ echo 'Pudim de leite' &gt; doces/pudim.txt
+$ git add bolo.txt doces
+$ git commit -q -m "Adiciona bolo e pudim"
+$ git log --oneline
+eaac340 Adiciona bolo e pudim
+fe996fb Primeiro commit
+$ git cat-file -p HEAD
+tree 6121a7a2f681a5065c3bc3e562f8d47d034b6f33
+parent fe996fb8ecae7fe25026045fd46f15ca756bc19c
+author Ana Souza &lt;ana@exemplo.com&gt; 1792071000 -0300
+committer Ana Souza &lt;ana@exemplo.com&gt; 1792071000 -0300
+
+Adiciona bolo e pudim
+</pre>
+
+<p>Este commit tem uma linha nova: <code>parent</code> ("pai"), com o hash do commit anterior. <strong>É assim que o histórico é montado</strong>: cada commit aponta para o seu pai, que aponta para o pai dele, até o primeiro commit (que não tem <code>parent</code>). O <code>git log</code> nada mais faz do que seguir essa corrente de trás para a frente, a partir do <code>HEAD</code>.</p>
+
+<pre class="term" data-cwd="~/receitas">$ git cat-file -p HEAD^{tree}
+100644 blob 2644316531953179572e7fdf95ede19e1b33c399	README.md   « o MESMO blob do 1º commit
+100644 blob af7ede1618b0cda974c838541f4c1ffe7ecd76d3	bolo.txt
+040000 tree 198812946935d95e835d760523d1b97e58bd8f57	doces       « uma subpasta
+$ git cat-file -p 1988129
+100644 blob 8499e03b32d8e828d20f94e1a73945e1103973f3	pudim.txt
+$ git cat-file -p 8499e03
+Pudim de leite
+</pre>
+
+<p>Duas coisas para reparar:</p>
+<ul>
+  <li>A pasta <code>doces</code> virou uma <strong>tree dentro da tree</strong> (<code>040000 tree</code>), que por sua vez aponta para o blob do <code>pudim.txt</code>. Pastas dentro de pastas viram trees dentro de trees.</li>
+  <li>O <code>README.md</code> aponta para o blob <code>2644316…</code>, <strong>exatamente o mesmo</strong> do primeiro commit. O README não mudou, então o Git não guardou outra cópia: a fotografia nova reaproveita o conteúdo da antiga.</li>
+</ul>
+
+<pre>commit eaac340 ("Adiciona bolo e pudim")
+   │  parent ─────────────────────────►  commit fe996fb ("Primeiro commit")
+   │                                         │
+   └── tree 6121a7a                          └── tree 2266689
+          ├── README.md → blob 2644316 ◄─────────────┘ (o mesmo blob)
+          ├── bolo.txt  → blob af7ede1
+          └── doces/    → tree 1988129
+                            └── pudim.txt → blob 8499e03</pre>
+
+<p>Conte os objetos: 3 do primeiro commit + 5 novos (o commit, a tree principal, o blob do bolo, a tree <code>doces</code> e o blob do pudim) = 8. O <code>git count-objects</code> confirma:</p>
+
+<pre class="term" data-cwd="~/receitas">$ find .git/objects -type f | sort
+.git/objects/19/8812946935d95e835d760523d1b97e58bd8f57
+.git/objects/22/66689caa9ea60c127cd9b491dbe117f9699670
+.git/objects/26/44316531953179572e7fdf95ede19e1b33c399
+.git/objects/61/21a7a2f681a5065c3bc3e562f8d47d034b6f33
+.git/objects/84/99e03b32d8e828d20f94e1a73945e1103973f3
+.git/objects/af/7ede1618b0cda974c838541f4c1ffe7ecd76d3
+.git/objects/ea/ac34092a80e72af8d9bd6c9c1525f501f88267
+.git/objects/fe/996fb8ecae7fe25026045fd46f15ca756bc19c
+$ git count-objects
+8 objects, 32 kilobytes
+</pre>
+
+<h3>Conteúdo igual, objeto igual</h3>
+<p>O reaproveitamento não depende do nome. A Ana copiou o README para um arquivo novo e deu <code>git add</code>:</p>
+
+<pre class="term" data-cwd="~/receitas">$ cp README.md copia.txt
+$ git add copia.txt
+$ git count-objects
+8 objects, 32 kilobytes   « nenhum objeto novo!
+$ git hash-object copia.txt
+2644316531953179572e7fdf95ede19e1b33c399
+</pre>
+
+<p>O <code>git hash-object</code> calcula o hash que um arquivo teria como blob: <code>2644316…</code>, o mesmo do README. Conteúdo igual dá hash igual, e hash igual é o mesmo objeto; o Git não guardou nada novo. (Depois do teste, a Ana desfez com <code>git restore --staged copia.txt</code> e <code>rm copia.txt</code>.)</p>
+
+<hr>
+
+<h2>5. Mudando um arquivo: só o que mudou é novo</h2>
+
+<pre class="term" data-cwd="~/receitas">$ sed -i 's/40 minutos/45 minutos/' bolo.txt
+$ git commit -q -am "Aumenta tempo do bolo"
+$ git cat-file -p HEAD
+tree d8a6700698bd6cc7dff33d519dfd993644d7b4e3
+parent eaac34092a80e72af8d9bd6c9c1525f501f88267
+author Ana Souza &lt;ana@exemplo.com&gt; 1792071000 -0300
+committer Ana Souza &lt;ana@exemplo.com&gt; 1792071000 -0300
+
+Aumenta tempo do bolo
+$ git cat-file -p HEAD^{tree}
+100644 blob 2644316531953179572e7fdf95ede19e1b33c399	README.md   « igual
+100644 blob a6fb0850dd0fcdd6ab633bf07ddd563ca2e65ff8	bolo.txt    « blob NOVO
+040000 tree 198812946935d95e835d760523d1b97e58bd8f57	doces       « igual
+$ git count-objects
+11 objects, 44 kilobytes
+</pre>
+
+<p>(O <code>sed -i</code> troca um texto dentro do arquivo; o <code>-am</code> do commit adiciona e commita os arquivos rastreados de uma vez.) O bolo mudou, então ganhou um blob novo. O README e a pasta <code>doces</code> não mudaram, e a tree nova aponta para os <strong>mesmos</strong> objetos de antes. Foram só 3 objetos novos (o blob do bolo, a tree principal e o commit): 8 + 3 = 11.</p>
+
+<p>E as duas versões do bolo continuam guardadas, cada uma no seu blob. Com <code>commit:caminho</code>, o <code>git cat-file</code> navega pela fotografia de qualquer commit:</p>
+
+<pre class="term" data-cwd="~/receitas">$ git cat-file -p HEAD:bolo.txt
+Bolo de cenoura
+Tempo: 45 minutos
+$ git cat-file -p HEAD~1:bolo.txt
+Bolo de cenoura
+Tempo: 40 minutos
+$ git cat-file -p HEAD:doces
+100644 blob 8499e03b32d8e828d20f94e1a73945e1103973f3	pudim.txt
+</pre>
+
+<p><code>HEAD~1</code> é "o pai do <code>HEAD</code>" (veja <a href="head.html">O que é HEAD</a>). É exatamente isso que o <code>git restore --source</code>, o <code>git show HEAD~1:bolo.txt</code> e o <code>git reset</code> usam por baixo: buscar o blob certo na fotografia certa.</p>
+
+<div class="try" data-setup="mkdir receitas;;cd receitas;;git init -q;;echo '# Receitas da Ana' &gt; README.md;;git add README.md;;git commit -q -m 'Primeiro commit';;echo 'Tempo: 40 minutos' &gt; bolo.txt;;git add bolo.txt;;git commit -q -m 'Adiciona bolo';;echo 'Tempo: 45 minutos' &gt; bolo.txt;;git commit -q -am 'Aumenta tempo do bolo'" data-goal="ran:cat-file,out:40 minutos" data-solucao="git cat-file -p HEAD~1:bolo.txt">
+<p class="try-task"><strong>Missão:</strong> o <code>bolo.txt</code> da pasta diz 45 minutos. Sem mudar nada na pasta, mostre a versão <strong>antiga</strong> do bolo, guardada no commit anterior, com <code>git cat-file -p</code> e o formato <code>commit:caminho</code>.</p>
+</div>
+
+<hr>
+
+<h2>6. Por que um commit nunca muda</h2>
+<p>O nome de cada objeto (o hash) é calculado <strong>a partir do conteúdo</strong> dele. O conteúdo de um commit inclui a tree, o pai, o autor, a data e a mensagem. Então:</p>
+<ul>
+  <li>se qualquer coisa mudasse num commit (uma letra da mensagem, um byte de um arquivo), o hash mudaria, e ele seria <strong>outro</strong> objeto;</li>
+  <li>por isso "editar" um commit é impossível: o <a href="commit-amend.html">--amend</a>, o <a href="git-rebase.html">rebase</a> e companhia sempre criam commits <strong>novos</strong>, e movem o branch para eles;</li>
+  <li>e, como o commit aponta para o pai pelo hash, mudar um commit antigo obriga a recriar todos os commits que vieram depois dele (os filhos apontam para o hash velho).</li>
+</ul>
+<p>Os commits antigos, "abandonados", continuam na pasta <code>objects</code> até o Git fazer uma faxina automática (normalmente, depois de semanas). É por isso que o <a href="git-reflog.html">reflog</a> consegue trazê-los de volta.</p>
+
+<hr>
+
+<h2>Os três objetos, lado a lado</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Objeto</th><th>Guarda</th><th>Aponta para</th><th>Criado quando</th></tr>
+<tr><td><strong>blob</strong></td><td>O conteúdo de um arquivo (sem nome, sem data)</td><td>nada</td><td>no <code>git add</code></td></tr>
+<tr><td><strong>tree</strong></td><td>Uma pasta: nomes, modos e hashes</td><td>blobs (arquivos) e trees (subpastas)</td><td>no <code>git commit</code></td></tr>
+<tr><td><strong>commit</strong></td><td>Autor, data, mensagem</td><td>uma tree (a fotografia) e o(s) pai(s)</td><td>no <code>git commit</code></td></tr>
+</table>
+</div>
+<p>(Existe um quarto tipo, o objeto <strong>tag</strong>, criado pelas tags anotadas; veja <a href="git-tag.html">git tag</a>.) E os branches? Não são objetos: são só arquivos em <code>.git/refs/heads/</code> com o hash de um commit. A aula <a href="head.html">O que é HEAD</a> mostra isso.</p>
+
+<hr>
+
+<h2 id="errado">Quando dá errado</h2>
+
+<div class="cenario">
+<strong>Objeto que não existe (ou hash curto demais)</strong>
+<pre class="term" data-cwd="~/receitas">$ git cat-file -p 2644
+# Receitas da Ana
+$ git cat-file -p 264
+fatal: Not a valid object name 264
+$ git cat-file -t banana
+fatal: Not a valid object name banana
+</pre>
+<p>"Nome de objeto inválido." Com 4 caracteres (<code>2644</code>) o Git achou o blob; com 3, não: o mínimo para um hash abreviado é 4. E <code>banana</code> não é hash nem nome de branch. <strong>Como resolver:</strong> copie o hash do <code>git log --oneline</code>, do <code>find .git/objects</code> ou de outro <code>git cat-file -p</code>.</p>
+</div>
+
+<div class="cenario">
+<strong>Esqueceu o <code>-p</code> (ou o <code>-t</code>)</strong>
+<pre class="term" data-cwd="~/receitas">$ git cat-file README.md
+fatal: only two arguments allowed in &lt;type&gt; &lt;object&gt; mode, not 1
+
+uso: git cat-file &lt;type&gt; &lt;object&gt;
+   ou: git cat-file (-e | -p | -t | -s) &lt;object&gt;
+…
+</pre>
+<p>O <code>git cat-file</code> precisa saber <strong>o que</strong> mostrar (<code>-p</code>, <code>-t</code>, <code>-s</code>) e <strong>de qual</strong> objeto. E ele trabalha com objetos, não com arquivos da pasta: para ver o README guardado no último commit, é <code>git cat-file -p HEAD:README.md</code>. (A mensagem continua com uma longa lista de opções, cortada aqui no <code>…</code>.)</p>
+</div>
+
+<hr>
+
+<h2>Referência rápida</h2>
+<div class="table-wrap">
+<table class="ref">
+<tr><th>Comando</th><th>O que faz</th></tr>
+<tr><td><code>git cat-file -t &lt;objeto&gt;</code></td><td>Mostra o tipo: <code>blob</code>, <code>tree</code>, <code>commit</code> ou <code>tag</code></td></tr>
+<tr><td><code>git cat-file -p &lt;objeto&gt;</code></td><td>Mostra o conteúdo, legível</td></tr>
+<tr><td><code>git cat-file -s &lt;objeto&gt;</code></td><td>Mostra o tamanho em bytes</td></tr>
+<tr><td><code>git cat-file -p HEAD</code></td><td>O commit atual por dentro (tree, parent, author, committer, mensagem)</td></tr>
+<tr><td><code>git cat-file -p HEAD^{tree}</code></td><td>A pasta principal do commit atual</td></tr>
+<tr><td><code>git cat-file -p HEAD~1:bolo.txt</code></td><td>Um arquivo, na versão de um commit</td></tr>
+<tr><td><code>git hash-object arquivo</code></td><td>O hash que o arquivo teria como blob</td></tr>
+<tr><td><code>git count-objects</code></td><td>Quantos objetos (soltos) há no repositório, e quanto ocupam</td></tr>
+<tr><td><code>find .git/objects -type f</code></td><td>Lista os arquivos dos objetos (comando do terminal)</td></tr>
+</table>
+</div>
+
+<hr>
+
+<h2>Exercícios</h2>
+
+<div class="exercise">
+<h3>1. Os três tipos</h3>
+<p>Complete: o conteúdo de um arquivo fica num <input data-answer="blob" aria-label="tipo do arquivo">, uma pasta é uma <input data-answer="tree" aria-label="tipo da pasta">, e cada fotografia do projeto é um <input data-answer="commit" aria-label="tipo da fotografia">.</p>
+</div>
+
+<div class="exercise">
+<h3>2. O comando</h3>
+<p>Complete para ver o <strong>tipo</strong> do objeto <code>2644316</code>:</p>
+<div class="ex-code">git cat-file <input data-answer="-t" aria-label="opção"> 2644316</div>
+</div>
+
+<div class="mc" data-answer="2">
+<p class="mc-q">3. Onde fica guardado o <strong>nome</strong> de um arquivo?</p>
+<label><input type="radio" name="q3"> No blob</label>
+<label><input type="radio" name="q3"> Na tree da pasta onde ele está</label>
+<label><input type="radio" name="q3"> No commit</label>
+<label><input type="radio" name="q3"> No arquivo <code>.git/HEAD</code></label>
+</div>
+
+<div class="mc" data-answer="3">
+<p class="mc-q">4. Um projeto tem 100 arquivos e a Ana muda <strong>um</strong> deles e commita. Quantos blobs novos o Git cria?</p>
+<label><input type="radio" name="q4"> 100: cada commit é uma fotografia completa</label>
+<label><input type="radio" name="q4"> Nenhum: o Git guarda só a diferença</label>
+<label><input type="radio" name="q4"> 1: os arquivos que não mudaram reaproveitam os blobs antigos</label>
+<label><input type="radio" name="q4"> 2</label>
+</div>
+
+<div class="mc" data-answer="4">
+<p class="mc-q">5. Que linha aparece no objeto de todo commit, <strong>menos</strong> no primeiro?</p>
+<label><input type="radio" name="q5"> <code>tree</code></label>
+<label><input type="radio" name="q5"> <code>author</code></label>
+<label><input type="radio" name="q5"> <code>committer</code></label>
+<label><input type="radio" name="q5"> <code>parent</code></label>
+</div>
+
+<hr>
+
+<h2>Resumo</h2>
+<ul>
+  <li>O Git guarda <strong>fotografias</strong> completas do projeto (snapshots); as diferenças são calculadas na hora.</li>
+  <li>Tudo fica em <code>.git/objects</code>, em objetos comprimidos cujo nome é o hash do conteúdo.</li>
+  <li><strong>blob</strong> = conteúdo de arquivo (criado no <code>git add</code>); <strong>tree</strong> = pasta (nomes + hashes); <strong>commit</strong> = tree + pai + autor + data + mensagem.</li>
+  <li>Conteúdo igual vira o mesmo objeto: arquivos que não mudaram não ocupam espaço de novo.</li>
+  <li><code>git cat-file -t</code> mostra o tipo; <code>git cat-file -p</code> mostra o conteúdo; <code>commit:caminho</code> navega na fotografia.</li>
+  <li>Como o hash depende do conteúdo, um commit nunca muda: "mudar" é criar outro.</li>
+</ul>
+
+<div class="pager"></div>
+
+</div>
+</main>
+</div>
+<script src="assets/site.js"></script>
+</body>
+</html>
