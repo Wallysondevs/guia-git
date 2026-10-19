@@ -204,7 +204,7 @@ nothing to commit, working tree clean
 <h2>Passo 5: ver a foto no álbum com <code>git log</code></h2>
 
 <pre class="term" data-cwd="~/receitas">$ git log
-commit d84dc9769de7f3c81874872c30843402cbae59f9
+commit d84dc9769de7f3c81874872c30843402cbae59f9 (HEAD -&gt; main)
 Author: Ana Souza &lt;ana@exemplo.com&gt;
 Date:   Thu Oct 15 10:30:00 2026 -0300
 
@@ -213,6 +213,7 @@ Date:   Thu Oct 15 10:30:00 2026 -0300
 
 <dl class="anatomy">
   <dt>commit d84dc97…</dt><dd>O código completo do commit, com 40 caracteres. O <code>d84dc97</code> da saída do <code>git commit</code> é só o começo dele.</dd>
+  <dt>(HEAD -&gt; main)</dt><dd>Uma etiqueta: este é o commit em que o ramo <code>main</code> está, e <code>HEAD</code> ("cabeça") quer dizer "onde você está agora". Por enquanto, só leia como "este é o commit mais recente do ramo em que estou" (a aula <a href="head.html">O que é HEAD</a> explica com calma).</dd>
   <dt>Author: Ana Souza &lt;ana@exemplo.com&gt;</dt><dd>"Autor": o nome e o e-mail que a Ana configurou com o <code>git config</code>.</dd>
   <dt>Date: Thu Oct 15 10:30:00 2026 -0300</dt><dd>"Data": quinta-feira (<em>Thu</em>), 15 de outubro (<em>Oct</em>) de 2026, às 10:30, no fuso de Brasília (<code>-0300</code>, três horas a menos que o horário universal). O Git escreve a data em inglês mesmo com o sistema em português.</dd>
   <dt>Adiciona o README</dt><dd>A mensagem, recuada com 4 espaços.</dd>
@@ -249,7 +250,7 @@ $ git commit -m "Adiciona a receita de bolo"
  2 files changed, 2 insertions(+)
  create mode 100644 bolo.txt
 $ git log --oneline
-fa4a0cf Adiciona a receita de bolo
+fa4a0cf (HEAD -&gt; main) Adiciona a receita de bolo
 d84dc97 Adiciona o README
 </pre>
 
@@ -258,7 +259,7 @@ d84dc97 Adiciona o README
   <li>O <code>README.md</code> já estava no primeiro commit, então ele não é mais "não monitorado": aparece em <code>Changes not staged for commit</code> ("mudanças não preparadas para o commit") como <code>modified</code> ("modificado"). As dicas mudaram também: <code>git add</code> para preparar a mudança, ou <code>git restore</code> para <strong>descartá-la</strong> e voltar o arquivo ao que estava no último commit. A aula <a href="git-status.html">git status</a> explica cada bloco com calma.</li>
   <li>O <code>git add</code> recebeu <strong>dois</strong> arquivos de uma vez, separados por espaço.</li>
   <li>O commit não tem mais <code>(root-commit)</code>: só o primeiro tem. Ele mexeu em 2 arquivos (<code>2 files changed</code>), com 2 linhas novas no total, e só o <code>bolo.txt</code> é arquivo novo (<code>create mode</code>).</li>
-  <li>O <code>git log --oneline</code> mostra o histórico resumido, uma linha por commit: o código curto e a mensagem, <strong>o mais novo em cima</strong>.</li>
+  <li>O <code>git log --oneline</code> mostra o histórico resumido, uma linha por commit: o código curto e a mensagem, <strong>o mais novo em cima</strong>. A etiqueta <code>(HEAD -&gt; main)</code> passou para o commit novo: o ramo andou.</li>
 </ul>
 
 <p>Desenhado, o histórico da Ana agora é uma linha com duas fotos, cada uma apontando para a anterior (a seta mostra de quem cada commit "é filho"):</p>
