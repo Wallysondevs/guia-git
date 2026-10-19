@@ -192,7 +192,7 @@ index ad1ef9e..0da2c17 100644
 <p>Por padrão, o <code>git restore</code> busca o conteúdo na área de preparo (que, sem <code>git add</code>, é igual ao último commit). Com <code>--source</code> ("origem"), você escolhe <strong>de qual commit</strong> pegar. A Ana commitou a mudança de 4 para 3 ovos e agora quer reconsiderar:</p>
 
 <pre class="term" data-cwd="~/receitas">$ git log --oneline
-8b163ca Menos ovos no bolo
+8b163ca (HEAD -&gt; main) Menos ovos no bolo
 9d54245 Receitas iniciais
 $ git restore --source=HEAD~1 bolo.txt
 $ cat bolo.txt
