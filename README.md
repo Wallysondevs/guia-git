@@ -39,6 +39,7 @@ node tools/testar-missoes.js pagina.html     # só estas páginas
 node tools/testar-missoes.js --nativo pagina.html   # compara também com o Git real (precisa do laboratório)
 node tools/testes/rodar.js git               # bateria diferencial do Git (precisa do laboratório)
 node tools/sim.js 'git init' 'git status'    # mostra uma sessão do simulador
+bash tools/checar-privacidade.sh             # páginas e histórico; lista extra: PROIBIDO=lista.txt
 ```
 
 ## Publicar no GitHub Pages
